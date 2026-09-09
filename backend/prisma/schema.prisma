@@ -146,12 +146,16 @@ model PushToken {
 
   token       String @unique
   platform    String @default("ios")
-  environment String @default("production") // or "sandbox"
+  environment String @default("production") // "production" | "sandbox"
+  /// "alert" (a device token for Time Sensitive pushes) or
+  /// "live_activity_start" (a push-to-start token for Live Activities).
+  kind        String @default("alert")
 
   lastSeenAt DateTime @default(now())
   createdAt  DateTime @default(now())
 
   @@index([userId])
+  @@index([userId, kind])
 }
 
 // ---------------------------------------------------------------------------

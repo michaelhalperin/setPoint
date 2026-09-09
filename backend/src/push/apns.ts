@@ -136,6 +136,37 @@ export function buildCheckInAlertPayload(payload: PushPayload): Record<string, u
   };
 }
 
+export type LiveActivityState = {
+  title: string;
+  detail: string;
+  deepLink: string;
+};
+
+/**
+ * Builds the `aps` payload for a Live Activity push (plan §2). `start` pushes a
+ * push-to-start token (iOS 17.2+); `update` / `end` push a per-activity token.
+ * Pure.
+ */
+export function buildLiveActivityPayload(
+  event: 'start' | 'update' | 'end',
+  state: LiveActivityState,
+  options: { checkInId: string; staleAfterSeconds?: number } = { checkInId: '' },
+): Record<string, unknown> {
+  const now = Math.floor(Date.now() / 1000);
+  const aps: Record<string, unknown> = {
+    timestamp: now,
+    event,
+    'content-state': state,
+  };
+  if (options.staleAfterSeconds) aps['stale-date'] = now + options.staleAfterSeconds;
+  if (event === 'start') {
+    aps['attributes-type'] = 'CheckInActivityAttributes';
+    aps.attributes = { checkInId: options.checkInId };
+    aps.alert = { title: state.title, body: state.detail };
+  }
+  return { aps };
+}
+
 /** PushSender backed by real APNs. Failures per-device are logged, not thrown. */
 export class ApnsPushSender implements PushSender {
   private readonly client: ApnsClient;

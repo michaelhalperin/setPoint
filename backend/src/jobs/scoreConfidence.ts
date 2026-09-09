@@ -412,7 +412,9 @@ async function sendPush(
   tier: number,
   body: string,
 ): Promise<void> {
-  const tokens = await deps.prisma.pushToken.findMany({ where: { userId } });
+  const tokens = await deps.prisma.pushToken.findMany({
+    where: { userId, kind: 'alert' },
+  });
   await deps.push.send(
     tokens.map((t) => t.token),
     { userId, checkInId, tier, title: 'SetPoint', body },
