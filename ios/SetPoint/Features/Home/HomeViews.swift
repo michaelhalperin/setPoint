@@ -70,13 +70,17 @@ struct CheckInContent: View {
     let checkIn: HomeResponse.ActiveCheckIn
     var expanded = false
 
+    private var tierThreePrompt: String? {
+        checkIn.tier >= 3 ? "The last few days haven't gone to plan. Let's sort out what needs to change." : nil
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: expanded ? 14 : 10) {
-            Text(checkIn.tier >= 2 ? "Check-in · firm" : "Check-in")
+            Text(checkIn.tier >= 3 ? "Let's talk" : (checkIn.tier >= 2 ? "Check-in · firm" : "Check-in"))
                 .sectionLabelStyle()
                 .foregroundStyle(Palette.accent)
 
-            if let message = checkIn.message {
+            if let message = checkIn.message ?? tierThreePrompt {
                 Text(message)
                     .font(Typography.voice(expanded ? 21 : 17))
                     .foregroundStyle(Palette.ink)

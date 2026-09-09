@@ -12,7 +12,6 @@ final class HomeViewModel {
     }
 
     private(set) var phase: Phase = .loading
-    var loggingMeal = false
 
     private let api: APIClient
     private let onUnauthorized: @MainActor () -> Void
@@ -32,19 +31,6 @@ final class HomeViewModel {
             onUnauthorized()
         } catch let APIError.http(status, _) where status == 409 {
             phase = .needsOnboarding
-        } catch {
-            phase = .failed(message(for: error))
-        }
-    }
-
-    func logMeal(text: String) async {
-        loggingMeal = true
-        defer { loggingMeal = false }
-        do {
-            let _: LogMealResponse = try await api.post("/api/meals", LogMealRequest(text: text))
-            await load(showSpinner: false)
-        } catch APIError.unauthorized {
-            onUnauthorized()
         } catch {
             phase = .failed(message(for: error))
         }

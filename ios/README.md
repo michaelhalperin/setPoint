@@ -71,9 +71,11 @@ SetPoint/
 ├── Networking/     APIClient (async/await, bearer auth), APIConfig, DTOs
 ├── Auth/           AuthStore (Sign in with Apple + dev), KeychainTokenStore
 └── Features/
-    ├── Home/         HomeScreen / HomeViewModel / HomeViews (§5.2 framing, §5a numeric transitions)
+    ├── Home/         HomeScreen / HomeViewModel / HomeViews (§5.2 framing, §5a numeric transitions);
+    │                 LogMealSheet + LogMealViewModel (text/photo → .redacted skeleton → parsed macros → undo), MealPhoto (downscale + base64)
     ├── Onboarding/   stepped flow → POST /api/onboarding (§3, §5.1)
-    ├── CheckIn/      PrescriptionView — the card ↔ full-screen matchedGeometryEffect morph (§5a)
+    ├── CheckIn/      PrescriptionView — the card ↔ full-screen matchedGeometryEffect morph (§5a);
+    │                 ConversationView + ConversationViewModel — the tier-3 "let's talk" chat (§2)
     ├── Settings/     GET/PATCH /api/settings — goal, targets, meal times, quiet hours, pause, restrictions; delete account
     └── Settlement/   GET /api/settlement — 7-day bar strip (staggered entrance §5a) + day rows (§5.7)
 ```
@@ -83,6 +85,21 @@ the Home card and as the hero of `PrescriptionView`; a single
 `matchedGeometryEffect` id in `HomeContent`'s `@Namespace` interpolates one into
 the other. Actions hit `/api/meals` (`prescriptionId`), `/api/checkins/:id/defer`,
 `/api/checkins/:id/feedback`. Drag-down dismisses.
+
+Tier-3 check-ins (`tier == 3`, no prescription) open `ConversationView` instead
+of `PrescriptionView` — a short bounded chat against `GET`/`POST
+/api/checkins/:id/conversation`. Once the backend returns an `outcome` the
+composer is replaced by a status card + "Done".
+
+Photo meal logging: `LogMealSheet` takes free text and/or a `PhotosPicker`
+image; `MealPhoto` downscales to ~1024px and JPEG-encodes it. While the backend's
+vision model parses, a `.redacted(reason: .placeholder)` skeleton of the macro
+breakdown shows; the real numbers replace it, with "That's not what I ate —
+remove it" calling `DELETE /api/meals/:id`.
+
+Debug launch args for screenshots: `-uiStub log-meal`, `log-meal-result`,
+`conversation`, `conversation-resolved` (plus the earlier `home`, `prescription`,
+`settings`, `settlement`, `onboarding*`).
 
 ## Motion system (plan §5a)
 
@@ -122,7 +139,7 @@ Test a notification locally: `xcrun simctl push <device> com.setpoint.app payloa
 
 ## Next
 
-- Check-in → prescription shared-element morph (`matchedGeometryEffect`)
-- Settlement view (7-day trend, staggered entrance)
-- HealthKit → biosignal deviation upload; Live Activity + push registration
-- Photo meal logging + `.redacted` skeleton while parsing runs
+- Closed TestFlight beta
+- Live Activity server push-to-start (needs an APNs `.p8` key)
+- App icon: a proper multi-size / dark / tinted set (currently the one
+  1024² `icon-1024.png`, auto-downscaled by the asset compiler)

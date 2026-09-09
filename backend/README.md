@@ -73,10 +73,13 @@ Without `DATABASE_URL` the server still boots; `/api/health` just reports
 | GET    | `/api/health`     | Liveness + `SELECT 1` database check                     |
 | POST   | `/api/auth/apple` | Apple identity token → session JWT (501 until `APPLE_CLIENT_ID` is set) |
 | POST   | `/api/auth/dev`   | Non-production only — mint a session JWT for testing      |
-| POST   | `/api/meals`      | Log a meal (bearer auth). `{text}`/`{image}` → AI-parsed; `{macros}` → as-is; `{prescriptionId}` alone → the Rx's totals. Resolves any open check-in |
+| POST   | `/api/meals`      | Log a meal (bearer auth). `{text}`/`{image}` → AI-parsed; `{macros}` → as-is; `{prescriptionId}` alone → the Rx's totals. Resolves any open check-in. Returns `{ meal, parsed, resolvedCheckInId }` |
+| DELETE | `/api/meals/:id`  | Undo a just-logged meal (e.g. a wrong photo parse) — `{ deleted: true }` |
 | GET    | `/api/checkins/:id` | Fetch one check-in + prescription (bearer auth)          |
 | POST   | `/api/checkins/:id/defer` | Snooze it — `status DEFERRED`, `deferUntil = now + 2h` (§2) |
 | POST   | `/api/checkins/:id/feedback` | `{ positive }` thumbs — labeled beta signal (§8) |
+| GET    | `/api/checkins/:id/conversation` | Tier-3 "let's talk" transcript — seeds the opener on first read (§2) |
+| POST   | `/api/checkins/:id/conversation` | `{ message }` → the manager's reply; lands on an `outcome` (`ADJUST_PLAN` / `PAUSE_CHECKINS` / `SUGGEST_PROFESSIONAL`) then `resolved`. `PAUSE_CHECKINS` sets `escalationState.checkInsPaused` |
 | POST   | `/api/push-tokens` / `DELETE /api/push-tokens/:token` | register/unregister an APNs token (`kind: alert \| live_activity_start`) |
 | POST   | `/api/biosignals` | `{ hrvDeviation, rhrDeviation? }` — the app's on-device z-scores (§4) → `BiosignalState` |
 | POST   | `/api/onboarding` | Goal, stats, meal times, quiet hours, safety screening → profile + `SafetyScreening` + restrictions (bearer auth, §3, §5.1) |
@@ -110,8 +113,12 @@ manager's-voice copy runs rarely → `claude-sonnet-5`.
   tool call, then a zod pass that coerces/clamps the model's numbers
 - `managerVoice/ai.ts` — one-sentence check-in copy with tone guardrails (§6, and
   §3: nothing may read as shaming); **any** failure falls back to deterministic copy
+- `ai/tierThree.ts` — the bounded tier-3 "let's talk" conversation (§2). Forced
+  `reply_to_user` tool call on `claude-sonnet-5`; the only outcomes are adjust
+  the plan, pause check-ins, or point to professional support. A deterministic
+  keyword fallback (`fallbackTierThree`) covers a missing key or any model error
 - `getAnthropic()` returns null when `ANTHROPIC_API_KEY` is unset — meal logging
-  then needs explicit `macros`, and the manager's voice uses the fallback
+  then needs explicit `macros`, and the manager's voice + tier-3 use the fallback
 
 ## Auth (`src/auth/`)
 

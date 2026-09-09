@@ -91,6 +91,7 @@ struct SettlementResponse: Decodable {
 
 struct LogMealRequest: Encodable {
     var text: String?
+    var image: ImagePayload?
     var macros: Macros?
     var prescriptionId: String?
 
@@ -100,10 +101,17 @@ struct LogMealRequest: Encodable {
         var carbsG: Double?
         var fatG: Double?
     }
+
+    /// Base64 photo the backend feeds to the vision model (§5.5).
+    struct ImagePayload: Encodable {
+        let data: String
+        let mediaType: String   // "image/jpeg" | "image/png" | "image/webp" | "image/gif"
+    }
 }
 
 struct LogMealResponse: Decodable {
     let meal: Meal
+    let parsed: Parsed?
     let resolvedCheckInId: String?
 
     struct Meal: Decodable {
@@ -112,6 +120,47 @@ struct LogMealResponse: Decodable {
         let proteinG: Double
         let source: String
     }
+
+    /// The AI breakdown, when text/photo was parsed. Nil for explicit-macro logs.
+    struct Parsed: Decodable {
+        let items: [Item]
+        let kcal: Int
+        let proteinG: Double
+        let carbsG: Double
+        let fatG: Double
+        let confidence: Double
+        let summary: String
+        let notes: String?
+
+        struct Item: Decodable, Identifiable, Equatable {
+            var id: String { name + quantity }
+            let name: String
+            let quantity: String
+            let kcal: Int
+            let proteinG: Double
+            let carbsG: Double
+            let fatG: Double
+        }
+    }
+}
+
+struct ConversationRequest: Encodable {
+    let message: String
+}
+
+/// The tier-3 "let's talk" exchange (§2). Bounded — the backend lands on an
+/// `outcome` and then `resolved` is true and the composer closes.
+struct ConversationResponse: Decodable {
+    let messages: [ConversationMessage]
+    let outcome: String        // "NONE" | "ADJUST_PLAN" | "PAUSE_CHECKINS" | "SUGGEST_PROFESSIONAL"
+    let resolved: Bool
+}
+
+struct ConversationMessage: Decodable, Identifiable, Equatable {
+    var id: String { role + (at ?? "") + content }
+    let role: String           // "user" | "assistant"
+    let content: String
+    let at: String?
 }
 
 struct OnboardingRequest: Encodable {

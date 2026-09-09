@@ -37,33 +37,44 @@ struct HomeContent: View {
             }
 
             if showingCheckIn, let checkIn = activeCheckIn {
-                PrescriptionView(
-                    checkIn: checkIn,
-                    namespace: checkInNamespace,
-                    geometryID: Self.checkInGeometryID,
-                    onDismiss: { withAnimation(springForCheckIn) { showingCheckIn = false } },
-                    onResolved: {
-                        withAnimation(springForCheckIn) { showingCheckIn = false }
-                        Task { await model.load(showSpinner: false) }
-                    },
-                    onLogSomethingElse: {
-                        withAnimation(springForCheckIn) { showingCheckIn = false }
-                        showingLogMeal = true
+                Group {
+                    if checkIn.tier >= 3 {
+                        ConversationView(
+                            checkInID: checkIn.id,
+                            onDismiss: { withAnimation(springForCheckIn) { showingCheckIn = false } },
+                            onResolved: {
+                                withAnimation(springForCheckIn) { showingCheckIn = false }
+                                Task { await model.load(showSpinner: false) }
+                            }
+                        )
+                    } else {
+                        PrescriptionView(
+                            checkIn: checkIn,
+                            namespace: checkInNamespace,
+                            geometryID: Self.checkInGeometryID,
+                            onDismiss: { withAnimation(springForCheckIn) { showingCheckIn = false } },
+                            onResolved: {
+                                withAnimation(springForCheckIn) { showingCheckIn = false }
+                                Task { await model.load(showSpinner: false) }
+                            },
+                            onLogSomethingElse: {
+                                withAnimation(springForCheckIn) { showingCheckIn = false }
+                                showingLogMeal = true
+                            }
+                        )
                     }
-                )
+                }
                 .transition(.opacity)
                 .zIndex(2)
             }
         }
         .animation(Motion.adaptive(Motion.standard, reduceMotion: reduceMotion), value: isLoaded)
         .sheet(isPresented: $showingLogMeal) {
-            LogMealSheet(isLogging: model.loggingMeal) { text in
-                Task {
-                    await model.logMeal(text: text)
-                    showingLogMeal = false
-                }
+            LogMealSheet {
+                showingLogMeal = false
+                Task { await model.load(showSpinner: false) }
             }
-            .presentationDetents([.medium])
+            .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
         }
         .toolbar(showingCheckIn ? .hidden : .visible, for: .tabBar)
