@@ -37,7 +37,7 @@ struct RootView: View {
         case .signedOut:
             SignInView()
         case .signedIn:
-            HomeScreen()
+            MainTabView()
         }
     }
 }

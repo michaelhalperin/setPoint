@@ -1,42 +1,5 @@
 import SwiftUI
 
-enum HomeRoute: Hashable {
-    case settings
-    case settlement
-}
-
-struct HomeScreen: View {
-    @Environment(AppEnvironment.self) private var env
-    @State private var model: HomeViewModel?
-    @State private var path: [HomeRoute] = []
-
-    var body: some View {
-        NavigationStack(path: $path) {
-            Group {
-                if let model {
-                    HomeContent(model: model)
-                } else {
-                    ProgressView()
-                }
-            }
-            .navigationDestination(for: HomeRoute.self) { route in
-                switch route {
-                case .settings: SettingsView()
-                case .settlement: SettlementView()
-                }
-            }
-        }
-        .tint(Palette.accent)
-        .task {
-            if model == nil {
-                let vm = HomeViewModel(api: env.api, onUnauthorized: { env.auth.handleUnauthorized() })
-                model = vm
-                await vm.load()
-            }
-        }
-    }
-}
-
 struct HomeContent: View {
     @Bindable var model: HomeViewModel
     @Environment(AppEnvironment.self) private var env
@@ -64,7 +27,8 @@ struct HomeContent: View {
                 RetryState(message: message) { Task { await model.load() } }
 
             case .needsOnboarding:
-                OnboardingContainer { await model.load() }
+                // Presented full-screen by MainTabView.
+                ProgressView()
 
             case let .loaded(home):
                 loaded(home)
@@ -140,21 +104,6 @@ struct HomeContent: View {
         }
         .refreshable { await model.load(showSpinner: false) }
         .scrollBounceBehavior(.basedOnSize)
-        .navigationTitle("Today")
-        .navigationBarTitleDisplayMode(.large)
-        .toolbarBackground(Palette.background, for: .navigationBar)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                NavigationLink(value: HomeRoute.settlement) {
-                    Image(systemName: "chart.bar.xaxis")
-                }
-            }
-            ToolbarItem(placement: .topBarTrailing) {
-                NavigationLink(value: HomeRoute.settings) {
-                    Image(systemName: "gearshape")
-                }
-            }
-        }
     }
 }
 
@@ -172,30 +121,6 @@ private struct RetryState: View {
                 .frame(maxWidth: 200)
         }
         .padding(28)
-    }
-}
-
-private struct OnboardingContainer: View {
-    let onComplete: @MainActor () async -> Void
-
-    @Environment(AppEnvironment.self) private var env
-    @State private var model: OnboardingViewModel?
-
-    var body: some View {
-        Group {
-            if let model {
-                OnboardingFlow(model: model)
-            } else {
-                ProgressView()
-            }
-        }
-        .task {
-            if model == nil {
-                model = OnboardingViewModel(api: env.api, onComplete: {
-                    Task { await onComplete() }
-                })
-            }
-        }
     }
 }
 

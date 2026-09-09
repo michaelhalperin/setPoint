@@ -63,11 +63,20 @@ final class AuthStore {
         }
     }
 
+    private static let devUserKey = "com.setpoint.app.dev-user-id"
+
+    /// Dev sign-in reuses the same dev user across launches so onboarding sticks.
     func developerSignIn() async {
-        await exchange(path: "/api/auth/dev", body: [:])
+        let stored = UserDefaults.standard.string(forKey: Self.devUserKey)
+        let ok = await exchange(path: "/api/auth/dev", body: stored.map { ["userId": $0] } ?? [:])
+        if !ok, stored != nil {
+            UserDefaults.standard.removeObject(forKey: Self.devUserKey)
+            _ = await exchange(path: "/api/auth/dev", body: [:])
+        }
     }
 
-    private func exchange(path: String, body: [String: String]) async {
+    @discardableResult
+    private func exchange(path: String, body: [String: String]) async -> Bool {
         signingIn = true
         lastError = nil
         defer { signingIn = false }
@@ -82,13 +91,18 @@ final class AuthStore {
             guard let http = response as? HTTPURLResponse, (200 ..< 300).contains(http.statusCode) else {
                 let message = (try? JSONDecoder().decode([String: String].self, from: data))?["message"]
                 lastError = message ?? "Sign-in failed."
-                return
+                return false
             }
             let auth = try JSONDecoder().decode(AuthResponse.self, from: data)
             tokenStore.write(auth.token)
+            if path.hasSuffix("/dev") {
+                UserDefaults.standard.set(auth.userId, forKey: Self.devUserKey)
+            }
             status = .signedIn(userId: auth.userId)
+            return true
         } catch {
             lastError = error.localizedDescription
+            return false
         }
     }
 }

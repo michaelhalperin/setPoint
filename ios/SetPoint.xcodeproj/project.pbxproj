@@ -25,6 +25,7 @@
 		5C2C73BA6DBBD160F71960E6 /* TokenStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87A7B143B2CF06863A727EC5 /* TokenStore.swift */; };
 		6B5F95997AD3DA7FD3C892FA /* SettingsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7549A2446F88FB282FAF3FE /* SettingsViewModel.swift */; };
 		6D94F5185B579414DC0888AC /* OnboardingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D5EBB067542BB4ED82F2416 /* OnboardingTests.swift */; };
+		6D9DD0557112AE6BC94F23B8 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFAFAB70735B9ADE9DCADFA8 /* MainTabView.swift */; };
 		7561CB75F82F5F0BACE5B54B /* DTOs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A5329FB3FC5CBA4889FD372 /* DTOs.swift */; };
 		8B964D56522A275394FEDBBF /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 05C15A4F8ED895D36CC26A74 /* Assets.xcassets */; };
 		939425AC35FEABDEED6A3B69 /* OnboardingSteps.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75E6AAF6106EF78152D6BCB7 /* OnboardingSteps.swift */; };
@@ -86,6 +87,7 @@
 		D449CA2B0A6EDA6F603583A6 /* Palette.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Palette.swift; sourceTree = "<group>"; };
 		DB2AE29FD58952E4C0CC1673 /* AuthStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthStore.swift; sourceTree = "<group>"; };
 		DCAE370894D0D70949F82554 /* SettlementViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettlementViewModel.swift; sourceTree = "<group>"; };
+		DFAFAB70735B9ADE9DCADFA8 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
 		EC5D2AA52B39239A03B631E7 /* PrescriptionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrescriptionView.swift; sourceTree = "<group>"; };
 		ECFB3596BCF94EF40A22F565 /* CheckInTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckInTests.swift; sourceTree = "<group>"; };
 		ECFEB95DFB5402DA4E21CA85 /* LogMealSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogMealSheet.swift; sourceTree = "<group>"; };
@@ -107,6 +109,7 @@
 			isa = PBXGroup;
 			children = (
 				77CC24E27F4C73628B9222FB /* AppEnvironment.swift */,
+				DFAFAB70735B9ADE9DCADFA8 /* MainTabView.swift */,
 				CA3DC0E46B48127DCBFF92E2 /* RootView.swift */,
 				710ED9EE39FE068431D74DB0 /* SetPointApp.swift */,
 			);
@@ -362,6 +365,7 @@
 				95CD52B41C432324EF56E83B /* HomeViewModel.swift in Sources */,
 				E360F702346592971113420B /* HomeViews.swift in Sources */,
 				18769C76A6F18DF8518BE734 /* LogMealSheet.swift in Sources */,
+				6D9DD0557112AE6BC94F23B8 /* MainTabView.swift in Sources */,
 				F0C64D45A9745584D8B2D980 /* Motion.swift in Sources */,
 				48057628537DBDD275A9295A /* OnboardingComponents.swift in Sources */,
 				DDFE111C3191A392FFEBD1E3 /* OnboardingEnums.swift in Sources */,
