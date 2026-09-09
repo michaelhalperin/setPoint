@@ -7,6 +7,7 @@ struct MainTabView: View {
     @State private var home: HomeViewModel?
     @State private var onboarding: OnboardingViewModel?
     @State private var selection = Tab.today
+    @State private var deepLinkCheckInID: String?
 
     enum Tab: Hashable { case today, week, settings }
 
@@ -15,7 +16,7 @@ struct MainTabView: View {
             if let home, let onboarding {
                 TabView(selection: $selection) {
                     NavigationStack {
-                        HomeContent(model: home)
+                        HomeContent(model: home, deepLinkCheckInID: $deepLinkCheckInID)
                             .navigationTitle("Today")
                             .navigationBarTitleDisplayMode(.large)
                             .toolbarBackground(Palette.background, for: .navigationBar)
@@ -38,6 +39,12 @@ struct MainTabView: View {
             } else {
                 ProgressView()
             }
+        }
+        .onChange(of: env.push.pendingCheckInID) { _, id in
+            guard let id else { return }
+            selection = .today
+            deepLinkCheckInID = id
+            env.push.pendingCheckInID = nil
         }
         .task {
             guard home == nil else { return }

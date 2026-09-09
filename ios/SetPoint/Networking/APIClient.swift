@@ -78,6 +78,10 @@ actor APIClient {
         try await perform(path, method: "DELETE", body: try Self.encoder.encode(body))
     }
 
+    func delete(_ path: String) async throws {
+        let _: EmptyResponse = try await perform(path, method: "DELETE", body: nil)
+    }
+
     private func perform<T: Decodable>(_ path: String, method: String, body: Data?) async throws -> T {
         var request = URLRequest(url: baseURL.appending(path: path))
         request.httpMethod = method

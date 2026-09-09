@@ -210,6 +210,12 @@ struct ReviewStep: View {
 
 struct OutcomeStep: View {
     @Bindable var model: OnboardingViewModel
+    @Environment(AppEnvironment.self) private var env
+    @State private var pushHandled = false
+
+    private var enforcementOn: Bool {
+        model.result?.enforcementDisabledReason == nil
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -227,6 +233,20 @@ struct OutcomeStep: View {
                     body("Daily target: \(target) kcal" + (model.result?.dailyProteinTargetG.map { " · \($0) g protein" } ?? "") + ".")
                 }
             }
+
+            if enforcementOn, !pushHandled, env.push.authorizationStatus == .notDetermined {
+                VStack(alignment: .leading, spacing: 8) {
+                    body("Check-ins arrive as a notification you can act on without opening the app.")
+                    ActionButton(title: "Turn on check-ins") {
+                        Task {
+                            await env.push.requestAuthorization()
+                            pushHandled = true
+                        }
+                    }
+                }
+                .padding(.top, 8)
+            }
+
             Spacer()
         }
         .padding(.horizontal, 24)

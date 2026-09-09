@@ -27,6 +27,7 @@ final class HomeViewModel {
         do {
             let home: HomeResponse = try await api.get("/api/home")
             phase = .loaded(home)
+            LiveActivityController.shared.sync(activeCheckIn: home.activeCheckIn)
         } catch APIError.unauthorized {
             onUnauthorized()
         } catch let APIError.http(status, _) where status == 409 {

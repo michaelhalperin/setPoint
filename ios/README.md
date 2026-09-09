@@ -93,6 +93,21 @@ falls back to a plain crossfade under Reduce Motion. `firstAppearPulse()` is the
 protein row use `.contentTransition(.numericText(value:))`; sheets use
 `.presentationDetents`.
 
+## Push notifications & Live Activity (`SetPoint/Push/`, `SetPointWidgets/`)
+
+- `PushManager` — permission, APNs token registration → `POST /api/push-tokens`
+  (tagged `alert` / `live_activity_start`), tap → `pendingCheckInID`
+- `AppDelegate` — `UNUserNotificationCenterDelegate` + remote-notification registration
+- `DeepLink` — parses `setpoint://check-in/<id>`; `MainTabView` routes it to the
+  Today tab and auto-opens the check-in
+- `LiveActivityController` — starts/updates/ends the Live Activity from Home's
+  active check-in; `SetPointWidgets` is the widget extension (lock screen +
+  Dynamic Island). Server push-to-start is wired but needs an APNs key.
+
+Test a notification locally: `xcrun simctl push <device> com.setpoint.app payload.json`
+(a `{aps, checkInId, deepLink}` body). Test the deep link:
+`xcrun simctl openurl <device> "setpoint://check-in/<id>"`.
+
 ## Next
 
 - Check-in → prescription shared-element morph (`matchedGeometryEffect`)

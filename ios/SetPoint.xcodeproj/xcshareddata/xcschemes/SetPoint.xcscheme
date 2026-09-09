@@ -21,6 +21,20 @@
                ReferencedContainer = "container:SetPoint.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "YES"
+            buildForProfiling = "YES"
+            buildForArchiving = "YES"
+            buildForAnalyzing = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "AFF5809C6E69E78F6B708F17"
+               BuildableName = "SetPointWidgets.appex"
+               BlueprintName = "SetPointWidgets"
+               ReferencedContainer = "container:SetPoint.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
       </BuildActionEntries>
    </BuildAction>
    <TestAction

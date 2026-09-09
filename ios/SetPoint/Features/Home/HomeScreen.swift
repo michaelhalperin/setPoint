@@ -2,6 +2,8 @@ import SwiftUI
 
 struct HomeContent: View {
     @Bindable var model: HomeViewModel
+    var deepLinkCheckInID: Binding<String?> = .constant(nil)
+
     @Environment(AppEnvironment.self) private var env
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var showingLogMeal = false
@@ -64,6 +66,20 @@ struct HomeContent: View {
             .presentationDetents([.medium])
             .presentationDragIndicator(.visible)
         }
+        .toolbar(showingCheckIn ? .hidden : .visible, for: .tabBar)
+        .onChange(of: deepLinkCheckInID.wrappedValue) { _, id in
+            guard id != nil else { return }
+            Task { await openDeepLinkedCheckIn() }
+        }
+    }
+
+    private func openDeepLinkedCheckIn() async {
+        let target = deepLinkCheckInID.wrappedValue
+        await model.load(showSpinner: false)
+        if let target, activeCheckIn?.id == target {
+            withAnimation(springForCheckIn) { showingCheckIn = true }
+        }
+        deepLinkCheckInID.wrappedValue = nil
     }
 
     private var isLoaded: Bool {

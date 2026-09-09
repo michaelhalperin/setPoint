@@ -56,6 +56,13 @@ struct HomeResponse: Decodable {
                 let kcal: Int
                 let proteinG: Double
             }
+
+            /// "2× Hard-boiled eggs + Banana"
+            var summary: String {
+                items
+                    .map { $0.quantity > 1 ? "\(Int($0.quantity))× \($0.name)" : $0.name }
+                    .joined(separator: " + ")
+            }
         }
     }
 }

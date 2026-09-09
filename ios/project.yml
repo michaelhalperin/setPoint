@@ -22,24 +22,53 @@ targets:
     platform: iOS
     sources:
       - path: SetPoint
+        excludes:
+          - Info.plist
+    info:
+      path: SetPoint/Info.plist
+      properties:
+        UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        NSSupportsLiveActivities: true
+        UIBackgroundModes: [remote-notification]
+        NSHealthShareUsageDescription: "SetPoint reads your heart-rate variability and resting heart rate to notice when you may be under-fuelled and prompt you to eat."
+        NSCameraUsageDescription: "Take a photo of a meal to log it."
+        NSPhotoLibraryUsageDescription: "Attach a photo of a meal to log it."
+        CFBundleURLTypes:
+          - CFBundleURLName: com.setpoint.app
+            CFBundleURLSchemes: [setpoint]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.setpoint.app
-        GENERATE_INFOPLIST_FILE: YES
         ENABLE_PREVIEWS: YES
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
-        INFOPLIST_KEY_UILaunchScreen_Generation: YES
-        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
-        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
-        INFOPLIST_KEY_NSHealthShareUsageDescription: "SetPoint reads your heart-rate variability and resting heart rate to notice when you may be under-fuelled and prompt you to eat."
-        INFOPLIST_KEY_NSCameraUsageDescription: "Take a photo of a meal to log it."
-        INFOPLIST_KEY_NSPhotoLibraryUsageDescription: "Attach a photo of a meal to log it."
     entitlements:
       path: SetPoint/SetPoint.entitlements
       properties:
         com.apple.developer.applesignin:
           - Default
+        aps-environment: development
+    dependencies:
+      - target: SetPointWidgets
+        embed: true
+
+  SetPointWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: SetPointWidgets
+        excludes:
+          - Info.plist
+      - path: SetPoint/Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.setpoint.app.widgets
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: SetPointWidgets/Info.plist
+        SKIP_INSTALL: YES
 
   SetPointTests:
     type: bundle.unit-test
@@ -58,6 +87,7 @@ schemes:
     build:
       targets:
         SetPoint: all
+        SetPointWidgets: all
     run:
       config: Debug
     test:
