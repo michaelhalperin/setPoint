@@ -3,29 +3,44 @@
 Native Swift / SwiftUI. iOS 17+. The project file is generated from
 [`project.yml`](./project.yml) with [XcodeGen](https://github.com/yonyz/XcodeGen).
 
-## Getting started
+## Getting started (Xcode)
 
 ```bash
-brew install xcodegen        # once
-cd ios && xcodegen generate  # regenerates SetPoint.xcodeproj after project.yml or file changes
+brew install xcodegen
+cd ios && xcodegen generate
 open SetPoint.xcodeproj
 ```
 
 `SetPoint.xcodeproj` is committed so you can open it directly, but `project.yml`
-is the source of truth — re-run `xcodegen generate` after adding files or
-changing settings.
+is the source of truth — re-run `xcodegen generate` after adding files.
 
-### Command line
+## Working in Cursor / VS Code (no Xcode window)
+
+Xcode.app must be installed (SDK + simulator + toolchain), but you don't open it.
+You lose only the live SwiftUI Preview canvas.
 
 ```bash
-xcodebuild build -project SetPoint.xcodeproj -scheme SetPoint \
-  -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
-  CODE_SIGNING_ALLOWED=NO
-
-xcodebuild test  -project SetPoint.xcodeproj -scheme SetPoint \
-  -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
-  CODE_SIGNING_ALLOWED=NO
+brew install xcodegen xcode-build-server   # once
+./ios/scripts/gen.sh                        # generate project + LSP build server
 ```
+
+Install the **Swift** extension (`swiftlang.swift-vscode`) — it's in
+`.vscode/extensions.json`, so Cursor will offer it. Reload the window; you get
+cross-file completion, jump-to-definition, and inline diagnostics via
+SourceKit-LSP + `buildServer.json`.
+
+Helper scripts (also wired as VS Code tasks — ⇧⌘P → "Tasks: Run Task"):
+
+| Script | What it does |
+| --- | --- |
+| `./ios/scripts/gen.sh` | regenerate the project + `buildServer.json` — **run after adding/removing files** |
+| `./ios/scripts/build.sh` | build for the simulator, prints only warnings/errors |
+| `./ios/scripts/run.sh` | build → boot simulator → install → launch |
+| `./ios/scripts/run.sh -uiStub home` | launch straight into Home with sample data |
+| `./ios/scripts/test.sh` | run the XCTest suite |
+| `./ios/scripts/shot.sh out.png` | screenshot the running simulator |
+
+Set `SETPOINT_SIM="iPhone 16"` to target a different simulator.
 
 ### Pointing at the backend
 

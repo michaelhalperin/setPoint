@@ -1,0 +1,57 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "iOS: build",
+      "type": "shell",
+      "command": "./ios/scripts/build.sh",
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": ["$swiftc"]
+    },
+    {
+      "label": "iOS: run",
+      "type": "shell",
+      "command": "./ios/scripts/run.sh",
+      "problemMatcher": []
+    },
+    {
+      "label": "iOS: run (Home stub)",
+      "type": "shell",
+      "command": "./ios/scripts/run.sh -uiStub home",
+      "problemMatcher": []
+    },
+    {
+      "label": "iOS: test",
+      "type": "shell",
+      "command": "./ios/scripts/test.sh",
+      "group": "test",
+      "problemMatcher": ["$swiftc"]
+    },
+    {
+      "label": "iOS: regenerate project",
+      "type": "shell",
+      "command": "./ios/scripts/gen.sh",
+      "problemMatcher": []
+    },
+    {
+      "label": "backend: dev server",
+      "type": "shell",
+      "command": "pnpm dev",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "backend: test",
+      "type": "shell",
+      "command": "pnpm --filter @setpoint/backend test",
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "backend: typecheck",
+      "type": "shell",
+      "command": "pnpm --filter @setpoint/backend typecheck",
+      "problemMatcher": ["$tsc"]
+    }
+  ]
+}

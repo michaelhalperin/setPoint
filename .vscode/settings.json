@@ -1,0 +1,17 @@
+{
+  "swift.sourcekit-lsp.serverPath": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/sourcekit-lsp",
+  "swift.buildArguments": [],
+  "swift.disableAutoResolve": true,
+  "files.associations": {
+    "*.pbxproj": "text"
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "ios/DerivedData": true,
+    "**/*.xcodeproj": true
+  },
+  "files.watcherExclude": {
+    "**/node_modules/**": true,
+    "**/ios/DerivedData/**": true
+  }
+}
