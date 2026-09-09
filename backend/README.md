@@ -65,13 +65,36 @@ The staple-food seed is `prisma/seed.ts` (~40 items).
 Without `DATABASE_URL` the server still boots; `/api/health` just reports
 `db: down`.
 
-## Endpoints (milestone 1)
+## Endpoints
 
-| Method | Path              | Notes                                             |
-| ------ | ----------------- | ------------------------------------------------- |
-| GET    | `/`               | Service banner                                    |
-| GET    | `/api/health`     | Liveness + `SELECT 1` database check              |
-| POST   | `/api/cron/score` | Stub. Requires the cron secret. Real work in M3.  |
+| Method | Path              | Notes                                                     |
+| ------ | ----------------- | -------------------------------------------------------- |
+| GET    | `/`               | Service banner                                           |
+| GET    | `/api/health`     | Liveness + `SELECT 1` database check                     |
+| POST   | `/api/cron/score` | Runs the confidence engine. Requires the cron secret.    |
+
+## Confidence engine (`src/engine/`)
+
+Pure, deterministic, no model calls (plan §2, §7). `src/jobs/scoreConfidence.ts`
+is the only stateful layer — it maps DB rows onto the engine types and applies
+the results.
+
+| Module           | Responsibility                                                              |
+| ---------------- | -------------------------------------------------------------------------- |
+| `config.ts`      | The permanent formula's tunable weights + constants                        |
+| `confidence.ts`  | `computeConfidence()` — the weighted score, Smart falls back to Basic      |
+| `expectedGap.ts` | per-user expected inter-meal gap from their onboarding meal times          |
+| `quietHours.ts`  | timezone-aware quiet-hours window (Intl, no dependency)                    |
+| `eligibility.ts` | the pre-scoring gate (enforcement, pause, back-off, quiet hours, ...)      |
+| `escalation.ts`  | the defer → snooze → re-check → tier 1/2/3 → back-off state machine        |
+| `inputs.ts`      | deriving `hoursSinceMeal` / `loggingSilence` / biosignal freshness        |
+
+Weights are v1 starting values, tuned only against beta data (§8) — the formula
+shape never changes. 47 unit tests: `pnpm --filter @setpoint/backend test`.
+
+Push delivery and the check-in copy are behind interfaces (`src/push/`,
+`src/managerVoice/`) with stub implementations until the APNs key (push) and
+`ANTHROPIC_API_KEY` (manager's voice, milestone 5) exist.
 
 Call the cron endpoint locally:
 

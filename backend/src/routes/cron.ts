@@ -1,4 +1,8 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
+import { getPrisma } from '../db/client.js';
+import { runScoreConfidenceJob } from '../jobs/scoreConfidence.js';
+import { fallbackManagerVoice } from '../managerVoice/fallback.js';
+import { stubPushSender } from '../push/stub.js';
 import { env } from '../env.js';
 
 /**
@@ -17,10 +21,16 @@ export async function cronRoutes(app: FastifyInstance): Promise<void> {
     if (!isAuthorized(req)) throw app.httpErrors.unauthorized('bad or missing cron secret');
   });
 
-  // Milestone 3 replaces this stub with the deterministic confidence engine:
-  // load eligible users, skip quiet hours, score, create tier-1 check-ins.
+  // The deterministic confidence engine (§2): score eligible users, advance
+  // open check-ins through the escalation state machine, fire when the score
+  // clears the threshold.
   app.post('/score', async (req) => {
-    req.log.info('cron:score invoked (stub) — confidence engine lands in milestone 3');
-    return { ok: true, stub: true, scored: 0, checkInsCreated: 0 };
+    const summary = await runScoreConfidenceJob({
+      prisma: getPrisma(),
+      push: stubPushSender,
+      voice: fallbackManagerVoice,
+    });
+    req.log.info(summary, 'cron:score complete');
+    return summary;
   });
 }

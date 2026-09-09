@@ -31,8 +31,9 @@ Details and environment setup: [`backend/README.md`](./backend/README.md).
 
 1. **Backend scaffold** ← done (milestone 1)
 2. **Data model + staple-food seed** ← done (milestone 2)
-3. Confidence engine (server-driven, quiet hours, deterministic formula)
-4. Check-in delivery (Live Activity + Time Sensitive) + defer/escalation loop
+3. **Confidence engine** — deterministic formula, quiet hours, escalation state
+   machine, server-driven cron job ← done (milestone 3)
+4. Prescription solver + check-in delivery (real APNs behind the stub)
 5. AI logging (photo/text → macros) + manager's voice
 6. Home dashboard + settlement view
 7. Privacy policy, account deletion, App Store compliance
