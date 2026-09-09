@@ -5,6 +5,7 @@ import { ZodError } from 'zod';
 import { env } from './env.js';
 import { accountRoutes } from './routes/account.js';
 import { authRoutes } from './routes/auth.js';
+import { biosignalRoutes } from './routes/biosignals.js';
 import { checkInRoutes } from './routes/checkins.js';
 import { cronRoutes } from './routes/cron.js';
 import { dashboardRoutes } from './routes/dashboard.js';
@@ -48,6 +49,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(authRoutes, { prefix: '/api/auth' });
   await app.register(mealRoutes, { prefix: '/api/meals' });
   await app.register(checkInRoutes, { prefix: '/api/checkins' });
+  await app.register(biosignalRoutes, { prefix: '/api/biosignals' });
   await app.register(pushTokenRoutes, { prefix: '/api/push-tokens' });
   await app.register(accountRoutes, { prefix: '/api' });
   await app.register(dashboardRoutes, { prefix: '/api' });
