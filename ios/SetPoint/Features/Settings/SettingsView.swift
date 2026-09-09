@@ -51,6 +51,17 @@ struct SettingsView: View {
                         .foregroundStyle(Palette.inkFaint)
                 }
 
+                if model.mode == "SMART", env.health.isAvailable {
+                    Section("Health") {
+                        if env.health.connected {
+                            Label("Connected", systemImage: "checkmark.circle.fill")
+                                .foregroundStyle(Palette.dayOnTrack)
+                        } else {
+                            Button("Connect Health") { Task { await env.health.connect() } }
+                        }
+                    }
+                }
+
                 Section("Daily targets") {
                     Stepper("Calories: \(model.kcalTarget)", value: $model.kcalTarget, in: 1200 ... 6000, step: 50)
                     Stepper(

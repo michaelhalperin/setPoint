@@ -45,6 +45,6 @@ Details and environment setup: [`backend/README.md`](./backend/README.md).
 7. **Onboarding + settings APIs, account deletion, compliance checklist** ← done
    (milestone 7)
 8. **iOS app** — Home (M8), onboarding (M9), check-in morph (M10), settings +
-   settlement (M11), tab nav (M12), push notifications + Live Activity (M13) ←
-   in progress
+   settlement (M11), tab nav (M12), push + Live Activity (M13), HealthKit (M14)
+   ← in progress
 9. Closed TestFlight beta → tune weights → public launch

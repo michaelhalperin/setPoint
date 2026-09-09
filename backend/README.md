@@ -77,6 +77,8 @@ Without `DATABASE_URL` the server still boots; `/api/health` just reports
 | GET    | `/api/checkins/:id` | Fetch one check-in + prescription (bearer auth)          |
 | POST   | `/api/checkins/:id/defer` | Snooze it — `status DEFERRED`, `deferUntil = now + 2h` (§2) |
 | POST   | `/api/checkins/:id/feedback` | `{ positive }` thumbs — labeled beta signal (§8) |
+| POST   | `/api/push-tokens` / `DELETE /api/push-tokens/:token` | register/unregister an APNs token (`kind: alert \| live_activity_start`) |
+| POST   | `/api/biosignals` | `{ hrvDeviation, rhrDeviation? }` — the app's on-device z-scores (§4) → `BiosignalState` |
 | POST   | `/api/onboarding` | Goal, stats, meal times, quiet hours, safety screening → profile + `SafetyScreening` + restrictions (bearer auth, §3, §5.1) |
 | GET    | `/api/settings`   | Current profile / quiet hours / restrictions / pause / enforcement (bearer auth) |
 | PATCH  | `/api/settings`   | Update quiet hours, meal times, targets, goal, `checkInsPaused`, or replace restrictions |

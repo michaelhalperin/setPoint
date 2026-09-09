@@ -3,6 +3,7 @@ import SwiftUI
 @main
 struct SetPointApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+    @Environment(\.scenePhase) private var scenePhase
     @State private var env = AppEnvironment()
 
     var body: some Scene {
@@ -18,6 +19,11 @@ struct SetPointApp: App {
                 .task {
                     LiveActivityController.shared.observePushToStartToken()
                     await env.push.registerIfAuthorized()
+                    env.health.refreshConnectionState()
+                }
+                .onChange(of: scenePhase) { _, phase in
+                    guard phase == .active, env.auth.hasToken, env.health.connected else { return }
+                    Task { await env.health.sync() }
                 }
         }
     }

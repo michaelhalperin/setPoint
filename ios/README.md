@@ -108,6 +108,18 @@ Test a notification locally: `xcrun simctl push <device> com.setpoint.app payloa
 (a `{aps, checkInId, deepLink}` body). Test the deep link:
 `xcrun simctl openurl <device> "setpoint://check-in/<id>"`.
 
+## HealthKit (`SetPoint/Health/`) — Smart mode
+
+- `BiosignalStats` (pure, tested) — personal baseline (mean + std, excluding the
+  recent window) and the deviation z-score of the last ~12 h
+- `HealthKitManager` — read auth for HRV + resting HR, `HKObserverQuery` +
+  hourly background delivery, computes on-device and posts only the z-scores to
+  `/api/biosignals` (§4 — raw samples never leave the device)
+- Prompted from the onboarding outcome and Settings → Health; synced on
+  `scenePhase == .active` for connected users
+- Entitlement `com.apple.developer.healthkit`; `NSHealthShareUsageDescription`
+  in Info.plist
+
 ## Next
 
 - Check-in → prescription shared-element morph (`matchedGeometryEffect`)

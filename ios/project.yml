@@ -51,6 +51,8 @@ targets:
         com.apple.developer.applesignin:
           - Default
         aps-environment: development
+        com.apple.developer.healthkit: true
+        com.apple.developer.healthkit.access: []
     dependencies:
       - target: SetPointWidgets
         embed: true

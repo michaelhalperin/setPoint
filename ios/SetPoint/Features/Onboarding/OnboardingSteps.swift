@@ -212,6 +212,7 @@ struct OutcomeStep: View {
     @Bindable var model: OnboardingViewModel
     @Environment(AppEnvironment.self) private var env
     @State private var pushHandled = false
+    @State private var healthHandled = false
 
     private var enforcementOn: Bool {
         model.result?.enforcementDisabledReason == nil
@@ -245,6 +246,19 @@ struct OutcomeStep: View {
                     }
                 }
                 .padding(.top, 8)
+            }
+
+            if enforcementOn, model.draft.hasWearable, !healthHandled, env.health.isAvailable {
+                VStack(alignment: .leading, spacing: 8) {
+                    body("Connect Health so SetPoint can read your HRV and resting heart rate.")
+                    ActionButton(title: "Connect Health", kind: .secondary) {
+                        Task {
+                            await env.health.connect()
+                            healthHandled = true
+                        }
+                    }
+                }
+                .padding(.top, 4)
             }
 
             Spacer()

@@ -36,6 +36,7 @@
 		85DD024A43F4B3B8F45C95E6 /* PushManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5200F5347EF2F9288FDE504A /* PushManager.swift */; };
 		8B964D56522A275394FEDBBF /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 05C15A4F8ED895D36CC26A74 /* Assets.xcassets */; };
 		8DD31584EACC2EA5A0BF6C76 /* SetPointWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 72122AA0FFF3F9BD35A066C4 /* SetPointWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		90EC59D1929AB926863E3FEA /* BiosignalStatsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1445D836A22672FF8571409D /* BiosignalStatsTests.swift */; };
 		939425AC35FEABDEED6A3B69 /* OnboardingSteps.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75E6AAF6106EF78152D6BCB7 /* OnboardingSteps.swift */; };
 		95C1E4C27C45BCED2F4E5B11 /* SettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04F3CEFC1A1CBC4838533BE5 /* SettingsTests.swift */; };
 		95CD52B41C432324EF56E83B /* HomeViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EFB517EFB36132E4ED9E74E /* HomeViewModel.swift */; };
@@ -52,6 +53,8 @@
 		E9BE1261A4D3B02ADCA6C6C4 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6FBF6B25E85349394163FF0 /* AppDelegate.swift */; };
 		EA55542A09FC3324D9F8491C /* HomePreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA25A32CB6EE0D5D7341FC74 /* HomePreview.swift */; };
 		F0C64D45A9745584D8B2D980 /* Motion.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA50138B8097773BBC7F74C3 /* Motion.swift */; };
+		F5C127BA64C922FA0B491F82 /* BiosignalStats.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11862FADC2373C54323DDAE4 /* BiosignalStats.swift */; };
+		F8132AA5435F1AE2BBF13367 /* HealthKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC89EFB897DDB22BB5344B9D /* HealthKitManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -91,6 +94,8 @@
 		0A5329FB3FC5CBA4889FD372 /* DTOs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DTOs.swift; sourceTree = "<group>"; };
 		0D059857EA5ACFC913EC5A43 /* OnboardingFlow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingFlow.swift; sourceTree = "<group>"; };
 		0EFB517EFB36132E4ED9E74E /* HomeViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeViewModel.swift; sourceTree = "<group>"; };
+		11862FADC2373C54323DDAE4 /* BiosignalStats.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiosignalStats.swift; sourceTree = "<group>"; };
+		1445D836A22672FF8571409D /* BiosignalStatsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiosignalStatsTests.swift; sourceTree = "<group>"; };
 		21981A8CC1F3D3E6093F7478 /* Typography.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Typography.swift; sourceTree = "<group>"; };
 		2EAFBFE5FC7C3F7CDAD9E1D0 /* CheckInLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckInLiveActivity.swift; sourceTree = "<group>"; };
 		306DD98DE1DE503E86CEB6DD /* MotionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MotionTests.swift; sourceTree = "<group>"; };
@@ -129,6 +134,7 @@
 		E6FBF6B25E85349394163FF0 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		E73FA80DA7E099B267EAFEB5 /* CheckInActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckInActivityAttributes.swift; sourceTree = "<group>"; };
 		EC5D2AA52B39239A03B631E7 /* PrescriptionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrescriptionView.swift; sourceTree = "<group>"; };
+		EC89EFB897DDB22BB5344B9D /* HealthKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitManager.swift; sourceTree = "<group>"; };
 		ECFB3596BCF94EF40A22F565 /* CheckInTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckInTests.swift; sourceTree = "<group>"; };
 		ECFEB95DFB5402DA4E21CA85 /* LogMealSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogMealSheet.swift; sourceTree = "<group>"; };
 		F7549A2446F88FB282FAF3FE /* SettingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewModel.swift; sourceTree = "<group>"; };
@@ -172,6 +178,7 @@
 		56B15F5A4708550024E1E373 /* SetPointTests */ = {
 			isa = PBXGroup;
 			children = (
+				1445D836A22672FF8571409D /* BiosignalStatsTests.swift */,
 				ECFB3596BCF94EF40A22F565 /* CheckInTests.swift */,
 				AF7E9A8FF4A34FCEA8BD592A /* DTOTests.swift */,
 				306DD98DE1DE503E86CEB6DD /* MotionTests.swift */,
@@ -252,6 +259,15 @@
 			path = Settlement;
 			sourceTree = "<group>";
 		};
+		B1C73E63E59457D4BD67B0FD /* Health */ = {
+			isa = PBXGroup;
+			children = (
+				11862FADC2373C54323DDAE4 /* BiosignalStats.swift */,
+				EC89EFB897DDB22BB5344B9D /* HealthKitManager.swift */,
+			);
+			path = Health;
+			sourceTree = "<group>";
+		};
 		B90D1DE8F58A8028BC37ECE9 /* SetPoint */ = {
 			isa = PBXGroup;
 			children = (
@@ -259,6 +275,7 @@
 				9E4120CD40F699C6957617CA /* Auth */,
 				5BD9332A48B0AE01B5019FAC /* DesignSystem */,
 				4446CB693CDE201339DF2577 /* Features */,
+				B1C73E63E59457D4BD67B0FD /* Health */,
 				7F192D2E17E96480F49AD268 /* Models */,
 				DE03FFFF9990421DEC5E091B /* Networking */,
 				E7E89E6A06F8D90077B79E51 /* Push */,
@@ -456,10 +473,12 @@
 				E9BE1261A4D3B02ADCA6C6C4 /* AppDelegate.swift in Sources */,
 				21B611B9BD8199A8E7D5BBE5 /* AppEnvironment.swift in Sources */,
 				47C8F715DE3DE17989FABB04 /* AuthStore.swift in Sources */,
+				F5C127BA64C922FA0B491F82 /* BiosignalStats.swift in Sources */,
 				46B7AC3FE3A277CDA5D42897 /* CheckInActivityAttributes.swift in Sources */,
 				248F71AF6CBF269F32B6F2DC /* Components.swift in Sources */,
 				7561CB75F82F5F0BACE5B54B /* DTOs.swift in Sources */,
 				1515C5462FAF3F0B4ECDB200 /* DeepLink.swift in Sources */,
+				F8132AA5435F1AE2BBF13367 /* HealthKitManager.swift in Sources */,
 				EA55542A09FC3324D9F8491C /* HomePreview.swift in Sources */,
 				122B4C19DE61D9CA29DADC9C /* HomeScreen.swift in Sources */,
 				95CD52B41C432324EF56E83B /* HomeViewModel.swift in Sources */,
@@ -502,6 +521,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				90EC59D1929AB926863E3FEA /* BiosignalStatsTests.swift in Sources */,
 				2ED1614D4E3A411BAD72206A /* CheckInTests.swift in Sources */,
 				E24AAC6BB063241D3E3A0D79 /* DTOTests.swift in Sources */,
 				3ED98D31B3CAEA9D98194499 /* MotionTests.swift in Sources */,
