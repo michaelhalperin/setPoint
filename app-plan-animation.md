@@ -2,7 +2,9 @@
 
 ## 1. Concept
 
-An assistant that actively helps people eat enough — for both **mass gain** and **diet** goals, not just calorie tracking. It intervenes when someone's falling behind, instead of passively logging and letting the user ignore the numbers.
+An assistant that actively helps people eat enough — for **mass gain**, **fat loss**, and **maintenance** goals, not just calorie tracking. It intervenes when someone's falling behind, instead of passively logging and letting the user ignore the numbers.
+
+Every directional goal has an endpoint: a target weight and a pace (§5.8), so "diet" means "cut to X kg, gently" — not an open-ended deficit. Hitting the target auto-switches the user to maintenance.
 
 Positioning: a "manager," not a punisher. Assertive, but never shaming.
 
@@ -73,16 +75,29 @@ Non-negotiable before the forcing mechanism is allowed to activate:
 
 ## 5. Screens & flow
 
-1. **Onboarding** — goal (bulk/diet), stats, wearable connect (branches Basic/Smart), safety screening (§3), meal-time preferences.
+1. **Onboarding** — stats first, then goal: **Gain / Lean out / Maintain**. Gain and Lean out also take a **target weight** and a **pace** (§5.8); Maintain takes neither. Then wearable connect (branches Basic/Smart), safety screening (§3), meal-time preferences.
 2. **Home dashboard** — running ledger as the hero stat, framed by goal direction:
    - Bulk: deficit framing ("-620 kcal" style gap)
-   - Diet: "under/over target," with **urgency reserved for under-eating specifically**, not for going over — over-target gets a quiet, neutral treatment (no accent color, no primary CTA); under-eating gets the full accent treatment regardless of bulk or diet.
+   - Diet / Maintain: "under/over target," with **urgency reserved for under-eating specifically**, not for going over — over-target gets a quiet, neutral treatment (no accent color, no primary CTA); under-eating gets the full accent treatment regardless of goal.
    - Manager's note box below the stat, AI-generated (see §7).
 3. **Check-in** — Live Activity, fires from the confidence engine.
 4. **Directive prescription** — the specific "eat this now" suggestion, actions: log / defer.
 5. **Log meal** — natural language or photo entry, AI-parsed into macros (see §7). Also reachable anytime from home, not just from a check-in.
 6. **Defer → snooze → re-check → resolved or escalate** — loops per §2.
-7. **Settlement** (daily/weekly) — 7-day trend, each day colored by outcome (on track / missed / over), one short manager-voice summary line. No badges, no confetti — consistent with the restrained tone.
+7. **Settlement** (daily/weekly) — 7-day trend, each day colored by outcome (on track / missed / over), one short manager-voice summary line. No badges, no confetti — consistent with the restrained tone. For a Gain/Lean-out goal, a **weight-goal progress block** sits above the trend (§5.8).
+
+---
+
+## 5.8. Weight goals & maintenance
+
+The goal is not just a direction — it's a destination with a speed limit.
+
+- **Target weight + pace.** Onboarding (and Settings) capture a target weight and a pace — "Gentle" or "Steady", mapped to a goal-aware kg/week. The pace sets the daily surplus/deficit (≈ 7,700 kcal/kg ÷ 7), replacing any fixed ±kcal constant.
+- **Pace, not deadline.** No "lose 10 kg by June." Deadlines drive aggressive cuts, which is the mindset this whole product is built against (§3, §6). The pace is **capped**: a cut at ≤ 0.75 %/week of current bodyweight, a bulk at ≤ 0.5 kg/week. The user picks intent; the app keeps it sane.
+- **Weekly weight signal.** A weigh-in — manual on the Week tab, or a HealthKit body-mass read for Smart mode. Only a derived weight goes to the backend; the app never needs a full history to function.
+- **Progress, shown honestly.** On the Week tab: a plain progress bar, "X kg to go", on-pace / behind / ahead against the planned rate, and a rough ETA. No rings to close, no streaks — same restraint as the settlement view.
+- **Auto-maintenance.** A weigh-in that reaches the target switches the goal to **Maintain** (surplus/deficit → 0) and the manager says so once. Maintain is also a first-class goal a user can choose up front — it holds weight and still enforces eating *enough* so intake doesn't quietly drift down.
+- **Still gated by §3.** A medical-supervision or SCOFF flag disables enforcement as before; the app then tracks weight and intake passively with no imposed deficit.
 
 ---
 
@@ -124,6 +139,7 @@ Airbnb-grade flow, translated to SwiftUI (not React Native — see note at end o
 **Where AI is explicitly kept out:**
 - **Confidence scoring** — permanent deterministic formula (§2). Auditable, predictable, not something an LLM should ever decide. Weights get tuned over time using real data, not model judgment.
 - **The prescription solver** — constraint solver over the curated food list, not an LLM freestyling suggestions that might ignore a hard-excluded allergy.
+- **Targets & pace math** (§5.8) — Mifflin–St Jeor RMR × activity factor, pace → kcal delta, the safety caps, and the auto-maintenance switch are all plain arithmetic. Nutrition targets are not a place for model guesswork.
 
 ---
 
@@ -168,4 +184,5 @@ Airbnb-grade flow, translated to SwiftUI (not React Native — see note at end o
 5. AI logging (photo/text → macros) + manager's voice generation
 6. Home dashboard + settlement view, styled per §6
 7. Privacy policy, account deletion, App Store compliance pass
-8. Closed TestFlight beta → tune weights → public launch
+8. Weight goals — target weight + pace, weekly weigh-in, progress on the Week tab, auto-maintenance (§5.8)
+9. Closed TestFlight beta → tune weights → public launch
