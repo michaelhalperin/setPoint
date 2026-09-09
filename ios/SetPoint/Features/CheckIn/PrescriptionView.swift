@@ -1,8 +1,9 @@
 import SwiftUI
 
 /// The full-screen check-in the Home card morphs into (§5a — like a listing →
-/// detail transition). Actions: eat the prescription, log something else, or
-/// defer. A drag-down dismisses.
+/// detail transition). The card lifts off the home surface (which dims and sits
+/// behind), the actions cascade in once it settles, and a rubber-banded drag
+/// down dismisses it.
 struct PrescriptionView: View {
     let checkIn: HomeResponse.ActiveCheckIn
     let namespace: Namespace.ID
@@ -23,46 +24,45 @@ struct PrescriptionView: View {
     @State private var settled = false
     @State private var drag: CGFloat = 0
 
-    private var dismissProgress: CGFloat { min(1, max(0, drag / 260)) }
+    private var dismissProgress: CGFloat { min(1, max(0, drag / 240)) }
 
     var body: some View {
         ZStack(alignment: .top) {
             Palette.background
-                .opacity(1.0 - Double(dismissProgress) * 0.4)
+                .opacity(1.0 - Double(dismissProgress) * 0.5)
                 .ignoresSafeArea()
 
-            VStack(alignment: .leading, spacing: 22) {
+            VStack(alignment: .leading, spacing: Space.md) {
                 Capsule()
                     .fill(Palette.inkFaint.opacity(0.4))
-                    .frame(width: 36, height: 5)
+                    .frame(width: 36 + dismissProgress * 12, height: 5)
                     .frame(maxWidth: .infinity)
-                    .padding(.top, 8)
+                    .padding(.top, Space.xs)
 
                 CheckInContent(checkIn: checkIn, expanded: true)
                     .matchedGeometryEffect(id: geometryID, in: namespace)
 
-                VStack(alignment: .leading, spacing: 18) {
-                    actions
-                    feedbackRow
-                    if let error {
-                        Text(error).font(Typography.data(13)).foregroundStyle(Palette.accent)
-                    }
+                actions
+
+                if let error {
+                    Text(error).font(Typography.data(13)).foregroundStyle(Palette.accent)
+                        .staggerReveal(settled, index: 3)
                 }
-                .opacity(settled ? 1 : 0)
-                .offset(y: settled ? 0 : 10)
 
                 Spacer(minLength: 0)
+
+                feedbackRow
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 8)
+            .padding(.horizontal, Space.gutter)
+            .padding(.top, Space.xs)
             .offset(y: drag)
             .scaleEffect(1.0 - dismissProgress * 0.04, anchor: .top)
         }
         .contentShape(Rectangle())
         .gesture(dismissDrag)
-        .animation(Motion.adaptive(Motion.sheet, reduceMotion: reduceMotion), value: settled)
+        .animation(Motion.adaptive(Motion.enter, reduceMotion: reduceMotion), value: settled)
         .task {
-            try? await Task.sleep(for: .milliseconds(reduceMotion ? 0 : 240))
+            try? await Task.sleep(for: .milliseconds(reduceMotion ? 0 : 260))
             settled = true
         }
     }
@@ -71,25 +71,29 @@ struct PrescriptionView: View {
 
     @ViewBuilder
     private var actions: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: Space.xs + 2) {
             if checkIn.prescription != nil {
                 ActionButton(title: busy ? "Logging…" : "I ate this") { run { try await eatThis() } }
+                    .staggerReveal(settled, index: 0)
             }
             ActionButton(title: "Something else", kind: .secondary) {
                 guard !busy else { return }
                 onLogSomethingElse()
             }
+            .staggerReveal(settled, index: 1)
+
             Button("Not now") { run { try await deferCheckIn() } }
                 .font(Typography.data(15, weight: .medium))
                 .foregroundStyle(Palette.inkSoft)
                 .padding(.top, 2)
+                .staggerReveal(settled, index: 2)
         }
         .disabled(busy)
     }
 
     @ViewBuilder
     private var feedbackRow: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: Space.sm) {
             Text("Was this the right moment?")
                 .font(Typography.data(12))
                 .foregroundStyle(Palette.inkFaint)
@@ -98,6 +102,8 @@ struct PrescriptionView: View {
             feedbackButton(systemName: "hand.thumbsdown", positive: false)
         }
         .padding(.top, 2)
+        .padding(.bottom, Space.xs)
+        .staggerReveal(settled, index: 4)
     }
 
     private func feedbackButton(systemName: String, positive: Bool) -> some View {
@@ -147,12 +153,15 @@ struct PrescriptionView: View {
 
     private var dismissDrag: some Gesture {
         DragGesture(minimumDistance: 8)
-            .onChanged { value in drag = max(0, value.translation.height) }
+            .onChanged { value in
+                let y = value.translation.height
+                drag = y > 0 ? y : y * 0.12 // 1:1 down, heavy resistance up
+            }
             .onEnded { value in
-                if value.translation.height > 120 || value.predictedEndTranslation.height > 260 {
+                if value.translation.height > 110 || value.predictedEndTranslation.height > 260 {
                     onDismiss()
                 } else {
-                    withAnimation(Motion.adaptive(Motion.snappy, reduceMotion: reduceMotion)) { drag = 0 }
+                    withAnimation(Motion.adaptive(Motion.settle, reduceMotion: reduceMotion)) { drag = 0 }
                 }
             }
     }

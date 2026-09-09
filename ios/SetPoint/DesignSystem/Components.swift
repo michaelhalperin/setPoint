@@ -59,6 +59,16 @@ struct ActionButton: View {
     }
 }
 
+/// A tappable card that presses in — scales down slightly, shadow softens.
+struct PressableCard: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.98 : 1)
+            .animation(Motion.adaptive(Motion.snappy, reduceMotion: reduceMotion), value: configuration.isPressed)
+    }
+}
+
 /// The manager "speaking" — editorial serif on a faintly tinted surface, clearly
 /// distinct from the cold data around it (§6).
 struct ManagerNote: View {

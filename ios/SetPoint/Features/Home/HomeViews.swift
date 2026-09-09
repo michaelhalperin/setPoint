@@ -17,24 +17,27 @@ struct LedgerHero: View {
     }
 
     var body: some View {
-        Card(tint: underEating ? Palette.accentSoft.opacity(0.55) : Palette.surface) {
-            VStack(alignment: .leading, spacing: 6) {
+        Card(tint: underEating ? Palette.accentTint : Palette.surface, padding: Space.md) {
+            VStack(alignment: .leading, spacing: Space.xs) {
                 Text(caption)
                     .sectionLabelStyle()
+                    .foregroundStyle(underEating ? Palette.accentDeep.opacity(0.7) : Palette.inkFaint)
 
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text("\(abs(framing.heroKcal))")
                         .font(Typography.hero)
                         .foregroundStyle(underEating ? Palette.accent : Palette.ink)
                         .contentTransition(.numericText(value: Double(framing.heroKcal)))
+                        .monospacedDigit()
+                        .firstAppearPulse(underEating)
                     Text("kcal")
-                        .font(Typography.data(18, weight: .medium))
+                        .font(Typography.data(17, weight: .medium))
                         .foregroundStyle(Palette.inkFaint)
                 }
 
-                Text("\(ledger.consumedKcal) of \(ledger.targetKcal) eaten · \(ledger.mealsToday) meal\(ledger.mealsToday == 1 ? "" : "s")")
+                Text("\(ledger.consumedKcal) of \(ledger.targetKcal) · \(ledger.mealsToday) meal\(ledger.mealsToday == 1 ? "" : "s") today")
                     .font(Typography.data(13))
-                    .foregroundStyle(Palette.inkSoft)
+                    .foregroundStyle(underEating ? Palette.accentDeep.opacity(0.65) : Palette.inkFaint)
             }
         }
     }
@@ -69,6 +72,9 @@ struct ProteinRow: View {
 struct CheckInContent: View {
     let checkIn: HomeResponse.ActiveCheckIn
     var expanded = false
+    /// Home card uses `.floating` so it reads as the thing to tap; the morphed
+    /// full-screen version always lifts hardest.
+    var restingElevation: Elevation = .resting
 
     private var tierThreePrompt: String? {
         checkIn.tier >= 3 ? "The last few days haven't gone to plan. Let's sort out what needs to change." : nil
@@ -82,13 +88,14 @@ struct CheckInContent: View {
 
             if let message = checkIn.message ?? tierThreePrompt {
                 Text(message)
-                    .font(Typography.voice(expanded ? 21 : 17))
+                    .font(Typography.voice(expanded ? 22 : 17))
                     .foregroundStyle(Palette.ink)
+                    .lineSpacing(expanded ? 3 : 2)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
             if let rx = checkIn.prescription {
-                Divider().overlay(Palette.ink.opacity(0.06))
+                Divider().overlay(Palette.hairline)
                 ForEach(rx.items) { item in
                     HStack {
                         Text(item.quantity > 1 ? "\(Int(item.quantity))× \(item.name)" : item.name)
@@ -107,13 +114,14 @@ struct CheckInContent: View {
         }
         .padding(expanded ? 22 : 18)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            Palette.surface,
-            in: RoundedRectangle(cornerRadius: expanded ? 26 : 20, style: .continuous)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: expanded ? 26 : 20, style: .continuous)
-                .strokeBorder(Palette.ink.opacity(0.05))
-        )
+        .background {
+            RoundedRectangle(cornerRadius: expanded ? Radius.xl : Radius.lg, style: .continuous)
+                .fill(Palette.surface)
+                .elevation(expanded ? .lifted : restingElevation)
+                .overlay(
+                    RoundedRectangle(cornerRadius: expanded ? Radius.xl : Radius.lg, style: .continuous)
+                        .strokeBorder(Palette.hairline)
+                )
+        }
     }
 }

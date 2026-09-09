@@ -128,7 +128,11 @@ private struct PrescriptionStubHost: View {
     @Namespace private var ns
     var body: some View {
         ZStack {
-            Palette.background.ignoresSafeArea()
+            // A dimmed Home behind, so the morph's depth reads in review.
+            HomeContent(model: .previewed(.loaded(.sampleUnder)))
+                .disabled(true)
+                .overlay { Palette.scrim.ignoresSafeArea().allowsHitTesting(false) }
+
             if let checkIn = HomeResponse.sampleUnder.activeCheckIn {
                 PrescriptionView(
                     checkIn: checkIn,

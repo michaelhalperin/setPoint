@@ -21,20 +21,15 @@ struct HomeContent: View {
         ZStack {
             Palette.background.ignoresSafeArea()
 
-            switch model.phase {
-            case .loading:
-                ProgressView()
-
-            case let .failed(message):
-                RetryState(message: message) { Task { await model.load() } }
-
-            case .needsOnboarding:
-                // Presented full-screen by MainTabView.
-                ProgressView()
-
-            case let .loaded(home):
-                loaded(home)
-            }
+            homeLayer
+                .animation(Motion.adaptive(Motion.standard, reduceMotion: reduceMotion), value: isLoaded)
+                .overlay {
+                    Palette.scrim
+                        .ignoresSafeArea()
+                        .opacity(showingCheckIn ? 1 : 0)
+                        .allowsHitTesting(false)
+                }
+                .animation(Motion.adaptive(Motion.morph, reduceMotion: reduceMotion), value: showingCheckIn)
 
             if showingCheckIn, let checkIn = activeCheckIn {
                 Group {
@@ -68,7 +63,6 @@ struct HomeContent: View {
                 .zIndex(2)
             }
         }
-        .animation(Motion.adaptive(Motion.standard, reduceMotion: reduceMotion), value: isLoaded)
         .sheet(isPresented: $showingLogMeal) {
             LogMealSheet {
                 showingLogMeal = false
@@ -99,35 +93,58 @@ struct HomeContent: View {
     }
 
     private var springForCheckIn: Animation {
-        Motion.adaptive(Motion.sheet, reduceMotion: reduceMotion)
+        Motion.adaptive(Motion.morph, reduceMotion: reduceMotion)
+    }
+
+    @ViewBuilder
+    private var homeLayer: some View {
+        switch model.phase {
+        case .loading:
+            ProgressView()
+        case let .failed(message):
+            RetryState(message: message) { Task { await model.load() } }
+        case .needsOnboarding:
+            ProgressView() // presented full-screen by MainTabView
+        case let .loaded(home):
+            loaded(home)
+        }
     }
 
     @ViewBuilder
     private func loaded(_ home: HomeResponse) -> some View {
         ScrollView {
-            VStack(spacing: 18) {
+            VStack(spacing: Space.sm + 2) {
                 LedgerHero(ledger: home.ledger, framing: home.framing)
+                    .appearIn(0)
                 ManagerNote(text: home.managerNote, emphasised: home.framing.accent)
+                    .appearIn(1)
 
                 if let checkIn = home.activeCheckIn, !showingCheckIn {
-                    CheckInContent(checkIn: checkIn)
-                        .matchedGeometryEffect(id: Self.checkInGeometryID, in: checkInNamespace)
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            withAnimation(springForCheckIn) { showingCheckIn = true }
-                        }
+                    Button {
+                        withAnimation(springForCheckIn) { showingCheckIn = true }
+                    } label: {
+                        CheckInContent(checkIn: checkIn, restingElevation: .floating)
+                            .matchedGeometryEffect(id: Self.checkInGeometryID, in: checkInNamespace)
+                    }
+                    .buttonStyle(PressableCard())
+                    .appearIn(2)
                 }
 
                 ProteinRow(ledger: home.ledger)
+                    .appearIn(3)
 
-                if home.framing.primaryCta == "log_meal" {
-                    ActionButton(title: "Log a meal") { showingLogMeal = true }
-                        .firstAppearPulse(home.framing.accent)
-                } else {
-                    ActionButton(title: "Log a meal", kind: .secondary) { showingLogMeal = true }
+                Group {
+                    if home.framing.primaryCta == "log_meal" {
+                        ActionButton(title: "Log a meal") { showingLogMeal = true }
+                            .firstAppearPulse(home.framing.accent)
+                    } else {
+                        ActionButton(title: "Log a meal", kind: .secondary) { showingLogMeal = true }
+                    }
                 }
+                .appearIn(4)
+                .padding(.top, Space.xxs)
             }
-            .padding(20)
+            .padding(Space.gutter)
         }
         .refreshable { await model.load(showSpinner: false) }
         .scrollBounceBehavior(.basedOnSize)

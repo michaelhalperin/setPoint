@@ -59,6 +59,31 @@ extension View {
     func appearIn(_ index: Int = 0, rise: CGFloat = 8) -> some View {
         modifier(AppearIn(index: index, rise: rise))
     }
+
+    /// Reveal driven by a Bool (not `onAppear`) — for content that's always in
+    /// the tree but should cascade in when a gate flips, e.g. sheet actions
+    /// after a morph settles.
+    func staggerReveal(_ isOn: Bool, index: Int, rise: CGFloat = 12) -> some View {
+        modifier(StaggerReveal(isOn: isOn, index: index, rise: rise))
+    }
+}
+
+struct StaggerReveal: ViewModifier {
+    let isOn: Bool
+    let index: Int
+    var rise: CGFloat = 12
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(isOn ? 1 : 0)
+            .offset(y: isOn ? 0 : rise)
+            .animation(
+                Motion.adaptive(Motion.enter, reduceMotion: reduceMotion)
+                    .delay(isOn ? Motion.stagger(index, reduceMotion: reduceMotion) : 0),
+                value: isOn
+            )
+    }
 }
 
 /// A single soft pulse on first appearance — never looping (§5a: a repeating
