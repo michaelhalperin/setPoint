@@ -3,7 +3,9 @@ import { z } from 'zod';
 
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-  PORT: z.coerce.number().int().positive().default(3000),
+  // Only used by the local server. Vercel sets PORT to "" for functions, so be
+  // forgiving: any non-positive / unparseable value falls back to 3000.
+  PORT: z.coerce.number().int().positive().catch(3000),
 
   // Optional at boot so the server still starts for local scaffolding / review.
   // Anything that actually touches the DB throws a clear error if it's missing.
