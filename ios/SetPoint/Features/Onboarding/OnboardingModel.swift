@@ -163,7 +163,15 @@ final class OnboardingViewModel {
         vm.draft.heightCm = 182
         vm.draft.weightKg = 79
         vm.draft.targetWeightKg = 85
+        vm.draft.pace = .steady
         vm.draft.restrictions = ["Dairy", "Peanuts"]
+        if step == .outcome {
+            vm.result = OnboardingResponse(
+                dailyKcalTarget: 3120, dailyProteinTargetG: 142,
+                targetWeightKg: 85, paceKgPerWeek: 0.25,
+                enforcementEnabled: true, enforcementDisabledReason: nil
+            )
+        }
         vm.step = step
         return vm
     }

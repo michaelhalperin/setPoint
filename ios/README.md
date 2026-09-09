@@ -73,8 +73,10 @@ SetPoint/
 └── Features/
     ├── Home/         HomeScreen / HomeViewModel / HomeViews (§5.2 framing, §5a numeric transitions);
     │                 LogMealSheet + LogMealViewModel (text/photo → .redacted skeleton → parsed macros → undo), MealPhoto (downscale + base64)
-    ├── Onboarding/   stepped flow → POST /api/onboarding (§3, §5.1). Order: about-you → goal
-    │                 (Gain / Lean out / Maintain + target weight + pace, M16) → rhythm → … → review
+    ├── Onboarding/   journey flow → POST /api/onboarding (§3, §5.1). Order: about-you → goal
+    │                 (Gain / Lean out / Maintain + target weight + pace, M16) → rhythm → … → review.
+    │                 ProgressThread (segmented), steps assemble with .appearIn staggers, floating
+    │                 nav bar, OutcomeStep count-up reveal ("You're set → 3,120 kcal → Gain to 85 kg")
     ├── CheckIn/      PrescriptionView — the card ↔ full-screen matchedGeometryEffect morph (§5a);
     │                 ConversationView + ConversationViewModel — the tier-3 "let's talk" chat (§2)
     ├── Settings/     GET/PATCH /api/settings — goal + target weight + pace, targets, meal times, quiet hours, pause, restrictions; delete account

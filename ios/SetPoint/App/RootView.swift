@@ -92,6 +92,7 @@ enum DebugPreviewStub {
         case "onboarding-rhythm": return .onboarding(.rhythm)
         case "onboarding-health": return .onboarding(.health)
         case "onboarding-review": return .onboarding(.review)
+        case "onboarding-outcome": return .onboarding(.outcome)
         case "prescription": return .prescription
         case "conversation": return .conversation(resolved: false)
         case "conversation-resolved": return .conversation(resolved: true)

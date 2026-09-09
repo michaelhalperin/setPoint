@@ -5,23 +5,29 @@ struct StepHeader: View {
     var subtitle: String?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Space.sm) {
             Text(title)
-                .font(Typography.voice(26))
+                .font(Typography.display(30))
                 .foregroundStyle(Palette.ink)
+                .lineSpacing(1)
                 .fixedSize(horizontal: false, vertical: true)
+                .appearIn(0)
             if let subtitle {
                 Text(subtitle)
-                    .font(Typography.data(14))
+                    .font(Typography.voice(15))
                     .foregroundStyle(Palette.inkSoft)
+                    .lineSpacing(2)
                     .fixedSize(horizontal: false, vertical: true)
+                    .appearIn(1)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.bottom, Space.xs)
     }
 }
 
-/// A large tappable option card (goal, activity level).
+/// A large tappable option card (goal, activity level). Lifts and tints when
+/// chosen; a checkmark draws in.
 struct ChoiceCard: View {
     let title: String
     var blurb: String?
@@ -32,29 +38,45 @@ struct ChoiceCard: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(Typography.data(18, weight: .semibold))
-                    .foregroundStyle(Palette.ink)
-                if let blurb {
-                    Text(blurb)
-                        .font(Typography.data(13))
-                        .foregroundStyle(Palette.inkSoft)
-                        .fixedSize(horizontal: false, vertical: true)
+            HStack(alignment: blurb == nil ? .center : .top, spacing: Space.sm) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(Typography.data(18, weight: .semibold))
+                        .foregroundStyle(Palette.ink)
+                    if let blurb {
+                        Text(blurb)
+                            .font(Typography.data(13))
+                            .foregroundStyle(Palette.inkSoft)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
+                Spacer(minLength: 0)
+                ZStack {
+                    Circle()
+                        .strokeBorder(selected ? Palette.accent : Palette.inkFaint.opacity(0.5), lineWidth: 1.5)
+                        .frame(width: 22, height: 22)
+                    if selected {
+                        Circle().fill(Palette.accent).frame(width: 22, height: 22)
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(.white)
+                    }
+                }
+                .transaction { if reduceMotion { $0.animation = nil } }
             }
+            .padding(Space.md - 2)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(18)
-            .background(
-                selected ? Palette.accentSoft.opacity(0.6) : Palette.surface,
-                in: RoundedRectangle(cornerRadius: 16, style: .continuous)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .strokeBorder(selected ? Palette.accent : Palette.ink.opacity(0.06), lineWidth: selected ? 1.5 : 1)
-            )
-            .scaleEffect(selected ? 1 : 0.995)
-            .animation(Motion.adaptive(Motion.snappy, reduceMotion: reduceMotion), value: selected)
+            .background {
+                RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
+                    .fill(selected ? Palette.accentTint : Palette.surface)
+                    .elevation(selected ? .floating : .resting)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
+                            .strokeBorder(selected ? Palette.accent.opacity(0.4) : Palette.hairline, lineWidth: 1)
+                    )
+            }
+            .scaleEffect(selected ? 1 : 0.985)
+            .animation(Motion.adaptive(Motion.settle, reduceMotion: reduceMotion), value: selected)
         }
         .buttonStyle(.plain)
     }
@@ -129,7 +151,12 @@ struct MeasureField: View {
                 .foregroundStyle(Palette.inkFaint)
         }
         .padding(14)
-        .background(Palette.surface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .background {
+            RoundedRectangle(cornerRadius: Radius.sm, style: .continuous)
+                .fill(Palette.surface)
+                .elevation(.resting)
+                .overlay(RoundedRectangle(cornerRadius: Radius.sm, style: .continuous).strokeBorder(Palette.hairline))
+        }
     }
 
     private func formatted(_ v: Double) -> String {
@@ -170,22 +197,39 @@ struct MinutesField: View {
     }
 }
 
-/// Progress bar for the onboarding flow.
-struct OnboardingProgressBar: View {
-    let progress: Double
+/// The onboarding journey indicator — one segment per step, filling as you go.
+/// The current segment sits at a low opacity ("in progress"); completed ones are
+/// solid. Segments animate their fill when `step` advances.
+struct ProgressThread: View {
+    /// 0-based index of the current step.
+    let step: Int
+    /// Number of steps shown (the outcome screen isn't one).
+    let total: Int
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        GeometryReader { geo in
-            ZStack(alignment: .leading) {
-                Capsule().fill(Palette.surfaceSunk)
+        HStack(spacing: 4) {
+            ForEach(0 ..< max(total, 1), id: \.self) { i in
                 Capsule()
-                    .fill(Palette.accent)
-                    .frame(width: max(6, geo.size.width * min(1, max(0, progress))))
+                    .fill(fill(for: i))
+                    .frame(height: 4)
             }
         }
-        .frame(height: 4)
-        .animation(Motion.adaptive(Motion.gentle, reduceMotion: reduceMotion), value: progress)
+        .animation(Motion.adaptive(Motion.enter, reduceMotion: reduceMotion), value: step)
+    }
+
+    private func fill(for i: Int) -> Color {
+        if i < step { return Palette.accent }
+        if i == step { return Palette.accent.opacity(0.35) }
+        return Palette.surfaceSunk
+    }
+}
+
+/// Kept for older call sites / previews.
+struct OnboardingProgressBar: View {
+    let progress: Double
+    var body: some View {
+        ProgressThread(step: Int((progress * 6).rounded()), total: 7)
     }
 }
