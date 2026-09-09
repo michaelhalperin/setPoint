@@ -7,8 +7,8 @@ import { createPushSender } from '../push/factory.js';
 import { env } from '../env.js';
 
 /**
- * Vercel Cron calls these endpoints with `Authorization: Bearer <CRON_SECRET>`.
- * Manual / GitHub-Actions triggering can instead send `x-cron-secret: <secret>`.
+ * Vercel Cron invokes these with a GET and `Authorization: Bearer <CRON_SECRET>`.
+ * Manual / GitHub-Actions triggering can POST with `x-cron-secret: <secret>`.
  */
 function isAuthorized(req: FastifyRequest): boolean {
   const auth = req.headers.authorization;
@@ -25,20 +25,28 @@ export async function cronRoutes(app: FastifyInstance): Promise<void> {
   // The deterministic confidence engine (§2): score eligible users, advance
   // open check-ins through the escalation state machine, fire when the score
   // clears the threshold.
-  app.post('/score', async (req) => {
-    const summary = await runScoreConfidenceJob({
-      prisma: getPrisma(),
-      push: createPushSender(),
-      voice: createManagerVoice(),
-    });
-    req.log.info(summary, 'cron:score complete');
-    return summary;
+  app.route({
+    method: ['GET', 'POST'],
+    url: '/score',
+    handler: async (req) => {
+      const summary = await runScoreConfidenceJob({
+        prisma: getPrisma(),
+        push: createPushSender(),
+        voice: createManagerVoice(),
+      });
+      req.log.info(summary, 'cron:score complete');
+      return summary;
+    },
   });
 
   // Daily settlement (§5.7): write yesterday's DayOutcome for every user.
-  app.post('/settle', async (req) => {
-    const summary = await runSettleDayJob({ prisma: getPrisma(), voice: createManagerVoice() });
-    req.log.info(summary, 'cron:settle complete');
-    return summary;
+  app.route({
+    method: ['GET', 'POST'],
+    url: '/settle',
+    handler: async (req) => {
+      const summary = await runSettleDayJob({ prisma: getPrisma(), voice: createManagerVoice() });
+      req.log.info(summary, 'cron:settle complete');
+      return summary;
+    },
   });
 }

@@ -182,20 +182,28 @@ curl -X POST localhost:3000/api/cron/score -H "x-cron-secret: $CRON_SECRET"
 
 ## Deploying to Vercel
 
-1. Import the GitHub repo in Vercel.
-2. Set **Root Directory** to `backend`.
-3. Add env vars (Settings → Environment Variables): `DATABASE_URL`,
-   `CRON_SECRET`, `JWT_SECRET`. Leave the stubbed integration keys for later.
-   When `CRON_SECRET` is set, Vercel Cron automatically sends it as
-   `Authorization: Bearer <CRON_SECRET>`.
-4. Deploy.
+1. **[vercel.com/new](https://vercel.com/new)** → import `michaelhalperin/setPoint`.
+2. **Root Directory** → `backend`. Framework preset: **Other**. Leave Build /
+   Install / Output commands on their defaults — `vercel-build` runs
+   `prisma generate` and `postinstall` covers it too.
+3. **Environment Variables** (Production): copy from `backend/.env` —
+   `DATABASE_URL`, `CRON_SECRET`, `JWT_SECRET`, `ANTHROPIC_API_KEY`. Add the
+   `APNS_*` / `APPLE_*` keys when you have them. Optionally `ENABLE_DEV_LOGIN=true`
+   on a Preview environment so `POST /api/auth/dev` works there.
+4. **Deploy.** Every push to `main` redeploys.
+5. Point the app at it: set `SETPOINT_API_BASE_URL` in the iOS Run scheme, and
+   change the non-simulator default in `ios/SetPoint/Networking/APIConfig.swift`.
+
+Vercel Cron invokes the endpoints with a **GET** and
+`Authorization: Bearer <CRON_SECRET>` (both cron routes accept GET and POST).
 
 ### Cron cadence
 
-`vercel.json` currently schedules `/api/cron/score` once daily (`0 9 * * *`) —
-safe on the Vercel Hobby plan. The product wants a ~15-minute cadence; when we
-get there (milestone 3) we either move to a paid plan or add a GitHub Actions
-scheduled workflow that hits the endpoint with the `x-cron-secret` header.
+`vercel.json` schedules `/api/cron/score` and `/api/cron/settle` once daily —
+the Hobby-plan limit (2 jobs). For the ~15-minute scoring cadence the product
+wants, add a GitHub Actions scheduled workflow that hits
+`POST /api/cron/score` with the `x-cron-secret` header (Actions cron minimum is
+5 min, free for the repo), or move to Vercel Pro.
 
 ## Environment variables
 
@@ -204,5 +212,7 @@ scheduled workflow that hits the endpoint with the `x-cron-secret` header.
 | `DATABASE_URL`                       | now           | Neon pooled connection string             |
 | `CRON_SECRET`                        | now           | generated (`openssl rand -hex 32`)        |
 | `JWT_SECRET`                         | now           | generated                                 |
-| `ANTHROPIC_API_KEY`                  | milestone 5   | <https://console.anthropic.com>           |
+| `ANTHROPIC_API_KEY`                  | now           | <https://console.anthropic.com>           |
+| `ENABLE_DEV_LOGIN`                   | staging only  | `"true"` keeps `/api/auth/dev` on a deploy |
 | `APNS_KEY_ID` / `APNS_TEAM_ID` / `APNS_PRIVATE_KEY` / `APNS_BUNDLE_ID` | push delivery | Apple Developer → Keys → APNs Auth Key    |
+| `APPLE_CLIENT_ID` (+ `APPLE_TEAM_ID` / `APPLE_KEY_ID` / `APPLE_PRIVATE_KEY`) | real auth | Apple Developer → Identifiers / Keys       |

@@ -9,6 +9,8 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "start": "tsx src/server.ts",
+    "postinstall": "prisma generate",
+    "vercel-build": "prisma generate",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",

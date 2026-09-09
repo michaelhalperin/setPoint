@@ -13,6 +13,10 @@ const schema = z.object({
   CRON_SECRET: z.string().min(1),
   JWT_SECRET: z.string().min(1),
 
+  // Set to "true" to keep POST /api/auth/dev available on a production deploy
+  // (staging only — never on the real production environment).
+  ENABLE_DEV_LOGIN: z.string().default(''),
+
   // Sign in with Apple — the app's client id (bundle id or services id).
   APPLE_CLIENT_ID: z.string().default(''),
   // Sign in with Apple key material (for the client secret used by /auth/revoke).

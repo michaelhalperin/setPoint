@@ -4,6 +4,10 @@ import { AppleAuthError, issueSessionToken, verifyAppleIdentityToken } from '../
 import { getPrisma } from '../db/client.js';
 import { env, isProd } from '../env.js';
 
+/** The dev sign-in shortcut is on outside production, or when explicitly enabled
+ *  (e.g. a staging deploy) via ENABLE_DEV_LOGIN=true. */
+const devLoginEnabled = !isProd || env.ENABLE_DEV_LOGIN === 'true';
+
 const appleBody = z.object({ identityToken: z.string().min(1) });
 const devBody = z.object({ userId: z.string().optional(), email: z.string().email().optional() });
 
@@ -30,8 +34,8 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     return { token: issueSessionToken(user.id), userId: user.id };
   });
 
-  // Dev-only: mint a session token without Apple. Never registered in production.
-  if (!isProd) {
+  // Mint a session token without Apple. Off in production unless ENABLE_DEV_LOGIN=true.
+  if (devLoginEnabled) {
     app.post('/dev', async (req) => {
       const { userId, email } = devBody.parse(req.body ?? {});
       const prisma = getPrisma();
