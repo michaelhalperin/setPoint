@@ -1,0 +1,35 @@
+import 'dotenv/config';
+import { z } from 'zod';
+
+const schema = z.object({
+  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  PORT: z.coerce.number().int().positive().default(3000),
+
+  // Optional at boot so the server still starts for local scaffolding / review.
+  // Anything that actually touches the DB throws a clear error if it's missing.
+  // An empty string in .env is treated as "unset".
+  DATABASE_URL: z.preprocess((v) => (v === '' ? undefined : v), z.string().min(1).optional()),
+
+  CRON_SECRET: z.string().min(1),
+  JWT_SECRET: z.string().min(1),
+
+  // Stubbed integrations — blank until their milestone.
+  ANTHROPIC_API_KEY: z.string().default(''),
+  APNS_KEY_ID: z.string().default(''),
+  APNS_TEAM_ID: z.string().default(''),
+  APNS_BUNDLE_ID: z.string().default('com.setpoint.app'),
+  APNS_PRIVATE_KEY: z.string().default(''),
+});
+
+const parsed = schema.safeParse(process.env);
+
+if (!parsed.success) {
+  const lines = parsed.error.issues.map((i) => `  • ${i.path.join('.') || '(root)'}: ${i.message}`);
+  console.error('Invalid environment variables:\n' + lines.join('\n'));
+  console.error('\nCopy backend/.env.example to backend/.env and fill it in.');
+  process.exit(1);
+}
+
+export const env = parsed.data;
+export const isProd = env.NODE_ENV === 'production';
+export const isDev = env.NODE_ENV === 'development';

@@ -1,0 +1,13 @@
+{
+  "name": "setpoint",
+  "private": true,
+  "packageManager": "pnpm@11.1.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @setpoint/backend dev",
+    "typecheck": "pnpm --filter @setpoint/backend typecheck",
+    "test": "pnpm --filter @setpoint/backend test"
+  }
+}

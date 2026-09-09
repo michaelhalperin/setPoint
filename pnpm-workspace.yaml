@@ -1,0 +1,9 @@
+packages:
+  - "backend"
+
+# Dependencies allowed to run install/postinstall scripts.
+allowBuilds:
+  "@prisma/client": true
+  "@prisma/engines": true
+  prisma: true
+  esbuild: true

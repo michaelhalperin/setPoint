@@ -1,0 +1,26 @@
+import type { FastifyInstance } from 'fastify';
+import { getPrisma } from '../db/client.js';
+
+export async function healthRoutes(app: FastifyInstance): Promise<void> {
+  app.get('/', async () => ({
+    name: 'SetPoint API',
+    status: 'ok',
+    docs: 'see backend/README.md',
+  }));
+
+  app.get('/api/health', async () => {
+    let db: 'up' | 'down' = 'down';
+    try {
+      await getPrisma().$queryRaw`SELECT 1`;
+      db = 'up';
+    } catch (err) {
+      app.log.warn(`health: database check failed — ${(err as Error).message}`);
+    }
+
+    return {
+      status: db === 'up' ? 'ok' : 'degraded',
+      db,
+      ts: new Date().toISOString(),
+    };
+  });
+}
