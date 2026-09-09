@@ -1,17 +1,32 @@
 import SwiftUI
 
+enum HomeRoute: Hashable {
+    case settings
+    case settlement
+}
+
 struct HomeScreen: View {
     @Environment(AppEnvironment.self) private var env
     @State private var model: HomeViewModel?
+    @State private var path: [HomeRoute] = []
 
     var body: some View {
-        Group {
-            if let model {
-                HomeContent(model: model)
-            } else {
-                ProgressView()
+        NavigationStack(path: $path) {
+            Group {
+                if let model {
+                    HomeContent(model: model)
+                } else {
+                    ProgressView()
+                }
+            }
+            .navigationDestination(for: HomeRoute.self) { route in
+                switch route {
+                case .settings: SettingsView()
+                case .settlement: SettlementView()
+                }
             }
         }
+        .tint(Palette.accent)
         .task {
             if model == nil {
                 let vm = HomeViewModel(api: env.api, onUnauthorized: { env.auth.handleUnauthorized() })
@@ -100,7 +115,6 @@ struct HomeContent: View {
     private func loaded(_ home: HomeResponse) -> some View {
         ScrollView {
             VStack(spacing: 18) {
-                header
                 LedgerHero(ledger: home.ledger, framing: home.framing)
                 ManagerNote(text: home.managerNote, emphasised: home.framing.accent)
 
@@ -126,21 +140,19 @@ struct HomeContent: View {
         }
         .refreshable { await model.load(showSpinner: false) }
         .scrollBounceBehavior(.basedOnSize)
-    }
-
-    private var header: some View {
-        HStack {
-            Text("Today")
-                .font(Typography.data(15, weight: .semibold))
-                .tracking(2)
-                .textCase(.uppercase)
-                .foregroundStyle(Palette.inkFaint)
-            Spacer()
-            Button {
-                env.auth.signOut()
-            } label: {
-                Image(systemName: "person.crop.circle")
-                    .foregroundStyle(Palette.inkSoft)
+        .navigationTitle("Today")
+        .navigationBarTitleDisplayMode(.large)
+        .toolbarBackground(Palette.background, for: .navigationBar)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                NavigationLink(value: HomeRoute.settlement) {
+                    Image(systemName: "chart.bar.xaxis")
+                }
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                NavigationLink(value: HomeRoute.settings) {
+                    Image(systemName: "gearshape")
+                }
             }
         }
     }

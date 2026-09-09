@@ -50,6 +50,8 @@ enum DebugPreviewStub {
     case home(HomeResponse)
     case onboarding(OnboardingViewModel.Step)
     case prescription
+    case settings
+    case settlement
 
     @ViewBuilder
     var view: some View {
@@ -61,6 +63,10 @@ enum DebugPreviewStub {
                 .background(Palette.background)
         case .prescription:
             PrescriptionStubHost()
+        case .settings:
+            NavigationStack { SettingsView(previewModel: .previewed()) }
+        case .settlement:
+            NavigationStack { SettlementView(previewModel: .previewed(.sample)) }
         }
     }
 
@@ -76,6 +82,8 @@ enum DebugPreviewStub {
         case "onboarding-health": return .onboarding(.health)
         case "onboarding-review": return .onboarding(.review)
         case "prescription": return .prescription
+        case "settings": return .settings
+        case "settlement": return .settlement
         default: return nil
         }
     }

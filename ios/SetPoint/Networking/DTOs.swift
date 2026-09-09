@@ -142,3 +142,59 @@ struct OnboardingResponse: Decodable {
     let enforcementEnabled: Bool
     let enforcementDisabledReason: String?   // "MEDICAL_SUPERVISION" | "EATING_DISORDER_SCREEN" | nil
 }
+
+struct MealTimesPayload: Codable, Equatable {
+    var breakfastMin: Int
+    var lunchMin: Int
+    var dinnerMin: Int
+}
+
+struct QuietHoursPayload: Codable, Equatable {
+    var startMin: Int
+    var endMin: Int
+}
+
+struct SettingsResponse: Decodable {
+    let goal: String
+    let mode: String
+    let timezone: String
+    let dailyKcalTarget: Int
+    let dailyProteinTargetG: Int?
+    let mealTimes: MealTimesPayload
+    let quietHours: QuietHoursPayload
+    let checkInsPaused: Bool
+    let restrictions: [Restriction]
+    let enforcementEnabled: Bool
+    let enforcementDisabledReason: String?
+
+    struct Restriction: Decodable, Identifiable {
+        var id: String { token }
+        let label: String
+        let token: String
+        let source: String
+    }
+}
+
+struct SettingsPatch: Encodable {
+    var goal: String?
+    var dailyKcalTarget: Int?
+    var dailyProteinTargetG: Int?
+    var mealTimes: MealTimesPayload?
+    var quietHours: QuietHoursPayload?
+    var checkInsPaused: Bool?
+    var restrictions: [RestrictionInput]?
+
+    struct RestrictionInput: Encodable {
+        let label: String
+        var source: String?
+    }
+}
+
+struct DeleteAccountRequest: Encodable {
+    let confirmation = "delete my account"
+}
+
+struct DeleteAccountResponse: Decodable {
+    let deleted: Bool
+    let appleTokenRevoked: Bool
+}

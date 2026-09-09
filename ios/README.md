@@ -58,6 +58,8 @@ Screenshot a specific screen with sample data:
 ./ios/scripts/run.sh -uiStub onboarding-health # SCOFF / safety step
 ./ios/scripts/run.sh -uiStub onboarding-review # review + submit step
 ./ios/scripts/run.sh -uiStub prescription      # the full-screen check-in
+./ios/scripts/run.sh -uiStub settings          # settings screen
+./ios/scripts/run.sh -uiStub settlement        # 7-day settlement view
 ```
 
 ## Structure
@@ -71,7 +73,9 @@ SetPoint/
 └── Features/
     ├── Home/         HomeScreen / HomeViewModel / HomeViews (§5.2 framing, §5a numeric transitions)
     ├── Onboarding/   stepped flow → POST /api/onboarding (§3, §5.1)
-    └── CheckIn/      PrescriptionView — the card ↔ full-screen matchedGeometryEffect morph (§5a)
+    ├── CheckIn/      PrescriptionView — the card ↔ full-screen matchedGeometryEffect morph (§5a)
+    ├── Settings/     GET/PATCH /api/settings — goal, targets, meal times, quiet hours, pause, restrictions; delete account
+    └── Settlement/   GET /api/settlement — 7-day bar strip (staggered entrance §5a) + day rows (§5.7)
 ```
 
 The check-in morph: `CheckInContent` is the shared component rendered both as
