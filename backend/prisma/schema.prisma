@@ -1,9 +1,13 @@
-// SetPoint backend data model.
+// SetPoint backend data model (milestone 2).
 //
-// Milestone 1 (this file): minimal placeholder so Prisma + the Neon adapter are
-// wired and generating. Milestone 2 replaces this with the full model:
-// onboarding profile, safety screening (allergies / medical flag / SCOFF result),
-// meal ledger, confidence scores, check-ins + escalation state, food items.
+// Maps directly to app-plan-animation.md:
+//   §2  confidence scoring, check-ins, defer/escalation
+//   §3  safety screening (allergies, medical flag, SCOFF)
+//   §4  account deletion — every userId FK is onDelete: Cascade
+//   §5  onboarding, ledger, prescription, settlement
+//
+// TimescaleDB is deferred: per §4 raw HRV/RHR never leave the device, so the
+// only biosignal data here is a derived deviation the app pushes.
 
 generator client {
   provider = "prisma-client-js"
@@ -14,23 +18,479 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum Goal {
+  BULK
+  DIET
+}
+
+/// BASIC = no wearable (self-report + meal-gap heuristics).
+/// SMART = wearable connected (biosignal deviation feeds scoring).
+enum AppMode {
+  BASIC
+  SMART
+}
+
+enum Sex {
+  MALE
+  FEMALE
+  UNSPECIFIED
+}
+
+enum ActivityLevel {
+  SEDENTARY
+  LIGHT
+  MODERATE
+  ACTIVE
+  VERY_ACTIVE
+}
+
+enum RestrictionSource {
+  ALLERGY
+  INTOLERANCE
+  PREFERENCE
+  RELIGIOUS
+  MEDICAL
+}
+
+/// Why the forcing mechanism is switched off (§3). Null = enforcement allowed.
+enum EnforcementDisabledReason {
+  MEDICAL_SUPERVISION
+  EATING_DISORDER_SCREEN
+}
+
+enum CheckInStatus {
+  PENDING
+  LOGGED
+  DEFERRED
+  ESCALATED
+  EXPIRED
+  BACKED_OFF
+}
+
+enum MealSource {
+  TEXT
+  PHOTO
+  PRESCRIPTION
+  MANUAL
+}
+
+enum PrescriptionStatus {
+  OFFERED
+  ACCEPTED
+  DEFERRED
+  SUPERSEDED
+}
+
+enum FoodSource {
+  CURATED
+  USDA
+  OPEN_FOOD_FACTS
+}
+
+enum DayOutcomeKind {
+  ON_TRACK
+  UNDER
+  OVER
+  MISSED
+}
+
+enum EscalationOutcome {
+  NONE
+  ADJUST_PLAN
+  PAUSE_CHECKINS
+  SUGGEST_PROFESSIONAL
+  RESUMED
+}
+
+// ---------------------------------------------------------------------------
+// Identity
+// ---------------------------------------------------------------------------
+
 model User {
-  id        String   @id @default(cuid())
-  email     String?  @unique
-  appleSub  String?  @unique
+  id       String  @id @default(cuid())
+  appleSub String? @unique
+  email    String? @unique
+  timezone String  @default("UTC") // IANA, e.g. "America/New_York"
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  pushTokens PushToken[]
+  onboarding      OnboardingProfile?
+  safetyScreening SafetyScreening?
+  escalationState EscalationState?
+  biosignalState  BiosignalState?
+
+  pushTokens              PushToken[]
+  restrictions            DietaryRestriction[]
+  meals                   Meal[]
+  biosignalReadings       BiosignalReading[]
+  confidenceScores        ConfidenceScore[]
+  checkIns                CheckIn[]
+  prescriptions           Prescription[]
+  escalationConversations EscalationConversation[]
+  dayOutcomes             DayOutcome[]
 }
 
 model PushToken {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  token     String   @unique
-  platform  String   @default("ios")
-  createdAt DateTime @default(now())
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  token       String @unique
+  platform    String @default("ios")
+  environment String @default("production") // or "sandbox"
+
+  lastSeenAt DateTime @default(now())
+  createdAt  DateTime @default(now())
 
   @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Onboarding (§3, §5.1)
+// ---------------------------------------------------------------------------
+
+model OnboardingProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  goal Goal
+  mode AppMode @default(BASIC)
+
+  sex           Sex           @default(UNSPECIFIED)
+  birthDate     DateTime?     @db.Date
+  heightCm      Float?
+  weightKg      Float?
+  activityLevel ActivityLevel @default(MODERATE)
+
+  // Target snapshot; recomputed when stats change.
+  dailyKcalTarget     Int
+  dailyProteinTargetG Int?
+
+  // Preferred meal times — minutes from local midnight (defaults 08:00 / 13:00 / 19:00).
+  // Feeds expected_gap in the confidence formula (§2).
+  breakfastMin Int @default(480)
+  lunchMin     Int @default(780)
+  dinnerMin    Int @default(1140)
+
+  // Quiet hours — minutes from local midnight (default 23:00–07:00, §2).
+  quietHoursStartMin Int @default(1380)
+  quietHoursEndMin   Int @default(420)
+
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// Safety screening (§3)
+// ---------------------------------------------------------------------------
+
+model SafetyScreening {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Conditions requiring supervised nutrition (diabetes, kidney disease, ...).
+  medicalSupervisionRequired Boolean @default(false)
+
+  // SCOFF — 5 validated yes/no questions.
+  scoffMakeSelfSick  Boolean?
+  scoffLostControl   Boolean?
+  scoffLostOneStone  Boolean? // >14 lb / ~6.35 kg in 3 months
+  scoffBelievesFat   Boolean?
+  scoffFoodDominates Boolean?
+  scoffScore         Int?
+  scoffFlagged       Boolean  @default(false) // score >= 2
+
+  // Free-text restrictions; structured ones live in DietaryRestriction.
+  restrictionsFreeText String?
+
+  // Derived gate — the confidence engine reads exactly this field.
+  enforcementEnabled        Boolean                    @default(true)
+  enforcementDisabledReason EnforcementDisabledReason?
+
+  screenedAt DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model DietaryRestriction {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  label           String // as the user entered it: "peanuts", "shellfish"
+  token           String // normalized for solver matching: "peanut"
+  source          RestrictionSource @default(ALLERGY)
+  isHardExclusion Boolean           @default(true)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, token])
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Meal ledger (§5.5)
+// ---------------------------------------------------------------------------
+
+model Meal {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  loggedAt DateTime   @default(now())
+  source   MealSource
+
+  rawInput        String? // free text or photo caption
+  photoUrl        String?
+  parsedByAI      Boolean @default(false)
+  parseConfidence Float?
+
+  kcal     Int
+  proteinG Float @default(0)
+  carbsG   Float @default(0)
+  fatG     Float @default(0)
+
+  prescriptionId String?
+  prescription   Prescription? @relation(fields: [prescriptionId], references: [id], onDelete: SetNull)
+
+  checkInId String?
+  checkIn   CheckIn? @relation(fields: [checkInId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, loggedAt])
+}
+
+// ---------------------------------------------------------------------------
+// Biosignals (§2, §4) — only derived deviation, never raw HRV/RHR
+// ---------------------------------------------------------------------------
+
+model BiosignalState {
+  userId String @id
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  hrvDeviation Float // normalized deviation from personal baseline
+  rhrDeviation Float?
+  source       String // "apple_watch", "oura", "eight_sleep", ...
+
+  updatedAt DateTime @updatedAt
+}
+
+model BiosignalReading {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  capturedAt   DateTime
+  hrvDeviation Float
+  rhrDeviation Float?
+  source       String
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, capturedAt])
+}
+
+// ---------------------------------------------------------------------------
+// Confidence scoring (§2) — deterministic, auditable
+// ---------------------------------------------------------------------------
+
+model ConfidenceScore {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  computedAt DateTime @default(now())
+  mode       AppMode
+
+  score Float
+
+  // Component inputs retained for auditability + beta tuning (§8).
+  biosignalDeviation Float?
+  hoursSinceMeal     Float?
+  expectedGapHours   Float?
+  loggingSilence     Float?
+
+  threshold    Float   @default(0.7)
+  firedCheckIn Boolean @default(false)
+
+  checkIn CheckIn?
+
+  @@index([userId, computedAt])
+}
+
+// ---------------------------------------------------------------------------
+// Check-ins + escalation (§2)
+// ---------------------------------------------------------------------------
+
+model CheckIn {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  confidenceScoreId String?          @unique
+  confidenceScore   ConfidenceScore? @relation(fields: [confidenceScoreId], references: [id], onDelete: SetNull)
+
+  tier   Int           @default(1) // 1 gentle nudge · 2 firm check-in · 3 conversation
+  status CheckInStatus @default(PENDING)
+
+  message String? // manager's-voice copy, AI-generated (§7)
+
+  deliveredAt    DateTime?
+  liveActivityId String?
+
+  deferUntil DateTime?
+  deferCount Int       @default(0)
+
+  resolvedAt DateTime?
+
+  // Labeled feedback — thumbs up/down on every check-in (§8).
+  feedbackPositive Boolean?
+  feedbackAt       DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  prescription Prescription?
+  meals        Meal[]
+  conversation EscalationConversation?
+
+  @@index([userId, status])
+  @@index([status, deferUntil])
+}
+
+model EscalationState {
+  userId String @id
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  consecutiveMisses Int       @default(0)
+  currentTier       Int       @default(1)
+  lastCheckInAt     DateTime?
+  backedOffUntil    DateTime? // set after tier 3 — engine stops escalating until this passes
+  checkInsPaused    Boolean   @default(false)
+
+  updatedAt DateTime @updatedAt
+}
+
+model EscalationConversation {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  checkInId String?  @unique
+  checkIn   CheckIn? @relation(fields: [checkInId], references: [id], onDelete: SetNull)
+
+  transcript Json              @default("[]") // [{ role, content, at }]
+  outcome    EscalationOutcome @default(NONE)
+
+  createdAt  DateTime  @default(now())
+  resolvedAt DateTime?
+
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Prescription solver output (§2, §5.4)
+// ---------------------------------------------------------------------------
+
+model Prescription {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  checkInId String?  @unique
+  checkIn   CheckIn? @relation(fields: [checkInId], references: [id], onDelete: SetNull)
+
+  // The macro gap this prescription was solving.
+  targetKcal     Int
+  targetProteinG Float?
+
+  totalKcal     Int
+  totalProteinG Float @default(0)
+  totalCarbsG   Float @default(0)
+  totalFatG     Float @default(0)
+
+  status PrescriptionStatus @default(OFFERED)
+
+  items PrescriptionItem[]
+  meals Meal[]
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model PrescriptionItem {
+  id             String       @id @default(cuid())
+  prescriptionId String
+  prescription   Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+
+  foodItemId String?
+  foodItem   FoodItem? @relation(fields: [foodItemId], references: [id], onDelete: SetNull)
+
+  // Snapshot so historical prescriptions stay accurate if the food list changes.
+  name     String
+  quantity Float
+  unit     String
+  kcal     Int
+  proteinG Float  @default(0)
+  carbsG   Float  @default(0)
+  fatG     Float  @default(0)
+
+  @@index([prescriptionId])
+}
+
+model FoodItem {
+  id   String @id @default(cuid())
+  slug String @unique
+
+  name         String
+  servingDesc  String // "2 large eggs", "1 cup cooked"
+  servingGrams Float?
+
+  kcal     Int
+  proteinG Float @default(0)
+  carbsG   Float @default(0)
+  fatG     Float @default(0)
+
+  tags      String[] // "vegetarian", "vegan", "high_protein", "no_cook", "portable"
+  allergens String[] // "egg", "dairy", "gluten", "wheat", "peanut", "tree_nut", "soy", "fish", "shellfish", "sesame"
+
+  isStaple   Boolean    @default(true)
+  source     FoodSource @default(CURATED)
+  externalId String?
+
+  prescriptionItems PrescriptionItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// Settlement (§5.7)
+// ---------------------------------------------------------------------------
+
+model DayOutcome {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  date         DateTime       @db.Date // local calendar date
+  kind         DayOutcomeKind
+  kcalConsumed Int
+  kcalTarget   Int
+  summaryLine  String? // one manager-voice line, AI-generated (§5.7)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, date])
+  @@index([userId, date])
 }

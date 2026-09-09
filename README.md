@@ -30,7 +30,7 @@ Details and environment setup: [`backend/README.md`](./backend/README.md).
 ## Build order
 
 1. **Backend scaffold** ← done (milestone 1)
-2. Full data model + HealthKit contract
+2. **Data model + staple-food seed** ← done (milestone 2)
 3. Confidence engine (server-driven, quiet hours, deterministic formula)
 4. Check-in delivery (Live Activity + Time Sensitive) + defer/escalation loop
 5. AI logging (photo/text → macros) + manager's voice

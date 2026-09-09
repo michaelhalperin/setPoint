@@ -36,8 +36,31 @@ Then:
 ```bash
 pnpm --filter @setpoint/backend prisma:generate
 pnpm --filter @setpoint/backend db:push     # creates tables from schema.prisma
+pnpm --filter @setpoint/backend db:seed     # loads the curated staple-food list
 pnpm dev
 ```
+
+## Data model
+
+`prisma/schema.prisma` (milestone 2). Grouped to match the plan:
+
+- **Identity** — `User`, `PushToken`
+- **Onboarding** (§3, §5.1) — `OnboardingProfile` (goal, mode, stats, meal times,
+  quiet hours, kcal target)
+- **Safety screening** (§3) — `SafetyScreening` (medical flag, SCOFF answers +
+  `enforcementEnabled` gate), `DietaryRestriction` (normalized allergen tokens)
+- **Ledger** (§5.5) — `Meal`
+- **Biosignals** (§2, §4) — `BiosignalState` / `BiosignalReading` hold only a
+  derived deviation the app pushes; raw HRV/RHR never reach the backend
+- **Confidence** (§2) — `ConfidenceScore` keeps every component input for audit
+  and beta tuning
+- **Check-ins** (§2) — `CheckIn`, `EscalationState`, `EscalationConversation`
+- **Prescription** (§2, §5.4) — `Prescription`, `PrescriptionItem` (macro
+  snapshot), `FoodItem` (curated list, `tags` + `allergens` arrays)
+- **Settlement** (§5.7) — `DayOutcome`
+
+Every `userId` FK is `onDelete: Cascade` for the account-deletion requirement (§4).
+The staple-food seed is `prisma/seed.ts` (~40 items).
 
 Without `DATABASE_URL` the server still boots; `/api/health` just reports
 `db: down`.
