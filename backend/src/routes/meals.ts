@@ -58,4 +58,14 @@ export async function mealRoutes(app: FastifyInstance): Promise<void> {
       throw err;
     }
   });
+
+  // Undo a just-logged meal (e.g. the photo parse was wrong).
+  app.delete('/:id', async (req) => {
+    const { id } = z.object({ id: z.string().min(1) }).parse(req.params);
+    const result = await getPrisma().meal.deleteMany({
+      where: { id, userId: (req as AuthedRequest).userId },
+    });
+    if (result.count === 0) throw app.httpErrors.notFound('meal not found');
+    return { deleted: true };
+  });
 }

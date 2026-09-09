@@ -1,8 +1,14 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import { getAnthropic } from '../ai/client.js';
+import {
+  createAiTierThree,
+  fallbackTierThree,
+  type ConversationTurn,
+} from '../ai/tierThree.js';
 import { requireAuth, type AuthedRequest } from '../auth/index.js';
 import { getPrisma } from '../db/client.js';
-import { ENGINE_CONFIG } from '../engine/index.js';
+import { ENGINE_CONFIG, type Goal } from '../engine/index.js';
 
 const params = z.object({ id: z.string().min(1) });
 
@@ -47,6 +53,20 @@ function serialize(ci: CheckInWithPrescription) {
   };
 }
 
+const turnSchema = z.array(
+  z.object({ role: z.enum(['user', 'assistant']), content: z.string(), at: z.string().optional() }),
+);
+
+function readTranscript(raw: unknown): (ConversationTurn & { at?: string })[] {
+  const parsed = turnSchema.safeParse(raw);
+  return parsed.success ? parsed.data : [];
+}
+
+function conversant() {
+  const client = getAnthropic();
+  return client ? createAiTierThree(client) : fallbackTierThree;
+}
+
 export async function checkInRoutes(app: FastifyInstance): Promise<void> {
   app.addHook('preHandler', requireAuth(app));
 
@@ -87,5 +107,84 @@ export async function checkInRoutes(app: FastifyInstance): Promise<void> {
     });
     if (result.count === 0) throw app.httpErrors.notFound('check-in not found');
     return { ok: true, feedbackPositive: positive };
+  });
+
+  // Tier-3 "this isn't working right now" conversation (§2).
+  app.get('/:id/conversation', async (req) => {
+    const { id } = params.parse(req.params);
+    const userId = (req as AuthedRequest).userId;
+    const prisma = getPrisma();
+
+    let convo = await prisma.escalationConversation.findFirst({ where: { checkInId: id, userId } });
+    if (!convo) throw app.httpErrors.notFound('no conversation for that check-in');
+
+    let messages = readTranscript(convo.transcript);
+    if (messages.length === 0) {
+      const opener = conversant().opener({ goal: 'BULK', recentMisses: ENGINE_CONFIG.missesBeforeTier3 });
+      messages = [{ role: 'assistant', content: opener, at: new Date().toISOString() }];
+      convo = await prisma.escalationConversation.update({
+        where: { id: convo.id },
+        data: { transcript: messages },
+      });
+    }
+
+    return { messages, outcome: convo.outcome, resolved: convo.resolvedAt !== null };
+  });
+
+  app.post('/:id/conversation', async (req) => {
+    const { id } = params.parse(req.params);
+    const { message } = z.object({ message: z.string().min(1).max(1000) }).parse(req.body);
+    const userId = (req as AuthedRequest).userId;
+    const prisma = getPrisma();
+
+    const [convo, profile] = await Promise.all([
+      prisma.escalationConversation.findFirst({ where: { checkInId: id, userId } }),
+      prisma.onboardingProfile.findUnique({ where: { userId }, select: { goal: true } }),
+    ]);
+    if (!convo) throw app.httpErrors.notFound('no conversation for that check-in');
+    if (convo.resolvedAt) throw app.httpErrors.conflict('this conversation is closed');
+
+    const now = new Date();
+    const history: (ConversationTurn & { at?: string })[] = readTranscript(convo.transcript);
+    history.push({ role: 'user', content: message, at: now.toISOString() });
+
+    const result = await conversant().respond(
+      history.map((t) => ({ role: t.role, content: t.content })),
+      { goal: (profile?.goal as Goal) ?? 'BULK', recentMisses: ENGINE_CONFIG.missesBeforeTier3 },
+    );
+    history.push({ role: 'assistant', content: result.reply, at: new Date().toISOString() });
+
+    const closing = result.done || result.outcome !== 'NONE';
+
+    await prisma.$transaction(async (tx) => {
+      await tx.escalationConversation.update({
+        where: { id: convo.id },
+        data: {
+          transcript: history,
+          outcome: closing ? result.outcome : convo.outcome,
+          resolvedAt: closing ? now : null,
+        },
+      });
+
+      if (closing) {
+        await tx.checkIn.updateMany({
+          where: { id, userId, status: 'PENDING' },
+          data: { status: 'ESCALATED', resolvedAt: now },
+        });
+        if (result.outcome === 'PAUSE_CHECKINS') {
+          await tx.escalationState.upsert({
+            where: { userId },
+            create: { userId, checkInsPaused: true },
+            update: { checkInsPaused: true },
+          });
+        }
+      }
+    });
+
+    return {
+      messages: history,
+      outcome: closing ? result.outcome : convo.outcome,
+      resolved: closing,
+    };
   });
 }
