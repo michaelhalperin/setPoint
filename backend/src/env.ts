@@ -36,9 +36,13 @@ const parsed = schema.safeParse(process.env);
 
 if (!parsed.success) {
   const lines = parsed.error.issues.map((i) => `  • ${i.path.join('.') || '(root)'}: ${i.message}`);
-  console.error('Invalid environment variables:\n' + lines.join('\n'));
-  console.error('\nCopy backend/.env.example to backend/.env and fill it in.');
-  process.exit(1);
+  const message =
+    'Invalid environment variables:\n' +
+    lines.join('\n') +
+    '\n(Set these in Vercel → Project → Settings → Environment Variables, or backend/.env locally.)';
+  console.error(message);
+  // Throw rather than process.exit so the reason surfaces in serverless logs.
+  throw new Error(message);
 }
 
 export const env = parsed.data;

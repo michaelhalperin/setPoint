@@ -2,7 +2,7 @@ import cors from '@fastify/cors';
 import sensible from '@fastify/sensible';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { ZodError } from 'zod';
-import { env, isDev } from './env.js';
+import { env } from './env.js';
 import { accountRoutes } from './routes/account.js';
 import { authRoutes } from './routes/auth.js';
 import { cronRoutes } from './routes/cron.js';
@@ -11,11 +11,17 @@ import { healthRoutes } from './routes/health.js';
 import { mealRoutes } from './routes/meals.js';
 
 export async function buildApp(): Promise<FastifyInstance> {
+  // pino-pretty (a devDependency, loaded in a worker thread) is opt-in via
+  // LOG_PRETTY so it can never break a serverless bundle where it isn't traced.
+  const prettyLogs = process.env.LOG_PRETTY === 'true';
   const app = Fastify({
     trustProxy: true,
-    logger: isDev
-      ? { level: 'debug', transport: { target: 'pino-pretty', options: { translateTime: 'HH:MM:ss' } } }
-      : { level: env.NODE_ENV === 'test' ? 'silent' : 'info' },
+    logger:
+      env.NODE_ENV === 'test'
+        ? { level: 'silent' }
+        : prettyLogs
+          ? { level: 'debug', transport: { target: 'pino-pretty', options: { translateTime: 'HH:MM:ss' } } }
+          : { level: 'info' },
   });
 
   await app.register(sensible);
