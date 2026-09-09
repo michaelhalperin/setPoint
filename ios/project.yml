@@ -33,6 +33,10 @@ targets:
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         NSSupportsLiveActivities: true
         UIBackgroundModes: [remote-notification]
+        UIAppFonts:
+          - Fraunces-Regular.ttf
+          - Fraunces-Medium.ttf
+          - Fraunces-Italic.ttf
         NSHealthShareUsageDescription: "SetPoint reads your heart-rate variability and resting heart rate to notice when you may be under-fuelled, and your body weight to track progress toward your goal."
         NSCameraUsageDescription: "Take a photo of a meal to log it."
         NSPhotoLibraryUsageDescription: "Attach a photo of a meal to log it."

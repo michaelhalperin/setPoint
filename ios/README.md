@@ -120,14 +120,32 @@ one-time "you hit your target" alert.
 to `/api/weight` (`source: healthkit`) on each sync — idempotent (backend upserts
 on user + measuredAt).
 
+## Design system (Pass 0 — foundation)
+
+- **`Typography.swift`** — the manager's voice is **Fraunces** (bundled static
+  cuts in `Resources/Fonts/`, SIL OFL, instantiated soft / un-wonky at opsz 40:
+  Regular, Medium, Italic). `voice()` / `voiceItalic()` / `display()` use it;
+  `data()` / `hero` stay on SF Rounded. Registered via `UIAppFonts` in
+  `project.yml`.
+- **`Spacing.swift`** — one `Space` scale (4/8/12/20/32/52) + `Radius` set.
+- **`Elevation.swift`** — `.elevation(_:)` stacked soft ink-tinted shadows
+  (`resting` / `floating` / `lifted`); `Card` lifts off the paper ground.
+- **`Palette.swift`** — added `surfaceRaised`, `scrim`, `hairline`, `accentTint`,
+  `accentDeep`.
+- **`Motion.swift`** — role-named springs (`enter` / `exit` / `morph` / `nudge` /
+  `settle`), `Motion.stagger(index:)`, and `.appearIn(_:)` (fade + rise, staggered).
+
+Screen-level polish (onboarding journey, check-in morph, parse reveal, Week tab)
+lands in later passes on top of this vocabulary.
+
 ## Motion system (plan §5a)
 
 `Motion.swift` holds the spring presets (`standard`, `snappy` for "manager's
-voice" moments, `gentle`, `sheet`) and `Motion.adaptive(_:reduceMotion:)` which
-falls back to a plain crossfade under Reduce Motion. `firstAppearPulse()` is the
-**single** soft pulse for the urgency accent — never looping. The hero stat and
-protein row use `.contentTransition(.numericText(value:))`; sheets use
-`.presentationDetents`.
+voice" moments, `gentle`, `sheet`, plus the role-named set above) and
+`Motion.adaptive(_:reduceMotion:)` which falls back to a plain crossfade under
+Reduce Motion. `firstAppearPulse()` is the **single** soft pulse for the urgency
+accent — never looping. The hero stat and protein row use
+`.contentTransition(.numericText(value:))`; sheets use `.presentationDetents`.
 
 ## Push notifications & Live Activity (`SetPoint/Push/`, `SetPointWidgets/`)
 

@@ -1,19 +1,26 @@
 import SwiftUI
 
-/// A card surface — soft, warm, low elevation. The app's default container.
+/// A card surface — soft, warm, lifting gently off the paper ground. The app's
+/// default container.
 struct Card<Content: View>: View {
     var tint: Color = Palette.surface
+    var elevation: Elevation = .resting
+    var padding: CGFloat = Space.md - 2
     @ViewBuilder var content: Content
 
     var body: some View {
         content
-            .padding(18)
+            .padding(padding)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(tint, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .strokeBorder(Palette.ink.opacity(0.05))
-            )
+            .background {
+                RoundedRectangle(cornerRadius: Radius.lg, style: .continuous)
+                    .fill(tint)
+                    .elevation(elevation)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: Radius.lg, style: .continuous)
+                            .strokeBorder(Palette.hairline)
+                    )
+            }
     }
 }
 
@@ -35,11 +42,13 @@ struct ActionButton: View {
             .foregroundStyle(kind == .primary ? Color.white : Palette.ink)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 16)
-            .background(
-                kind == .primary ? Palette.accent : Palette.surfaceSunk,
-                in: RoundedRectangle(cornerRadius: 15, style: .continuous)
-            )
+            .background {
+                RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
+                    .fill(kind == .primary ? Palette.accent : Palette.surfaceSunk)
+                    .elevation(kind == .primary && !pressed ? .resting : .flat)
+            }
             .scaleEffect(pressed ? 0.97 : 1)
+            .brightness(pressed && kind == .primary ? -0.04 : 0)
             .animation(Motion.adaptive(Motion.snappy, reduceMotion: reduceMotion), value: pressed)
             .contentShape(Rectangle())
             .gesture(
@@ -57,20 +66,21 @@ struct ManagerNote: View {
     var emphasised = false
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
+        HStack(alignment: .top, spacing: Space.sm) {
             RoundedRectangle(cornerRadius: 2)
                 .fill(emphasised ? Palette.accent : Palette.inkFaint)
                 .frame(width: 3)
             Text(text)
                 .font(Typography.voice(17))
                 .foregroundStyle(Palette.ink)
+                .lineSpacing(2)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            (emphasised ? Palette.accentSoft.opacity(0.5) : Palette.surfaceSunk.opacity(0.6)),
-            in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+            (emphasised ? Palette.accentTint : Palette.surfaceSunk.opacity(0.6)),
+            in: RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
         )
     }
 }
