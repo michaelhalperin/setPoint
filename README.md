@@ -35,7 +35,8 @@ Details and environment setup: [`backend/README.md`](./backend/README.md).
    machine, server-driven cron job ← done (milestone 3)
 4. **Prescription solver** over the staple foods + real APNs (Time Sensitive)
    delivery ← done (milestone 4)
-5. AI logging (photo/text → macros) + manager's voice
+5. **AI meal logging** (text/photo → macros) + AI manager's voice + Sign in with
+   Apple auth ← done (milestone 5)
 6. Home dashboard + settlement view
 7. Privacy policy, account deletion, App Store compliance
 8. Closed TestFlight beta → tune weights → public launch

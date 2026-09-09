@@ -71,7 +71,29 @@ Without `DATABASE_URL` the server still boots; `/api/health` just reports
 | ------ | ----------------- | -------------------------------------------------------- |
 | GET    | `/`               | Service banner                                           |
 | GET    | `/api/health`     | Liveness + `SELECT 1` database check                     |
+| POST   | `/api/auth/apple` | Apple identity token → session JWT (501 until `APPLE_CLIENT_ID` is set) |
+| POST   | `/api/auth/dev`   | Non-production only — mint a session JWT for testing      |
+| POST   | `/api/meals`      | Log a meal (bearer auth). `{text}`/`{image}` → AI-parsed; `{macros}` → stored as-is. Resolves any open check-in |
 | POST   | `/api/cron/score` | Runs the confidence engine. Requires the cron secret.    |
+
+## AI (`src/ai/`, `src/managerVoice/`)
+
+Model choice per plan §7: meal parsing runs constantly → `claude-haiku-4-5`;
+manager's-voice copy runs rarely → `claude-sonnet-5`.
+
+- `ai/parseMeal.ts` — free text or a photo → macros via a forced `record_meal`
+  tool call, then a zod pass that coerces/clamps the model's numbers
+- `managerVoice/ai.ts` — one-sentence check-in copy with tone guardrails (§6, and
+  §3: nothing may read as shaming); **any** failure falls back to deterministic copy
+- `getAnthropic()` returns null when `ANTHROPIC_API_KEY` is unset — meal logging
+  then needs explicit `macros`, and the manager's voice uses the fallback
+
+## Auth (`src/auth/`)
+
+Sign in with Apple (`appleSignIn.ts` — RS256 verification against Apple's JWKS,
+issuer + audience checks) → a SetPoint HS256 session JWT (`session.ts`, 60-day).
+`requireAuth(app)` is the route `preHandler`. The full token-exchange /
+account-linking flow is a later milestone.
 
 ## Confidence engine (`src/engine/`)
 

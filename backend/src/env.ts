@@ -13,6 +13,9 @@ const schema = z.object({
   CRON_SECRET: z.string().min(1),
   JWT_SECRET: z.string().min(1),
 
+  // Sign in with Apple — the app's client id (bundle id or services id).
+  APPLE_CLIENT_ID: z.string().default(''),
+
   // Stubbed integrations — blank until their milestone.
   ANTHROPIC_API_KEY: z.string().default(''),
   APNS_KEY_ID: z.string().default(''),
