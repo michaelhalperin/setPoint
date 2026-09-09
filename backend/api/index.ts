@@ -6,7 +6,13 @@ let appPromise: Promise<import('fastify').FastifyInstance> | undefined;
 export default async function handler(req: IncomingMessage, res: ServerResponse): Promise<void> {
   // Answer the bare root directly — Vercel routes "/" here and something in the
   // emit('request') path chokes on it. Everything real is under /api.
-  if (!req.url || req.url === '/') {
+  let pathname = req.url ?? '/';
+  try {
+    pathname = new URL(req.url ?? '/', 'http://localhost').pathname;
+  } catch {
+    /* keep raw */
+  }
+  if (pathname === '/' || pathname === '') {
     res.statusCode = 200;
     res.setHeader('content-type', 'application/json');
     res.end(JSON.stringify({ name: 'SetPoint API', status: 'ok', api: '/api/health' }));
