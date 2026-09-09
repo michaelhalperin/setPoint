@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 import Security
 
 protocol TokenStore: Sendable {
@@ -7,11 +8,41 @@ protocol TokenStore: Sendable {
     func clear()
 }
 
-/// Session JWT in the Keychain. `kSecAttrAccessibleAfterFirstUnlock` so a
-/// server-driven check-in can still authenticate a background fetch.
-final class KeychainTokenStore: TokenStore, @unchecked Sendable {
+private let log = Logger(subsystem: "com.setpoint.app", category: "auth")
+
+/// Stores the session JWT in the Keychain, falling back to `UserDefaults` when
+/// the Keychain isn't usable — which is the normal case for an **unsigned**
+/// simulator build (`SecItem*` returns `errSecMissingEntitlement`). A signed
+/// build (Xcode with a team, or any real device) uses the Keychain.
+final class SessionTokenStore: TokenStore, @unchecked Sendable {
     private let service = "com.setpoint.app"
     private let account = "session-token"
+    private let defaultsKey = "com.setpoint.app.session-token"
+
+    // MARK: TokenStore
+
+    func read() -> String? {
+        if let fromKeychain = keychainRead() { return fromKeychain }
+        return UserDefaults.standard.string(forKey: defaultsKey)
+    }
+
+    func write(_ token: String) {
+        keychainWrite(token)
+        // Verify the write actually stuck; if not, the Keychain isn't available.
+        if keychainRead() == token {
+            UserDefaults.standard.removeObject(forKey: defaultsKey)
+        } else {
+            log.warning("Keychain unavailable (unsigned build?) — storing session token in UserDefaults")
+            UserDefaults.standard.set(token, forKey: defaultsKey)
+        }
+    }
+
+    func clear() {
+        SecItemDelete(baseQuery as CFDictionary)
+        UserDefaults.standard.removeObject(forKey: defaultsKey)
+    }
+
+    // MARK: Keychain
 
     private var baseQuery: [String: Any] {
         [
@@ -21,34 +52,33 @@ final class KeychainTokenStore: TokenStore, @unchecked Sendable {
         ]
     }
 
-    func read() -> String? {
+    private func keychainRead() -> String? {
         var query = baseQuery
         query[kSecReturnData as String] = true
         query[kSecMatchLimit as String] = kSecMatchLimitOne
 
         var item: CFTypeRef?
-        guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess,
-              let data = item as? Data,
-              let token = String(data: data, encoding: .utf8)
-        else { return nil }
-        return token
+        let status = SecItemCopyMatching(query as CFDictionary, &item)
+        guard status == errSecSuccess, let data = item as? Data else { return nil }
+        return String(data: data, encoding: .utf8)
     }
 
-    func write(_ token: String) {
+    private func keychainWrite(_ token: String) {
         let data = Data(token.utf8)
-        let attributes: [String: Any] = [
-            kSecValueData as String: data,
-            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock,
-        ]
+        let attributes: [String: Any] = [kSecValueData as String: data]
 
-        let status = SecItemUpdate(baseQuery as CFDictionary, attributes as CFDictionary)
-        if status == errSecItemNotFound {
-            SecItemAdd(baseQuery.merging(attributes) { $1 } as CFDictionary, nil)
+        let updateStatus = SecItemUpdate(baseQuery as CFDictionary, attributes as CFDictionary)
+        if updateStatus == errSecItemNotFound {
+            var addQuery = baseQuery
+            addQuery[kSecValueData as String] = data
+            addQuery[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
+            let addStatus = SecItemAdd(addQuery as CFDictionary, nil)
+            if addStatus != errSecSuccess {
+                log.debug("SecItemAdd failed: \(addStatus)")
+            }
+        } else if updateStatus != errSecSuccess {
+            log.debug("SecItemUpdate failed: \(updateStatus)")
         }
-    }
-
-    func clear() {
-        SecItemDelete(baseQuery as CFDictionary)
     }
 }
 

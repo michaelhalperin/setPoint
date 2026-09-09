@@ -29,6 +29,8 @@ final class AuthStore {
         self.session = session
     }
 
+    var hasToken: Bool { tokenStore.read() != nil }
+
     func bootstrap() {
         status = tokenStore.read() == nil ? .signedOut : .signedIn(userId: "")
     }

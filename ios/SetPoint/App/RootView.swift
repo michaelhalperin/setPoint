@@ -19,6 +19,14 @@ struct RootView: View {
             #endif
         }
         .animation(Motion.adaptive(Motion.gentle, reduceMotion: reduceMotion), value: env.auth.status)
+        .task {
+            env.auth.bootstrap()
+            #if DEBUG
+            if CommandLine.arguments.contains("-autoDevSignIn"), !env.auth.hasToken {
+                await env.auth.developerSignIn()
+            }
+            #endif
+        }
     }
 
     @ViewBuilder
@@ -26,7 +34,6 @@ struct RootView: View {
         switch env.auth.status {
         case .loading:
             ProgressView()
-                .task { env.auth.bootstrap() }
         case .signedOut:
             SignInView()
         case .signedIn:

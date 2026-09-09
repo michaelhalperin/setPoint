@@ -8,7 +8,7 @@ final class AppEnvironment {
     let auth: AuthStore
     let api: APIClient
 
-    init(tokenStore: TokenStore = KeychainTokenStore()) {
+    init(tokenStore: TokenStore = SessionTokenStore()) {
         self.auth = AuthStore(tokenStore: tokenStore)
         self.api = APIClient(tokenProvider: { tokenStore.read() })
     }
