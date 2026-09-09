@@ -113,7 +113,11 @@ function baseUser(over: AnyRow = {}): AnyRow {
 
 const sentPushes: PushPayload[] = [];
 const push: PushSender = { send: vi.fn(async (_tokens, payload) => void sentPushes.push(payload)) };
-const voice: ManagerVoice = { checkInMessage: vi.fn(async () => 'Time to eat.') };
+const voice: ManagerVoice = {
+  checkInMessage: vi.fn(async () => 'Time to eat.'),
+  homeNote: vi.fn(async () => 'note'),
+  daySummary: vi.fn(async () => 'summary'),
+};
 
 beforeEach(() => {
   sentPushes.length = 0;

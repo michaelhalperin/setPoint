@@ -74,7 +74,23 @@ Without `DATABASE_URL` the server still boots; `/api/health` just reports
 | POST   | `/api/auth/apple` | Apple identity token → session JWT (501 until `APPLE_CLIENT_ID` is set) |
 | POST   | `/api/auth/dev`   | Non-production only — mint a session JWT for testing      |
 | POST   | `/api/meals`      | Log a meal (bearer auth). `{text}`/`{image}` → AI-parsed; `{macros}` → stored as-is. Resolves any open check-in |
+| GET    | `/api/home`       | Home dashboard — running ledger, goal framing, manager's note, active check-in (bearer auth, §5.2) |
+| GET    | `/api/settlement` | Last 7 settled days + today's live projection + week summary (bearer auth, §5.7) |
 | POST   | `/api/cron/score` | Runs the confidence engine. Requires the cron secret.    |
+| POST   | `/api/cron/settle`| Writes yesterday's `DayOutcome` for every user. Requires the cron secret. |
+
+## Dashboard (`src/dashboard/`)
+
+- `classify.ts` — pure: `classifyDay()` (settled day → ON_TRACK/UNDER/OVER/MISSED),
+  `homeFraming()` (§5.2 — the accent and CTA are reserved for under-eating and
+  apply regardless of goal; going over is quiet and neutral)
+- `home.ts` — `buildHome()`: today's ledger vs. target, framing, the manager's
+  note, and any open check-in with its prescription
+- `settlement.ts` — `buildSettlement()`: the `DayOutcome` window plus a live
+  "today" row and a deterministic week summary
+- `jobs/settleDay.ts` — the daily job (`POST /api/cron/settle`): idempotent
+  upsert of the previous local day's `DayOutcome`, summary line via the manager's
+  voice
 
 ## AI (`src/ai/`, `src/managerVoice/`)
 

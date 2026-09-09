@@ -11,7 +11,11 @@ const ctx: ManagerVoiceContext = {
   prescriptionSummary: '2× Hard-boiled eggs + Banana',
 };
 
-const fallback: ManagerVoice = { checkInMessage: vi.fn(async () => 'FALLBACK LINE') };
+const fallback: ManagerVoice = {
+  checkInMessage: vi.fn(async () => 'FALLBACK LINE'),
+  homeNote: vi.fn(async () => 'FALLBACK NOTE'),
+  daySummary: vi.fn(async () => 'FALLBACK SUMMARY'),
+};
 
 function fakeClient(impl: () => Promise<unknown>): Anthropic {
   return { messages: { create: vi.fn(impl) } } as unknown as Anthropic;
