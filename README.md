@@ -39,5 +39,7 @@ Details and environment setup: [`backend/README.md`](./backend/README.md).
    Apple auth ← done (milestone 5)
 6. **Home dashboard + settlement** read APIs + daily `DayOutcome` job ← done
    (milestone 6)
-7. Privacy policy, account deletion, App Store compliance
-8. Closed TestFlight beta → tune weights → public launch
+7. **Onboarding + settings APIs, account deletion, compliance checklist** ← done
+   (milestone 7)
+8. iOS app (Swift/SwiftUI) — not started
+9. Closed TestFlight beta → tune weights → public launch

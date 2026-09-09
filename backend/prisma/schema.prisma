@@ -116,6 +116,10 @@ model User {
   email    String? @unique
   timezone String  @default("UTC") // IANA, e.g. "America/New_York"
 
+  /// Sign in with Apple refresh token — stored so account deletion can call
+  /// Apple's /auth/revoke (§4). Populated once the auth-code exchange ships.
+  appleRefreshToken String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

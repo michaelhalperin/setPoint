@@ -74,6 +74,10 @@ Without `DATABASE_URL` the server still boots; `/api/health` just reports
 | POST   | `/api/auth/apple` | Apple identity token → session JWT (501 until `APPLE_CLIENT_ID` is set) |
 | POST   | `/api/auth/dev`   | Non-production only — mint a session JWT for testing      |
 | POST   | `/api/meals`      | Log a meal (bearer auth). `{text}`/`{image}` → AI-parsed; `{macros}` → stored as-is. Resolves any open check-in |
+| POST   | `/api/onboarding` | Goal, stats, meal times, quiet hours, safety screening → profile + `SafetyScreening` + restrictions (bearer auth, §3, §5.1) |
+| GET    | `/api/settings`   | Current profile / quiet hours / restrictions / pause / enforcement (bearer auth) |
+| PATCH  | `/api/settings`   | Update quiet hours, meal times, targets, goal, `checkInsPaused`, or replace restrictions |
+| DELETE | `/api/account`    | `{ "confirmation": "delete my account" }` → cascading delete + Apple token revoke (bearer auth, §4) |
 | GET    | `/api/home`       | Home dashboard — running ledger, goal framing, manager's note, active check-in (bearer auth, §5.2) |
 | GET    | `/api/settlement` | Last 7 settled days + today's live projection + week summary (bearer auth, §5.7) |
 | POST   | `/api/cron/score` | Runs the confidence engine. Requires the cron secret.    |
@@ -108,8 +112,23 @@ manager's-voice copy runs rarely → `claude-sonnet-5`.
 
 Sign in with Apple (`appleSignIn.ts` — RS256 verification against Apple's JWKS,
 issuer + audience checks) → a SetPoint HS256 session JWT (`session.ts`, 60-day).
-`requireAuth(app)` is the route `preHandler`. The full token-exchange /
-account-linking flow is a later milestone.
+`requireAuth(app)` is the route `preHandler`. `appleRevoke.ts` calls Apple's
+`/auth/revoke` on account deletion (dormant until the auth-code exchange ships
+and `User.appleRefreshToken` is populated).
+
+## Onboarding & account (`src/onboarding/`, `src/account/`)
+
+- `scoff.ts` (pure) — SCOFF scoring (≥2 → flagged) and `deriveEnforcement()`, the
+  single gate the engine reads
+- `targets.ts` (pure) — Mifflin–St Jeor RMR → calorie target (goal-adjusted),
+  protein target per kg
+- `onboard.ts` — one transactional write of `OnboardingProfile` +
+  `SafetyScreening` + `DietaryRestriction`s + `EscalationState`
+- `settings.ts` — read/patch the same, restrictions replaced as a set
+- `account/deleteAccount.ts` — Apple revoke (best-effort) then `user.delete`
+  (cascades everywhere)
+
+See [`COMPLIANCE.md`](./COMPLIANCE.md) for the App Store / privacy checklist.
 
 ## Confidence engine (`src/engine/`)
 

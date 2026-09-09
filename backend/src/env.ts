@@ -15,6 +15,10 @@ const schema = z.object({
 
   // Sign in with Apple — the app's client id (bundle id or services id).
   APPLE_CLIENT_ID: z.string().default(''),
+  // Sign in with Apple key material (for the client secret used by /auth/revoke).
+  APPLE_TEAM_ID: z.string().default(''),
+  APPLE_KEY_ID: z.string().default(''),
+  APPLE_PRIVATE_KEY: z.string().default(''),
 
   // Stubbed integrations — blank until their milestone.
   ANTHROPIC_API_KEY: z.string().default(''),

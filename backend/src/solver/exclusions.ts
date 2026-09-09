@@ -2,9 +2,11 @@ import type { SolverFood } from './types.js';
 
 const LIFESTYLE_TOKENS = new Set(['vegetarian', 'vegan', 'pescatarian']);
 
-/** Normalize a raw restriction string for matching. */
+/** Normalize a raw restriction string for matching (lowercase, underscores, de-pluralized). */
 export function normalizeToken(raw: string): string {
-  return raw.trim().toLowerCase().replace(/\s+/g, '_');
+  let token = raw.trim().toLowerCase().replace(/\s+/g, '_');
+  if (token.length > 3 && token.endsWith('s') && !token.endsWith('ss')) token = token.slice(0, -1);
+  return token;
 }
 
 /**
