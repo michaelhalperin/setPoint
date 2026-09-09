@@ -8,6 +8,7 @@ import {
   expectedGapHours,
   freshCheckInTier,
   isBiosignalFresh,
+  startOfLocalDay,
   type ConfidenceInput,
   type EscalationDecision,
   type Goal,
@@ -15,6 +16,12 @@ import {
 } from '../engine/index.js';
 import type { ManagerVoice } from '../managerVoice/types.js';
 import type { PushSender } from '../push/types.js';
+import {
+  computePrescriptionTarget,
+  prescribe,
+  prescriptionSummary,
+  type SolverFood,
+} from '../solver/index.js';
 
 export type ScoreConfidenceDeps = {
   prisma: PrismaClient;
@@ -30,6 +37,7 @@ export type ScoreConfidenceSummary = {
   checkInsCreated: number;
   checkInsRedelivered: number;
   checkInsResolved: number;
+  prescriptionsCreated: number;
   misses: number;
   tier3Started: number;
   errors: number;
@@ -45,14 +53,19 @@ const USER_INCLUDE = {
 
 type UserWithRelations = Prisma.UserGetPayload<{ include: typeof USER_INCLUDE }>;
 
+type JobContext = {
+  solverFoods: SolverFood[];
+  foodIdBySlug: Map<string, string>;
+};
+
 /**
  * The server-driven confidence job (plan §2). Runs on Vercel Cron via
- * `POST /api/cron/score`. For each onboarded user it:
- *   1. advances any open check-in through the defer/escalation state machine,
- *   2. if nothing is pending and the user is eligible, scores confidence,
- *   3. fires a check-in when the score clears the threshold.
+ * `POST /api/cron/score`. Per onboarded user:
+ *   1. advance any open check-in through the defer/escalation state machine,
+ *   2. if nothing is pending and the user is eligible, score confidence,
+ *   3. on a firing score, create a check-in + a solver prescription and deliver.
  *
- * All scoring is the deterministic engine — no model calls (§7).
+ * All scoring and prescription selection is deterministic — no model calls (§7).
  */
 export async function runScoreConfidenceJob(
   deps: ScoreConfidenceDeps,
@@ -65,10 +78,27 @@ export async function runScoreConfidenceJob(
     checkInsCreated: 0,
     checkInsRedelivered: 0,
     checkInsResolved: 0,
+    prescriptionsCreated: 0,
     misses: 0,
     tier3Started: 0,
     errors: 0,
     skipped: {},
+  };
+
+  const foodRows = await deps.prisma.foodItem.findMany({ where: { isStaple: true } });
+  const context: JobContext = {
+    solverFoods: foodRows.map((f) => ({
+      slug: f.slug,
+      name: f.name,
+      servingDesc: f.servingDesc,
+      kcal: f.kcal,
+      proteinG: f.proteinG,
+      carbsG: f.carbsG,
+      fatG: f.fatG,
+      tags: f.tags,
+      allergens: f.allergens,
+    })),
+    foodIdBySlug: new Map(foodRows.map((f) => [f.slug, f.id])),
   };
 
   const users = await deps.prisma.user.findMany({
@@ -79,7 +109,7 @@ export async function runScoreConfidenceJob(
 
   for (const user of users) {
     try {
-      await processUser(deps, user, now, summary);
+      await processUser(deps, context, user, now, summary);
     } catch (err) {
       summary.errors += 1;
       console.error(`scoreConfidence: user ${user.id} failed`, err);
@@ -131,6 +161,7 @@ function buildConfidenceInput(
 
 async function processUser(
   deps: ScoreConfidenceDeps,
+  ctx: JobContext,
   user: UserWithRelations,
   now: Date,
   summary: ScoreConfidenceSummary,
@@ -139,13 +170,19 @@ async function processUser(
   if (!profile) return;
 
   const { prisma } = deps;
+  const dayStart = startOfLocalDay(now, user.timezone);
 
-  const [activeCheckIns, lastMeal] = await Promise.all([
+  const [activeCheckIns, lastMeal, todayMeals, restrictions] = await Promise.all([
     prisma.checkIn.findMany({
       where: { userId: user.id, status: { in: ['PENDING', 'DEFERRED'] } },
       orderBy: { createdAt: 'desc' },
     }),
     prisma.meal.findFirst({ where: { userId: user.id }, orderBy: { loggedAt: 'desc' } }),
+    prisma.meal.findMany({
+      where: { userId: user.id, loggedAt: { gte: dayStart } },
+      select: { kcal: true, proteinG: true },
+    }),
+    prisma.dietaryRestriction.findMany({ where: { userId: user.id, isHardExclusion: true } }),
   ]);
 
   const input = buildConfidenceInput(user, lastMeal?.loggedAt ?? null, now);
@@ -169,7 +206,8 @@ async function processUser(
       now,
     });
 
-    blocked = (await applyDecision(deps, user, ci.id, ci.tier, ci.message, decision, now, summary)) || blocked;
+    blocked =
+      (await applyDecision(deps, user, ci.id, ci.message, decision, now, summary)) || blocked;
   }
 
   if (blocked || activeCheckIns.length > 0) {
@@ -214,13 +252,33 @@ async function processUser(
 
   if (!result.fires) return;
 
-  // 4. Fire a check-in.
+  // 4. Solve for a directive prescription (§2, §5.4).
   const tier = freshCheckInTier(escStateOf(user));
+  const target = computePrescriptionTarget({
+    dailyKcalTarget: profile.dailyKcalTarget,
+    consumedKcal: todayMeals.reduce((acc, m) => acc + m.kcal, 0),
+    dailyProteinTargetG: profile.dailyProteinTargetG,
+    consumedProteinG: todayMeals.reduce((acc, m) => acc + m.proteinG, 0),
+  });
+
+  const rx =
+    ctx.solverFoods.length > 0
+      ? prescribe(ctx.solverFoods, {
+          targetKcal: target.targetKcal,
+          targetProteinG: target.targetProteinG,
+          excludedTokens: restrictions.map((r) => r.token),
+          preferLowFriction: tier >= 2,
+        })
+      : null;
+  const summaryLine = rx ? prescriptionSummary(rx) : null;
+
+  // 5. Fire the check-in.
   const message = await deps.voice.checkInMessage({
     tier,
     goal: profile.goal as Goal,
     hoursSinceMeal: input.hoursSinceMeal,
-    kcalGap: null,
+    kcalGap: target.targetKcal,
+    prescriptionSummary: summaryLine,
   });
 
   const checkIn = await prisma.checkIn.create({
@@ -233,6 +291,35 @@ async function processUser(
       deliveredAt: now,
     },
   });
+
+  if (rx) {
+    await prisma.prescription.create({
+      data: {
+        userId: user.id,
+        checkInId: checkIn.id,
+        targetKcal: rx.targetKcal,
+        targetProteinG: rx.targetProteinG,
+        totalKcal: rx.totalKcal,
+        totalProteinG: rx.totalProteinG,
+        totalCarbsG: rx.totalCarbsG,
+        totalFatG: rx.totalFatG,
+        status: 'OFFERED',
+        items: {
+          create: rx.items.map((i) => ({
+            foodItemId: ctx.foodIdBySlug.get(i.slug) ?? null,
+            name: i.name,
+            quantity: i.quantity,
+            unit: 'serving',
+            kcal: i.kcal,
+            proteinG: i.proteinG,
+            carbsG: i.carbsG,
+            fatG: i.fatG,
+          })),
+        },
+      },
+    });
+    summary.prescriptionsCreated += 1;
+  }
 
   await sendPush(deps, user.id, checkIn.id, tier, message);
   await prisma.escalationState.upsert({
@@ -248,7 +335,6 @@ async function applyDecision(
   deps: ScoreConfidenceDeps,
   user: UserWithRelations,
   checkInId: string,
-  currentTier: number,
   message: string | null,
   decision: EscalationDecision,
   now: Date,
@@ -268,7 +354,7 @@ async function applyDecision(
       summary.checkInsResolved += 1;
       return false;
 
-    case 'redeliver': {
+    case 'redeliver':
       await prisma.checkIn.update({
         where: { id: checkInId },
         data: { status: 'PENDING', tier: decision.tier, deferUntil: null, deliveredAt: now },
@@ -276,7 +362,6 @@ async function applyDecision(
       await sendPush(deps, user.id, checkInId, decision.tier, message ?? 'Time to eat.');
       summary.checkInsRedelivered += 1;
       return true;
-    }
 
     case 'miss': {
       await prisma.checkIn.update({

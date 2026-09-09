@@ -4,8 +4,10 @@ export type ManagerVoiceContext = {
   tier: number;
   goal: Goal;
   hoursSinceMeal: number;
-  /** Remaining calories to target for the day, when known. */
+  /** Meal-sized calorie target for right now, when known. */
   kcalGap: number | null;
+  /** The solver's "eat this" line, e.g. "2× Hard-boiled eggs + Banana". */
+  prescriptionSummary?: string | null;
 };
 
 /**

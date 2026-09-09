@@ -1,5 +1,6 @@
 import type { PrismaClient } from '@prisma/client';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { STAPLE_FOODS } from '../data/stapleFoods.js';
 import type { ManagerVoice } from '../managerVoice/types.js';
 import type { PushPayload, PushSender } from '../push/types.js';
 import { runScoreConfidenceJob } from './scoreConfidence.js';
@@ -10,19 +11,31 @@ const hoursAgo = (h: number) => new Date(NOW.getTime() - h * 3_600_000);
 type AnyRow = Record<string, unknown>;
 
 /** Minimal in-memory stand-in for the slice of PrismaClient the job touches. */
-function makeFakePrisma(users: AnyRow[]) {
+function makeFakePrisma(users: AnyRow[], opts: { seedFoods?: boolean } = {}) {
   const checkIns: AnyRow[] = [];
   const confidenceScores: AnyRow[] = [];
   const escalationStates: AnyRow[] = [];
   const escalationConversations: AnyRow[] = [];
   const meals: AnyRow[] = [];
   const pushTokens: AnyRow[] = [];
+  const foodItems: AnyRow[] = [];
+  const dietaryRestrictions: AnyRow[] = [];
+  const prescriptions: AnyRow[] = [];
   let seq = 0;
   const id = (p: string) => `${p}_${(seq += 1)}`;
 
+  if (opts.seedFoods) {
+    for (const f of STAPLE_FOODS) foodItems.push({ id: id('fi'), isStaple: true, ...f });
+  }
+
   const match = (row: AnyRow, where: AnyRow = {}): boolean =>
     Object.entries(where).every(([k, v]) => {
-      if (v && typeof v === 'object' && 'in' in v) return (v.in as unknown[]).includes(row[k]);
+      if (v && typeof v === 'object') {
+        const cond = v as Record<string, unknown>;
+        if ('in' in cond) return (cond.in as unknown[]).includes(row[k]);
+        if ('gte' in cond) return (row[k] as Date) >= (cond.gte as Date);
+        if ('not' in cond) return row[k] !== cond.not;
+      }
       return row[k] === v;
     });
 
@@ -52,7 +65,13 @@ function makeFakePrisma(users: AnyRow[]) {
   });
 
   return {
-    __tables: { checkIns, confidenceScores, escalationStates, escalationConversations },
+    __tables: {
+      checkIns,
+      confidenceScores,
+      escalationStates,
+      escalationConversations,
+      prescriptions,
+    },
     user: {
       findMany: async () => users.filter((u) => u.onboarding != null),
     },
@@ -62,6 +81,9 @@ function makeFakePrisma(users: AnyRow[]) {
     escalationConversation: collection(escalationConversations, 'ec'),
     meal: collection(meals, 'm'),
     pushToken: collection(pushTokens, 'pt'),
+    foodItem: collection(foodItems, 'fi'),
+    dietaryRestriction: collection(dietaryRestrictions, 'dr'),
+    prescription: collection(prescriptions, 'rx'),
   };
 }
 
@@ -74,6 +96,8 @@ function baseUser(over: AnyRow = {}): AnyRow {
       mode: 'BASIC',
       goal: 'DIET',
       completedAt: hoursAgo(500),
+      dailyKcalTarget: 2200,
+      dailyProteinTargetG: 150,
       breakfastMin: 480,
       lunchMin: 780,
       dinnerMin: 1140,
@@ -97,8 +121,8 @@ beforeEach(() => {
 });
 
 describe('runScoreConfidenceJob', () => {
-  it('fires a check-in for an eligible, badly overdue user', async () => {
-    const fake = makeFakePrisma([baseUser()]);
+  it('fires a check-in with a prescription for an eligible, badly overdue user', async () => {
+    const fake = makeFakePrisma([baseUser()], { seedFoods: true });
     // No meals at all → hoursSinceMeal falls back to the 16h cap → basic score saturates.
     const summary = await runScoreConfidenceJob({
       prisma: fake as unknown as PrismaClient,
@@ -109,9 +133,24 @@ describe('runScoreConfidenceJob', () => {
 
     expect(summary.scored).toBe(1);
     expect(summary.checkInsCreated).toBe(1);
+    expect(summary.prescriptionsCreated).toBe(1);
     expect(fake.__tables.checkIns).toHaveLength(1);
     expect(fake.__tables.checkIns[0]).toMatchObject({ status: 'PENDING', tier: 1 });
+    expect(fake.__tables.prescriptions[0]).toMatchObject({ checkInId: fake.__tables.checkIns[0]?.id, status: 'OFFERED' });
     expect(sentPushes).toHaveLength(1);
+  });
+
+  it('still fires (without a prescription) when the food list is empty', async () => {
+    const fake = makeFakePrisma([baseUser()]);
+    const summary = await runScoreConfidenceJob({
+      prisma: fake as unknown as PrismaClient,
+      push,
+      voice,
+      now: NOW,
+    });
+
+    expect(summary.checkInsCreated).toBe(1);
+    expect(summary.prescriptionsCreated).toBe(0);
   });
 
   it('skips a user inside quiet hours without scoring', async () => {

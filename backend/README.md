@@ -92,9 +92,30 @@ the results.
 Weights are v1 starting values, tuned only against beta data (§8) — the formula
 shape never changes. 47 unit tests: `pnpm --filter @setpoint/backend test`.
 
-Push delivery and the check-in copy are behind interfaces (`src/push/`,
-`src/managerVoice/`) with stub implementations until the APNs key (push) and
-`ANTHROPIC_API_KEY` (manager's voice, milestone 5) exist.
+The check-in copy is behind an interface (`src/managerVoice/`) with a
+deterministic stub until `ANTHROPIC_API_KEY` exists (milestone 5).
+
+## Prescription solver (`src/solver/`)
+
+A constraint solver over the curated staple foods — never an LLM (plan §2, §7).
+
+| Module          | Responsibility                                                          |
+| --------------- | --------------------------------------------------------------------- |
+| `exclusions.ts` | hard filter: allergens, lifestyle diets, name matches ("beef", ...)    |
+| `targets.ts`    | day's remaining gap → one meal-sized `targetKcal` / `targetProteinG`   |
+| `prescribe.ts`  | bounded search over 1–3 foods × 1–3 servings; scores calorie fit, protein, fewer items, no-cook; deterministic tie-break |
+
+The job attaches a `Prescription` + `PrescriptionItem`s to every fired check-in
+and the directive line ("2× Hard-boiled eggs + Banana") goes into the push body.
+Staple data lives in `src/data/stapleFoods.ts` (seed and solver share it).
+
+## Push delivery (`src/push/`)
+
+`createPushSender()` returns a real APNs sender when `APNS_KEY_ID`,
+`APNS_TEAM_ID`, `APNS_PRIVATE_KEY` and `APNS_BUNDLE_ID` are all set, otherwise
+the stub. `apns.ts` is a minimal token-auth HTTP/2 client (no dependency) — it
+sends the check-in as a **Time Sensitive** alert (not a critical alert, per §2)
+that deep-links to `setpoint://check-in/<id>`.
 
 Call the cron endpoint locally:
 

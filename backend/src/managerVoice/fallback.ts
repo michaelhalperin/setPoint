@@ -7,12 +7,11 @@ import type { ManagerVoice, ManagerVoiceContext } from './types.js';
  */
 export const fallbackManagerVoice: ManagerVoice = {
   async checkInMessage(ctx: ManagerVoiceContext): Promise<string> {
-    const gap =
-      ctx.kcalGap && ctx.kcalGap > 0 ? ` You're about ${Math.round(ctx.kcalGap)} kcal short today.` : '';
+    const directive = ctx.prescriptionSummary ? ` Try ${ctx.prescriptionSummary}.` : '';
 
     if (ctx.tier <= 1) {
-      return `It's been a while since you ate.${gap} Worth grabbing something now.`;
+      return `It's been a while since you ate.${directive || ' Worth grabbing something now.'}`;
     }
-    return `You're well past your usual meal gap.${gap} Let's get food in — here's a quick option.`;
+    return `You're well past your usual meal gap. Let's get food in now.${directive}`;
   },
 };

@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { getPrisma } from '../db/client.js';
 import { runScoreConfidenceJob } from '../jobs/scoreConfidence.js';
 import { fallbackManagerVoice } from '../managerVoice/fallback.js';
-import { stubPushSender } from '../push/stub.js';
+import { createPushSender } from '../push/factory.js';
 import { env } from '../env.js';
 
 /**
@@ -27,7 +27,7 @@ export async function cronRoutes(app: FastifyInstance): Promise<void> {
   app.post('/score', async (req) => {
     const summary = await runScoreConfidenceJob({
       prisma: getPrisma(),
-      push: stubPushSender,
+      push: createPushSender(),
       voice: fallbackManagerVoice,
     });
     req.log.info(summary, 'cron:score complete');
