@@ -26,7 +26,9 @@ const body = z
       .optional(),
     prescriptionId: z.string().optional(),
   })
-  .refine((b) => b.text || b.image || b.macros, { message: 'provide text, image, or macros' });
+  .refine((b) => b.text || b.image || b.macros || b.prescriptionId, {
+    message: 'provide text, image, macros, or a prescriptionId',
+  });
 
 export async function mealRoutes(app: FastifyInstance): Promise<void> {
   app.addHook('preHandler', requireAuth(app));

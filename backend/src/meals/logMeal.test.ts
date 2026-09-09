@@ -25,6 +25,7 @@ function fakePrisma() {
       return row;
     },
     findMany: async ({ where }: { where?: AnyRow } = {}) => rows.filter((r) => match(r, where)),
+    findFirst: async ({ where }: { where?: AnyRow } = {}) => rows.find((r) => match(r, where)) ?? null,
     update: async ({ where, data }: { where: AnyRow; data: AnyRow }) => {
       const row = rows.find((r) => match(r, where));
       if (row) Object.assign(row, data);
@@ -106,6 +107,25 @@ describe('logMeal', () => {
       prescriptionId: 'rx_1',
     });
     expect(prisma.__tables.prescriptions[0]).toMatchObject({ status: 'ACCEPTED' });
+  });
+
+  it('logs a prescription\'s totals when only prescriptionId is given', async () => {
+    const prisma = fakePrisma();
+    prisma.__tables.prescriptions.push({
+      id: 'rx_2',
+      userId: 'u1',
+      status: 'OFFERED',
+      totalKcal: 620,
+      totalProteinG: 48,
+      totalCarbsG: 55,
+      totalFatG: 14,
+    });
+    const res = await logMeal({ prisma: prisma as unknown as PrismaClient, parseMeal: null }, 'u1', {
+      prescriptionId: 'rx_2',
+    });
+    expect(res.meal).toMatchObject({ kcal: 620, proteinG: 48, source: 'PRESCRIPTION' });
+    expect(prisma.__tables.prescriptions[0]).toMatchObject({ status: 'ACCEPTED' });
+    expect(res.parsed).toBeNull();
   });
 
   it('errors when text logging is attempted with no parser configured', async () => {

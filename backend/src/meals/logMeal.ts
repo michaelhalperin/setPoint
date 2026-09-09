@@ -59,6 +59,15 @@ export async function logMeal(
     };
     source = input.prescriptionId ? 'PRESCRIPTION' : 'MANUAL';
     rawInput = input.text ?? null;
+  } else if (input.prescriptionId) {
+    // "I ate the prescription" — log its totals as-is.
+    const rx = await deps.prisma.prescription.findFirst({
+      where: { id: input.prescriptionId, userId },
+      select: { totalKcal: true, totalProteinG: true, totalCarbsG: true, totalFatG: true },
+    });
+    if (!rx) throw new EmptyMealError('prescription not found');
+    macros = { kcal: rx.totalKcal, proteinG: rx.totalProteinG, carbsG: rx.totalCarbsG, fatG: rx.totalFatG };
+    source = 'PRESCRIPTION';
   } else if (input.text || input.image) {
     if (!deps.parseMeal) {
       throw new MealParsingUnavailableError('AI meal parsing is not configured; send explicit macros');
