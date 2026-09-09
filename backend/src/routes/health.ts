@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import { getAnthropic } from '../ai/client.js';
 import { getPrisma } from '../db/client.js';
 
 export async function healthRoutes(app: FastifyInstance): Promise<void> {
@@ -18,6 +19,9 @@ export async function healthRoutes(app: FastifyInstance): Promise<void> {
     return {
       status: db === 'up' ? 'ok' : 'degraded',
       db,
+      // Whether an ANTHROPIC_API_KEY is configured (does not call the API).
+      // "fallback" means AI features run on their deterministic paths.
+      ai: getAnthropic() ? 'configured' : 'fallback',
       ts: new Date().toISOString(),
     };
   });
