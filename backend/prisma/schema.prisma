@@ -25,6 +25,7 @@ datasource db {
 enum Goal {
   BULK
   DIET
+  MAINTAIN
 }
 
 /// BASIC = no wearable (self-report + meal-gap heuristics).
@@ -131,6 +132,7 @@ model User {
   pushTokens              PushToken[]
   restrictions            DietaryRestriction[]
   meals                   Meal[]
+  weightEntries           WeightEntry[]
   biosignalReadings       BiosignalReading[]
   confidenceScores        ConfidenceScore[]
   checkIns                CheckIn[]
@@ -176,7 +178,14 @@ model OnboardingProfile {
   weightKg      Float?
   activityLevel ActivityLevel @default(MODERATE)
 
-  // Target snapshot; recomputed when stats change.
+  // Weight goal (§5.1, M16). BULK/DIET carry a target and a pace; MAINTAIN
+  // neither. `paceKgPerWeek` is an unsigned magnitude — direction is the goal.
+  startWeightKg  Float?
+  targetWeightKg Float?
+  paceKgPerWeek  Float     @default(0.25)
+  goalStartedAt  DateTime?
+
+  // Target snapshot; recomputed when stats, goal, target, or pace change.
   dailyKcalTarget     Int
   dailyProteinTargetG Int?
 
@@ -241,6 +250,27 @@ model DietaryRestriction {
 
   @@unique([userId, token])
   @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Weight log (§5.1, M16) — the weekly signal that drives goal progress and the
+// auto-switch to MAINTAIN. One entry per measurement; the app sources these
+// from a manual weigh-in or a HealthKit body-mass read.
+// ---------------------------------------------------------------------------
+
+model WeightEntry {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  weightKg   Float
+  measuredAt DateTime
+  source     String   @default("manual") // "manual" | "healthkit"
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, measuredAt])
+  @@index([userId, measuredAt])
 }
 
 // ---------------------------------------------------------------------------

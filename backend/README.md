@@ -82,6 +82,8 @@ Without `DATABASE_URL` the server still boots; `/api/health` just reports
 | POST   | `/api/checkins/:id/conversation` | `{ message }` → the manager's reply; lands on an `outcome` (`ADJUST_PLAN` / `PAUSE_CHECKINS` / `SUGGEST_PROFESSIONAL`) then `resolved`. `PAUSE_CHECKINS` sets `escalationState.checkInsPaused` |
 | POST   | `/api/push-tokens` / `DELETE /api/push-tokens/:token` | register/unregister an APNs token (`kind: alert \| live_activity_start`) |
 | POST   | `/api/biosignals` | `{ hrvDeviation, rhrDeviation? }` — the app's on-device z-scores (§4) → `BiosignalState` |
+| POST   | `/api/weight`     | `{ weightKg, measuredAt?, source? }` — a weigh-in. Reaching the goal flips it to `MAINTAIN` and returns fresh targets (`goalReached`) |
+| GET    | `/api/weight`     | Recent `WeightEntry` rows (`?limit`, default 60) for a weight history view |
 | POST   | `/api/onboarding` | Goal, stats, meal times, quiet hours, safety screening → profile + `SafetyScreening` + restrictions (bearer auth, §3, §5.1) |
 | GET    | `/api/settings`   | Current profile / quiet hours / restrictions / pause / enforcement (bearer auth) |
 | PATCH  | `/api/settings`   | Update quiet hours, meal times, targets, goal, `checkInsPaused`, or replace restrictions |
@@ -99,7 +101,24 @@ Without `DATABASE_URL` the server still boots; `/api/health` just reports
 - `home.ts` — `buildHome()`: today's ledger vs. target, framing, the manager's
   note, and any open check-in with its prescription
 - `settlement.ts` — `buildSettlement()`: the `DayOutcome` window plus a live
-  "today" row and a deterministic week summary
+  "today" row, a deterministic week summary, and (M16) the `weightGoal` block —
+  progress toward `targetWeightKg` from the latest `WeightEntry`, pace status,
+  ETA, and a `needsWeighIn` flag when the last weigh-in is over a week old
+
+## Weight goals (`src/weight/`, `src/onboarding/`) — M16
+
+- Onboarding captures `targetWeightKg` + `paceKgPerWeek` (unsigned; direction is
+  the goal). `targets.ts` turns the pace into the daily surplus/deficit
+  (`paceToKcalDelta`, ~7700 kcal/kg) and `clampPaceKgPerWeek` caps it — a diet at
+  0.75 %/wk of bodyweight, a bulk at 0.5 kg/wk. `MAINTAIN` is a third goal with a
+  neutral target.
+- `weight/progress.ts` — pure: kg changed / remaining, fraction, `ahead`/
+  `on_pace`/`behind`/`reached` vs the planned pace, ETA in weeks.
+- `weight/logWeight.ts` — a weigh-in upserts a `WeightEntry`; if it reaches the
+  target the goal auto-switches to `MAINTAIN` and the daily targets are recomputed
+  with no deficit.
+- `onboarding/recompute.ts` — `deriveTargets()`, shared by onboarding, settings
+  (goal/target/pace edits re-anchor and recompute), and the auto-maintenance flip.
 - `jobs/settleDay.ts` — the daily job (`POST /api/cron/settle`): idempotent
   upsert of the previous local day's `DayOutcome`, summary line via the manager's
   voice

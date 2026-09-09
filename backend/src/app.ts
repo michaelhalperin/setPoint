@@ -12,6 +12,7 @@ import { dashboardRoutes } from './routes/dashboard.js';
 import { healthRoutes } from './routes/health.js';
 import { mealRoutes } from './routes/meals.js';
 import { pushTokenRoutes } from './routes/pushTokens.js';
+import { weightRoutes } from './routes/weight.js';
 
 export async function buildApp(): Promise<FastifyInstance> {
   // pino-pretty (a devDependency, loaded in a worker thread) is opt-in via
@@ -51,6 +52,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(checkInRoutes, { prefix: '/api/checkins' });
   await app.register(biosignalRoutes, { prefix: '/api/biosignals' });
   await app.register(pushTokenRoutes, { prefix: '/api/push-tokens' });
+  await app.register(weightRoutes, { prefix: '/api/weight' });
   await app.register(accountRoutes, { prefix: '/api' });
   await app.register(dashboardRoutes, { prefix: '/api' });
   await app.register(cronRoutes, { prefix: '/api/cron' });

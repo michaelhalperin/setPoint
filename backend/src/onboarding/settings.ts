@@ -2,6 +2,8 @@ import type { PrismaClient } from '@prisma/client';
 import type { Goal } from '../engine/types.js';
 import { normalizeToken } from '../solver/exclusions.js';
 import { OnboardingIncompleteError } from '../dashboard/home.js';
+import { deriveTargets } from './recompute.js';
+import { clampPaceKgPerWeek } from './targets.js';
 
 export type SettingsView = {
   goal: Goal;
@@ -9,6 +11,10 @@ export type SettingsView = {
   timezone: string;
   dailyKcalTarget: number;
   dailyProteinTargetG: number | null;
+  targetWeightKg: number | null;
+  paceKgPerWeek: number;
+  startWeightKg: number | null;
+  currentWeightKg: number | null;
   mealTimes: { breakfastMin: number; lunchMin: number; dinnerMin: number };
   quietHours: { startMin: number; endMin: number };
   checkInsPaused: boolean;
@@ -19,6 +25,8 @@ export type SettingsView = {
 
 export type SettingsPatch = {
   goal?: Goal;
+  targetWeightKg?: number | null;
+  paceKgPerWeek?: number;
   dailyKcalTarget?: number;
   dailyProteinTargetG?: number | null;
   mealTimes?: { breakfastMin: number; lunchMin: number; dinnerMin: number };
@@ -39,15 +47,82 @@ export async function getSettings(
 }
 
 export async function updateSettings(
-  deps: { prisma: PrismaClient },
+  deps: { prisma: PrismaClient; now?: Date },
   userId: string,
   patch: SettingsPatch,
 ): Promise<SettingsView> {
   const { prisma } = deps;
+  const now = deps.now ?? new Date();
 
   await prisma.$transaction(async (tx) => {
+    const profile = await tx.onboardingProfile.findUnique({ where: { userId } });
+    if (!profile) throw new OnboardingIncompleteError('onboarding not complete');
+
     const profileData: Record<string, unknown> = {};
-    if (patch.goal) profileData.goal = patch.goal;
+
+    // --- Weight goal (M16) ------------------------------------------------
+    const goalChanged = patch.goal != null && patch.goal !== profile.goal;
+    const nextGoal = (patch.goal ?? profile.goal) as Goal;
+    const weightGoalTouched =
+      goalChanged || patch.targetWeightKg !== undefined || patch.paceKgPerWeek !== undefined;
+
+    if (weightGoalTouched) {
+      if (nextGoal === 'MAINTAIN') {
+        profileData.goal = 'MAINTAIN';
+        profileData.targetWeightKg = null;
+        profileData.paceKgPerWeek = 0;
+        profileData.goalStartedAt = null;
+      } else {
+        const latest = await tx.weightEntry.findFirst({
+          where: { userId },
+          orderBy: { measuredAt: 'desc' },
+        });
+        const currentWeight = latest?.weightKg ?? profile.weightKg ?? null;
+        const pace = clampPaceKgPerWeek(
+          nextGoal,
+          currentWeight,
+          patch.paceKgPerWeek ?? profile.paceKgPerWeek,
+        );
+        const target =
+          patch.targetWeightKg !== undefined
+            ? patch.targetWeightKg
+            : (profile.targetWeightKg ?? null);
+
+        profileData.goal = nextGoal;
+        profileData.paceKgPerWeek = pace;
+        profileData.targetWeightKg = target;
+
+        // Switching goal (or setting one up for the first time) re-anchors
+        // progress to the current weight; a pace/target tweak keeps the anchor.
+        if (goalChanged || profile.startWeightKg == null || profile.goalStartedAt == null) {
+          profileData.startWeightKg = currentWeight;
+          profileData.goalStartedAt = now;
+        }
+
+        // Recompute the daily targets from the new goal/pace unless the patch
+        // sets them explicitly below.
+        if (patch.dailyKcalTarget == null) {
+          const derived = deriveTargets(
+            {
+              sex: profile.sex,
+              birthDate: profile.birthDate,
+              heightCm: profile.heightCm,
+              weightKg: currentWeight,
+              activityLevel: profile.activityLevel,
+              goal: nextGoal,
+              paceKgPerWeek: pace,
+            },
+            now,
+          );
+          if (derived.dailyKcalTarget != null) profileData.dailyKcalTarget = derived.dailyKcalTarget;
+          if (patch.dailyProteinTargetG === undefined && derived.dailyProteinTargetG != null) {
+            profileData.dailyProteinTargetG = derived.dailyProteinTargetG;
+          }
+        }
+      }
+    }
+
+    // --- Explicit overrides & other fields ------------------------------
     if (patch.dailyKcalTarget != null) profileData.dailyKcalTarget = patch.dailyKcalTarget;
     if (patch.dailyProteinTargetG !== undefined) profileData.dailyProteinTargetG = patch.dailyProteinTargetG;
     if (patch.mealTimes) {
@@ -89,7 +164,13 @@ type UserWithSettings = NonNullable<Awaited<ReturnType<typeof loadForView>>>;
 function loadForView(prisma: PrismaClient, userId: string) {
   return prisma.user.findUnique({
     where: { id: userId },
-    include: { onboarding: true, safetyScreening: true, escalationState: true, restrictions: true },
+    include: {
+      onboarding: true,
+      safetyScreening: true,
+      escalationState: true,
+      restrictions: true,
+      weightEntries: { orderBy: { measuredAt: 'desc' }, take: 1 },
+    },
   });
 }
 
@@ -101,6 +182,10 @@ function toView(user: UserWithSettings): SettingsView {
     timezone: user.timezone,
     dailyKcalTarget: p.dailyKcalTarget,
     dailyProteinTargetG: p.dailyProteinTargetG,
+    targetWeightKg: p.targetWeightKg,
+    paceKgPerWeek: p.paceKgPerWeek,
+    startWeightKg: p.startWeightKg,
+    currentWeightKg: user.weightEntries[0]?.weightKg ?? p.weightKg ?? null,
     mealTimes: { breakfastMin: p.breakfastMin, lunchMin: p.lunchMin, dinnerMin: p.dinnerMin },
     quietHours: { startMin: p.quietHoursStartMin, endMin: p.quietHoursEndMin },
     checkInsPaused: user.escalationState?.checkInsPaused ?? false,

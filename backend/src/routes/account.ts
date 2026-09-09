@@ -20,7 +20,7 @@ const scoff = z.object({
 const restriction = z.object({ label: z.string().min(1).max(80), source: z.string().optional() });
 
 const onboardingBody = z.object({
-  goal: z.enum(['BULK', 'DIET']),
+  goal: z.enum(['BULK', 'DIET', 'MAINTAIN']),
   mode: z.enum(['BASIC', 'SMART']),
   timezone: z.string().optional(),
   sex: z.enum(['MALE', 'FEMALE', 'UNSPECIFIED']).optional(),
@@ -28,6 +28,8 @@ const onboardingBody = z.object({
   heightCm: z.number().positive().max(260).optional(),
   weightKg: z.number().positive().max(400).optional(),
   activityLevel: z.enum(['SEDENTARY', 'LIGHT', 'MODERATE', 'ACTIVE', 'VERY_ACTIVE']).optional(),
+  targetWeightKg: z.number().positive().max(400).optional(),
+  paceKgPerWeek: z.number().positive().max(2).optional(),
   dailyKcalTarget: z.number().int().min(800).max(8000).optional(),
   dailyProteinTargetG: z.number().int().min(0).max(400).optional(),
   mealTimes: mealTimes.optional(),
@@ -42,7 +44,9 @@ const onboardingBody = z.object({
 
 const settingsPatch = z
   .object({
-    goal: z.enum(['BULK', 'DIET']).optional(),
+    goal: z.enum(['BULK', 'DIET', 'MAINTAIN']).optional(),
+    targetWeightKg: z.number().positive().max(400).nullable().optional(),
+    paceKgPerWeek: z.number().positive().max(2).optional(),
     dailyKcalTarget: z.number().int().min(800).max(8000).optional(),
     dailyProteinTargetG: z.number().int().min(0).max(400).nullable().optional(),
     mealTimes: mealTimes.optional(),

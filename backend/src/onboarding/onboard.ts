@@ -3,6 +3,7 @@ import type { Goal } from '../engine/types.js';
 import { normalizeToken } from '../solver/exclusions.js';
 import {
   ageFromBirthDate,
+  clampPaceKgPerWeek,
   computeCalorieTarget,
   computeProteinTarget,
   type ActivityLevel,
@@ -26,6 +27,10 @@ export type OnboardingInput = {
   weightKg?: number;
   activityLevel?: ActivityLevel;
 
+  /** Weight goal (M16). Ignored for MAINTAIN. Pace is an unsigned kg/week. */
+  targetWeightKg?: number;
+  paceKgPerWeek?: number;
+
   /** Explicit override; otherwise computed from stats. Required when stats are absent. */
   dailyKcalTarget?: number;
   dailyProteinTargetG?: number;
@@ -44,6 +49,8 @@ export type OnboardingInput = {
 export type OnboardingResult = {
   dailyKcalTarget: number;
   dailyProteinTargetG: number | null;
+  targetWeightKg: number | null;
+  paceKgPerWeek: number;
   enforcementEnabled: boolean;
   enforcementDisabledReason: string | null;
 };
@@ -65,6 +72,14 @@ export async function runOnboarding(
   const hasStats =
     input.weightKg != null && input.heightCm != null && input.birthDate != null && input.activityLevel != null;
 
+  // Weight goal (M16): a clamped pace drives the surplus/deficit; MAINTAIN and
+  // an unset goal weight leave it neutral.
+  const paceKgPerWeek = clampPaceKgPerWeek(input.goal, input.weightKg ?? null, input.paceKgPerWeek ?? 0.25);
+  const targetWeightKg =
+    input.goal === 'MAINTAIN' ? null : (input.targetWeightKg ?? null);
+  const startWeightKg = input.goal === 'MAINTAIN' ? null : (input.weightKg ?? null);
+  const goalStartedAt = input.goal === 'MAINTAIN' ? null : now;
+
   let dailyKcalTarget: number;
   let dailyProteinTargetG: number | null;
 
@@ -76,7 +91,7 @@ export async function runOnboarding(
       ageYears: ageFromBirthDate(new Date(input.birthDate!), now),
       activityLevel: input.activityLevel!,
     };
-    dailyKcalTarget = input.dailyKcalTarget ?? computeCalorieTarget(stats, input.goal);
+    dailyKcalTarget = input.dailyKcalTarget ?? computeCalorieTarget(stats, input.goal, { paceKgPerWeek });
     dailyProteinTargetG = input.dailyProteinTargetG ?? computeProteinTarget(input.weightKg!, input.goal);
   } else if (input.dailyKcalTarget != null) {
     dailyKcalTarget = input.dailyKcalTarget;
@@ -110,6 +125,10 @@ export async function runOnboarding(
         heightCm: input.heightCm ?? null,
         weightKg: input.weightKg ?? null,
         activityLevel: input.activityLevel ?? 'MODERATE',
+        startWeightKg,
+        targetWeightKg,
+        paceKgPerWeek,
+        goalStartedAt,
         dailyKcalTarget,
         dailyProteinTargetG,
         breakfastMin: mealTimes.breakfastMin,
@@ -122,6 +141,10 @@ export async function runOnboarding(
       update: {
         goal: input.goal,
         mode: input.mode,
+        startWeightKg,
+        targetWeightKg,
+        paceKgPerWeek,
+        goalStartedAt,
         dailyKcalTarget,
         dailyProteinTargetG,
         breakfastMin: mealTimes.breakfastMin,
@@ -132,6 +155,15 @@ export async function runOnboarding(
         completedAt: now,
       },
     });
+
+    // Seed the weight log with the starting weight so progress has an anchor.
+    if (input.weightKg != null) {
+      await tx.weightEntry.upsert({
+        where: { userId_measuredAt: { userId, measuredAt: now } },
+        create: { userId, weightKg: Math.round(input.weightKg * 10) / 10, measuredAt: now, source: 'manual' },
+        update: {},
+      });
+    }
 
     await tx.safetyScreening.upsert({
       where: { userId },
@@ -176,6 +208,8 @@ export async function runOnboarding(
   return {
     dailyKcalTarget,
     dailyProteinTargetG,
+    targetWeightKg,
+    paceKgPerWeek,
     enforcementEnabled: enforcement.enforcementEnabled,
     enforcementDisabledReason: enforcement.enforcementDisabledReason,
   };

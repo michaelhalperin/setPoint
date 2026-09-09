@@ -3,7 +3,7 @@
 
 export type Mode = 'BASIC' | 'SMART';
 
-export type Goal = 'BULK' | 'DIET';
+export type Goal = 'BULK' | 'DIET' | 'MAINTAIN';
 
 export const clamp = (value: number, lo: number, hi: number): number =>
   Math.min(hi, Math.max(lo, value));

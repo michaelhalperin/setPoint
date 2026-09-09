@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   ageFromBirthDate,
+  clampPaceKgPerWeek,
   computeCalorieTarget,
   computeProteinTarget,
   mifflinStJeorRmr,
+  paceToKcalDelta,
   type BodyStats,
 } from './targets.js';
 
@@ -45,9 +47,31 @@ describe('computeCalorieTarget', () => {
 });
 
 describe('computeProteinTarget', () => {
-  it('is higher per kg on a diet than a bulk', () => {
+  it('is higher per kg on a diet than a bulk, lower for maintenance', () => {
     expect(computeProteinTarget(80, 'DIET')).toBe(160);
     expect(computeProteinTarget(80, 'BULK')).toBe(144);
+    expect(computeProteinTarget(80, 'MAINTAIN')).toBe(128);
+  });
+});
+
+describe('pace (M16)', () => {
+  it('paceToKcalDelta is a signed daily delta, zero for maintenance', () => {
+    expect(paceToKcalDelta('DIET', 0.5)).toBe(-Math.round((0.5 * 7700) / 7)); // -550
+    expect(paceToKcalDelta('BULK', 0.25)).toBe(Math.round((0.25 * 7700) / 7)); // +275
+    expect(paceToKcalDelta('MAINTAIN', 1)).toBe(0);
+  });
+
+  it('clampPaceKgPerWeek caps a diet at 0.75%/wk of bodyweight and a bulk at 0.5', () => {
+    expect(clampPaceKgPerWeek('DIET', 80, 5)).toBeCloseTo(0.6); // 80 * 0.0075
+    expect(clampPaceKgPerWeek('BULK', 80, 5)).toBe(0.5);
+    expect(clampPaceKgPerWeek('DIET', 80, 0)).toBe(0.1); // floored, never zero for a real goal
+    expect(clampPaceKgPerWeek('MAINTAIN', 80, 0.5)).toBe(0);
+  });
+
+  it('computeCalorieTarget derives the deficit from pace when given', () => {
+    const flat = computeCalorieTarget(stats, 'DIET');
+    const gentle = computeCalorieTarget(stats, 'DIET', { paceKgPerWeek: 0.25 });
+    expect(gentle).toBeGreaterThan(flat); // smaller deficit than the -400 fallback
   });
 });
 

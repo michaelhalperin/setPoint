@@ -13,17 +13,27 @@ function fakePrisma(user: AnyRow | null) {
     __state: state,
     user: {
       findUnique: async () =>
-        state.user ? { ...state.user, restrictions: state.restrictions } : null,
+        state.user
+          ? {
+              ...state.user,
+              restrictions: state.restrictions,
+              weightEntries: (state.user.weightEntries as AnyRow[]) ?? [],
+            }
+          : null,
       update: async ({ data }: { data: AnyRow }) => {
         if (state.user) Object.assign(state.user, data);
         return state.user;
       },
     },
     onboardingProfile: {
+      findUnique: async () => ((state.user as AnyRow)?.onboarding as AnyRow) ?? null,
       update: async ({ data }: { data: AnyRow }) => {
         Object.assign((state.user as AnyRow).onboarding as AnyRow, data);
         return (state.user as AnyRow).onboarding;
       },
+    },
+    weightEntry: {
+      findFirst: async () => ((state.user as AnyRow)?.weightEntries as AnyRow[])?.[0] ?? null,
     },
     escalationState: {
       upsert: async ({ create, update }: { create: AnyRow; update: AnyRow }) => {

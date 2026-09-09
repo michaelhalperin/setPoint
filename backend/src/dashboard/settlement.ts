@@ -1,5 +1,6 @@
 import type { PrismaClient } from '@prisma/client';
 import { localDateISO, shiftDateISO, startOfLocalDay, type Goal } from '../engine/index.js';
+import { computeWeightProgress, type PaceStatus } from '../weight/progress.js';
 import { classifyDay, type DayKind } from './classify.js';
 import { OnboardingIncompleteError } from './home.js';
 
@@ -16,6 +17,22 @@ export type SettlementDay = {
   summaryLine: string | null;
 };
 
+export type WeightGoalView = {
+  goal: Goal;
+  startWeightKg: number | null;
+  targetWeightKg: number | null;
+  currentWeightKg: number | null;
+  changedKg: number | null;
+  remainingKg: number | null;
+  totalKg: number | null;
+  fractionComplete: number | null;
+  status: PaceStatus;
+  etaWeeks: number | null;
+  lastWeighInAt: string | null;
+  /** No weigh-in in the last week — prompt for one. */
+  needsWeighIn: boolean;
+};
+
 export type SettlementView = {
   days: SettlementDay[];
   today: {
@@ -26,6 +43,8 @@ export type SettlementView = {
     provisional: true;
   };
   weekSummary: string;
+  /** Null when the user has no weight goal (MAINTAIN or none set). */
+  weightGoal: WeightGoalView | null;
 };
 
 const WINDOW_DAYS = 7;
@@ -36,12 +55,16 @@ export async function buildSettlement(deps: SettlementDeps, userId: string): Pro
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    include: { onboarding: true },
+    include: {
+      onboarding: true,
+      weightEntries: { orderBy: { measuredAt: 'desc' }, take: 1 },
+    },
   });
   if (!user?.onboarding) throw new OnboardingIncompleteError('onboarding not complete');
 
-  const goal = user.onboarding.goal as Goal;
-  const targetKcal = user.onboarding.dailyKcalTarget;
+  const profile = user.onboarding;
+  const goal = profile.goal as Goal;
+  const targetKcal = profile.dailyKcalTarget;
 
   const todayISO = localDateISO(now, user.timezone);
   const windowStartISO = shiftDateISO(todayISO, -(WINDOW_DAYS - 1));
@@ -76,6 +99,56 @@ export async function buildSettlement(deps: SettlementDeps, userId: string): Pro
       provisional: true,
     },
     weekSummary: weekSummary(days, goal),
+    weightGoal: buildWeightGoal(profile, user.weightEntries[0] ?? null, now),
+  };
+}
+
+const WEIGH_IN_STALE_MS = 7 * 24 * 3_600_000;
+
+function buildWeightGoal(
+  profile: {
+    goal: string;
+    startWeightKg: number | null;
+    targetWeightKg: number | null;
+    paceKgPerWeek: number;
+    goalStartedAt: Date | null;
+    weightKg: number | null;
+  },
+  latest: { weightKg: number; measuredAt: Date } | null,
+  now: Date,
+): WeightGoalView | null {
+  const goal = profile.goal as Goal;
+  if (goal === 'MAINTAIN') return null;
+  if (profile.targetWeightKg == null) return null;
+
+  const currentWeightKg = latest?.weightKg ?? profile.startWeightKg ?? profile.weightKg ?? null;
+  const progress = computeWeightProgress({
+    goal,
+    startWeightKg: profile.startWeightKg,
+    targetWeightKg: profile.targetWeightKg,
+    currentWeightKg,
+    paceKgPerWeek: profile.paceKgPerWeek,
+    goalStartedAt: profile.goalStartedAt,
+    now,
+  });
+
+  const lastWeighInAt = latest?.measuredAt ?? null;
+  const needsWeighIn =
+    lastWeighInAt == null || now.getTime() - lastWeighInAt.getTime() > WEIGH_IN_STALE_MS;
+
+  return {
+    goal,
+    startWeightKg: profile.startWeightKg,
+    targetWeightKg: profile.targetWeightKg,
+    currentWeightKg,
+    changedKg: progress?.changedKg ?? null,
+    remainingKg: progress?.remainingKg ?? null,
+    totalKg: progress?.totalKg ?? null,
+    fractionComplete: progress?.fractionComplete ?? null,
+    status: progress?.status ?? 'unknown',
+    etaWeeks: progress?.etaWeeks ?? null,
+    lastWeighInAt: lastWeighInAt?.toISOString() ?? null,
+    needsWeighIn,
   };
 }
 
@@ -88,9 +161,9 @@ function weekSummary(days: SettlementDay[], goal: Goal): string {
 
   if (onTrack >= days.length - 1) return `${onTrack} of ${days.length} days on target. That's the pattern to hold.`;
   if (missed + under >= Math.ceil(days.length / 2)) {
-    return goal === 'BULK'
-      ? `Under target more days than not this week — the gain needs the extra food.`
-      : `Coming up short most days this week — let's get the floor up.`;
+    if (goal === 'BULK') return `Under target more days than not this week — the gain needs the extra food.`;
+    if (goal === 'MAINTAIN') return `Under your maintenance line most days this week — worth topping up.`;
+    return `Coming up short most days this week — let's get the floor up.`;
   }
   return `${onTrack} of ${days.length} days on target. Some ground to make up, nothing dramatic.`;
 }

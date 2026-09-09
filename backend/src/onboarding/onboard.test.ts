@@ -10,6 +10,7 @@ function fakePrisma(seed: { onboarding?: AnyRow } = {}) {
     safetyScreening: [] as AnyRow[],
     dietaryRestriction: [] as AnyRow[],
     escalationState: [] as AnyRow[],
+    weightEntry: [] as AnyRow[],
     user: [{ id: 'u1', timezone: 'UTC' }] as AnyRow[],
   };
 
@@ -48,6 +49,12 @@ function fakePrisma(seed: { onboarding?: AnyRow } = {}) {
     dietaryRestriction: coll(store.dietaryRestriction, 'userId'),
     escalationState: coll(store.escalationState, 'userId'),
     user: coll(store.user, 'id'),
+    weightEntry: {
+      upsert: async ({ create }: { create: AnyRow }) => {
+        store.weightEntry.push(create);
+        return create;
+      },
+    },
     $transaction: async (fn: (tx: unknown) => Promise<unknown>) => fn(prisma),
   };
   return prisma as unknown as PrismaClient & { __store: typeof store };
