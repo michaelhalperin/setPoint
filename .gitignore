@@ -13,6 +13,14 @@ dist/
 # test / coverage
 coverage/
 
+# iOS / Xcode
+ios/build/
+ios/DerivedData/
+**/*.xcodeproj/xcuserdata/
+**/*.xcodeproj/project.xcworkspace/xcuserdata/
+**/xcuserdata/
+*.xcuserstate
+
 # misc
 *.log
 .DS_Store

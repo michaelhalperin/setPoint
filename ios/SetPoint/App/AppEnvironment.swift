@@ -1,0 +1,19 @@
+import Foundation
+import Observation
+
+/// Lightweight DI container handed down through the SwiftUI environment.
+@MainActor
+@Observable
+final class AppEnvironment {
+    let auth: AuthStore
+    let api: APIClient
+
+    init(tokenStore: TokenStore = KeychainTokenStore()) {
+        self.auth = AuthStore(tokenStore: tokenStore)
+        self.api = APIClient(tokenProvider: { tokenStore.read() })
+    }
+
+    static func preview() -> AppEnvironment {
+        AppEnvironment(tokenStore: InMemoryTokenStore(token: "preview-token"))
+    }
+}

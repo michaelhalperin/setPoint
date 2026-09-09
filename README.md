@@ -12,8 +12,11 @@ See [`app-plan-animation.md`](./app-plan-animation.md) for the full product plan
 setPoint/
 ├── app-plan-animation.md   Product plan (source of truth)
 ├── backend/                Node + Fastify + Prisma API and confidence engine
-└── ios/                    Swift/SwiftUI app (not started yet)
+└── ios/                    Swift/SwiftUI app (XcodeGen project)
 ```
+
+The backend is a pnpm workspace; the iOS app is a separate XcodeGen project — see
+[`ios/README.md`](./ios/README.md).
 
 This is a pnpm workspace. Node 22+, pnpm 11+.
 
@@ -41,5 +44,6 @@ Details and environment setup: [`backend/README.md`](./backend/README.md).
    (milestone 6)
 7. **Onboarding + settings APIs, account deletion, compliance checklist** ← done
    (milestone 7)
-8. iOS app (Swift/SwiftUI) — not started
+8. **iOS app scaffold** — SwiftUI project, design system + motion, networking,
+   Sign in with Apple, Home screen ← in progress (milestone 8)
 9. Closed TestFlight beta → tune weights → public launch
