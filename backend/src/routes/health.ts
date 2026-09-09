@@ -2,11 +2,9 @@ import type { FastifyInstance } from 'fastify';
 import { getPrisma } from '../db/client.js';
 
 export async function healthRoutes(app: FastifyInstance): Promise<void> {
-  app.get('/', async () => ({
-    name: 'SetPoint API',
-    status: 'ok',
-    docs: 'see backend/README.md',
-  }));
+  const banner = async () => ({ name: 'SetPoint API', status: 'ok', docs: 'see backend/README.md' });
+  app.get('/', banner);
+  app.get('/api', banner);
 
   app.get('/api/health', async () => {
     let db: 'up' | 'down' = 'down';
