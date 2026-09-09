@@ -4,6 +4,15 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 let appPromise: Promise<import('fastify').FastifyInstance> | undefined;
 
 export default async function handler(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  // Answer the bare root directly — Vercel routes "/" here and something in the
+  // emit('request') path chokes on it. Everything real is under /api.
+  if (!req.url || req.url === '/') {
+    res.statusCode = 200;
+    res.setHeader('content-type', 'application/json');
+    res.end(JSON.stringify({ name: 'SetPoint API', status: 'ok', api: '/api/health' }));
+    return;
+  }
+
   try {
     if (!appPromise) {
       // Import lazily so a bootstrap error (bad env, missing generated client)
