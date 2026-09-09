@@ -17,6 +17,8 @@ final class SettingsViewModel {
 
     // Editable draft
     var goal: Goal = .bulk
+    var targetWeightKg: Double?
+    var pace: GoalPace = .gentle
     var kcalTarget = 2500
     var proteinTarget: Int?
     var mealTimes = MealTimesPayload(breakfastMin: 480, lunchMin: 780, dinnerMin: 1140)
@@ -26,6 +28,7 @@ final class SettingsViewModel {
 
     // Read-only
     private(set) var mode = "BASIC"
+    private(set) var currentWeightKg: Double?
     private(set) var enforcementEnabled = true
     private(set) var enforcementDisabledReason: String?
 
@@ -44,9 +47,17 @@ final class SettingsViewModel {
         self.onDeleted = onDeleted
     }
 
+    private var weightGoalDirty: Bool {
+        guard let o = original else { return false }
+        if goal.rawValue != o.goal { return true }
+        guard goal.hasWeightTarget else { return false }
+        return targetWeightKg != o.targetWeightKg
+            || abs(pace.kgPerWeek(for: goal) - o.paceKgPerWeek) > 0.001
+    }
+
     var dirty: Bool {
         guard let o = original else { return false }
-        return goal.rawValue != o.goal
+        return weightGoalDirty
             || kcalTarget != o.dailyKcalTarget
             || proteinTarget != o.dailyProteinTargetG
             || mealTimes != o.mealTimes
@@ -73,15 +84,25 @@ final class SettingsViewModel {
         error = nil
         defer { saving = false }
 
-        let patch = SettingsPatch(
+        let o = original
+        // Let the backend recompute the daily target when the goal/weight-target
+        // changed; only send an explicit kcal target when the user edited it.
+        let kcalEdited = o.map { kcalTarget != $0.dailyKcalTarget } ?? true
+        let proteinEdited = o.map { proteinTarget != $0.dailyProteinTargetG } ?? true
+
+        var patch = SettingsPatch(
             goal: goal.rawValue,
-            dailyKcalTarget: kcalTarget,
-            dailyProteinTargetG: proteinTarget,
             mealTimes: mealTimes,
             quietHours: quietHours,
             checkInsPaused: checkInsPaused,
             restrictions: restrictions.map { .init(label: $0, source: nil) }
         )
+        if goal.hasWeightTarget {
+            patch.targetWeightKg = targetWeightKg
+            patch.paceKgPerWeek = pace.kgPerWeek(for: goal)
+        }
+        if kcalEdited { patch.dailyKcalTarget = kcalTarget }
+        if proteinEdited { patch.dailyProteinTargetG = proteinTarget }
         do {
             let updated: SettingsResponse = try await api.patch("/api/settings", patch)
             apply(updated)
@@ -110,6 +131,9 @@ final class SettingsViewModel {
     private func apply(_ s: SettingsResponse) {
         original = s
         goal = Goal(rawValue: s.goal) ?? .bulk
+        targetWeightKg = s.targetWeightKg
+        pace = GoalPace.closest(toKgPerWeek: s.paceKgPerWeek, for: goal)
+        currentWeightKg = s.currentWeightKg
         kcalTarget = s.dailyKcalTarget
         proteinTarget = s.dailyProteinTargetG
         mealTimes = s.mealTimes
@@ -131,6 +155,7 @@ final class SettingsViewModel {
         vm.apply(SettingsResponse(
             goal: "BULK", mode: "SMART", timezone: "America/New_York",
             dailyKcalTarget: 3100, dailyProteinTargetG: 165,
+            targetWeightKg: 84, paceKgPerWeek: 0.25, startWeightKg: 78, currentWeightKg: 79.6,
             mealTimes: .init(breakfastMin: 480, lunchMin: 780, dinnerMin: 1140),
             quietHours: .init(startMin: 1380, endMin: 420),
             checkInsPaused: false,

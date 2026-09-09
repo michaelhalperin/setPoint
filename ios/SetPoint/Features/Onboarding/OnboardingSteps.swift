@@ -3,15 +3,52 @@ import SwiftUI
 struct GoalStep: View {
     @Bindable var model: OnboardingViewModel
 
+    private var currentWeight: Double? { model.draft.weightKg }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             StepHeader(title: "What are you working on?", subtitle: "This sets the direction. You can change it later.")
             VStack(spacing: 12) {
                 ForEach(Goal.allCases) { goal in
                     ChoiceCard(title: goal.title, blurb: goal.blurb, selected: model.draft.goal == goal) {
-                        model.draft.goal = goal
+                        withAnimation(Motion.snappy) {
+                            model.draft.goal = goal
+                            if goal == .diet, model.draft.targetWeightKg == nil, let w = currentWeight {
+                                model.draft.targetWeightKg = (w - 5).rounded()
+                            } else if goal == .bulk, model.draft.targetWeightKg == nil, let w = currentWeight {
+                                model.draft.targetWeightKg = (w + 4).rounded()
+                            }
+                        }
                     }
                 }
+            }
+
+            if let goal = model.draft.goal, goal.hasWeightTarget {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Your target").sectionLabelStyle()
+                    if let w = currentWeight {
+                        Text("\(goal.directionVerb) — you're around \(Int(w.rounded())) kg now.")
+                            .font(Typography.data(13))
+                            .foregroundStyle(Palette.inkSoft)
+                    }
+                    MeasureField(label: "Target weight", unit: "kg", range: 35 ... 250, value: $model.draft.targetWeightKg)
+                        .id("target-\(goal.rawValue)")
+
+                    Text("Pace").sectionLabelStyle()
+                    VStack(spacing: 8) {
+                        ForEach(GoalPace.allCases) { pace in
+                            ChoiceCard(
+                                title: pace.title,
+                                blurb: pace.blurb(for: goal),
+                                selected: model.draft.pace == pace
+                            ) { model.draft.pace = pace }
+                        }
+                    }
+                    Text("SetPoint keeps the pace sensible — a gentle, steady change you can actually hold.")
+                        .font(Typography.data(12))
+                        .foregroundStyle(Palette.inkFaint)
+                }
+                .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
     }
@@ -183,6 +220,9 @@ struct ReviewStep: View {
             Card {
                 VStack(alignment: .leading, spacing: 10) {
                     row("Goal", (d.goal ?? .bulk).title)
+                    if let goal = d.goal, goal.hasWeightTarget, let target = d.targetWeightKg {
+                        row("Target", "\(Int(target.rounded())) kg · \(d.pace.title.lowercased()) pace")
+                    }
                     row("Mode", d.hasWearable ? "Smart" : "Basic")
                     row("Meals", "\(clock(d.breakfastMin)) · \(clock(d.lunchMin)) · \(clock(d.dinnerMin))")
                     row("Quiet hours", "\(clock(d.quietStartMin))–\(clock(d.quietEndMin))")

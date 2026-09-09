@@ -73,11 +73,13 @@ SetPoint/
 └── Features/
     ├── Home/         HomeScreen / HomeViewModel / HomeViews (§5.2 framing, §5a numeric transitions);
     │                 LogMealSheet + LogMealViewModel (text/photo → .redacted skeleton → parsed macros → undo), MealPhoto (downscale + base64)
-    ├── Onboarding/   stepped flow → POST /api/onboarding (§3, §5.1)
+    ├── Onboarding/   stepped flow → POST /api/onboarding (§3, §5.1). Order: about-you → goal
+    │                 (Gain / Lean out / Maintain + target weight + pace, M16) → rhythm → … → review
     ├── CheckIn/      PrescriptionView — the card ↔ full-screen matchedGeometryEffect morph (§5a);
     │                 ConversationView + ConversationViewModel — the tier-3 "let's talk" chat (§2)
-    ├── Settings/     GET/PATCH /api/settings — goal, targets, meal times, quiet hours, pause, restrictions; delete account
-    └── Settlement/   GET /api/settlement — 7-day bar strip (staggered entrance §5a) + day rows (§5.7)
+    ├── Settings/     GET/PATCH /api/settings — goal + target weight + pace, targets, meal times, quiet hours, pause, restrictions; delete account
+    └── Settlement/   GET /api/settlement — 7-day bar strip (staggered entrance §5a) + day rows (§5.7);
+                      WeightGoalCard + WeighInSheet (M16) — progress bar, "X kg to go", pace pill, POST /api/weight
 ```
 
 The check-in morph: `CheckInContent` is the shared component rendered both as
@@ -100,6 +102,23 @@ remove it" calling `DELETE /api/meals/:id`.
 Debug launch args for screenshots: `-uiStub log-meal`, `log-meal-result`,
 `conversation`, `conversation-resolved` (plus the earlier `home`, `prescription`,
 `settings`, `settlement`, `onboarding*`).
+
+## Weight goals (M16)
+
+Onboarding's goal step captures a **target weight** + **pace** (`GoalPace` —
+Gentle / Steady, goal-aware kg/week) for Gain and Lean out; **Maintain** skips
+both. `OnboardingRequest` carries `targetWeightKg` / `paceKgPerWeek`; the backend
+derives the daily surplus/deficit from the pace.
+
+The **Week tab** shows a `WeightGoalCard` — progress bar, current vs target,
+"X kg to go", pace pill (on pace / behind / ahead), rough ETA, and a weigh-in
+prompt when the last one is over a week old. `WeighInSheet` → `POST /api/weight`;
+reaching the target flips the goal to Maintain server-side and the card shows a
+one-time "you hit your target" alert.
+
+`HealthKitManager.syncWeight()` also pushes the latest HealthKit body-mass sample
+to `/api/weight` (`source: healthkit`) on each sync — idempotent (backend upserts
+on user + measuredAt).
 
 ## Motion system (plan §5a)
 
@@ -129,9 +148,10 @@ Test a notification locally: `xcrun simctl push <device> com.setpoint.app payloa
 
 - `BiosignalStats` (pure, tested) — personal baseline (mean + std, excluding the
   recent window) and the deviation z-score of the last ~12 h
-- `HealthKitManager` — read auth for HRV + resting HR, `HKObserverQuery` +
-  hourly background delivery, computes on-device and posts only the z-scores to
-  `/api/biosignals` (§4 — raw samples never leave the device)
+- `HealthKitManager` — read auth for HRV + resting HR + body mass, `HKObserverQuery`
+  + hourly background delivery, computes on-device and posts only the z-scores to
+  `/api/biosignals` (§4 — raw samples never leave the device); latest body-mass
+  sample → `/api/weight` (M16)
 - Prompted from the onboarding outcome and Settings → Health; synced on
   `scenePhase == .active` for connected users
 - Entitlement `com.apple.developer.healthkit`; `NSHealthShareUsageDescription`

@@ -32,7 +32,7 @@
 	<key>NSCameraUsageDescription</key>
 	<string>Take a photo of a meal to log it.</string>
 	<key>NSHealthShareUsageDescription</key>
-	<string>SetPoint reads your heart-rate variability and resting heart rate to notice when you may be under-fuelled and prompt you to eat.</string>
+	<string>SetPoint reads your heart-rate variability and resting heart rate to notice when you may be under-fuelled, and your body weight to track progress toward your goal.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Attach a photo of a meal to log it.</string>
 	<key>NSSupportsLiveActivities</key>

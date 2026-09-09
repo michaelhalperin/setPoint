@@ -46,6 +46,32 @@ struct SettingsView: View {
                         ForEach(Goal.allCases) { Text($0.title).tag($0) }
                     }
                     .pickerStyle(.segmented)
+
+                    if model.goal.hasWeightTarget {
+                        HStack {
+                            Text("Target weight")
+                            Spacer()
+                            TextField("—", value: $model.targetWeightKg, format: .number)
+                                .keyboardType(.decimalPad)
+                                .multilineTextAlignment(.trailing)
+                                .frame(width: 64)
+                            Text("kg").foregroundStyle(Palette.inkFaint)
+                        }
+                        Picker("Pace", selection: $model.pace) {
+                            ForEach(GoalPace.allCases) { Text($0.title).tag($0) }
+                        }
+                        .pickerStyle(.segmented)
+                        if let current = model.currentWeightKg {
+                            Text("Now around \(Int(current.rounded())) kg · \(model.pace.blurb(for: model.goal)). SetPoint sets the daily calories from this.")
+                                .font(Typography.data(12))
+                                .foregroundStyle(Palette.inkFaint)
+                        }
+                    } else {
+                        Text("No deficit or surplus — SetPoint keeps you at maintenance.")
+                            .font(Typography.data(12))
+                            .foregroundStyle(Palette.inkFaint)
+                    }
+
                     Text(model.mode == "SMART" ? "Smart mode — biosignal-aware." : "Basic mode — scheduled check-ins.")
                         .font(Typography.data(12))
                         .foregroundStyle(Palette.inkFaint)

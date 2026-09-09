@@ -23,6 +23,10 @@ struct OnboardingDraft {
     var activityLevel: ActivityLevel = .moderate
     var hasWearable = false
 
+    // Weight goal (M16) — nil / ignored for Maintain.
+    var targetWeightKg: Double?
+    var pace: GoalPace = .gentle
+
     var breakfastMin = 480    // 08:00
     var lunchMin = 780        // 13:00
     var dinnerMin = 1140      // 19:00
@@ -41,8 +45,10 @@ struct OnboardingDraft {
         df.timeZone = TimeZone(identifier: "UTC")
         df.dateFormat = "yyyy-MM-dd"
 
+        let resolvedGoal = goal ?? .bulk
+
         return OnboardingRequest(
-            goal: (goal ?? .bulk).rawValue,
+            goal: resolvedGoal.rawValue,
             mode: hasWearable ? "SMART" : "BASIC",
             timezone: TimeZone.current.identifier,
             sex: sex.rawValue,
@@ -50,6 +56,8 @@ struct OnboardingDraft {
             heightCm: heightCm,
             weightKg: weightKg,
             activityLevel: activityLevel.rawValue,
+            targetWeightKg: resolvedGoal.hasWeightTarget ? targetWeightKg : nil,
+            paceKgPerWeek: resolvedGoal.hasWeightTarget ? pace.kgPerWeek(for: resolvedGoal) : nil,
             mealTimes: .init(breakfastMin: breakfastMin, lunchMin: lunchMin, dinnerMin: dinnerMin),
             quietHours: .init(startMin: quietStartMin, endMin: quietEndMin),
             safety: .init(
@@ -74,10 +82,10 @@ struct OnboardingDraft {
 @Observable
 final class OnboardingViewModel {
     enum Step: Int, CaseIterable {
-        case goal, aboutYou, rhythm, wearable, restrictions, health, review, outcome
+        case aboutYou, goal, rhythm, wearable, restrictions, health, review, outcome
     }
 
-    var step: Step = .goal
+    var step: Step = .aboutYou
     var draft = OnboardingDraft()
     var submitting = false
     var result: OnboardingResponse?
@@ -96,13 +104,15 @@ final class OnboardingViewModel {
     }
 
     var canGoBack: Bool {
-        step != .goal && step != .outcome && !submitting
+        step != .aboutYou && step != .outcome && !submitting
     }
 
     var canAdvance: Bool {
         switch step {
-        case .goal: return draft.goal != nil
         case .aboutYou: return draft.heightCm != nil && draft.weightKg != nil
+        case .goal:
+            guard let goal = draft.goal else { return false }
+            return !goal.hasWeightTarget || draft.targetWeightKg != nil
         case .rhythm, .wearable, .restrictions: return true
         case .health: return draft.scoff.isComplete
         case .review: return !submitting
@@ -152,6 +162,7 @@ final class OnboardingViewModel {
         vm.draft.goal = .bulk
         vm.draft.heightCm = 182
         vm.draft.weightKg = 79
+        vm.draft.targetWeightKg = 85
         vm.draft.restrictions = ["Dairy", "Peanuts"]
         vm.step = step
         return vm

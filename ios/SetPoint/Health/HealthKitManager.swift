@@ -15,8 +15,10 @@ final class HealthKitManager {
     private let store = HKHealthStore()
     private let hrvType = HKQuantityType(.heartRateVariabilitySDNN)
     private let rhrType = HKQuantityType(.restingHeartRate)
+    private let bodyMassType = HKQuantityType(.bodyMass)
     private let hrvUnit = HKUnit.secondUnit(with: .milli)
     private let rhrUnit = HKUnit(from: "count/min")
+    private let kgUnit = HKUnit.gramUnit(with: .kilo)
 
     private init() {}
 
@@ -29,7 +31,7 @@ final class HealthKitManager {
     func connect() async -> Bool {
         guard isAvailable else { return false }
         do {
-            try await store.requestAuthorization(toShare: [], read: [hrvType, rhrType])
+            try await store.requestAuthorization(toShare: [], read: [hrvType, rhrType, bodyMassType])
             connected = true
             enableBackgroundDelivery()
             await sync()
@@ -62,6 +64,24 @@ final class HealthKitManager {
             let source = "healthkit"
         }
         try? await api.post("/api/biosignals", Body(hrvDeviation: hrvZ, rhrDeviation: rhrZ))
+
+        await syncWeight()
+    }
+
+    /// Push the latest body-mass sample to the weight log (M16). Idempotent —
+    /// the backend upserts on (user, measuredAt), so re-sending is harmless.
+    private func syncWeight() async {
+        guard isAvailable, let api else { return }
+        let recent = await samples(bodyMassType, unit: kgUnit, days: 14)
+        guard let latest = recent.last, latest.value >= 25, latest.value <= 400 else { return }
+        try? await api.post(
+            "/api/weight",
+            WeightLogRequest(
+                weightKg: (latest.value * 10).rounded() / 10,
+                measuredAt: ISO8601DateFormatter().string(from: latest.date),
+                source: "healthkit"
+            )
+        )
     }
 
     // MARK: HealthKit plumbing

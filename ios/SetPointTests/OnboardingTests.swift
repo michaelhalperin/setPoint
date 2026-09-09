@@ -53,14 +53,34 @@ final class OnboardingTests: XCTestCase {
     @MainActor
     func testStepGatingBlocksIncompleteSteps() {
         let vm = OnboardingViewModel(api: AppEnvironment.preview().api, onComplete: {})
-        XCTAssertFalse(vm.canAdvance)             // goal not chosen
-        vm.draft.goal = .bulk
-        XCTAssertTrue(vm.canAdvance)
-        vm.advance()                             // → aboutYou
         XCTAssertEqual(vm.step, .aboutYou)
         XCTAssertFalse(vm.canAdvance)             // no height/weight
         vm.draft.heightCm = 175
         vm.draft.weightKg = 70
         XCTAssertTrue(vm.canAdvance)
+        vm.advance()                             // → goal
+        XCTAssertEqual(vm.step, .goal)
+        XCTAssertFalse(vm.canAdvance)             // goal not chosen
+        vm.draft.goal = .bulk
+        XCTAssertFalse(vm.canAdvance)             // bulk needs a target weight
+        vm.draft.targetWeightKg = 76
+        XCTAssertTrue(vm.canAdvance)
+        vm.draft.goal = .maintain
+        XCTAssertTrue(vm.canAdvance)              // maintain needs no target
+    }
+
+    @MainActor
+    func testGoalStepSendsTargetAndPace() throws {
+        let vm = OnboardingViewModel(api: AppEnvironment.preview().api, onComplete: {})
+        vm.draft.goal = .diet
+        vm.draft.weightKg = 82
+        vm.draft.targetWeightKg = 76
+        vm.draft.pace = .steady
+        let json = try encoded(vm.draft.toRequest())
+        XCTAssertEqual(json["targetWeightKg"] as? Double, 76)
+        XCTAssertEqual(json["paceKgPerWeek"] as? Double, GoalPace.steady.kgPerWeek(for: .diet))
+
+        vm.draft.goal = .maintain
+        XCTAssertNil(try encoded(vm.draft.toRequest())["targetWeightKg"])
     }
 }

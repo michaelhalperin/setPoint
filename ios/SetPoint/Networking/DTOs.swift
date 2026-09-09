@@ -71,6 +71,7 @@ struct SettlementResponse: Decodable {
     let days: [Day]
     let today: Today
     let weekSummary: String
+    let weightGoal: WeightGoal?
 
     struct Day: Decodable, Identifiable {
         var id: String { date }
@@ -86,6 +87,22 @@ struct SettlementResponse: Decodable {
         let kind: String
         let kcalConsumed: Int
         let kcalTarget: Int
+    }
+
+    /// Progress toward a weight goal (§5.1, M16). Present only for BULK/DIET.
+    struct WeightGoal: Decodable {
+        let goal: String
+        let startWeightKg: Double?
+        let targetWeightKg: Double?
+        let currentWeightKg: Double?
+        let changedKg: Double?
+        let remainingKg: Double?
+        let totalKg: Double?
+        let fractionComplete: Double?
+        let status: String        // ahead | on_pace | behind | reached | unknown
+        let etaWeeks: Int?
+        let lastWeighInAt: String?
+        let needsWeighIn: Bool
     }
 }
 
@@ -172,6 +189,8 @@ struct OnboardingRequest: Encodable {
     let heightCm: Double?
     let weightKg: Double?
     let activityLevel: String
+    var targetWeightKg: Double?
+    var paceKgPerWeek: Double?
     let mealTimes: MinutesTriple
     let quietHours: MinutesRange
     let safety: Safety
@@ -195,8 +214,31 @@ struct OnboardingRequest: Encodable {
 struct OnboardingResponse: Decodable {
     let dailyKcalTarget: Int
     let dailyProteinTargetG: Int?
+    let targetWeightKg: Double?
+    let paceKgPerWeek: Double?
     let enforcementEnabled: Bool
     let enforcementDisabledReason: String?   // "MEDICAL_SUPERVISION" | "EATING_DISORDER_SCREEN" | nil
+}
+
+struct WeightLogRequest: Encodable {
+    let weightKg: Double
+    var measuredAt: String?
+    var source: String?      // "manual" | "healthkit"
+}
+
+struct WeightLogResponse: Decodable {
+    let goalReached: Bool
+    let goal: String
+    let dailyKcalTarget: Int
+    let dailyProteinTargetG: Int?
+    let entry: Entry
+
+    struct Entry: Decodable {
+        let id: String
+        let weightKg: Double
+        let measuredAt: String
+        let source: String
+    }
 }
 
 struct MealTimesPayload: Codable, Equatable {
@@ -216,6 +258,10 @@ struct SettingsResponse: Decodable {
     let timezone: String
     let dailyKcalTarget: Int
     let dailyProteinTargetG: Int?
+    let targetWeightKg: Double?
+    let paceKgPerWeek: Double
+    let startWeightKg: Double?
+    let currentWeightKg: Double?
     let mealTimes: MealTimesPayload
     let quietHours: QuietHoursPayload
     let checkInsPaused: Bool
@@ -233,6 +279,8 @@ struct SettingsResponse: Decodable {
 
 struct SettingsPatch: Encodable {
     var goal: String?
+    var targetWeightKg: Double?
+    var paceKgPerWeek: Double?
     var dailyKcalTarget: Int?
     var dailyProteinTargetG: Int?
     var mealTimes: MealTimesPayload?
