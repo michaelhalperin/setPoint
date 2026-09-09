@@ -57,6 +57,7 @@ Screenshot a specific screen with sample data:
 ./ios/scripts/run.sh -uiStub onboarding        # onboarding flow, step 1
 ./ios/scripts/run.sh -uiStub onboarding-health # SCOFF / safety step
 ./ios/scripts/run.sh -uiStub onboarding-review # review + submit step
+./ios/scripts/run.sh -uiStub prescription      # the full-screen check-in
 ```
 
 ## Structure
@@ -69,8 +70,15 @@ SetPoint/
 ├── Auth/           AuthStore (Sign in with Apple + dev), KeychainTokenStore
 └── Features/
     ├── Home/         HomeScreen / HomeViewModel / HomeViews (§5.2 framing, §5a numeric transitions)
-    └── Onboarding/   stepped flow → POST /api/onboarding (§3, §5.1)
+    ├── Onboarding/   stepped flow → POST /api/onboarding (§3, §5.1)
+    └── CheckIn/      PrescriptionView — the card ↔ full-screen matchedGeometryEffect morph (§5a)
 ```
+
+The check-in morph: `CheckInContent` is the shared component rendered both as
+the Home card and as the hero of `PrescriptionView`; a single
+`matchedGeometryEffect` id in `HomeContent`'s `@Namespace` interpolates one into
+the other. Actions hit `/api/meals` (`prescriptionId`), `/api/checkins/:id/defer`,
+`/api/checkins/:id/feedback`. Drag-down dismisses.
 
 ## Motion system (plan §5a)
 

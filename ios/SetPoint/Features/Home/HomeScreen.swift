@@ -27,6 +27,15 @@ struct HomeContent: View {
     @Environment(AppEnvironment.self) private var env
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var showingLogMeal = false
+    @State private var showingCheckIn = false
+    @Namespace private var checkInNamespace
+
+    private static let checkInGeometryID = "active-check-in"
+
+    private var activeCheckIn: HomeResponse.ActiveCheckIn? {
+        if case let .loaded(home) = model.phase { return home.activeCheckIn }
+        return nil
+    }
 
     var body: some View {
         ZStack {
@@ -44,6 +53,25 @@ struct HomeContent: View {
 
             case let .loaded(home):
                 loaded(home)
+            }
+
+            if showingCheckIn, let checkIn = activeCheckIn {
+                PrescriptionView(
+                    checkIn: checkIn,
+                    namespace: checkInNamespace,
+                    geometryID: Self.checkInGeometryID,
+                    onDismiss: { withAnimation(springForCheckIn) { showingCheckIn = false } },
+                    onResolved: {
+                        withAnimation(springForCheckIn) { showingCheckIn = false }
+                        Task { await model.load(showSpinner: false) }
+                    },
+                    onLogSomethingElse: {
+                        withAnimation(springForCheckIn) { showingCheckIn = false }
+                        showingLogMeal = true
+                    }
+                )
+                .transition(.opacity)
+                .zIndex(2)
             }
         }
         .animation(Motion.adaptive(Motion.standard, reduceMotion: reduceMotion), value: isLoaded)
@@ -64,6 +92,10 @@ struct HomeContent: View {
         return false
     }
 
+    private var springForCheckIn: Animation {
+        Motion.adaptive(Motion.sheet, reduceMotion: reduceMotion)
+    }
+
     @ViewBuilder
     private func loaded(_ home: HomeResponse) -> some View {
         ScrollView {
@@ -72,8 +104,13 @@ struct HomeContent: View {
                 LedgerHero(ledger: home.ledger, framing: home.framing)
                 ManagerNote(text: home.managerNote, emphasised: home.framing.accent)
 
-                if let checkIn = home.activeCheckIn {
-                    CheckInCard(checkIn: checkIn)
+                if let checkIn = home.activeCheckIn, !showingCheckIn {
+                    CheckInContent(checkIn: checkIn)
+                        .matchedGeometryEffect(id: Self.checkInGeometryID, in: checkInNamespace)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            withAnimation(springForCheckIn) { showingCheckIn = true }
+                        }
                 }
 
                 ProteinRow(ledger: home.ledger)

@@ -49,6 +49,7 @@ struct RootView: View {
 enum DebugPreviewStub {
     case home(HomeResponse)
     case onboarding(OnboardingViewModel.Step)
+    case prescription
 
     @ViewBuilder
     var view: some View {
@@ -58,6 +59,8 @@ enum DebugPreviewStub {
         case let .onboarding(step):
             OnboardingFlow(model: .previewed(at: step))
                 .background(Palette.background)
+        case .prescription:
+            PrescriptionStubHost()
         }
     }
 
@@ -72,7 +75,27 @@ enum DebugPreviewStub {
         case "onboarding-rhythm": return .onboarding(.rhythm)
         case "onboarding-health": return .onboarding(.health)
         case "onboarding-review": return .onboarding(.review)
+        case "prescription": return .prescription
         default: return nil
+        }
+    }
+}
+
+private struct PrescriptionStubHost: View {
+    @Namespace private var ns
+    var body: some View {
+        ZStack {
+            Palette.background.ignoresSafeArea()
+            if let checkIn = HomeResponse.sampleUnder.activeCheckIn {
+                PrescriptionView(
+                    checkIn: checkIn,
+                    namespace: ns,
+                    geometryID: "stub",
+                    onDismiss: {},
+                    onResolved: {},
+                    onLogSomethingElse: {}
+                )
+            }
         }
     }
 }

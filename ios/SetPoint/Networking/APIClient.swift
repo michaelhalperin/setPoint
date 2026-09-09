@@ -61,6 +61,15 @@ actor APIClient {
         let _: EmptyResponse = try await perform(path, method: "POST", body: try Self.encoder.encode(body))
     }
 
+    /// POST with no request body.
+    func post<T: Decodable>(_ path: String) async throws -> T {
+        try await perform(path, method: "POST", body: nil)
+    }
+
+    func post(_ path: String) async throws {
+        let _: EmptyResponse = try await perform(path, method: "POST", body: nil)
+    }
+
     func patch<T: Decodable>(_ path: String, _ body: some Encodable) async throws -> T {
         try await perform(path, method: "PATCH", body: try Self.encoder.encode(body))
     }

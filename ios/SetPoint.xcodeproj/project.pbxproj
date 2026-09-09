@@ -13,6 +13,7 @@
 		18769C76A6F18DF8518BE734 /* LogMealSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECFEB95DFB5402DA4E21CA85 /* LogMealSheet.swift */; };
 		21B611B9BD8199A8E7D5BBE5 /* AppEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77CC24E27F4C73628B9222FB /* AppEnvironment.swift */; };
 		248F71AF6CBF269F32B6F2DC /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6827E7745F7D8558E4078C9D /* Components.swift */; };
+		2ED1614D4E3A411BAD72206A /* CheckInTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECFB3596BCF94EF40A22F565 /* CheckInTests.swift */; };
 		35142C85254E15433E247985 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F3D4E3695433E4D796BC455 /* APIClient.swift */; };
 		3953FE9973A1006C6AEF39E7 /* SetPointApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 710ED9EE39FE068431D74DB0 /* SetPointApp.swift */; };
 		3ED98D31B3CAEA9D98194499 /* MotionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 306DD98DE1DE503E86CEB6DD /* MotionTests.swift */; };
@@ -27,6 +28,7 @@
 		939425AC35FEABDEED6A3B69 /* OnboardingSteps.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75E6AAF6106EF78152D6BCB7 /* OnboardingSteps.swift */; };
 		95CD52B41C432324EF56E83B /* HomeViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EFB517EFB36132E4ED9E74E /* HomeViewModel.swift */; };
 		9B0C59C6A3F3D67DA3DD2DB7 /* APIConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B48D8D6E1339295933EFC28 /* APIConfig.swift */; };
+		A1E337DF032F197F35D4D31B /* PrescriptionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC5D2AA52B39239A03B631E7 /* PrescriptionView.swift */; };
 		B33990F8C97E6BD42FE9EAC9 /* Typography.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21981A8CC1F3D3E6093F7478 /* Typography.swift */; };
 		B34F74442FE761C505CF1E1F /* SignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D05051B152A3F34D639B5E9 /* SignInView.swift */; };
 		DDFE111C3191A392FFEBD1E3 /* OnboardingEnums.swift in Sources */ = {isa = PBXBuildFile; fileRef = 424CD9EAF9B439E9941AC8C5 /* OnboardingEnums.swift */; };
@@ -75,6 +77,8 @@
 		CC0016FF03A93707A587F7E3 /* HomeViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeViews.swift; sourceTree = "<group>"; };
 		D449CA2B0A6EDA6F603583A6 /* Palette.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Palette.swift; sourceTree = "<group>"; };
 		DB2AE29FD58952E4C0CC1673 /* AuthStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthStore.swift; sourceTree = "<group>"; };
+		EC5D2AA52B39239A03B631E7 /* PrescriptionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrescriptionView.swift; sourceTree = "<group>"; };
+		ECFB3596BCF94EF40A22F565 /* CheckInTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckInTests.swift; sourceTree = "<group>"; };
 		ECFEB95DFB5402DA4E21CA85 /* LogMealSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogMealSheet.swift; sourceTree = "<group>"; };
 		FA50138B8097773BBC7F74C3 /* Motion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Motion.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -93,6 +97,7 @@
 		4446CB693CDE201339DF2577 /* Features */ = {
 			isa = PBXGroup;
 			children = (
+				D4A6B267D84D88ED27B043DA /* CheckIn */,
 				6289B3322997243B406037A1 /* Home */,
 				95D597730328140D83BDA746 /* Onboarding */,
 			);
@@ -102,6 +107,7 @@
 		56B15F5A4708550024E1E373 /* SetPointTests */ = {
 			isa = PBXGroup;
 			children = (
+				ECFB3596BCF94EF40A22F565 /* CheckInTests.swift */,
 				AF7E9A8FF4A34FCEA8BD592A /* DTOTests.swift */,
 				306DD98DE1DE503E86CEB6DD /* MotionTests.swift */,
 				3D5EBB067542BB4ED82F2416 /* OnboardingTests.swift */,
@@ -174,6 +180,14 @@
 				8C8F075855C3FB6506F00810 /* SetPoint.entitlements */,
 			);
 			path = SetPoint;
+			sourceTree = "<group>";
+		};
+		D4A6B267D84D88ED27B043DA /* CheckIn */ = {
+			isa = PBXGroup;
+			children = (
+				EC5D2AA52B39239A03B631E7 /* PrescriptionView.swift */,
+			);
+			path = CheckIn;
 			sourceTree = "<group>";
 		};
 		DE03FFFF9990421DEC5E091B /* Networking */ = {
@@ -324,6 +338,7 @@
 				083FD217A6D6A6354C46DF7C /* OnboardingModel.swift in Sources */,
 				939425AC35FEABDEED6A3B69 /* OnboardingSteps.swift in Sources */,
 				0F5AD8383EFD9257A0115086 /* Palette.swift in Sources */,
+				A1E337DF032F197F35D4D31B /* PrescriptionView.swift in Sources */,
 				49442018BF61D9F41867AA35 /* RootView.swift in Sources */,
 				3953FE9973A1006C6AEF39E7 /* SetPointApp.swift in Sources */,
 				B34F74442FE761C505CF1E1F /* SignInView.swift in Sources */,
@@ -336,6 +351,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2ED1614D4E3A411BAD72206A /* CheckInTests.swift in Sources */,
 				E24AAC6BB063241D3E3A0D79 /* DTOTests.swift in Sources */,
 				3ED98D31B3CAEA9D98194499 /* MotionTests.swift in Sources */,
 				6D94F5185B579414DC0888AC /* OnboardingTests.swift in Sources */,

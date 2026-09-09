@@ -73,7 +73,10 @@ Without `DATABASE_URL` the server still boots; `/api/health` just reports
 | GET    | `/api/health`     | Liveness + `SELECT 1` database check                     |
 | POST   | `/api/auth/apple` | Apple identity token → session JWT (501 until `APPLE_CLIENT_ID` is set) |
 | POST   | `/api/auth/dev`   | Non-production only — mint a session JWT for testing      |
-| POST   | `/api/meals`      | Log a meal (bearer auth). `{text}`/`{image}` → AI-parsed; `{macros}` → stored as-is. Resolves any open check-in |
+| POST   | `/api/meals`      | Log a meal (bearer auth). `{text}`/`{image}` → AI-parsed; `{macros}` → as-is; `{prescriptionId}` alone → the Rx's totals. Resolves any open check-in |
+| GET    | `/api/checkins/:id` | Fetch one check-in + prescription (bearer auth)          |
+| POST   | `/api/checkins/:id/defer` | Snooze it — `status DEFERRED`, `deferUntil = now + 2h` (§2) |
+| POST   | `/api/checkins/:id/feedback` | `{ positive }` thumbs — labeled beta signal (§8) |
 | POST   | `/api/onboarding` | Goal, stats, meal times, quiet hours, safety screening → profile + `SafetyScreening` + restrictions (bearer auth, §3, §5.1) |
 | GET    | `/api/settings`   | Current profile / quiet hours / restrictions / pause / enforcement (bearer auth) |
 | PATCH  | `/api/settings`   | Update quiet hours, meal times, targets, goal, `checkInsPaused`, or replace restrictions |
