@@ -41,11 +41,16 @@ struct RootView: View {
 @MainActor
 enum DebugPreviewStub {
     case home(HomeResponse)
+    case onboarding(OnboardingViewModel.Step)
 
+    @ViewBuilder
     var view: some View {
         switch self {
         case let .home(response):
-            return HomeContent(model: .previewed(.loaded(response)))
+            HomeContent(model: .previewed(.loaded(response)))
+        case let .onboarding(step):
+            OnboardingFlow(model: .previewed(at: step))
+                .background(Palette.background)
         }
     }
 
@@ -56,6 +61,10 @@ enum DebugPreviewStub {
         switch CommandLine.arguments[index + 1] {
         case "home": return .home(.sampleUnder)
         case "home-over": return .home(.sampleOver)
+        case "onboarding": return .onboarding(.goal)
+        case "onboarding-rhythm": return .onboarding(.rhythm)
+        case "onboarding-health": return .onboarding(.health)
+        case "onboarding-review": return .onboarding(.review)
         default: return nil
         }
     }

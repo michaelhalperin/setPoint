@@ -40,7 +40,7 @@ struct HomeContent: View {
                 RetryState(message: message) { Task { await model.load() } }
 
             case .needsOnboarding:
-                OnboardingNeededView()
+                OnboardingContainer { await model.load() }
 
             case let .loaded(home):
                 loaded(home)
@@ -126,18 +126,27 @@ private struct RetryState: View {
     }
 }
 
-private struct OnboardingNeededView: View {
+private struct OnboardingContainer: View {
+    let onComplete: @MainActor () async -> Void
+
+    @Environment(AppEnvironment.self) private var env
+    @State private var model: OnboardingViewModel?
+
     var body: some View {
-        VStack(spacing: 12) {
-            Text("Let's set you up")
-                .font(Typography.voice(24))
-                .foregroundStyle(Palette.ink)
-            Text("Onboarding — goal, meal times, and a short safety screen — is the next screen to build.")
-                .font(Typography.data(14))
-                .foregroundStyle(Palette.inkSoft)
-                .multilineTextAlignment(.center)
+        Group {
+            if let model {
+                OnboardingFlow(model: model)
+            } else {
+                ProgressView()
+            }
         }
-        .padding(28)
+        .task {
+            if model == nil {
+                model = OnboardingViewModel(api: env.api, onComplete: {
+                    Task { await onComplete() }
+                })
+            }
+        }
     }
 }
 

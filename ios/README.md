@@ -52,8 +52,11 @@ sign-in** button that calls `POST /api/auth/dev`.
 Screenshot a specific screen with sample data:
 
 ```bash
-xcrun simctl launch <device> com.setpoint.app -uiStub home        # under-target home
-xcrun simctl launch <device> com.setpoint.app -uiStub home-over   # over-target home
+./ios/scripts/run.sh -uiStub home              # under-target home
+./ios/scripts/run.sh -uiStub home-over         # over-target home
+./ios/scripts/run.sh -uiStub onboarding        # onboarding flow, step 1
+./ios/scripts/run.sh -uiStub onboarding-health # SCOFF / safety step
+./ios/scripts/run.sh -uiStub onboarding-review # review + submit step
 ```
 
 ## Structure
@@ -65,7 +68,8 @@ SetPoint/
 ├── Networking/     APIClient (async/await, bearer auth), APIConfig, DTOs
 ├── Auth/           AuthStore (Sign in with Apple + dev), KeychainTokenStore
 └── Features/
-    └── Home/       HomeScreen / HomeViewModel / HomeViews (§5.2 framing, §5a numeric transitions)
+    ├── Home/         HomeScreen / HomeViewModel / HomeViews (§5.2 framing, §5a numeric transitions)
+    └── Onboarding/   stepped flow → POST /api/onboarding (§3, §5.1)
 ```
 
 ## Motion system (plan §5a)
@@ -79,7 +83,6 @@ protein row use `.contentTransition(.numericText(value:))`; sheets use
 
 ## Next
 
-- Onboarding flow (goal, stats, meal times, SCOFF screen) → `POST /api/onboarding`
 - Check-in → prescription shared-element morph (`matchedGeometryEffect`)
 - Settlement view (7-day trend, staggered entrance)
 - HealthKit → biosignal deviation upload; Live Activity + push registration

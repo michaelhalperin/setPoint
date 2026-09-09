@@ -106,3 +106,39 @@ struct LogMealResponse: Decodable {
         let source: String
     }
 }
+
+struct OnboardingRequest: Encodable {
+    let goal: String
+    let mode: String            // "BASIC" | "SMART"
+    let timezone: String
+    let sex: String
+    let birthDate: String?      // "YYYY-MM-DD"
+    let heightCm: Double?
+    let weightKg: Double?
+    let activityLevel: String
+    let mealTimes: MinutesTriple
+    let quietHours: MinutesRange
+    let safety: Safety
+
+    struct MinutesTriple: Encodable { let breakfastMin, lunchMin, dinnerMin: Int }
+    struct MinutesRange: Encodable { let startMin, endMin: Int }
+
+    struct Safety: Encodable {
+        let medicalSupervisionRequired: Bool
+        let scoff: Scoff
+        let restrictions: [Restriction]
+        let restrictionsFreeText: String?
+
+        struct Scoff: Encodable {
+            let makeSelfSick, lostControl, lostOneStone, believesFat, foodDominates: Bool
+        }
+        struct Restriction: Encodable { let label: String; let source: String? }
+    }
+}
+
+struct OnboardingResponse: Decodable {
+    let dailyKcalTarget: Int
+    let dailyProteinTargetG: Int?
+    let enforcementEnabled: Bool
+    let enforcementDisabledReason: String?   // "MEDICAL_SUPERVISION" | "EATING_DISORDER_SCREEN" | nil
+}
