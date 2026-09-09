@@ -12,7 +12,7 @@ enum APIConfig {
         #if targetEnvironment(simulator)
         return URL(string: "http://localhost:3000")!
         #else
-        return URL(string: "https://setpoint-api.vercel.app")! // TODO: real deployment
+        return URL(string: "https://set-point-backend.vercel.app")!
         #endif
     }
 
