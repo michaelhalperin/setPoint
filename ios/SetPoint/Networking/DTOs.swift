@@ -20,8 +20,42 @@ struct HomeResponse: Decodable {
     /// Usual breakfast / lunch / dinner minutes-from-midnight. Older payloads omit this.
     let mealTimes: MealTimesPayload?
     let activeCheckIn: ActiveCheckIn?
+    /// Today's meal-time slots, where now sits, and pace. Older payloads omit it.
+    var day: Day? = nil
 
     var resolvedMealTimes: MealTimesPayload { mealTimes ?? .standard }
+
+    /// The shape of today, decided by the backend: breakfast / lunch / dinner
+    /// slots (logged, due now, missed, upcoming), now, and pace.
+    struct Day: Decodable, Equatable {
+        let nowMin: Int
+        let slots: [Slot]
+        /// Nil in quiet mode — no pace or "behind" framing at all.
+        let pace: Pace?
+
+        struct Slot: Decodable, Equatable, Identifiable {
+            let slot: String      // "breakfast" | "lunch" | "dinner"
+            let atMin: Int
+            let state: String     // "logged" | "now" | "missed" | "upcoming"
+            let mealIds: [String]
+            let kcal: Int
+
+            var id: String { slot }
+        }
+
+        struct Pace: Decodable, Equatable {
+            let expectedByNowKcal: Int
+            let behindKcal: Int
+            let status: String    // "behind" | "on_pace" | "ahead"
+            let next: Next?
+        }
+
+        struct Next: Decodable, Equatable {
+            let slot: String
+            let atMin: Int
+            let suggestedKcal: Int
+        }
+    }
 
     struct Ledger: Decodable {
         let consumedKcal: Int
@@ -178,6 +212,8 @@ struct LogMealRequest: Encodable {
     var image: ImagePayload?
     var macros: Macros?
     var prescriptionId: String?
+    /// ISO timestamp for a meal eaten earlier (a missed meal time). Omitted = now.
+    var loggedAt: String?
 
     struct Macros: Encodable {
         let kcal: Int

@@ -97,10 +97,8 @@ struct PrescriptionView: View {
         }
         .disabled(busy)
         .confirmationDialog("Snooze this check-in", isPresented: $choosingSnooze, titleVisibility: .visible) {
-            Button("In 1 hour") { run { try await deferCheckIn(minutes: 60) } }
-            Button("In 2 hours") { run { try await deferCheckIn(minutes: 120) } }
-            if let m = nextMealMinutes, m >= 45 {
-                Button("After my next meal") { run { try await deferCheckIn(minutes: m) } }
+            ForEach(CheckInActions.snoozeChoices(nextMealMinutes: nextMealMinutes)) { choice in
+                Button(choice.title) { run { try await deferCheckIn(minutes: choice.minutes) } }
             }
             Button("Cancel", role: .cancel) {}
         }
@@ -151,22 +149,12 @@ struct PrescriptionView: View {
 
     private func eatThis() async throws {
         guard let rx = checkIn.prescription else { return }
-        let _: LogMealResponse = try await env.api.post(
-            "/api/meals",
-            LogMealRequest(text: nil, macros: nil, prescriptionId: rx.id)
-        )
+        try await CheckInActions.eat(prescriptionID: rx.id, api: env.api)
         env.changes.mealsChanged()
     }
 
     private func deferCheckIn(minutes: Int? = nil) async throws {
-        if let minutes {
-            try await env.api.post(
-                "/api/checkins/\(checkIn.id)/defer",
-                DeferBody(minutes: min(max(minutes, 15), 360))
-            )
-        } else {
-            try await env.api.post("/api/checkins/\(checkIn.id)/defer")
-        }
+        try await CheckInActions.snooze(checkInID: checkIn.id, minutes: minutes, api: env.api)
     }
 
     private func rate(_ positive: Bool) async {
@@ -192,8 +180,4 @@ struct PrescriptionView: View {
 
 private struct FeedbackBody: Encodable {
     let positive: Bool
-}
-
-private struct DeferBody: Encodable {
-    let minutes: Int
 }

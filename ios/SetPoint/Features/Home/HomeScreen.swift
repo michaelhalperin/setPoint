@@ -1,5 +1,9 @@
 import SwiftUI
 
+/// Today (§5.2), rebuilt around one question: am I on pace today, and what do I
+/// do next? The manager's line, the day (what's left, protein, the day track,
+/// pace), one Next card, and the meal log under each meal time. Logging lives in
+/// `LogDock`, pinned above the tab bar so it's in the same place in every state.
 struct HomeContent: View {
     @Bindable var model: HomeViewModel
     var deepLinkCheckInID: Binding<String?> = .constant(nil)
@@ -13,7 +17,9 @@ struct HomeContent: View {
     @State private var logger: LogMealViewModel?
     @State private var showingCheckIn = false
     @State private var selectedMeal: MealSummary?
-    @State private var composerExpanded: Bool
+    @State private var choosingSnooze = false
+    @State private var checkInBusy = false
+    @State private var checkInError: String?
     @FocusState private var composerFocused: Bool
     @Namespace private var checkInNamespace
     @Namespace private var photoLogNamespace
@@ -31,33 +37,20 @@ struct HomeContent: View {
         self.startComposerExpanded = startComposerExpanded
         self.previewNow = previewNow
         _logger = State(initialValue: previewLogger)
-        _composerExpanded = State(initialValue: startComposerExpanded)
     }
 
     private static let checkInGeometryID = "active-check-in"
     private static let photoImageID = "photo-log-image"
     private static let photoCardID = "photo-log-card"
 
-    private var activeCheckIn: HomeResponse.ActiveCheckIn? {
-        if case let .loaded(home) = model.phase { return home.activeCheckIn }
+    private var loadedHome: HomeResponse? {
+        if case let .loaded(home) = model.phase { return home }
         return nil
     }
 
-    private var now: Date { previewNow ?? Date() }
+    private var activeCheckIn: HomeResponse.ActiveCheckIn? { loadedHome?.activeCheckIn }
 
-    /// Minutes from now until the user's next meal anchor (tomorrow's breakfast
-    /// once the day's anchors have passed). Feeds the "after my next meal" snooze.
-    private func minutesUntilNextMeal() -> Int {
-        let times: MealTimesPayload
-        if case let .loaded(home) = model.phase { times = home.resolvedMealTimes } else { times = .standard }
-        let cal = Calendar.current
-        let nowMin = cal.component(.hour, from: now) * 60 + cal.component(.minute, from: now)
-        let anchors = [times.breakfastMin, times.lunchMin, times.dinnerMin].sorted()
-        if let next = anchors.first(where: { $0 > nowMin + 20 }) {
-            return next - nowMin
-        }
-        return (1440 - nowMin) + anchors[0]
-    }
+    private var now: Date { previewNow ?? Date() }
 
     var body: some View {
         ZStack {
@@ -78,9 +71,9 @@ struct HomeContent: View {
                     if checkIn.tier >= 3 {
                         ConversationView(
                             checkInID: checkIn.id,
-                            onDismiss: { withAnimation(springForCheckIn) { showingCheckIn = false } },
+                            onDismiss: closeCheckIn,
                             onResolved: {
-                                withAnimation(springForCheckIn) { showingCheckIn = false }
+                                closeCheckIn()
                                 Task { await model.load(showSpinner: false) }
                             }
                         )
@@ -90,16 +83,13 @@ struct HomeContent: View {
                             nextMealMinutes: minutesUntilNextMeal(),
                             namespace: checkInNamespace,
                             geometryID: Self.checkInGeometryID,
-                            onDismiss: { withAnimation(springForCheckIn) { showingCheckIn = false } },
+                            onDismiss: closeCheckIn,
                             onResolved: {
-                                withAnimation(springForCheckIn) { showingCheckIn = false }
+                                closeCheckIn()
                                 Task { await model.load(showSpinner: false) }
                             },
                             onLogSomethingElse: {
-                                withAnimation(springForCheckIn) {
-                                    showingCheckIn = false
-                                    composerExpanded = true
-                                }
+                                closeCheckIn()
                                 DispatchQueue.main.async { composerFocused = true }
                             }
                         )
@@ -127,6 +117,12 @@ struct HomeContent: View {
                 try await model.removeMeal(id: meal.id)
             }
         }
+        .confirmationDialog("Snooze this check-in", isPresented: $choosingSnooze, titleVisibility: .visible) {
+            ForEach(CheckInActions.snoozeChoices(nextMealMinutes: minutesUntilNextMeal())) { choice in
+                Button(choice.title) { snooze(minutes: choice.minutes) }
+            }
+            Button("Cancel", role: .cancel) {}
+        }
         .toolbar(showingCheckIn || logger?.confirmingPhoto == true ? .hidden : .visible, for: .tabBar)
         .task {
             if logger == nil {
@@ -138,6 +134,10 @@ struct HomeContent: View {
             if startComposerExpanded {
                 composerFocused = true
             }
+            await env.push.syncAuthorizationStatus()
+        }
+        .onChange(of: logger?.phase) { _, phase in
+            if let phase { handleLoggerPhase(phase) }
         }
         .onChange(of: deepLinkCheckInID.wrappedValue) { _, id in
             guard id != nil else { return }
@@ -150,7 +150,139 @@ struct HomeContent: View {
                 await model.load(showSpinner: false)
             }
         }
-        .task { await env.push.syncAuthorizationStatus() }
+    }
+
+    // MARK: Layers
+
+    @ViewBuilder
+    private var homeLayer: some View {
+        switch model.phase {
+        case .loading:
+            HomeSkeletonView()
+        case let .failed(message):
+            RetryState(message: message) { Task { await model.load() } }
+        case .needsOnboarding:
+            HomeSkeletonView() // onboarding is presented by MainTabView
+        case let .loaded(home):
+            loaded(home)
+        }
+    }
+
+    private func loaded(_ home: HomeResponse) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: Space.lg) {
+                if home.enforcementEnabled, env.push.authorizationStatus == .denied {
+                    NotificationsOffBanner()
+                        .appearIn(0)
+                }
+
+                VStack(alignment: .leading, spacing: Space.md) {
+                    TodayHeader(date: now, note: home.managerNote)
+                        .appearIn(0)
+
+                    DayPanel(home: home)
+                        .appearIn(1)
+
+                    if TodayNext.resolve(home) != .quiet {
+                        NextCard(
+                            home: home,
+                            showsCheckIn: !showingCheckIn,
+                            namespace: checkInNamespace,
+                            geometryID: Self.checkInGeometryID,
+                            busy: checkInBusy,
+                            error: checkInError,
+                            onOpenCheckIn: openCheckIn,
+                            onAteThis: ateThis,
+                            onSomethingElse: focusDock,
+                            onSnooze: { choosingSnooze = true },
+                            onLog: focusDock
+                        )
+                        .appearIn(2)
+                    }
+                }
+
+                MealLog(
+                    home: home,
+                    pending: pendingMeal,
+                    landingNamespace: photoLogNamespace,
+                    landingCardID: photoLandingCardID,
+                    onOpenMeal: { selectedMeal = $0 },
+                    onLogMissed: logMissed
+                )
+                .appearIn(3)
+            }
+            .padding(.horizontal, Space.gutter)
+            .padding(.top, Space.sm)
+            .padding(.bottom, Space.lg)
+        }
+        .scrollBounceBehavior(.basedOnSize)
+        .scrollDismissesKeyboard(.interactively)
+        .refreshable { await model.load(showSpinner: false) }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if let logger {
+                LogDock(
+                    logger: logger,
+                    focused: $composerFocused,
+                    photoNamespace: photoLogNamespace,
+                    photoGeometryID: Self.photoImageID
+                ) {
+                    Task { await logger.submit() }
+                }
+            }
+        }
+    }
+
+    // MARK: Actions
+
+    private func openCheckIn() {
+        Haptics.nudge()
+        composerFocused = false
+        withAnimation(springForCheckIn) { showingCheckIn = true }
+    }
+
+    private func closeCheckIn() {
+        withAnimation(springForCheckIn) { showingCheckIn = false }
+    }
+
+    private func focusDock() {
+        composerFocused = true
+    }
+
+    private func logMissed(_ slot: HomeResponse.Day.Slot) {
+        logger?.backdate = .init(slot: slot.meal, at: TodayLayout.today(atMin: slot.atMin, now: now))
+        composerFocused = true
+    }
+
+    private func ateThis() {
+        guard let prescription = activeCheckIn?.prescription, !checkInBusy else { return }
+        checkInBusy = true
+        checkInError = nil
+        Task {
+            do {
+                try await CheckInActions.eat(prescriptionID: prescription.id, api: env.api)
+                Haptics.landed()
+                env.changes.mealsChanged()
+                await model.load(showSpinner: false)
+            } catch {
+                checkInError = UserFacingError.message(for: error, fallback: "Couldn't log that. Try again.")
+            }
+            checkInBusy = false
+        }
+    }
+
+    private func snooze(minutes: Int) {
+        guard let checkIn = activeCheckIn, !checkInBusy else { return }
+        checkInBusy = true
+        checkInError = nil
+        Task {
+            do {
+                try await CheckInActions.snooze(checkInID: checkIn.id, minutes: minutes, api: env.api)
+                await model.load(showSpinner: false)
+            } catch {
+                checkInError = UserFacingError.message(for: error, fallback: "Couldn't snooze. Try again.")
+            }
+            checkInBusy = false
+        }
     }
 
     private func handleLoggerPhase(_ phase: LogMealViewModel.Phase) {
@@ -158,10 +290,8 @@ struct HomeContent: View {
         case .parsing:
             composerFocused = false
         case .failed:
-            composerExpanded = true
             composerFocused = true
         case let .logged(logged):
-            composerExpanded = false
             composerFocused = false
             Haptics.landed()
             if logged.fromPhoto { return }
@@ -185,13 +315,6 @@ struct HomeContent: View {
         logger?.clearAfterSuccess()
     }
 
-    private func openCheckIn() {
-        Haptics.nudge()
-        composerFocused = false
-        composerExpanded = false
-        withAnimation(springForCheckIn) { showingCheckIn = true }
-    }
-
     private func openDeepLinkedCheckIn() async {
         let target = deepLinkCheckInID.wrappedValue
         await model.load(showSpinner: false)
@@ -201,10 +324,9 @@ struct HomeContent: View {
         deepLinkCheckInID.wrappedValue = nil
     }
 
-    private var isLoaded: Bool {
-        if case .loaded = model.phase { return true }
-        return false
-    }
+    // MARK: Derived
+
+    private var isLoaded: Bool { loadedHome != nil }
 
     private var springForCheckIn: Animation {
         Motion.adaptive(Motion.morph, reduceMotion: reduceMotion)
@@ -218,212 +340,34 @@ struct HomeContent: View {
         return nil
     }
 
-    @ViewBuilder
-    private var homeLayer: some View {
-        switch model.phase {
-        case .loading:
-            HomeSkeletonView()
-        case let .failed(message):
-            RetryState(message: message) { Task { await model.load() } }
-        case .needsOnboarding:
-            HomeSkeletonView() // onboarding is presented by MainTabView
-        case let .loaded(home):
-            loaded(home)
-        }
-    }
-
-    @ViewBuilder
-    private func loaded(_ home: HomeResponse) -> some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: Space.lg) {
-                VStack(alignment: .leading, spacing: Space.xs) {
-                    Text("Today")
-                        .font(Typography.display(34))
-                        .foregroundStyle(Palette.ink)
-                    Text(now.formatted(.dateTime.weekday(.wide).month(.wide).day()))
-                        .font(Typography.data(13, weight: .medium))
-                        .foregroundStyle(Palette.inkFaint)
-                }
-                .appearIn(0)
-
-                if home.enforcementEnabled, env.push.authorizationStatus == .denied {
-                    NotificationsOffBanner()
-                        .appearIn(1)
-                }
-
-                TodayNowSurface(
-                    home: home,
-                    checkIn: showingCheckIn ? nil : home.activeCheckIn,
-                    namespace: checkInNamespace,
-                    geometryID: Self.checkInGeometryID,
-                    onOpenCheckIn: openCheckIn
-                )
-                    .appearIn(1)
-
-                if let logger {
-                    actionDock(home: home, logger: logger)
-                        .onChange(of: logger.phase) { _, phase in
-                            handleLoggerPhase(phase)
-                        }
-                        .appearIn(2)
-                }
-
-                TodayDayFeed(
-                    meals: visibleMeals(home.meals),
-                    pending: pendingMeal,
-                    currentSlot: DaySlot.assigning(now, times: home.resolvedMealTimes),
-                    currentClock: DaySlot.assigning(now, times: home.resolvedMealTimes).clock(in: home.resolvedMealTimes),
-                    mealTimes: home.resolvedMealTimes,
-                    landingNamespace: photoLogNamespace,
-                    landingCardID: photoLandingCardID,
-                    onOpenMeal: { selectedMeal = $0 }
-                )
-                .appearIn(3)
-            }
-            .padding(.horizontal, Space.gutter)
-            .padding(.top, Space.md)
-            .padding(.bottom, Space.xl)
-        }
-        .scrollBounceBehavior(.basedOnSize)
-        .scrollDismissesKeyboard(.interactively)
-        .refreshable { await model.load(showSpinner: false) }
-    }
-
-    @ViewBuilder
-    private func actionDock(home: HomeResponse, logger: LogMealViewModel) -> some View {
-        switch logger.phase {
-        case .parsing:
-            TodayLogStatus(
-                title: logger.submittedPrompt.isEmpty ? "Working it out…" : logger.submittedPrompt,
-                detail: "Updating today.",
-                working: true
-            )
-
-        case let .logged(logged):
-            if !logger.confirmingPhoto {
-                TodayLogStatus(
-                    title: logged.summary ?? "Meal logged",
-                    detail: logged.resolvedCheckIn
-                        ? "\(logged.kcal) kcal · resolved"
-                        : "\(logged.kcal) kcal",
-                    working: false
-                )
-            }
-
-        case .failed:
-            composerSurface(logger)
-
-        case .compose:
-            if composerExpanded {
-                composerSurface(logger)
-            } else if home.activeCheckIn != nil {
-                ActionButton(
-                    title: (home.activeCheckIn?.tier ?? 0) >= 3 ? "Let’s talk" : "Check-in"
-                ) {
-                    openCheckIn()
-                }
-            } else if home.ledger.mealsToday == 0 {
-                composerSurface(logger)
-            } else {
-                Button {
-                    openComposer()
-                } label: {
-                    HStack(spacing: Space.sm) {
-                        Image(systemName: "plus")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundStyle(home.framing.primaryCta == "log_meal" ? Color.white : Palette.inkSoft)
-                            .frame(width: 34, height: 34)
-                            .background(
-                                home.framing.primaryCta == "log_meal" ? Palette.accent : Palette.surfaceSunk,
-                                in: Circle()
-                            )
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text("Log meal")
-                                .font(Typography.data(16, weight: .semibold))
-                                .foregroundStyle(Palette.ink)
-                            Text(home.framing.primaryCta == "log_meal"
-                                 ? "Update today."
-                                 : "Add another.")
-                                .font(Typography.data(12))
-                                .foregroundStyle(Palette.inkFaint)
-                        }
-                        Spacer()
-                    }
-                    .padding(14)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background {
-                        RoundedRectangle(cornerRadius: Radius.lg, style: .continuous)
-                            .fill(home.framing.primaryCta == "log_meal" ? Palette.accentTint : Palette.surface)
-                            .elevation(.resting)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: Radius.lg, style: .continuous)
-                                    .strokeBorder(home.framing.primaryCta == "log_meal"
-                                                  ? Palette.accent.opacity(0.3)
-                                                  : Palette.hairline)
-                            )
-                    }
-                }
-                .buttonStyle(PressableCard())
-            }
-        }
-    }
-
-    private func composerSurface(_ logger: LogMealViewModel) -> some View {
-        Card(tint: Palette.surfaceRaised, elevation: .floating, padding: 14) {
-            VStack(alignment: .leading, spacing: Space.sm) {
-                HStack {
-                    Text("What you ate")
-                        .font(Typography.voice(18))
-                        .foregroundStyle(Palette.ink)
-                    Spacer()
-                    if composerExpanded {
-                        Button {
-                            composerFocused = false
-                            withAnimation(Motion.settle) { composerExpanded = false }
-                        } label: {
-                            Image(systemName: "xmark")
-                                .font(.system(size: 11, weight: .bold))
-                                .foregroundStyle(Palette.inkFaint)
-                                .frame(width: 28, height: 28)
-                                .background(Palette.surfaceSunk, in: Circle())
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Close meal logger")
-                    }
-                }
-
-                SearchComposer(
-                    model: logger,
-                    focused: $composerFocused,
-                    onSubmit: { Task { await logger.submit() } },
-                    photoNamespace: photoLogNamespace,
-                    photoGeometryID: Self.photoImageID
-                )
-            }
-        }
-    }
-
-    private func openComposer() {
-        withAnimation(Motion.settle) { composerExpanded = true }
-        DispatchQueue.main.async { composerFocused = true }
-    }
-
-    private func visibleMeals(_ meals: [MealSummary]) -> [MealSummary] {
-        guard case let .logged(logged) = logger?.phase else { return meals }
-        return meals.filter { $0.id != logged.mealId }
-    }
-
-    private var pendingMeal: DayTimeline.Pending? {
+    private var pendingMeal: TodayPending? {
         if logger?.confirmingPhoto == true { return nil }
         switch logger?.phase {
         case .parsing:
             let title = logger?.submittedPrompt ?? ""
             return .parsing(title: title.isEmpty ? "Estimating…" : title)
         case let .logged(logged):
+            // Once Home reloads, the real meal is in the log — don't show it twice.
+            if loadedHome?.meals.contains(where: { $0.id == logged.mealId }) == true { return nil }
             return .logged(title: logged.summary ?? "Logged", kcal: logged.kcal)
         default:
             return nil
         }
+    }
+
+    /// Minutes until the next meal time — the "after my next meal" snooze.
+    private func minutesUntilNextMeal() -> Int {
+        if let day = loadedHome?.day, let next = day.pace?.next, next.atMin > day.nowMin {
+            return next.atMin - day.nowMin
+        }
+        let times = loadedHome?.resolvedMealTimes ?? .standard
+        let calendar = Calendar.current
+        let nowMin = calendar.component(.hour, from: now) * 60 + calendar.component(.minute, from: now)
+        let anchors = [times.breakfastMin, times.lunchMin, times.dinnerMin].sorted()
+        if let next = anchors.first(where: { $0 > nowMin + 20 }) {
+            return next - nowMin
+        }
+        return (1440 - nowMin) + anchors[0]
     }
 }
 
@@ -447,59 +391,52 @@ private struct RetryState: View {
 struct HomeSkeletonView: View {
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: Space.lg) {
+            VStack(alignment: .leading, spacing: Space.md) {
                 VStack(alignment: .leading, spacing: Space.xs) {
-                    SkeletonBlock(width: 108, height: 36, radius: 10)
-                    SkeletonBlock(width: 184, height: 13)
+                    SkeletonBlock(width: 150, height: 13)
+                    SkeletonBlock(height: 22, radius: 8)
+                    SkeletonBlock(width: 220, height: 22, radius: 8)
                 }
 
-                SkeletonCard(height: 188) {
+                SkeletonCard(height: 196) {
                     VStack(alignment: .leading, spacing: Space.md) {
-                        HStack {
-                            SkeletonBlock(width: 82, height: 12)
-                            Spacer()
-                            SkeletonBlock(width: 64, height: 25, radius: Radius.pill)
-                        }
-                        SkeletonBlock(width: 170, height: 27, radius: 9)
-                        SkeletonBlock(width: 246, height: 14)
-                        Spacer()
-                        HStack(spacing: Space.xs) {
-                            SkeletonBlock(height: 9, radius: Radius.pill)
-                            SkeletonBlock(height: 9, radius: Radius.pill)
-                            SkeletonBlock(height: 9, radius: Radius.pill)
-                        }
-                    }
-                }
-
-                SkeletonCard(height: 64) {
-                    HStack(spacing: Space.sm) {
-                        SkeletonBlock(width: 36, height: 36, radius: 18)
-                        VStack(alignment: .leading, spacing: 6) {
-                            SkeletonBlock(width: 112, height: 15)
-                            SkeletonBlock(width: 190, height: 11)
-                        }
-                    }
-                }
-
-                VStack(alignment: .leading, spacing: Space.sm) {
-                    SkeletonBlock(width: 86, height: 13)
-                    ForEach(0..<3, id: \.self) { index in
-                        HStack(spacing: Space.sm) {
-                            SkeletonBlock(width: 44, height: 44, radius: 14)
-                            VStack(alignment: .leading, spacing: 6) {
-                                SkeletonBlock(width: index == 1 ? 126 : 154, height: 14)
-                                SkeletonBlock(width: 88, height: 11)
+                        HStack(alignment: .top) {
+                            VStack(alignment: .leading, spacing: 8) {
+                                SkeletonBlock(width: 150, height: 40, radius: 10)
+                                SkeletonBlock(width: 120, height: 12)
                             }
                             Spacer()
-                            SkeletonBlock(width: 48, height: 14)
+                            VStack(alignment: .trailing, spacing: 6) {
+                                SkeletonBlock(width: 56, height: 10)
+                                SkeletonBlock(width: 70, height: 20)
+                                SkeletonBlock(width: 84, height: 5, radius: 3)
+                            }
                         }
-                        .padding(.vertical, 4)
+                        SkeletonBlock(height: 6, radius: 3)
+                        SkeletonBlock(width: 200, height: 12)
                     }
                 }
+
+                SkeletonCard(height: 76) {
+                    HStack(spacing: Space.sm) {
+                        SkeletonBlock(width: 40, height: 40, radius: 20)
+                        VStack(alignment: .leading, spacing: 6) {
+                            SkeletonBlock(width: 60, height: 10)
+                            SkeletonBlock(width: 170, height: 16)
+                        }
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: Space.xs) {
+                    SkeletonBlock(width: 120, height: 11)
+                    SkeletonCard(height: 64) {
+                        SkeletonBlock(width: 180, height: 16)
+                    }
+                }
+                .padding(.top, Space.sm)
             }
             .padding(.horizontal, Space.gutter)
-            .padding(.top, Space.md)
-            .padding(.bottom, Space.xl)
+            .padding(.top, Space.sm)
         }
         .background(Palette.background.ignoresSafeArea())
         .scrollDisabled(true)
@@ -508,32 +445,33 @@ struct HomeSkeletonView: View {
 }
 
 #if DEBUG
-#Preview("Loaded — under target") {
+#Preview("Check-in") {
     HomeContent(model: .previewed(.loaded(.sampleUnder)))
         .environment(AppEnvironment.preview())
 }
 
-#Preview("Loaded — over target") {
+#Preview("On pace") {
+    HomeContent(model: .previewed(.loaded(.sampleOnPace)))
+        .environment(AppEnvironment.preview())
+}
+
+#Preview("Missed breakfast") {
+    HomeContent(model: .previewed(.loaded(.sampleMissed)))
+        .environment(AppEnvironment.preview())
+}
+
+#Preview("Over") {
     HomeContent(model: .previewed(.loaded(.sampleOver)))
         .environment(AppEnvironment.preview())
 }
 
-#Preview("Empty") {
-    HomeContent(model: .previewed(.loaded(.sampleEmpty)))
+#Preview("Quiet mode") {
+    HomeContent(model: .previewed(.loaded(.sampleQuiet)))
         .environment(AppEnvironment.preview())
 }
 
-#Preview("Composer expanded") {
-    HomeContent(model: .previewed(.loaded(.sampleEmpty)), startComposerExpanded: true)
+#Preview("Logging") {
+    HomeContent(model: .previewed(.loaded(.sampleOnPace)), previewLogger: .sampleParsing)
         .environment(AppEnvironment.preview())
-}
-
-#Preview("Parsing") {
-    HomeContent(
-        model: .previewed(.loaded(.sampleEmpty)),
-        previewLogger: .sampleParsing,
-        previewNow: Calendar.current.date(bySettingHour: 13, minute: 0, second: 0, of: Date())
-    )
-    .environment(AppEnvironment.preview())
 }
 #endif

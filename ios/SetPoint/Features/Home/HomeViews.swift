@@ -59,3 +59,42 @@ struct CheckInContent: View {
         }
     }
 }
+
+/// The check-in answers, shared by the Today card and the full-screen view.
+enum CheckInActions {
+    struct SnoozeChoice: Identifiable, Equatable {
+        let title: String
+        let minutes: Int
+        var id: String { title }
+    }
+
+    /// Snooze lengths to offer. "After my next meal" only when that's far
+    /// enough away to mean something; the backend caps a snooze at 6 hours.
+    static func snoozeChoices(nextMealMinutes: Int?) -> [SnoozeChoice] {
+        var choices = [SnoozeChoice(title: "In 1 hour", minutes: 60), SnoozeChoice(title: "In 2 hours", minutes: 120)]
+        if let minutes = nextMealMinutes, minutes >= 45 {
+            choices.append(SnoozeChoice(title: "After my next meal", minutes: min(minutes, 360)))
+        }
+        return choices
+    }
+
+    /// "I ate this" — logs the prescription's totals and answers the check-in.
+    static func eat(prescriptionID: String, api: APIClient) async throws {
+        let _: LogMealResponse = try await api.post(
+            "/api/meals",
+            LogMealRequest(text: nil, macros: nil, prescriptionId: prescriptionID)
+        )
+    }
+
+    static func snooze(checkInID: String, minutes: Int?, api: APIClient) async throws {
+        if let minutes {
+            try await api.post("/api/checkins/\(checkInID)/defer", SnoozeBody(minutes: min(max(minutes, 15), 360)))
+        } else {
+            try await api.post("/api/checkins/\(checkInID)/defer")
+        }
+    }
+
+    private struct SnoozeBody: Encodable {
+        let minutes: Int
+    }
+}

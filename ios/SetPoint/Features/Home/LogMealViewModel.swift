@@ -38,6 +38,14 @@ final class LogMealViewModel {
     var photo: MealPhoto?
     var actionError: String?
 
+    /// Logging a meal eaten at an earlier meal time (a "nothing logged" slot on
+    /// Today): the meal is recorded at that time instead of now.
+    struct Backdate: Equatable {
+        let slot: MealSlot
+        let at: Date
+    }
+    var backdate: Backdate?
+
     private let api: APIClient
     private let onMealChanged: @MainActor () -> Void
     private var heldText = ""
@@ -68,9 +76,11 @@ final class LogMealViewModel {
         guard canSubmit else { return }
         let prompt = trimmedText
         let snapshotPhoto = photo
+        let snapshotBackdate = backdate
         let body = LogMealRequest(
             text: prompt.isEmpty ? nil : prompt,
-            image: snapshotPhoto.map { .init(data: $0.base64, mediaType: $0.mediaType) }
+            image: snapshotPhoto.map { .init(data: $0.base64, mediaType: $0.mediaType) },
+            loggedAt: snapshotBackdate.map { ISO8601DateFormatter().string(from: $0.at) }
         )
         let fromPhoto = snapshotPhoto != nil
         heldText = text
@@ -79,6 +89,7 @@ final class LogMealViewModel {
         submittedPrompt = prompt.isEmpty ? (fromPhoto ? "From your photo" : "Working it out…") : prompt
         text = ""
         photo = nil
+        backdate = nil
         phase = .parsing
         do {
             let res: LogMealResponse = try await api.post("/api/meals", body)
@@ -101,6 +112,7 @@ final class LogMealViewModel {
             photo = submittedPhoto
             submittedPhoto = nil
             confirmingPhoto = false
+            backdate = snapshotBackdate
             phase = .failed(UserFacingError.message(for: error, fallback: "Couldn't log. Try again."))
         }
     }
@@ -191,6 +203,7 @@ final class LogMealViewModel {
         submittedPhoto = nil
         submittedPrompt = ""
         confirmingPhoto = false
+        backdate = nil
         phase = .compose
         actionError = nil
         removing = false
