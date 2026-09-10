@@ -86,6 +86,52 @@ struct StaggerReveal: ViewModifier {
     }
 }
 
+/// A slow highlight sweep across placeholder content while it loads (§5a —
+/// "skeletons, not spinners", never a spinner). One continuous loop; nothing
+/// under Reduce Motion.
+private struct Shimmer: ViewModifier {
+    let active: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var phase: CGFloat = -1
+
+    private var running: Bool { active && !reduceMotion }
+
+    func body(content: Content) -> some View {
+        content
+            .overlay {
+                if running {
+                    GeometryReader { geo in
+                        LinearGradient(
+                            colors: [.clear, Palette.surface.opacity(0.6), .clear],
+                            startPoint: .leading, endPoint: .trailing
+                        )
+                        .frame(width: geo.size.width * 0.55)
+                        .offset(x: phase * geo.size.width * 1.7)
+                        .blendMode(.plusLighter)
+                    }
+                    .mask(content)
+                    .allowsHitTesting(false)
+                }
+            }
+            .onAppear { start() }
+            .onChange(of: active) { _, _ in start() }
+    }
+
+    private func start() {
+        guard running else { return }
+        phase = -1
+        withAnimation(.linear(duration: 1.4).repeatForever(autoreverses: false)) { phase = 1 }
+    }
+}
+
+extension View {
+    /// Sweep a soft highlight across this view while `active` — pair it with
+    /// `.redacted(reason: .placeholder)` for a skeleton. No-op under Reduce Motion.
+    func shimmering(_ active: Bool = true) -> some View {
+        modifier(Shimmer(active: active))
+    }
+}
+
 /// A single soft pulse on first appearance — never looping (§5a: a repeating
 /// alert reads as nagging and works against the "manager, not punisher" tone).
 private struct FirstAppearPulse: ViewModifier {

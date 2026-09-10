@@ -1,9 +1,11 @@
 import PhotosUI
 import SwiftUI
 
-/// Meal logging (§5.5) — free text, a photo, or both. While the backend's vision
-/// model works, a `.redacted` skeleton of the breakdown shows; the real numbers
-/// fade in on top, with a one-tap undo if the parse is wrong.
+/// Meal logging (§5.5) — free text, a photo, or both. When the user submits, what
+/// they wrote lifts to a compact "you said" chip and a shimmering `.redacted`
+/// skeleton of the breakdown slides in beneath it; the real numbers then resolve
+/// into the same card (count-up, staggered items), with a one-tap undo if the
+/// parse is wrong.
 struct LogMealSheet: View {
     /// Called once the user is done (logged & kept, or cancelled) — reload Home.
     let onFinished: () -> Void
@@ -32,18 +34,23 @@ private struct LogMealBody: View {
     @FocusState private var focused: Bool
     @State private var pickerItem: PhotosPickerItem?
 
+    /// Skeleton stand-ins shown under the shimmer while the model is `.parsing`.
+    private static let skeletonItems: [LogMealResponse.Parsed.Item] = [
+        .init(name: "Main portion", quantity: "1 serving", kcal: 280, proteinG: 32, carbsG: 4, fatG: 9),
+        .init(name: "Side", quantity: "1 cup", kcal: 210, proteinG: 5, carbsG: 42, fatG: 3),
+        .init(name: "Extras", quantity: "1 scoop", kcal: 150, proteinG: 5, carbsG: 20, fatG: 2),
+    ]
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 switch model.phase {
                 case .compose:
                     compose
-                case .parsing:
-                    parsing
-                case let .logged(logged):
-                    result(logged)
                 case let .failed(message):
                     failed(message)
+                default:
+                    reveal
                 }
             }
             .padding(24)
@@ -61,6 +68,9 @@ private struct LogMealBody: View {
                 pickerItem = nil
                 focused = false
             }
+        }
+        .onChange(of: model.phase) { _, phase in
+            if case .logged = phase { Haptics.landed() }
         }
         .onAppear { focused = true }
     }
@@ -122,72 +132,85 @@ private struct LogMealBody: View {
             .foregroundStyle(Palette.inkFaint)
     }
 
-    // MARK: Parsing skeleton
+    // MARK: Parse reveal (parsing skeleton → resolved result, one continuous card)
 
     @ViewBuilder
-    private var parsing: some View {
-        Text("Working it out…")
+    private var reveal: some View {
+        let logged: LogMealViewModel.Logged? = {
+            if case let .logged(value) = model.phase { return value }
+            return nil
+        }()
+        let parsing = logged == nil
+
+        Text(headline(logged))
             .font(Typography.voice(22))
             .foregroundStyle(Palette.ink)
+            .contentTransition(.opacity)
+
+        inputChip
 
         ParsedBreakdown(
-            summary: "Chicken burrito bowl",
-            kcal: 640,
-            proteinG: 41,
-            items: [
-                .init(name: "Grilled chicken", quantity: "1 serving", kcal: 280, proteinG: 32, carbsG: 2, fatG: 9),
-                .init(name: "Cilantro-lime rice", quantity: "1 cup", kcal: 210, proteinG: 4, carbsG: 44, fatG: 3),
-                .init(name: "Black beans + salsa", quantity: "1 scoop", kcal: 150, proteinG: 5, carbsG: 22, fatG: 2),
-            ],
-            notes: nil
+            summary: logged?.summary ?? "Reading the portions",
+            kcal: logged?.kcal ?? 640,
+            proteinG: logged?.proteinG ?? 41,
+            items: logged?.items ?? Self.skeletonItems,
+            notes: logged?.notes,
+            redacted: parsing
         )
-        .redacted(reason: .placeholder)
-        .accessibilityLabel("Estimating the meal")
+        .shimmering(parsing)
+
+        if let logged {
+            if logged.resolvedCheckIn {
+                Text("That closes out your open check-in.")
+                    .font(Typography.data(13))
+                    .foregroundStyle(Palette.inkSoft)
+                    .appearIn(0)
+            }
+
+            ActionButton(title: "Looks right") {
+                onFinished()
+            }
+            .appearIn(1)
+
+            Button("That's not what I ate — remove it") {
+                Task { await model.undo() }
+            }
+            .font(Typography.data(14, weight: .medium))
+            .foregroundStyle(Palette.accent)
+            .frame(maxWidth: .infinity)
+            .appearIn(2)
+        }
     }
 
-    // MARK: Result
+    private func headline(_ logged: LogMealViewModel.Logged?) -> String {
+        guard let logged else { return "Working it out…" }
+        return logged.fromPhoto ? "Logged from your photo" : "Logged"
+    }
 
+    /// What the user gave us, kept visible through parsing and the result so the
+    /// source stays attached to the guess.
     @ViewBuilder
-    private func result(_ logged: LogMealViewModel.Logged) -> some View {
-        Text(logged.fromPhoto ? "Logged from your photo" : "Logged")
-            .font(Typography.voice(22))
-            .foregroundStyle(Palette.ink)
-
-        if logged.items.isEmpty {
-            ParsedBreakdown(
-                summary: logged.summary,
-                kcal: logged.kcal,
-                proteinG: logged.proteinG,
-                items: [],
-                notes: logged.notes
-            )
-        } else {
-            ParsedBreakdown(
-                summary: logged.summary,
-                kcal: logged.kcal,
-                proteinG: logged.proteinG,
-                items: logged.items,
-                notes: logged.notes
-            )
-            .transition(.opacity)
+    private var inputChip: some View {
+        let trimmed = model.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty || model.photo != nil {
+            HStack(spacing: 10) {
+                if let photo = model.photo {
+                    Image(uiImage: photo.preview)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 40, height: 40)
+                        .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                }
+                Text(trimmed.isEmpty ? "From your photo" : trimmed)
+                    .font(Typography.data(13))
+                    .foregroundStyle(Palette.inkSoft)
+                    .lineLimit(2)
+                Spacer(minLength: 0)
+            }
+            .padding(10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Palette.surfaceSunk.opacity(0.6), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
-
-        if logged.resolvedCheckIn {
-            Text("That closes out your open check-in.")
-                .font(Typography.data(13))
-                .foregroundStyle(Palette.inkSoft)
-        }
-
-        ActionButton(title: "Looks right") {
-            onFinished()
-        }
-
-        Button("That's not what I ate — remove it") {
-            Task { await model.undo() }
-        }
-        .font(Typography.data(14, weight: .medium))
-        .foregroundStyle(Palette.accent)
-        .frame(maxWidth: .infinity)
     }
 
     // MARK: Failure
@@ -197,6 +220,7 @@ private struct LogMealBody: View {
         Text("That didn't go through")
             .font(Typography.voice(22))
             .foregroundStyle(Palette.ink)
+        inputChip
         Text(message)
             .font(Typography.data(14))
             .foregroundStyle(Palette.inkSoft)
@@ -205,13 +229,14 @@ private struct LogMealBody: View {
 }
 
 /// The macro breakdown card — used both as the redacted skeleton and the real
-/// parsed result.
+/// parsed result, at a stable position so the values resolve in place.
 private struct ParsedBreakdown: View {
     let summary: String?
     let kcal: Int
     let proteinG: Double
     let items: [LogMealResponse.Parsed.Item]
     let notes: String?
+    var redacted: Bool = false
 
     var body: some View {
         Card {
@@ -226,6 +251,8 @@ private struct ParsedBreakdown: View {
                     Text("\(kcal)")
                         .font(Typography.data(28, weight: .semibold))
                         .foregroundStyle(Palette.ink)
+                        .contentTransition(.numericText(value: Double(kcal)))
+                        .monospacedDigit()
                     Text("kcal · \(Int(proteinG.rounded())) g protein")
                         .font(Typography.data(14))
                         .foregroundStyle(Palette.inkFaint)
@@ -233,7 +260,7 @@ private struct ParsedBreakdown: View {
 
                 if !items.isEmpty {
                     Divider().overlay(Palette.ink.opacity(0.06))
-                    ForEach(items) { item in
+                    ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
                         HStack {
                             Text(item.name)
                                 .font(Typography.data(14))
@@ -246,6 +273,7 @@ private struct ParsedBreakdown: View {
                                 .font(Typography.data(13))
                                 .foregroundStyle(Palette.inkFaint)
                         }
+                        .appearIn(redacted ? 0 : index, rise: 4)
                     }
                 }
 
@@ -257,6 +285,7 @@ private struct ParsedBreakdown: View {
                 }
             }
         }
+        .redacted(reason: redacted ? .placeholder : [])
     }
 }
 

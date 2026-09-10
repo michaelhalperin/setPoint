@@ -98,11 +98,14 @@ final class LogMealViewModel {
     }
 
     #if DEBUG
-    static func previewed(_ phase: Phase) -> LogMealViewModel {
+    static func previewed(_ phase: Phase, text: String = "") -> LogMealViewModel {
         let vm = LogMealViewModel(api: AppEnvironment.preview().api)
         vm.phase = phase
+        vm.text = text
         return vm
     }
+
+    static let sampleParsing = previewed(.parsing, text: "chicken burrito bowl, large")
 
     static let sampleLogged = Phase.logged(
         Logged(

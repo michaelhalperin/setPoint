@@ -51,8 +51,10 @@ enum DebugPreviewStub {
     case onboarding(OnboardingViewModel.Step)
     case prescription
     case conversation(resolved: Bool)
-    case logMeal(logged: Bool)
+    case logMeal(LogMealStubState)
     case settings
+
+    enum LogMealStubState { case compose, parsing, result }
     case settlement
 
     @ViewBuilder
@@ -72,8 +74,8 @@ enum DebugPreviewStub {
                 onResolved: {},
                 previewModel: .previewed(resolved: resolved)
             )
-        case let .logMeal(logged):
-            LogMealStubHost(logged: logged)
+        case let .logMeal(state):
+            LogMealStubHost(state: state)
         case .settings:
             NavigationStack { SettingsView(previewModel: .previewed()) }
         case .settlement:
@@ -96,8 +98,9 @@ enum DebugPreviewStub {
         case "prescription": return .prescription
         case "conversation": return .conversation(resolved: false)
         case "conversation-resolved": return .conversation(resolved: true)
-        case "log-meal": return .logMeal(logged: false)
-        case "log-meal-result": return .logMeal(logged: true)
+        case "log-meal": return .logMeal(.compose)
+        case "log-meal-parsing": return .logMeal(.parsing)
+        case "log-meal-result": return .logMeal(.result)
         case "settings": return .settings
         case "settlement": return .settlement
         default: return nil
@@ -106,20 +109,26 @@ enum DebugPreviewStub {
 }
 
 private struct LogMealStubHost: View {
-    let logged: Bool
+    let state: DebugPreviewStub.LogMealStubState
     @State private var showing = true
+
+    private var previewModel: LogMealViewModel? {
+        switch state {
+        case .compose: return nil
+        case .parsing: return .sampleParsing
+        case .result: return .previewed(LogMealViewModel.sampleLogged, text: "chicken burrito bowl, large")
+        }
+    }
+
     var body: some View {
         ZStack {
             Palette.background.ignoresSafeArea()
             HomeContent(model: .previewed(.loaded(.sampleUnder)))
         }
         .sheet(isPresented: $showing) {
-            LogMealSheet(
-                onFinished: { showing = false },
-                previewModel: logged ? .previewed(LogMealViewModel.sampleLogged) : nil
-            )
-            .presentationDetents([.medium, .large])
-            .presentationDragIndicator(.visible)
+            LogMealSheet(onFinished: { showing = false }, previewModel: previewModel)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
         }
     }
 }

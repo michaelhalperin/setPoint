@@ -16,6 +16,7 @@
 		122B4C19DE61D9CA29DADC9C /* HomeScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C8DCB1E7E97ED4A55B7FEAE /* HomeScreen.swift */; };
 		1515C5462FAF3F0B4ECDB200 /* DeepLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EDB4F489DB6A01791F0DAAD /* DeepLink.swift */; };
 		18769C76A6F18DF8518BE734 /* LogMealSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECFEB95DFB5402DA4E21CA85 /* LogMealSheet.swift */; };
+		1D84EE987AEB8AC6F5ABFA9A /* Haptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACBCF91741C03685136590B5 /* Haptics.swift */; };
 		21B611B9BD8199A8E7D5BBE5 /* AppEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77CC24E27F4C73628B9222FB /* AppEnvironment.swift */; };
 		248F71AF6CBF269F32B6F2DC /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6827E7745F7D8558E4078C9D /* Components.swift */; };
 		2A088A0A0163A02BD5A0EAAF /* MealPhoto.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B5888ECCC1D863A84318CA1 /* MealPhoto.swift */; };
@@ -49,6 +50,7 @@
 		9878761462D8114645F21FB4 /* ConversationViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B975D8AD90E038FB0E7082D6 /* ConversationViewModel.swift */; };
 		9B0C59C6A3F3D67DA3DD2DB7 /* APIConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B48D8D6E1339295933EFC28 /* APIConfig.swift */; };
 		9C07678D8D87D62BEE19D4E6 /* Fraunces-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 0A514773AC47B6B837D1A84F /* Fraunces-Medium.ttf */; };
+		9F0D1EC76A037AFE96546243 /* LogMealTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AEEC804F40BC95701983A78 /* LogMealTests.swift */; };
 		A1E337DF032F197F35D4D31B /* PrescriptionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC5D2AA52B39239A03B631E7 /* PrescriptionView.swift */; };
 		A9CF52A7862CFCC5B4349050 /* ConversationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D98021ABAD28AEC57D3EE30A /* ConversationView.swift */; };
 		AC673DEEBD94FCBE411BF2FC /* CheckInLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EAFBFE5FC7C3F7CDAD9E1D0 /* CheckInLiveActivity.swift */; };
@@ -132,11 +134,13 @@
 		822F10719F105FCD59A9BF02 /* OFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = OFL.txt; sourceTree = "<group>"; };
 		84B5787B516857871D6B64BF /* LiveActivityController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityController.swift; sourceTree = "<group>"; };
 		87A7B143B2CF06863A727EC5 /* TokenStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenStore.swift; sourceTree = "<group>"; };
+		8AEEC804F40BC95701983A78 /* LogMealTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogMealTests.swift; sourceTree = "<group>"; };
 		8C8F075855C3FB6506F00810 /* SetPoint.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SetPoint.entitlements; sourceTree = "<group>"; };
 		9086CF76120B951F38382F7E /* OnboardingModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingModel.swift; sourceTree = "<group>"; };
 		9D05051B152A3F34D639B5E9 /* SignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInView.swift; sourceTree = "<group>"; };
 		9EDB4F489DB6A01791F0DAAD /* DeepLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepLink.swift; sourceTree = "<group>"; };
 		A904DC9C092B7D3603075E01 /* Fraunces-Italic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fraunces-Italic.ttf"; sourceTree = "<group>"; };
+		ACBCF91741C03685136590B5 /* Haptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Haptics.swift; sourceTree = "<group>"; };
 		AF7E9A8FF4A34FCEA8BD592A /* DTOTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DTOTests.swift; sourceTree = "<group>"; };
 		B975D8AD90E038FB0E7082D6 /* ConversationViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationViewModel.swift; sourceTree = "<group>"; };
 		BB96C65DA68F91752A1E6E8E /* SetPointTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = SetPointTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -201,6 +205,7 @@
 				1445D836A22672FF8571409D /* BiosignalStatsTests.swift */,
 				ECFB3596BCF94EF40A22F565 /* CheckInTests.swift */,
 				AF7E9A8FF4A34FCEA8BD592A /* DTOTests.swift */,
+				8AEEC804F40BC95701983A78 /* LogMealTests.swift */,
 				306DD98DE1DE503E86CEB6DD /* MotionTests.swift */,
 				3D5EBB067542BB4ED82F2416 /* OnboardingTests.swift */,
 				D826278DC21A613702891DA1 /* PushTests.swift */,
@@ -214,6 +219,7 @@
 			children = (
 				6827E7745F7D8558E4078C9D /* Components.swift */,
 				E087827D97886CF3572DF6AC /* Elevation.swift */,
+				ACBCF91741C03685136590B5 /* Haptics.swift */,
 				FA50138B8097773BBC7F74C3 /* Motion.swift */,
 				7936684A077EC94FC463DA02 /* OnboardingComponents.swift */,
 				D449CA2B0A6EDA6F603583A6 /* Palette.swift */,
@@ -523,6 +529,7 @@
 				7561CB75F82F5F0BACE5B54B /* DTOs.swift in Sources */,
 				1515C5462FAF3F0B4ECDB200 /* DeepLink.swift in Sources */,
 				06C546487C6FA154FBABC414 /* Elevation.swift in Sources */,
+				1D84EE987AEB8AC6F5ABFA9A /* Haptics.swift in Sources */,
 				F8132AA5435F1AE2BBF13367 /* HealthKitManager.swift in Sources */,
 				EA55542A09FC3324D9F8491C /* HomePreview.swift in Sources */,
 				122B4C19DE61D9CA29DADC9C /* HomeScreen.swift in Sources */,
@@ -572,6 +579,7 @@
 				90EC59D1929AB926863E3FEA /* BiosignalStatsTests.swift in Sources */,
 				2ED1614D4E3A411BAD72206A /* CheckInTests.swift in Sources */,
 				E24AAC6BB063241D3E3A0D79 /* DTOTests.swift in Sources */,
+				9F0D1EC76A037AFE96546243 /* LogMealTests.swift in Sources */,
 				3ED98D31B3CAEA9D98194499 /* MotionTests.swift in Sources */,
 				6D94F5185B579414DC0888AC /* OnboardingTests.swift in Sources */,
 				6A372B8A8257F449EB6D653B /* PushTests.swift in Sources */,
