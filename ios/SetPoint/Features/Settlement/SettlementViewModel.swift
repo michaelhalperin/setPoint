@@ -30,7 +30,29 @@ final class SettlementViewModel {
         } catch APIError.unauthorized {
             onUnauthorized()
         } catch {
-            phase = .failed((error as? LocalizedError)?.errorDescription ?? "Something went wrong.")
+            phase = .failed(UserFacingError.message(for: error, fallback: "Couldn't load. Try again."))
+        }
+    }
+
+    func meals(on date: String) async -> [MealSummary] {
+        do {
+            let res: MealsListResponse = try await api.get("/api/meals", query: ["date": date])
+            return res.meals
+        } catch APIError.unauthorized {
+            onUnauthorized()
+            return []
+        } catch {
+            return []
+        }
+    }
+
+    func removeMeal(id: String) async throws {
+        do {
+            try await api.delete("/api/meals/\(id)")
+            await load()
+        } catch APIError.unauthorized {
+            onUnauthorized()
+            throw APIError.unauthorized
         }
     }
 
@@ -46,7 +68,7 @@ final class SettlementViewModel {
             onUnauthorized()
             return false
         } catch {
-            phase = .failed((error as? LocalizedError)?.errorDescription ?? "Couldn't save that weigh-in.")
+            phase = .failed(UserFacingError.message(for: error, fallback: "Couldn't save. Try again."))
             return false
         }
     }
@@ -72,7 +94,7 @@ extension SettlementResponse {
             .init(date: "2026-09-07", kind: "ON_TRACK", kcalConsumed: 2950, kcalTarget: 3000, summaryLine: "Solid day — that's how the week is won."),
         ],
         today: .init(date: "2026-09-08", kind: "UNDER", kcalConsumed: 1180, kcalTarget: 3000),
-        weekSummary: "4 of 6 days on target. Some ground to make up, nothing dramatic.",
+        weekSummary: "3 of 6 days on target. Some ground to make up, nothing dramatic.",
         weightGoal: .init(
             goal: "BULK",
             startWeightKg: 74,
@@ -87,6 +109,40 @@ extension SettlementResponse {
             lastWeighInAt: "2026-09-05T08:00:00.000Z",
             needsWeighIn: false
         )
+    )
+
+    static let sampleNeedsWeighIn = SettlementResponse(
+        days: sample.days,
+        today: sample.today,
+        weekSummary: sample.weekSummary,
+        weightGoal: .init(
+            goal: "DIET",
+            startWeightKg: 82,
+            targetWeightKg: 76,
+            currentWeightKg: 80.2,
+            changedKg: 1.8,
+            remainingKg: 4.2,
+            totalKg: 6,
+            fractionComplete: 0.3,
+            status: "behind",
+            etaWeeks: 18,
+            lastWeighInAt: nil,
+            needsWeighIn: true
+        )
+    )
+
+    static let sampleEmpty = SettlementResponse(
+        days: [],
+        today: .init(date: "2026-09-08", kind: "UNDER", kcalConsumed: 0, kcalTarget: 3000),
+        weekSummary: "First week underway — the pattern starts now.",
+        weightGoal: sample.weightGoal
+    )
+
+    static let sampleMaintain = SettlementResponse(
+        days: sample.days,
+        today: sample.today,
+        weekSummary: sample.weekSummary,
+        weightGoal: nil
     )
 }
 #endif
