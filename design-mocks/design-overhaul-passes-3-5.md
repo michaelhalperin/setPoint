@@ -138,3 +138,10 @@ Pass 3 and Pass 4 are independent — either order. Pass 5 must come last; it de
   **Cut:** custom TabView switch transition and tab-icon bounce — SwiftUI fights
   it and the payoff is small. Onboarding→Home cascade already worked (Home's
   `.appearIn` fires when `phase` flips to `.loaded`).
+- **Pass 6** (`7f8ebc1`) — onboarding **rethink**, added after the fact. Not a
+  motion pass: the flow was a settings form split into 7 pages, now it's an
+  intake the manager walks you through. New `WelcomeStep` sets the deal before
+  any form; 7 steps → 4 beats (You / Goal / Check-ins / Safety); `StepHeader` →
+  `ManagerLine` (first-person Fraunces, check-in accent rule, `context:` line
+  that echoes your last answer); goal pick draws a manager reaction;
+  `OutcomeStep` rewritten first-person. Backend contract untouched. 40 tests.
