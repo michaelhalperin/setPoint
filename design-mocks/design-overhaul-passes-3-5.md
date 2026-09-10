@@ -1,5 +1,9 @@
 # Design overhaul — Passes 3–5
 
+**Status: all three shipped (2026-09-10).** Commits `2606c23` (Pass 3),
+`d1a2af6` (Pass 4), `b917059` (Pass 5). 38 iOS tests green. What actually
+landed is noted per-pass below.
+
 Continuation of the "Airbnb-grade beautiful + flow" overhaul (plan §5a / §6).
 Passes 0–2 are done and committed:
 
@@ -118,3 +122,19 @@ regression cases for the tab transition guard.
 
 Pass 3 and Pass 4 are independent — either order. Pass 5 must come last; it depends on
 3 and 4 being settled.
+
+---
+
+## What shipped vs. plan
+
+- **Pass 3** — as planned. New reusable `Shimmer` (`shimmering()`) modifier + `Haptics`
+  helper (`nudge` / `landed`). `ParsedBreakdown` gained a `redacted` flag so skeleton
+  and result are one view at a stable position. `-uiStub log-meal` now takes
+  `compose | parsing | result`.
+- **Pass 4** — as planned. `WeighInSheet` now owns a `save` phase and self-dismisses
+  after a "✓ Saved" beat (its callback became `(Double) async -> Bool`).
+- **Pass 5** — ConversationView bubbles + composer↔outcome morph, check-in-open
+  haptic, Settings/Week entrance consistency, animation audit (already clean).
+  **Cut:** custom TabView switch transition and tab-icon bounce — SwiftUI fights
+  it and the payoff is small. Onboarding→Home cascade already worked (Home's
+  `.appearIn` fires when `phase` flips to `.loaded`).
