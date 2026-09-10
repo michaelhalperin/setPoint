@@ -14,6 +14,47 @@ type Portion = {
 
 const round1 = (n: number): number => Math.round(n * 10) / 10;
 
+/**
+ * Narrows a large food list to the `maxCandidates` most promising options before
+ * the O(n³) search. Deterministic: ties break on slug. A list already at or
+ * below the cap is returned unchanged, so small fixtures are unaffected.
+ */
+export function selectCandidates(
+  foods: SolverFood[],
+  constraints: PrescriptionConstraints,
+  config: SolverConfig,
+): SolverFood[] {
+  if (foods.length <= config.maxCandidates) return foods;
+
+  const target = clamp(constraints.targetKcal, config.minMealKcal, config.maxMealKcal);
+  const wantsProtein = (constraints.targetProteinG ?? 0) > 0;
+
+  const scored = foods.map((food) => {
+    // How near can 1..maxQty servings of this one food land to the target?
+    let closest = Number.POSITIVE_INFINITY;
+    for (let qty = 1; qty <= config.maxQtyPerItem; qty += 1) {
+      closest = Math.min(closest, Math.abs(food.kcal * qty - target) / target);
+    }
+    const fitScore = 1 - Math.min(closest, 1);
+
+    const proteinDensity = food.kcal > 0 ? food.proteinG / food.kcal : 0;
+    const proteinScore = Math.min(proteinDensity / 0.12, 1); // ~0.12 g/kcal ≈ very lean protein
+
+    const lowFriction = food.tags.includes('no_cook') || food.tags.includes('portable');
+    const frictionScore = lowFriction ? 1 : 0;
+
+    const relevance =
+      fitScore +
+      proteinScore * (wantsProtein ? 2 : 1) +
+      frictionScore * (constraints.preferLowFriction ? 1 : 0.3);
+
+    return { food, relevance };
+  });
+
+  scored.sort((a, b) => b.relevance - a.relevance || a.food.slug.localeCompare(b.food.slug));
+  return scored.slice(0, config.maxCandidates).map((s) => s.food);
+}
+
 function portionsFor(foods: SolverFood[], maxQty: number): Portion[] {
   const out: Portion[] = [];
   for (const food of foods) {
@@ -107,8 +148,9 @@ export function prescribe(
   constraints: PrescriptionConstraints,
   config: SolverConfig = SOLVER_CONFIG,
 ): PrescriptionResult | null {
-  const allowed = filterAllowedFoods(foods, constraints.excludedTokens);
-  if (allowed.length === 0) return null;
+  const permitted = filterAllowedFoods(foods, constraints.excludedTokens);
+  if (permitted.length === 0) return null;
+  const allowed = selectCandidates(permitted, constraints, config);
 
   const target = clamp(constraints.targetKcal, config.minMealKcal, config.maxMealKcal);
   const minKcal = target * config.minKcalRatio;

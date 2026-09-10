@@ -9,6 +9,12 @@ export const SOLVER_CONFIG = {
   /** Most servings of a single food. */
   maxQtyPerItem: 3,
 
+  /** The combinatorial search is O(candidates³). The full food list is narrowed
+   *  to this many best-fit candidates first (by calorie fit, protein density and
+   *  friction) so the curated list can grow without slowing prescriptions down.
+   *  Lists at or below this size are searched whole. */
+  maxCandidates: 28,
+
   /** A single prescription targets a meal-sized slice of the day's remaining gap. */
   minMealKcal: 300,
   maxMealKcal: 700,

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { STAPLE_FOODS } from '../data/stapleFoods.js';
-import { prescribe, prescriptionSummary } from './prescribe.js';
+import { prescribe, prescriptionSummary, selectCandidates } from './prescribe.js';
+import { SOLVER_CONFIG } from './config.js';
 import type { PrescriptionConstraints } from './types.js';
 
 const constraints = (over: Partial<PrescriptionConstraints> = {}): PrescriptionConstraints => ({
@@ -65,6 +66,24 @@ describe('prescribe', () => {
     const empty = prescribe([], constraints());
     expect(empty).toBeNull();
     expect(rx === null || rx.items.length > 0).toBe(true);
+  });
+
+  it('stays fast and deterministic across the full curated list', () => {
+    expect(STAPLE_FOODS.length).toBeGreaterThan(SOLVER_CONFIG.maxCandidates);
+    const start = performance.now();
+    const a = prescribe(STAPLE_FOODS, constraints({ targetKcal: 520, targetProteinG: 40 }));
+    const elapsed = performance.now() - start;
+    const b = prescribe(STAPLE_FOODS, constraints({ targetKcal: 520, targetProteinG: 40 }));
+    expect(a).toEqual(b);
+    expect(a).not.toBeNull();
+    expect(elapsed).toBeLessThan(500);
+  });
+
+  it('narrows a large list to the candidate cap but leaves small lists whole', () => {
+    const narrowed = selectCandidates(STAPLE_FOODS, constraints(), SOLVER_CONFIG);
+    expect(narrowed.length).toBe(SOLVER_CONFIG.maxCandidates);
+    const small = STAPLE_FOODS.slice(0, 10);
+    expect(selectCandidates(small, constraints(), SOLVER_CONFIG)).toHaveLength(10);
   });
 
   it('summarises items into a directive line', () => {
