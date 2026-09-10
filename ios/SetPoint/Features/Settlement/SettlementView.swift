@@ -54,6 +54,7 @@ struct SettlementView: View {
                         Text("Days fill in here as they settle — one row each morning.")
                             .font(Typography.data(13))
                             .foregroundStyle(Palette.inkFaint)
+                            .appearIn()
                     } else {
                         VStack(spacing: 0) {
                             ForEach(Array(s.days.reversed().enumerated()), id: \.element.id) { index, day in
@@ -71,12 +72,8 @@ struct SettlementView: View {
             .refreshable { await model.load() }
             .background(Palette.background)
             .sheet(isPresented: $showingWeighIn) {
-                WeighInSheet(busy: model.loggingWeight) { kg in
-                    Task {
-                        if await model.logWeight(kg: kg) { showingWeighIn = false }
-                    }
-                }
-                .presentationDetents([.height(280)])
+                WeighInSheet { kg in await model.logWeight(kg: kg) }
+                    .presentationDetents([.height(300)])
             }
             .alert("You hit your target", isPresented: reachedBinding(model)) {
                 Button("Nice") { model.reachedGoalTarget = nil }
@@ -100,6 +97,8 @@ private struct WeightGoalCard: View {
     let busy: Bool
     let onWeighIn: () -> Void
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     private var fraction: Double { min(1, max(0, goal.fractionComplete ?? 0)) }
 
     var body: some View {
@@ -115,12 +114,15 @@ private struct WeightGoalCard: View {
                             .padding(.horizontal, 8)
                             .padding(.vertical, 3)
                             .background(pill.tint.opacity(0.14), in: Capsule())
+                            .id(pill.text)
+                            .transition(.opacity)
                     }
                 }
 
                 if let current = goal.currentWeightKg, let target = goal.targetWeightKg {
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         Text(oneDp(current)).font(Typography.data(30, weight: .semibold)).foregroundStyle(Palette.ink)
+                            .contentTransition(.numericText(value: current))
                         Text("kg").font(Typography.data(14)).foregroundStyle(Palette.inkFaint)
                         Spacer()
                         Text("target \(oneDp(target)) kg").font(Typography.data(13)).foregroundStyle(Palette.inkFaint)
@@ -134,6 +136,7 @@ private struct WeightGoalCard: View {
                         Text(remaining <= 0 ? "Target reached" : "\(oneDp(remaining)) kg to go")
                             .font(Typography.data(13, weight: .medium))
                             .foregroundStyle(Palette.inkSoft)
+                            .contentTransition(.numericText(value: max(0, remaining)))
                     }
                     if let eta = goal.etaWeeks, eta > 0 {
                         Text("· ~\(eta) wk").font(Typography.data(13)).foregroundStyle(Palette.inkFaint)
@@ -152,6 +155,8 @@ private struct WeightGoalCard: View {
                 ) { if !busy { onWeighIn() } }
             }
         }
+        .animation(Motion.adaptive(Motion.settle, reduceMotion: reduceMotion), value: goal.currentWeightKg)
+        .animation(Motion.adaptive(Motion.enter, reduceMotion: reduceMotion), value: goal.status)
     }
 
     private var headline: String {
@@ -184,6 +189,7 @@ private struct ProgressBar: View {
                 Capsule().fill(Palette.surfaceSunk)
                 Capsule().fill(Palette.accent)
                     .frame(width: max(4, geo.size.width * (filled ? fraction : 0)))
+                    .animation(Motion.adaptive(Motion.settle, reduceMotion: reduceMotion), value: fraction)
             }
         }
         .frame(height: 8)
@@ -194,16 +200,29 @@ private struct ProgressBar: View {
 }
 
 private struct WeighInSheet: View {
-    let busy: Bool
-    let onSubmit: (Double) -> Void
+    /// Returns whether the weigh-in saved — on success the sheet shows a brief
+    /// "Saved" beat, then dismisses itself.
+    let onSubmit: (Double) async -> Bool
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var text = ""
+    @State private var phase: Phase = .idle
     @FocusState private var focused: Bool
+
+    private enum Phase { case idle, saving, saved }
 
     private var value: Double? {
         let v = Double(text.replacingOccurrences(of: ",", with: "."))
         return (v ?? 0) >= 25 && (v ?? 0) <= 400 ? v : nil
+    }
+
+    private var buttonTitle: String {
+        switch phase {
+        case .idle: return "Save"
+        case .saving: return "Saving…"
+        case .saved: return "✓ Saved"
+        }
     }
 
     var body: some View {
@@ -217,16 +236,16 @@ private struct WeighInSheet: View {
                     .keyboardType(.decimalPad)
                     .font(Typography.data(22, weight: .semibold))
                     .focused($focused)
+                    .disabled(phase != .idle)
                 Text("kg").font(Typography.data(15)).foregroundStyle(Palette.inkFaint)
             }
             .padding(14)
             .background(Palette.surfaceSunk, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
 
-            ActionButton(title: busy ? "Saving…" : "Save") {
-                if let value, !busy { onSubmit(value) }
-            }
-            .opacity(value == nil ? 0.5 : 1)
-            .disabled(value == nil)
+            ActionButton(title: buttonTitle) { save() }
+                .opacity(value == nil && phase == .idle ? 0.5 : 1)
+                .disabled(value == nil || phase != .idle)
+                .animation(Motion.adaptive(Motion.settle, reduceMotion: reduceMotion), value: phase)
 
             Text("Best first thing in the morning, before eating.")
                 .font(Typography.data(12))
@@ -238,6 +257,20 @@ private struct WeighInSheet: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Palette.background)
         .onAppear { focused = true }
+    }
+
+    private func save() {
+        guard phase == .idle, let value else { return }
+        focused = false
+        Task {
+            phase = .saving
+            let ok = await onSubmit(value)
+            guard ok else { phase = .idle; return }
+            phase = .saved
+            Haptics.landed()
+            try? await Task.sleep(for: .milliseconds(reduceMotion ? 0 : 480))
+            dismiss()
+        }
     }
 }
 
@@ -282,6 +315,7 @@ private struct WeekStrip: View {
                             .fill(Palette.day(bar.kind))
                             .opacity(bar.isToday ? 0.55 : 1)
                             .frame(height: grown ? barHeight(bar.ratio) : 3)
+                            .firstAppearPulse(bar.isToday)
                     }
                     .frame(height: maxBarHeight)
                     .animation(
@@ -289,6 +323,9 @@ private struct WeekStrip: View {
                             .delay(reduceMotion ? 0 : Double(index) * 0.04),
                         value: grown
                     )
+                    // A later refresh re-flows the bars from their current
+                    // height to the new one, rather than collapsing and regrowing.
+                    .animation(Motion.adaptive(Motion.gentle, reduceMotion: reduceMotion), value: bar.ratio)
 
                     Text(bar.label)
                         .font(Typography.data(10, weight: .medium))
