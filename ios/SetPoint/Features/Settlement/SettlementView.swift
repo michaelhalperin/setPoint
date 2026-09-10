@@ -40,6 +40,7 @@ struct SettlementView: View {
                 VStack(alignment: .leading, spacing: 22) {
                     if let goal = s.weightGoal {
                         WeightGoalCard(goal: goal, busy: model.loggingWeight) { showingWeighIn = true }
+                            .appearIn(0)
                     }
 
                     WeekStrip(days: s.days, today: s.today)
@@ -49,6 +50,7 @@ struct SettlementView: View {
                         .foregroundStyle(Palette.ink)
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.vertical, 4)
+                        .appearIn(1)
 
                     if s.days.isEmpty {
                         Text("Days fill in here as they settle — one row each morning.")

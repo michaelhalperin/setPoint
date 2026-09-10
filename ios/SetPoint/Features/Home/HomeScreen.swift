@@ -78,11 +78,16 @@ struct HomeContent: View {
         }
     }
 
+    private func openCheckIn() {
+        Haptics.nudge()
+        withAnimation(springForCheckIn) { showingCheckIn = true }
+    }
+
     private func openDeepLinkedCheckIn() async {
         let target = deepLinkCheckInID.wrappedValue
         await model.load(showSpinner: false)
         if let target, activeCheckIn?.id == target {
-            withAnimation(springForCheckIn) { showingCheckIn = true }
+            openCheckIn()
         }
         deepLinkCheckInID.wrappedValue = nil
     }
@@ -121,7 +126,7 @@ struct HomeContent: View {
 
                 if let checkIn = home.activeCheckIn, !showingCheckIn {
                     Button {
-                        withAnimation(springForCheckIn) { showingCheckIn = true }
+                        openCheckIn()
                     } label: {
                         CheckInContent(checkIn: checkIn, restingElevation: .floating)
                             .matchedGeometryEffect(id: Self.checkInGeometryID, in: checkInNamespace)

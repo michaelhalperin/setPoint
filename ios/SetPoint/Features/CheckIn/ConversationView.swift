@@ -95,9 +95,10 @@ struct ConversationView: View {
                         .foregroundStyle(Palette.accent)
                         .padding(.bottom, 2)
 
-                    ForEach(model.messages) { message in
+                    ForEach(Array(model.messages.enumerated()), id: \.element.id) { index, message in
                         MessageBubble(message: message)
                             .id(message.id)
+                            .appearIn(index, rise: 10)
                     }
 
                     if model.sending {
@@ -125,6 +126,7 @@ struct ConversationView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .background(Palette.surfaceSunk.opacity(0.7), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                         .padding(.top, 8)
+                        .appearIn()
                         .id("outcome")
                     }
                 }
@@ -139,13 +141,18 @@ struct ConversationView: View {
             }
         }
 
-        if model.resolved {
-            ActionButton(title: "Done") { onResolved() }
-                .padding(.horizontal, 20)
-                .padding(.bottom, 12)
-        } else {
-            composer(model)
+        Group {
+            if model.resolved {
+                ActionButton(title: "Done") { onResolved() }
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 12)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            } else {
+                composer(model)
+                    .transition(.opacity)
+            }
         }
+        .animation(Motion.adaptive(Motion.morph, reduceMotion: reduceMotion), value: model.resolved)
     }
 
     @ViewBuilder

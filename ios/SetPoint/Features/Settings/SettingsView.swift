@@ -138,6 +138,7 @@ struct SettingsView: View {
             }
             .scrollContentBackground(.hidden)
             .background(Palette.background)
+            .appearIn()
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
