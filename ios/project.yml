@@ -31,6 +31,7 @@ targets:
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: false
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        ITSAppUsesNonExemptEncryption: false
         NSSupportsLiveActivities: true
         UIBackgroundModes: [remote-notification]
         UIAppFonts:

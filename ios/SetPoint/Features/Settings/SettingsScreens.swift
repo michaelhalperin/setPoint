@@ -646,6 +646,9 @@ struct AccountSettingsView: View {
                     }
                     .appearIn(3)
 
+                    LegalSection()
+                        .appearIn(4)
+
                     if model.deleting {
                         HStack(spacing: Space.xs) {
                             ProgressView()
@@ -696,6 +699,72 @@ struct AccountSettingsView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Palette.background, for: .navigationBar)
         .animation(Motion.sheet, value: confirmingDelete)
+    }
+}
+
+/// Privacy policy, terms, support, and version — required for App Store review
+/// (plan §4). The pages are served by the backend at /privacy and /terms.
+private struct LegalSection: View {
+    private var privacyURL: URL { APIConfig.baseURL.appending(path: "privacy") }
+    private var termsURL: URL { APIConfig.baseURL.appending(path: "terms") }
+    private var supportURL: URL { URL(string: "mailto:support@setpoint.app")! }
+
+    private var versionText: String {
+        let info = Bundle.main.infoDictionary
+        let v = info?["CFBundleShortVersionString"] as? String ?? "—"
+        let b = info?["CFBundleVersion"] as? String ?? "—"
+        return "Version \(v) (\(b))"
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Space.sm) {
+            Text("Legal & support").sectionLabelStyle()
+
+            VStack(spacing: 0) {
+                row("Privacy Policy", systemImage: "hand.raised", url: privacyURL)
+                Divider().overlay(Palette.hairline).padding(.leading, 46)
+                row("Terms of Service", systemImage: "doc.text", url: termsURL)
+                Divider().overlay(Palette.hairline).padding(.leading, 46)
+                row("Contact support", systemImage: "envelope", url: supportURL)
+            }
+            .background {
+                RoundedRectangle(cornerRadius: Radius.lg, style: .continuous)
+                    .fill(Palette.surface)
+                    .elevation(.resting)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: Radius.lg, style: .continuous)
+                            .strokeBorder(Palette.hairline)
+                    )
+            }
+
+            Text(versionText)
+                .font(Typography.data(11))
+                .foregroundStyle(Palette.inkFaint)
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding(.top, Space.xs)
+        }
+    }
+
+    private func row(_ title: String, systemImage: String, url: URL) -> some View {
+        Link(destination: url) {
+            HStack(spacing: Space.sm) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(Palette.inkSoft)
+                    .frame(width: 30)
+                Text(title)
+                    .font(Typography.data(15, weight: .medium))
+                    .foregroundStyle(Palette.ink)
+                Spacer()
+                Image(systemName: "arrow.up.right")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Palette.inkFaint)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 13)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 }
 

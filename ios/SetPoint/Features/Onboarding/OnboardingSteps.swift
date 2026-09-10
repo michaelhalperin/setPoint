@@ -674,6 +674,19 @@ struct ReviewStep: View {
                 .foregroundStyle(Palette.inkFaint)
                 .fixedSize(horizontal: false, vertical: true)
                 .appearIn(4)
+
+            (
+                Text("Building your plan means agreeing to the ")
+                + Text("[Privacy Policy](\(APIConfig.baseURL.appending(path: "privacy").absoluteString))")
+                + Text(" and ")
+                + Text("[Terms](\(APIConfig.baseURL.appending(path: "terms").absoluteString))")
+                + Text(".")
+            )
+            .font(Typography.data(11))
+            .tint(Palette.accent)
+            .foregroundStyle(Palette.inkFaint)
+            .fixedSize(horizontal: false, vertical: true)
+            .appearIn(5)
         }
     }
 
