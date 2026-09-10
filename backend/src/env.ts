@@ -15,6 +15,12 @@ const schema = z.object({
   CRON_SECRET: z.string().min(1),
   JWT_SECRET: z.string().min(1),
 
+  // Guards GET /api/admin/* (beta metrics). Falls back to CRON_SECRET if unset.
+  ADMIN_SECRET: z.string().default(''),
+
+  // Shown in the privacy policy / terms footer and the app's support link.
+  SUPPORT_EMAIL: z.string().default('support@setpoint.app'),
+
   // Set to "true" to keep POST /api/auth/dev available on a production deploy
   // (staging only — never on the real production environment).
   ENABLE_DEV_LOGIN: z.string().default(''),

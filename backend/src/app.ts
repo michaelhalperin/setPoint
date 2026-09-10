@@ -4,12 +4,14 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import { ZodError } from 'zod';
 import { env } from './env.js';
 import { accountRoutes } from './routes/account.js';
+import { adminRoutes } from './routes/admin.js';
 import { authRoutes } from './routes/auth.js';
 import { biosignalRoutes } from './routes/biosignals.js';
 import { checkInRoutes } from './routes/checkins.js';
 import { cronRoutes } from './routes/cron.js';
 import { dashboardRoutes } from './routes/dashboard.js';
 import { healthRoutes } from './routes/health.js';
+import { legalRoutes } from './routes/legal.js';
 import { mealRoutes } from './routes/meals.js';
 import { pushTokenRoutes } from './routes/pushTokens.js';
 import { weightRoutes } from './routes/weight.js';
@@ -47,6 +49,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   });
 
   await app.register(healthRoutes);
+  await app.register(legalRoutes);
   await app.register(authRoutes, { prefix: '/api/auth' });
   await app.register(mealRoutes, { prefix: '/api/meals' });
   await app.register(checkInRoutes, { prefix: '/api/checkins' });
@@ -55,6 +58,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(weightRoutes, { prefix: '/api/weight' });
   await app.register(accountRoutes, { prefix: '/api' });
   await app.register(dashboardRoutes, { prefix: '/api' });
+  await app.register(adminRoutes, { prefix: '/api/admin' });
   await app.register(cronRoutes, { prefix: '/api/cron' });
 
   return app;
