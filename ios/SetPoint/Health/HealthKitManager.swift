@@ -46,6 +46,15 @@ final class HealthKitManager {
             && store.authorizationStatus(for: hrvType) != .notDetermined
     }
 
+    /// Whether Health actually holds recent HRV data — the real test of "a
+    /// compatible device is connected" (§1). Used at onboarding to decide Smart
+    /// vs Basic mode rather than trusting a toggle.
+    func hasRecentSignal(days: Int = 21) async -> Bool {
+        guard isAvailable else { return false }
+        let hrv = await samples(hrvType, unit: hrvUnit, days: days)
+        return !hrv.isEmpty
+    }
+
     /// Fetch → compute → upload. Safe to call often; no-ops without access.
     func sync() async {
         guard isAvailable, let api else { return }

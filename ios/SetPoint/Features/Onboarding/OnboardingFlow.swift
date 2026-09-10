@@ -114,5 +114,6 @@ struct OnboardingFlow: View {
 #if DEBUG
 #Preview {
     OnboardingFlow(model: OnboardingViewModel(api: AppEnvironment.preview().api, onComplete: {}))
+        .environment(AppEnvironment.preview())
 }
 #endif

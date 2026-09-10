@@ -286,6 +286,12 @@ struct GoalStep: View {
 /// reminder alarms and do not require exact meal times.
 struct CheckinsStep: View {
     @Bindable var model: OnboardingViewModel
+    @Environment(AppEnvironment.self) private var env
+
+    enum WearableProbe: Equatable {
+        case idle, connecting, connectedWithData, connectedNoData, denied, unavailable
+    }
+    @State private var probe: WearableProbe = .idle
 
     private var goalContext: String? {
         guard let goal = model.draft.goal else { return nil }
@@ -349,25 +355,68 @@ struct CheckinsStep: View {
                     modeButton("Meal rhythm", symbol: "clock", wearable: false)
                     modeButton("Wearable", symbol: "heart.text.square", wearable: true)
                 }
-                if model.draft.hasWearable {
-                    Text("Health access comes next.")
+                if let note = probeNote {
+                    Text(note)
                         .font(Typography.data(12))
-                        .foregroundStyle(Palette.inkFaint)
+                        .foregroundStyle(probe == .denied ? Palette.accentDeep : Palette.inkFaint)
+                        .fixedSize(horizontal: false, vertical: true)
                         .transition(.opacity)
                 }
             }
             .appearIn(4)
         }
+        .task { if !env.health.isAvailable { probe = .unavailable } }
+        .animation(Motion.settle, value: probe)
+    }
+
+    private var probeNote: String? {
+        switch probe {
+        case .idle: return model.draft.hasWearable ? "Heart-rate data connected." : nil
+        case .connecting: return "Checking for heart-rate data…"
+        case .connectedWithData: return "Connected. I'll use your heart-rate data."
+        case .connectedNoData: return "Connected — no recent heart-rate data yet. I'll use meal timing until your device syncs."
+        case .denied: return "Health access was declined. Staying on meal timing — you can connect later in Settings."
+        case .unavailable: return "No Health data on this device. Meal timing it is."
+        }
+    }
+
+    /// Picking "Wearable" runs the real Health connect + a data probe, so the
+    /// chosen mode reflects an actually-connected device (§1), not a toggle.
+    private func chooseWearable() {
+        guard env.health.isAvailable else { probe = .unavailable; return }
+        probe = .connecting
+        Task {
+            let ok = await env.health.connect()
+            guard ok else {
+                model.draft.hasWearable = false
+                probe = .denied
+                return
+            }
+            let hasData = await env.health.hasRecentSignal()
+            model.draft.hasWearable = true
+            probe = hasData ? .connectedWithData : .connectedNoData
+        }
     }
 
     private func modeButton(_ title: String, symbol: String, wearable: Bool) -> some View {
         let selected = model.draft.hasWearable == wearable
+        let disabled = wearable && probe == .unavailable
         return Button {
-            model.draft.hasWearable = wearable
+            if wearable {
+                if probe != .connecting { chooseWearable() }
+            } else {
+                model.draft.hasWearable = false
+                probe = .idle
+            }
         } label: {
             VStack(alignment: .leading, spacing: Space.xs) {
-                Image(systemName: selected ? "\(symbol).fill" : symbol)
-                    .font(.system(size: 16, weight: .semibold))
+                if wearable && probe == .connecting {
+                    ProgressView().controlSize(.small).tint(selected ? Color.white : Palette.inkSoft)
+                        .frame(height: 21, alignment: .leading)
+                } else {
+                    Image(systemName: selected ? "\(symbol).fill" : symbol)
+                        .font(.system(size: 16, weight: .semibold))
+                }
                 Text(title)
                     .font(Typography.data(13, weight: .semibold))
             }
@@ -382,8 +431,10 @@ struct CheckinsStep: View {
                 RoundedRectangle(cornerRadius: Radius.sm, style: .continuous)
                     .strokeBorder(selected ? Color.clear : Palette.hairline)
             )
+            .opacity(disabled ? 0.5 : 1)
         }
         .buttonStyle(.plain)
+        .disabled(disabled)
     }
 
     @ViewBuilder
@@ -715,7 +766,8 @@ struct OutcomeStep: View {
                 .appearIn(4)
             }
 
-            if enforcementOn, model.draft.hasWearable, !healthHandled, env.health.isAvailable {
+            if enforcementOn, model.draft.hasWearable, !healthHandled, env.health.isAvailable,
+               !env.health.connected {
                 VStack(alignment: .leading, spacing: Space.xs) {
                     copy("Use Health recovery data.")
                     ActionButton(title: "Connect Health", kind: .secondary) {
