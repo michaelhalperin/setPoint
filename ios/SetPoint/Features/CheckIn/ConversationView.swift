@@ -28,9 +28,7 @@ struct ConversationView: View {
                 if let model {
                     body(model)
                 } else {
-                    Spacer()
-                    ProgressView()
-                    Spacer()
+                    ConversationSkeletonView()
                 }
             }
             .offset(y: drag)
@@ -63,9 +61,7 @@ struct ConversationView: View {
     private func body(_ model: ConversationViewModel) -> some View {
         switch model.phase {
         case .loading:
-            Spacer()
-            ProgressView()
-            Spacer()
+            ConversationSkeletonView()
 
         case let .failed(message):
             Spacer()
@@ -158,7 +154,7 @@ struct ConversationView: View {
     @ViewBuilder
     private func composer(_ model: ConversationViewModel) -> some View {
         HStack(spacing: 10) {
-            TextField("Type a reply…", text: Binding(get: { model.draft }, set: { model.draft = $0 }), axis: .vertical)
+            TextField("Reply…", text: Binding(get: { model.draft }, set: { model.draft = $0 }), axis: .vertical)
                 .font(Typography.data(15))
                 .lineLimit(1 ... 4)
                 .padding(12)
@@ -197,6 +193,49 @@ struct ConversationView: View {
                     withAnimation(Motion.adaptive(Motion.snappy, reduceMotion: reduceMotion)) { drag = 0 }
                 }
             }
+    }
+}
+
+private struct ConversationSkeletonView: View {
+    var body: some View {
+        VStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: 14) {
+                SkeletonBlock(width: 72, height: 12)
+
+                bubble(width: 258, height: 68, alignment: .leading)
+                bubble(width: 194, height: 48, alignment: .trailing, tint: Palette.accentSoft.opacity(0.65))
+                bubble(width: 226, height: 82, alignment: .leading)
+
+                Spacer()
+            }
+            .padding(.horizontal, Space.gutter)
+            .padding(.vertical, Space.sm)
+
+            HStack(spacing: 10) {
+                SkeletonBlock(height: 48, radius: 14)
+                SkeletonBlock(width: 32, height: 32, radius: 16)
+            }
+            .padding(.horizontal, Space.gutter)
+            .padding(.vertical, Space.sm)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Palette.background)
+        .skeletonLoading()
+    }
+
+    private func bubble(
+        width: CGFloat,
+        height: CGFloat,
+        alignment: Alignment,
+        tint: Color = Palette.surfaceSunk
+    ) -> some View {
+        SkeletonBlock(
+            width: width,
+            height: height,
+            radius: Radius.md,
+            tint: tint
+        )
+        .frame(maxWidth: .infinity, alignment: alignment)
     }
 }
 

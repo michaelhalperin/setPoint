@@ -33,7 +33,11 @@ struct RootView: View {
     private var authedContent: some View {
         switch env.auth.status {
         case .loading:
-            ProgressView()
+            if env.auth.hasToken {
+                HomeSkeletonView()
+            } else {
+                SignInSkeletonView()
+            }
         case .signedOut:
             SignInView()
         case .signedIn:
@@ -55,7 +59,7 @@ enum DebugPreviewStub {
     case settings
 
     enum LogMealStubState { case compose, parsing, result }
-    case settlement
+    case settlement(SettlementResponse)
 
     @ViewBuilder
     var view: some View {
@@ -78,8 +82,8 @@ enum DebugPreviewStub {
             LogMealStubHost(state: state)
         case .settings:
             NavigationStack { SettingsView(previewModel: .previewed()) }
-        case .settlement:
-            NavigationStack { SettlementView(previewModel: .previewed(.sample)) }
+        case let .settlement(response):
+            SettlementView(previewModel: .previewed(response))
         }
     }
 
@@ -90,6 +94,7 @@ enum DebugPreviewStub {
         switch CommandLine.arguments[index + 1] {
         case "home": return .home(.sampleUnder)
         case "home-over": return .home(.sampleOver)
+        case "home-empty": return .home(.sampleEmpty)
         case "onboarding": return .onboarding(.welcome)
         case "onboarding-you": return .onboarding(.you)
         case "onboarding-goal": return .onboarding(.goal)
@@ -104,7 +109,10 @@ enum DebugPreviewStub {
         case "log-meal-parsing": return .logMeal(.parsing)
         case "log-meal-result": return .logMeal(.result)
         case "settings": return .settings
-        case "settlement": return .settlement
+        case "you": return .settings
+        case "settlement": return .settlement(.sample)
+        case "settlement-weigh-in": return .settlement(.sampleNeedsWeighIn)
+        case "settlement-empty": return .settlement(.sampleEmpty)
         default: return nil
         }
     }
@@ -112,25 +120,24 @@ enum DebugPreviewStub {
 
 private struct LogMealStubHost: View {
     let state: DebugPreviewStub.LogMealStubState
-    @State private var showing = true
-
-    private var previewModel: LogMealViewModel? {
-        switch state {
-        case .compose: return nil
-        case .parsing: return .sampleParsing
-        case .result: return .previewed(LogMealViewModel.sampleLogged, text: "chicken burrito bowl, large")
-        }
-    }
 
     var body: some View {
-        ZStack {
-            Palette.background.ignoresSafeArea()
-            HomeContent(model: .previewed(.loaded(.sampleUnder)))
-        }
-        .sheet(isPresented: $showing) {
-            LogMealSheet(onFinished: { showing = false }, previewModel: previewModel)
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
+        switch state {
+        case .compose:
+            HomeContent(
+                model: .previewed(.loaded(.sampleEmpty)),
+                startComposerExpanded: true
+            )
+        case .parsing:
+            HomeContent(
+                model: .previewed(.loaded(.sampleEmpty)),
+                previewLogger: .samplePhotoParsing
+            )
+        case .result:
+            HomeContent(
+                model: .previewed(.loaded(.sampleEmpty)),
+                previewLogger: .samplePhotoConfirm
+            )
         }
     }
 }

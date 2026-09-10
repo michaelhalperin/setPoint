@@ -35,7 +35,7 @@ final class ConversationViewModel {
             apply(res)
             phase = .ready
         } catch {
-            phase = .failed(Self.message(error))
+            phase = .failed(UserFacingError.message(for: error, fallback: "Couldn't load. Try again."))
         }
     }
 
@@ -55,17 +55,17 @@ final class ConversationViewModel {
             )
             apply(res)
         } catch {
-            phase = .failed(Self.message(error))
+            phase = .failed(UserFacingError.message(for: error, fallback: "Couldn't send. Try again."))
         }
     }
 
     /// A short line describing where the conversation landed (shown once resolved).
     var outcomeSummary: String? {
         switch outcome {
-        case "ADJUST_PLAN": return "We'll ease the plan. Fine-tune it in Settings."
-        case "PAUSE_CHECKINS": return "Check-ins are paused. Turn them back on in Settings anytime."
-        case "SUGGEST_PROFESSIONAL": return "SetPoint will keep tracking quietly. Talking to a professional can really help."
-        default: return resolved ? "Thanks for talking it through." : nil
+        case "ADJUST_PLAN": return "Adjust anytime in Settings."
+        case "PAUSE_CHECKINS": return "Resume anytime in Settings."
+        case "SUGGEST_PROFESSIONAL": return "Quiet tracking is on. Consider professional support."
+        default: return resolved ? "Done." : nil
         }
     }
 
@@ -91,10 +91,6 @@ final class ConversationViewModel {
         messages = res.messages
         outcome = res.outcome
         resolved = res.resolved
-    }
-
-    private static func message(_ error: Error) -> String {
-        (error as? LocalizedError)?.errorDescription ?? "Something went wrong."
     }
 
     #if DEBUG

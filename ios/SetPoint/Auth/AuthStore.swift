@@ -49,14 +49,14 @@ final class AuthStore {
         switch result {
         case let .failure(error):
             if (error as? ASAuthorizationError)?.code == .canceled { return }
-            lastError = error.localizedDescription
+            lastError = UserFacingError.message(for: error, fallback: "Sign-in failed.")
         case let .success(auth):
             guard
                 let credential = auth.credential as? ASAuthorizationAppleIDCredential,
                 let tokenData = credential.identityToken,
                 let identityToken = String(data: tokenData, encoding: .utf8)
             else {
-                lastError = "Apple didn't return an identity token."
+                lastError = "Sign-in failed."
                 return
             }
             await exchange(path: "/api/auth/apple", body: ["identityToken": identityToken])
@@ -89,8 +89,7 @@ final class AuthStore {
         do {
             let (data, response) = try await session.data(for: request)
             guard let http = response as? HTTPURLResponse, (200 ..< 300).contains(http.statusCode) else {
-                let message = (try? JSONDecoder().decode([String: String].self, from: data))?["message"]
-                lastError = message ?? "Sign-in failed."
+                lastError = "Sign-in failed."
                 return false
             }
             let auth = try JSONDecoder().decode(AuthResponse.self, from: data)
@@ -101,7 +100,7 @@ final class AuthStore {
             status = .signedIn(userId: auth.userId)
             return true
         } catch {
-            lastError = error.localizedDescription
+            lastError = UserFacingError.message(for: error, fallback: "Sign-in failed.")
             return false
         }
     }

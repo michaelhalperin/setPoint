@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// The signed-in shell: three tabs, with onboarding presented full-screen over
 /// everything until it's complete.
@@ -9,7 +10,19 @@ struct MainTabView: View {
     @State private var selection = Tab.today
     @State private var deepLinkCheckInID: String?
 
-    enum Tab: Hashable { case today, week, settings }
+    enum Tab: Hashable { case today, week, you }
+
+    init() {
+        let appearance = UITabBarAppearance()
+        appearance.configureWithTransparentBackground()
+        appearance.backgroundColor = UIColor(Palette.background).withAlphaComponent(0.94)
+        appearance.backgroundEffect = UIBlurEffect(style: .systemUltraThinMaterial)
+        appearance.shadowColor = .clear
+        appearance.shadowImage = UIImage()
+
+        UITabBar.appearance().standardAppearance = appearance
+        UITabBar.appearance().scrollEdgeAppearance = appearance
+    }
 
     var body: some View {
         Group {
@@ -17,27 +30,28 @@ struct MainTabView: View {
                 TabView(selection: $selection) {
                     NavigationStack {
                         HomeContent(model: home, deepLinkCheckInID: $deepLinkCheckInID)
-                            .navigationTitle("Today")
-                            .navigationBarTitleDisplayMode(.large)
-                            .toolbarBackground(Palette.background, for: .navigationBar)
+                            .toolbar(.hidden, for: .navigationBar)
                     }
                     .tabItem { Label("Today", systemImage: "sun.max") }
                     .tag(Tab.today)
 
-                    NavigationStack { SettlementView() }
-                        .tabItem { Label("Week", systemImage: "chart.bar") }
-                        .tag(Tab.week)
+                    NavigationStack {
+                        SettlementView()
+                            .toolbar(.hidden, for: .navigationBar)
+                    }
+                    .tabItem { Label("Week", systemImage: "chart.bar") }
+                    .tag(Tab.week)
 
                     NavigationStack { SettingsView() }
-                        .tabItem { Label("Settings", systemImage: "gearshape") }
-                        .tag(Tab.settings)
+                        .tabItem { Label("You", systemImage: "person") }
+                        .tag(Tab.you)
                 }
                 .tint(Palette.accent)
                 .fullScreenCover(isPresented: needsOnboarding) {
                     OnboardingFlow(model: onboarding)
                 }
             } else {
-                ProgressView()
+                HomeSkeletonView()
             }
         }
         .onChange(of: env.push.pendingCheckInID) { _, id in
@@ -48,7 +62,11 @@ struct MainTabView: View {
         }
         .task {
             guard home == nil else { return }
-            let h = HomeViewModel(api: env.api, onUnauthorized: { env.auth.handleUnauthorized() })
+            let h = HomeViewModel(
+                api: env.api,
+                onUnauthorized: { env.auth.handleUnauthorized() },
+                onMealChanged: { env.changes.mealsChanged() }
+            )
             onboarding = OnboardingViewModel(api: env.api, onComplete: { Task { await h.load() } })
             home = h
             await h.load()

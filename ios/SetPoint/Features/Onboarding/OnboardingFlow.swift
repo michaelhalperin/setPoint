@@ -7,10 +7,16 @@ struct OnboardingFlow: View {
     var body: some View {
         VStack(spacing: 0) {
             if let index = model.threadIndex {
-                ProgressThread(step: index, total: OnboardingViewModel.threadedSteps.count)
-                    .padding(.horizontal, Space.gutter)
-                    .padding(.top, Space.sm)
-                    .transition(.opacity)
+                VStack(spacing: Space.xs) {
+                    HStack {
+                        Text(model.stepTitle ?? "")
+                            .sectionLabelStyle()
+                    }
+                    ProgressThread(step: index, total: OnboardingViewModel.threadedSteps.count)
+                }
+                .padding(.horizontal, Space.gutter)
+                .padding(.top, Space.sm)
+                .transition(.opacity)
             }
 
             ScrollView {

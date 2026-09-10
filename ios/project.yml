@@ -60,6 +60,8 @@ targets:
     dependencies:
       - target: SetPointWidgets
         embed: true
+      - sdk: ActivityKit.framework
+      - sdk: HealthKit.framework
 
   SetPointWidgets:
     type: app-extension
@@ -75,6 +77,10 @@ targets:
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: SetPointWidgets/Info.plist
         SKIP_INSTALL: YES
+    dependencies:
+      - sdk: ActivityKit.framework
+      - sdk: WidgetKit.framework
+      - sdk: SwiftUI.framework
 
   SetPointTests:
     type: bundle.unit-test

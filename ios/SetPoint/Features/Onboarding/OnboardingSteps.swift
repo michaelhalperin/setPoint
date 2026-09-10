@@ -14,64 +14,97 @@ struct WelcomeStep: View {
                 .foregroundStyle(Palette.inkFaint)
                 .appearIn(0)
 
-            Text("I'm not a tracker.\nI make sure you actually eat.")
-                .font(Typography.display(32))
+            Text("Eat to your goal.")
+                .font(Typography.display(34))
                 .foregroundStyle(Palette.ink)
                 .lineSpacing(4)
                 .fixedSize(horizontal: false, vertical: true)
                 .appearIn(1)
 
-            VStack(alignment: .leading, spacing: Space.sm) {
-                Text("You tell me what you're working toward. I watch the day, and when you're falling behind I step in — with something specific to eat, not a lecture.")
-                Text("Takes about a minute to set up.")
-                    .foregroundStyle(Palette.inkFaint)
+            Text("One daily target. Check-ins when needed.")
+                .font(Typography.data(15))
+                .foregroundStyle(Palette.inkSoft)
+                .lineSpacing(3)
+                .fixedSize(horizontal: false, vertical: true)
+                .appearIn(2)
+
+            Card(tint: Palette.surfaceRaised, padding: Space.md) {
+                VStack(spacing: Space.md) {
+                    promise("scope", "One target", "Your daily number.")
+                    Divider().overlay(Palette.hairline)
+                    promise("waveform.path.ecg", "Your rhythm", "Flexible meal timing.")
+                    Divider().overlay(Palette.hairline)
+                    promise("text.bubble.fill", "Useful help", "Food when needed.")
+                }
             }
-            .font(Typography.data(15))
-            .foregroundStyle(Palette.inkSoft)
-            .lineSpacing(3)
-            .fixedSize(horizontal: false, vertical: true)
-            .appearIn(2)
+            .appearIn(3)
+
+            Text("About two minutes. Editable anytime.")
+                .font(Typography.data(12))
+                .foregroundStyle(Palette.inkFaint)
+                .appearIn(4)
 
             Spacer()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
+
+    private func promise(_ symbol: String, _ title: String, _ detail: String) -> some View {
+        HStack(spacing: Space.sm) {
+            Image(systemName: symbol)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(Palette.accent)
+                .frame(width: 34, height: 34)
+                .background(Palette.accentTint, in: Circle())
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(Typography.data(15, weight: .semibold))
+                    .foregroundStyle(Palette.ink)
+                Text(detail)
+                    .font(Typography.data(12))
+                    .foregroundStyle(Palette.inkFaint)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
 }
 
-/// Beat 1 — the one unavoidable data dump. Used once to set a real target.
+/// The minimum baseline needed to calculate a defensible starting target.
 struct YouStep: View {
     @Bindable var model: OnboardingViewModel
+
+    private var goal: Goal { model.draft.goal ?? .maintain }
 
     var body: some View {
         VStack(alignment: .leading, spacing: Space.md) {
             ManagerLine(
-                line: "First, the basics.",
-                aside: "I use these once to set a target that's actually realistic for you — then I leave them alone."
+                context: "\(goal.title) is the direction.",
+                line: "Your starting point.",
+                aside: "Sets your first targets."
             )
 
             VStack(spacing: Space.sm) {
                 MeasureField(label: "Height", unit: "cm", range: 120 ... 230, value: $model.draft.heightCm)
                 MeasureField(label: "Weight", unit: "kg", range: 35 ... 250, value: $model.draft.weightKg)
 
-                HStack {
-                    Text("Born")
-                        .font(Typography.data(15))
-                        .foregroundStyle(Palette.inkSoft)
-                    Spacer()
+                inputRow("Date of birth") {
                     DatePicker("", selection: $model.draft.birthDate, in: ...Date.now, displayedComponents: .date)
                         .labelsHidden()
                 }
-                .padding(14)
-                .background {
-                    RoundedRectangle(cornerRadius: Radius.sm, style: .continuous)
-                        .fill(Palette.surface).elevation(.resting)
-                        .overlay(RoundedRectangle(cornerRadius: Radius.sm, style: .continuous).strokeBorder(Palette.hairline))
+
+                inputRow("Typical activity") {
+                    Picker("Typical activity", selection: $model.draft.activityLevel) {
+                        ForEach(ActivityLevel.allCases) { Text($0.title).tag($0) }
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+                    .tint(Palette.ink)
                 }
             }
             .appearIn(2)
 
             VStack(alignment: .leading, spacing: Space.xs) {
-                Text("Sex").sectionLabelStyle()
+                Text("For energy estimate").sectionLabelStyle()
                 Picker("Sex", selection: $model.draft.sex) {
                     ForEach(Sex.allCases) { Text($0.title).tag($0) }
                 }
@@ -79,85 +112,178 @@ struct YouStep: View {
             }
             .appearIn(3)
 
-            VStack(alignment: .leading, spacing: Space.xs) {
-                Text("Day-to-day activity").sectionLabelStyle()
-                VStack(spacing: Space.xs) {
-                    ForEach(ActivityLevel.allCases) { level in
-                        ChoiceCard(title: level.title, selected: model.draft.activityLevel == level) {
-                            model.draft.activityLevel = level
+            if goal.hasWeightTarget, model.draft.weightKg != nil {
+                Card(tint: Palette.accentTint, elevation: .floating) {
+                    VStack(alignment: .leading, spacing: Space.sm) {
+                        Text("Target weight")
+                            .font(Typography.voice(19))
+                            .foregroundStyle(Palette.ink)
+                        Text("Editable anytime.")
+                            .font(Typography.data(12))
+                            .foregroundStyle(Palette.inkSoft)
+                            .fixedSize(horizontal: false, vertical: true)
+                        MeasureField(
+                            label: "Target weight",
+                            unit: "kg",
+                            range: 25 ... 350,
+                            value: $model.draft.targetWeightKg
+                        )
+                        if model.draft.targetWeightKg != nil, !model.targetWeightIsValid {
+                            Text(goal == .bulk ? "Above current weight." : "Below current weight.")
+                                .font(Typography.data(11, weight: .medium))
+                                .foregroundStyle(Palette.accent)
+                        }
+                        HStack(spacing: Space.xs) {
+                            ForEach(GoalPace.allCases) { pace in
+                                paceButton(pace)
+                            }
                         }
                     }
                 }
+                .transition(.opacity.combined(with: .move(edge: .top)))
+                .appearIn(4)
             }
-            .appearIn(4)
+        }
+        .onAppear { proposeTargetIfNeeded() }
+        .onChange(of: model.draft.weightKg) { _, _ in proposeTargetIfNeeded() }
+    }
+
+    private func inputRow<C: View>(_ label: String, @ViewBuilder content: () -> C) -> some View {
+        HStack {
+            Text(label)
+                .font(Typography.data(15))
+                .foregroundStyle(Palette.inkSoft)
+            Spacer()
+            content()
+        }
+        .padding(14)
+        .background {
+            RoundedRectangle(cornerRadius: Radius.sm, style: .continuous)
+                .fill(Palette.surface).elevation(.resting)
+                .overlay(RoundedRectangle(cornerRadius: Radius.sm, style: .continuous).strokeBorder(Palette.hairline))
+        }
+    }
+
+    private func paceButton(_ pace: GoalPace) -> some View {
+        let selected = model.draft.pace == pace
+        return Button {
+            model.draft.pace = pace
+        } label: {
+            VStack(spacing: 2) {
+                Text(pace.title)
+                    .font(Typography.data(14, weight: .semibold))
+                Text(pace.blurb(for: goal))
+                    .font(Typography.data(10))
+            }
+            .foregroundStyle(selected ? Color.white : Palette.inkSoft)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 10)
+            .background(selected ? Palette.ink : Palette.surface, in: RoundedRectangle(cornerRadius: Radius.sm))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func proposeTargetIfNeeded() {
+        guard model.draft.targetWeightKg == nil, let weight = model.draft.weightKg else { return }
+        switch goal {
+        case .bulk: model.draft.targetWeightKg = (weight + 4).rounded()
+        case .diet: model.draft.targetWeightKg = (weight - 5).rounded()
+        case .maintain: break
         }
     }
 }
 
-/// Beat 2 — direction, then the manager reacts and asks how hard to push.
+/// The first decision is intent. Numbers come after the user has chosen what
+/// those numbers are meant to do.
 struct GoalStep: View {
     @Bindable var model: OnboardingViewModel
 
-    private var currentWeight: Double? { model.draft.weightKg }
-
     var body: some View {
-        VStack(alignment: .leading, spacing: Space.md) {
+        VStack(alignment: .leading, spacing: Space.lg) {
             ManagerLine(
-                line: "What are we doing here?",
-                aside: "Pick a direction — I'll hold you to it. You can change it later."
+                line: "Choose your goal.",
+                aside: "Pick a direction."
             )
 
             VStack(spacing: Space.sm) {
                 ForEach(Array(Goal.allCases.enumerated()), id: \.element) { i, goal in
-                    ChoiceCard(title: goal.title, blurb: goal.blurb, selected: model.draft.goal == goal) {
+                    goalChoice(goal) {
                         withAnimation(Motion.settle) {
-                            model.draft.goal = goal
-                            if goal == .diet, model.draft.targetWeightKg == nil, let w = currentWeight {
-                                model.draft.targetWeightKg = (w - 5).rounded()
-                            } else if goal == .bulk, model.draft.targetWeightKg == nil, let w = currentWeight {
-                                model.draft.targetWeightKg = (w + 4).rounded()
+                            if model.draft.goal != goal {
+                                model.draft.targetWeightKg = nil
                             }
+                            model.draft.goal = goal
                         }
                     }
                     .appearIn(2 + i)
                 }
             }
 
-            if let goal = model.draft.goal, goal.hasWeightTarget {
-                VStack(alignment: .leading, spacing: Space.sm) {
-                    ManagerLine(
-                        context: goal == .bulk ? "Gaining." : "Leaning out.",
-                        line: "Now — how hard do you want to push?",
-                        aside: "Crash bulks and aggressive cuts are exactly what this app is built against. Slower holds."
-                    )
-
-                    if let w = currentWeight {
-                        Text("You're around \(Int(w.rounded())) kg now.")
-                            .font(Typography.data(13))
-                            .foregroundStyle(Palette.inkSoft)
-                    }
-                    MeasureField(label: "Target weight", unit: "kg", range: 35 ... 250, value: $model.draft.targetWeightKg)
-                        .id("target-\(goal.rawValue)")
-
-                    Text("Pace").sectionLabelStyle()
-                    VStack(spacing: 8) {
-                        ForEach(GoalPace.allCases) { pace in
-                            ChoiceCard(
-                                title: pace.title,
-                                blurb: pace.blurb(for: goal),
-                                selected: model.draft.pace == pace
-                            ) { model.draft.pace = pace }
-                        }
-                    }
-                }
-                .padding(.top, Space.xs)
-                .transition(.opacity.combined(with: .move(edge: .top)))
+            if let goal = model.draft.goal {
+                Text(commitment(for: goal))
+                    .font(Typography.voice(16))
+                    .foregroundStyle(Palette.accent)
+                    .padding(.horizontal, Space.xs)
+                    .transition(.opacity)
             }
+        }
+    }
+
+    private func goalChoice(_ goal: Goal, action: @escaping () -> Void) -> some View {
+        let selected = model.draft.goal == goal
+        return Button(action: action) {
+            HStack(spacing: Space.md) {
+                Image(systemName: symbol(for: goal))
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(selected ? .white : Palette.accent)
+                    .frame(width: 42, height: 42)
+                    .background(selected ? Palette.accent : Palette.accentTint, in: Circle())
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(goal.title)
+                        .font(Typography.data(18, weight: .semibold))
+                        .foregroundStyle(Palette.ink)
+                    Text(goal.blurb)
+                        .font(Typography.data(12))
+                        .foregroundStyle(Palette.inkSoft)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+                Image(systemName: selected ? "checkmark.circle.fill" : "circle")
+                    .foregroundStyle(selected ? Palette.accent : Palette.inkFaint)
+            }
+            .padding(Space.md)
+            .background(
+                selected ? Palette.accentTint : Palette.surface,
+                in: RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
+                    .strokeBorder(selected ? Palette.accent.opacity(0.45) : Palette.hairline)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func symbol(for goal: Goal) -> String {
+        switch goal {
+        case .bulk: return "arrow.up.right"
+        case .diet: return "arrow.down.right"
+        case .maintain: return "equal"
+        }
+    }
+
+    private func commitment(for goal: Goal) -> String {
+        switch goal {
+        case .bulk: return "Protect surplus."
+        case .diet: return "Protect intake floor."
+        case .maintain: return "Hold steady."
         }
     }
 }
 
-/// Beat 3 — how the manager reaches you: meal rhythm, quiet hours, wearable.
+/// A few anchors teach the manager when the day is drifting. These are not
+/// reminder alarms and do not require exact meal times.
 struct CheckinsStep: View {
     @Bindable var model: OnboardingViewModel
 
@@ -173,24 +299,38 @@ struct CheckinsStep: View {
         VStack(alignment: .leading, spacing: Space.md) {
             ManagerLine(
                 context: goalContext,
-                line: "Now — how I reach you.",
-                aside: "When do you normally eat? I learn your gaps from this. No need to be exact."
+                line: "Set your rhythm.",
+                aside: "Approximate times are enough."
             )
 
-            fieldGroup {
-                MinutesField(label: "Breakfast", minutes: $model.draft.breakfastMin)
-                Divider().overlay(Palette.hairline)
-                MinutesField(label: "Lunch", minutes: $model.draft.lunchMin)
-                Divider().overlay(Palette.hairline)
-                MinutesField(label: "Dinner", minutes: $model.draft.dinnerMin)
+            VStack(alignment: .leading, spacing: Space.xs) {
+                Text("Meal anchors").sectionLabelStyle()
+                fieldGroup {
+                    MinutesField(label: "Breakfast", minutes: $model.draft.breakfastMin)
+                    Divider().overlay(Palette.hairline)
+                    MinutesField(label: "Lunch", minutes: $model.draft.lunchMin)
+                    Divider().overlay(Palette.hairline)
+                    MinutesField(label: "Dinner", minutes: $model.draft.dinnerMin)
+                }
+                Text("No alarms.")
+                    .font(Typography.data(12))
+                    .foregroundStyle(Palette.inkFaint)
+                if !model.mealAnchorsAreValid {
+                    Text("Use morning-to-evening order.")
+                        .font(Typography.data(11, weight: .medium))
+                        .foregroundStyle(Palette.accent)
+                }
             }
             .appearIn(2)
 
             VStack(alignment: .leading, spacing: Space.xs) {
-                Text("Quiet hours").sectionLabelStyle()
-                Text("I won't check in during this window.")
-                    .font(Typography.data(13))
-                    .foregroundStyle(Palette.inkSoft)
+                HStack {
+                    Text("Quiet hours").sectionLabelStyle()
+                    Spacer()
+                    Text("No check-ins")
+                        .font(Typography.data(11, weight: .medium))
+                        .foregroundStyle(Palette.inkFaint)
+                }
                 fieldGroup {
                     MinutesField(label: "From", minutes: $model.draft.quietStartMin)
                     Divider().overlay(Palette.hairline)
@@ -200,21 +340,17 @@ struct CheckinsStep: View {
             .appearIn(3)
 
             VStack(alignment: .leading, spacing: Space.xs) {
-                Text("Heart-rate tracker").sectionLabelStyle()
-                Text("An Apple Watch, Oura ring, or similar. With one, I can tell you're running low before you feel it.")
+                Text("Signal").sectionLabelStyle()
+                Text("Wearable is optional.")
                     .font(Typography.data(13))
                     .foregroundStyle(Palette.inkSoft)
                     .fixedSize(horizontal: false, vertical: true)
-                VStack(spacing: Space.xs) {
-                    ChoiceCard(title: "I wear one", blurb: "Smart mode — biosignal-aware check-ins.", selected: model.draft.hasWearable) {
-                        model.draft.hasWearable = true
-                    }
-                    ChoiceCard(title: "Not right now", blurb: "Basic mode — scheduled from your meal times.", selected: !model.draft.hasWearable) {
-                        model.draft.hasWearable = false
-                    }
+                HStack(spacing: Space.xs) {
+                    modeButton("Meal rhythm", symbol: "clock", wearable: false)
+                    modeButton("Wearable", symbol: "heart.text.square", wearable: true)
                 }
                 if model.draft.hasWearable {
-                    Text("I'll ask for Health access after setup.")
+                    Text("Health access comes next.")
                         .font(Typography.data(12))
                         .foregroundStyle(Palette.inkFaint)
                         .transition(.opacity)
@@ -222,6 +358,32 @@ struct CheckinsStep: View {
             }
             .appearIn(4)
         }
+    }
+
+    private func modeButton(_ title: String, symbol: String, wearable: Bool) -> some View {
+        let selected = model.draft.hasWearable == wearable
+        return Button {
+            model.draft.hasWearable = wearable
+        } label: {
+            VStack(alignment: .leading, spacing: Space.xs) {
+                Image(systemName: selected ? "\(symbol).fill" : symbol)
+                    .font(.system(size: 16, weight: .semibold))
+                Text(title)
+                    .font(Typography.data(13, weight: .semibold))
+            }
+            .foregroundStyle(selected ? Color.white : Palette.inkSoft)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(12)
+            .background(
+                selected ? Palette.ink : Palette.surface,
+                in: RoundedRectangle(cornerRadius: Radius.sm, style: .continuous)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: Radius.sm, style: .continuous)
+                    .strokeBorder(selected ? Color.clear : Palette.hairline)
+            )
+        }
+        .buttonStyle(.plain)
     }
 
     @ViewBuilder
@@ -247,17 +409,17 @@ struct SafetyStep: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Space.md) {
             ManagerLine(
-                line: "Before I start pushing food at you — anything I need to know?",
-                aside: "This keeps me safe for you. Your answers stay private."
+                line: "Set boundaries.",
+                aside: "Keep suggestions safe."
             )
 
             VStack(alignment: .leading, spacing: Space.xs) {
-                Text("Allergies & restrictions").sectionLabelStyle()
-                Text("Nothing I suggest will ever include these.")
+                Text("Avoid").sectionLabelStyle()
+                Text("Exclude from suggestions.")
                     .font(Typography.data(13))
                     .foregroundStyle(Palette.inkSoft)
                 FlowChips(options: common, selected: $model.draft.restrictions)
-                TextField("Anything else — e.g. no red meat, low FODMAP", text: $model.draft.restrictionsFreeText, axis: .vertical)
+                TextField("Other restrictions", text: $model.draft.restrictionsFreeText, axis: .vertical)
                     .font(Typography.data(15))
                     .lineLimit(1 ... 3)
                     .padding(14)
@@ -269,29 +431,142 @@ struct SafetyStep: View {
             }
             .appearIn(2)
 
-            Divider().overlay(Palette.hairline)
-
-            Toggle(isOn: $model.draft.medicalSupervisionRequired) {
-                Text("I have a condition that needs medically supervised nutrition (e.g. diabetes, kidney disease).")
-                    .font(Typography.data(15))
-                    .foregroundStyle(Palette.ink)
+            Card(padding: 14) {
+                Toggle(isOn: $model.draft.medicalSupervisionRequired) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("My nutrition is medically supervised")
+                            .font(Typography.data(15, weight: .semibold))
+                            .foregroundStyle(Palette.ink)
+                        Text("Includes clinician-led diets.")
+                            .font(Typography.data(12))
+                            .foregroundStyle(Palette.inkSoft)
+                    }
+                    .fixedSize(horizontal: false, vertical: true)
+                }
+                .tint(Palette.accent)
             }
-            .tint(Palette.accent)
             .appearIn(3)
 
-            Divider().overlay(Palette.hairline)
-
-            VStack(alignment: .leading, spacing: Space.sm) {
-                Text("A few private questions").sectionLabelStyle()
-                YesNoRow(question: "Do you make yourself sick because you feel uncomfortably full?", answer: $model.draft.scoff.makeSelfSick)
-                YesNoRow(question: "Do you worry you have lost control over how much you eat?", answer: $model.draft.scoff.lostControl)
-                YesNoRow(question: "Have you recently lost more than 6 kg in a three-month period?", answer: $model.draft.scoff.lostOneStone)
-                YesNoRow(question: "Do you believe yourself to be fat when others say you are too thin?", answer: $model.draft.scoff.believesFat)
-                YesNoRow(question: "Would you say that food dominates your life?", answer: $model.draft.scoff.foodDominates)
-            }
+            SafetyQuestionFlow(model: model)
             .appearIn(4)
         }
     }
+}
+
+/// Presents the safety screen one question at a time. All five answers are
+/// still required, but the user never faces a wall of clinical copy.
+private struct SafetyQuestionFlow: View {
+    @Bindable var model: OnboardingViewModel
+    @State private var index = 0
+    @State private var reviewing = false
+
+    private let questions = [
+        "Do you make yourself sick because you feel uncomfortably full?",
+        "Do you worry you have lost control over how much you eat?",
+        "Have you recently lost more than 6 kg in a three-month period?",
+        "Do you believe yourself to be fat when others say you are too thin?",
+        "Would you say that food dominates your life?"
+    ]
+
+    private var answers: [Bool?] {
+        let s = model.draft.scoff
+        return [s.makeSelfSick, s.lostControl, s.lostOneStone, s.believesFat, s.foodDominates]
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Space.xs) {
+            HStack {
+                Text("Safety check").sectionLabelStyle()
+                Spacer()
+                Text("\(answers.compactMap { $0 }.count) of \(questions.count)")
+                    .font(Typography.data(11, weight: .medium))
+                    .foregroundStyle(Palette.inkFaint)
+            }
+
+            Card(tint: Palette.surfaceRaised, padding: Space.md) {
+                if model.draft.scoff.isComplete, !reviewing {
+                    VStack(alignment: .leading, spacing: Space.sm) {
+                        Label("Complete", systemImage: "checkmark.circle.fill")
+                            .font(Typography.data(15, weight: .semibold))
+                            .foregroundStyle(Palette.ink)
+                        Text("Quiet tracking is used when needed.")
+                            .font(Typography.data(12))
+                            .foregroundStyle(Palette.inkSoft)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Button("Review") {
+                            index = 0
+                            reviewing = true
+                        }
+                            .font(Typography.data(13, weight: .semibold))
+                            .foregroundStyle(Palette.accent)
+                    }
+                } else {
+                    VStack(alignment: .leading, spacing: Space.md) {
+                        HStack(spacing: 5) {
+                            ForEach(questions.indices, id: \.self) { questionIndex in
+                                Capsule()
+                                    .fill(questionIndex < index ? Palette.accent : questionIndex == index ? Palette.accent.opacity(0.4) : Palette.surfaceSunk)
+                                    .frame(height: 3)
+                            }
+                        }
+
+                        Text(questions[index])
+                            .font(Typography.voice(18))
+                            .foregroundStyle(Palette.ink)
+                            .lineSpacing(2)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        HStack(spacing: Space.xs) {
+                            answerButton("No", value: false)
+                            answerButton("Yes", value: true)
+                        }
+                    }
+                    .id(index)
+                    .transition(.opacity)
+                }
+            }
+
+            Text("Sets check-in mode. Private.")
+                .font(Typography.data(11))
+                .foregroundStyle(Palette.inkFaint)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func answerButton(_ title: String, value: Bool) -> some View {
+        Button {
+            setAnswer(value, at: index)
+            if index < questions.count - 1 {
+                index += 1
+            } else {
+                reviewing = false
+            }
+        } label: {
+            HStack(spacing: 5) {
+                if answers[index] == value {
+                    Image(systemName: "checkmark")
+                }
+                Text(title)
+            }
+            .font(Typography.data(14, weight: .semibold))
+            .foregroundStyle(value ? Palette.ink : Color.white)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 11)
+            .background(value ? Palette.surfaceSunk : Palette.ink, in: RoundedRectangle(cornerRadius: Radius.sm))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func setAnswer(_ value: Bool, at index: Int) {
+        switch index {
+        case 0: model.draft.scoff.makeSelfSick = value
+        case 1: model.draft.scoff.lostControl = value
+        case 2: model.draft.scoff.lostOneStone = value
+        case 3: model.draft.scoff.believesFat = value
+        default: model.draft.scoff.foodDominates = value
+        }
+    }
+
 }
 
 /// Beat 5 — the manager reads back what it has.
@@ -300,38 +575,89 @@ struct ReviewStep: View {
 
     var body: some View {
         let d = model.draft
-        VStack(alignment: .leading, spacing: Space.md) {
-            ManagerLine(line: "Here's what I've got. Look right?", aside: "You can change any of this in Settings.")
+        VStack(alignment: .leading, spacing: Space.lg) {
+            ManagerLine(
+                line: "Review your plan.",
+                aside: "Everything stays editable."
+            )
 
-            Card {
-                VStack(alignment: .leading, spacing: Space.sm) {
-                    row("Goal", (d.goal ?? .bulk).title)
-                    if let goal = d.goal, goal.hasWeightTarget, let target = d.targetWeightKg {
-                        row("Target", "\(Int(target.rounded())) kg · \(d.pace.title.lowercased()) pace")
-                    }
-                    row("Mode", d.hasWearable ? "Smart" : "Basic")
-                    row("Meals", "\(clock(d.breakfastMin)) · \(clock(d.lunchMin)) · \(clock(d.dinnerMin))")
-                    row("Quiet hours", "\(clock(d.quietStartMin))–\(clock(d.quietEndMin))")
-                    if !d.restrictions.isEmpty {
-                        row("Avoiding", d.restrictions.joined(separator: ", "))
-                    }
+            Card(tint: Palette.surfaceRaised, elevation: .floating, padding: Space.md) {
+                VStack(spacing: Space.md) {
+                    planRow(
+                        symbol: "scope",
+                        title: goalTitle(d),
+                        detail: d.goal?.hasWeightTarget == true
+                            ? "\(d.pace.title) pace · from \(Int((d.weightKg ?? 0).rounded())) kg"
+                            : "Keep intake and weight steady"
+                    )
+                    Divider().overlay(Palette.hairline)
+                    planRow(
+                        symbol: "sun.horizon",
+                        title: "\(clock(d.breakfastMin)) · \(clock(d.lunchMin)) · \(clock(d.dinnerMin))",
+                        detail: "Meal anchors"
+                    )
+                    Divider().overlay(Palette.hairline)
+                    planRow(
+                        symbol: d.hasWearable ? "heart.text.square" : "clock",
+                        title: d.hasWearable ? "Meal rhythm + wearable" : "Meal rhythm",
+                        detail: "Quiet from \(clock(d.quietStartMin)) to \(clock(d.quietEndMin))"
+                    )
                 }
             }
             .appearIn(2)
+
+            if !d.restrictions.isEmpty || !d.restrictionsFreeText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                HStack(alignment: .top, spacing: Space.xs) {
+                    Image(systemName: "checkmark.shield")
+                        .foregroundStyle(Palette.accent)
+                    Text("Exclude: \(restrictionSummary(d)).")
+                        .font(Typography.data(13))
+                        .foregroundStyle(Palette.inkSoft)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .appearIn(3)
+            }
+
+            Text("Your daily target is next.")
+                .font(Typography.data(12))
+                .foregroundStyle(Palette.inkFaint)
+                .fixedSize(horizontal: false, vertical: true)
+                .appearIn(4)
         }
     }
 
-    private func row(_ label: String, _ value: String) -> some View {
-        HStack(alignment: .top) {
-            Text(label)
-                .font(Typography.data(13))
-                .foregroundStyle(Palette.inkFaint)
-                .frame(width: 92, alignment: .leading)
-            Text(value)
-                .font(Typography.data(14, weight: .medium))
-                .foregroundStyle(Palette.ink)
-            Spacer()
+    private func planRow(symbol: String, title: String, detail: String) -> some View {
+        HStack(spacing: Space.sm) {
+            Image(systemName: symbol)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(Palette.accent)
+                .frame(width: 34, height: 34)
+                .background(Palette.accentTint, in: Circle())
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(Typography.data(15, weight: .semibold))
+                    .foregroundStyle(Palette.ink)
+                Text(detail)
+                    .font(Typography.data(12))
+                    .foregroundStyle(Palette.inkSoft)
+            }
+            Spacer(minLength: 0)
         }
+    }
+
+    private func goalTitle(_ draft: OnboardingDraft) -> String {
+        guard let goal = draft.goal else { return "Daily target" }
+        if goal.hasWeightTarget, let target = draft.targetWeightKg {
+            return "\(goal.directionVerb) \(Int(target.rounded())) kg"
+        }
+        return "Maintain \(Int((draft.weightKg ?? 0).rounded())) kg"
+    }
+
+    private func restrictionSummary(_ draft: OnboardingDraft) -> String {
+        var items = draft.restrictions
+        let freeText = draft.restrictionsFreeText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !freeText.isEmpty { items.append(freeText) }
+        return items.joined(separator: ", ")
     }
 }
 
@@ -366,21 +692,21 @@ struct OutcomeStep: View {
 
             switch model.result?.enforcementDisabledReason {
             case "EATING_DISORDER_SCREEN":
-                headline("I'll track your intake, quietly.")
-                copy("I won't push you to eat. If you're finding eating hard right now, talking to a professional can really help — the NEDA helpline is a good place to start.")
+                headline("Quiet mode is on.")
+                copy("I won't push you to eat. If eating feels hard right now, a qualified healthcare professional or local eating-disorder service can offer support that an app can't.")
                     .appearIn(1)
             case "MEDICAL_SUPERVISION":
-                headline("I'll track your intake, quietly.")
+                headline("Quiet mode is on.")
                 copy("I won't push you to eat — that's your care team's call, not an app's. This isn't a substitute for their plan.")
                     .appearIn(1)
             default:
-                headline("Here's your number.")
+                headline("Your starting point.")
                 targetReveal
             }
 
             if enforcementOn, !pushHandled, env.push.authorizationStatus == .notDetermined {
                 VStack(alignment: .leading, spacing: Space.xs) {
-                    copy("Check-ins arrive as a notification you can act on without opening the app.")
+                    copy("Get check-in notifications.")
                     ActionButton(title: "Turn on check-ins") {
                         Task { await env.push.requestAuthorization(); pushHandled = true }
                     }
@@ -391,7 +717,7 @@ struct OutcomeStep: View {
 
             if enforcementOn, model.draft.hasWearable, !healthHandled, env.health.isAvailable {
                 VStack(alignment: .leading, spacing: Space.xs) {
-                    copy("Connect Health so I can read your HRV and resting heart rate.")
+                    copy("Use Health recovery data.")
                     ActionButton(title: "Connect Health", kind: .secondary) {
                         Task { await env.health.connect(); healthHandled = true }
                     }
@@ -412,33 +738,47 @@ struct OutcomeStep: View {
 
     @ViewBuilder
     private var targetReveal: some View {
-        VStack(alignment: .leading, spacing: Space.xs) {
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text("\(shownKcal)")
-                    .font(Typography.hero)
-                    .foregroundStyle(Palette.accent)
-                    .contentTransition(.numericText(value: Double(shownKcal)))
-                    .monospacedDigit()
-                Text("kcal / day")
-                    .font(Typography.data(16))
-                    .foregroundStyle(Palette.inkFaint)
-            }
-            if let protein = model.result?.dailyProteinTargetG {
-                Text("\(protein) g protein to aim for")
-                    .font(Typography.data(14))
-                    .foregroundStyle(Palette.inkSoft)
-                    .appearIn(2)
-            }
-            Text("That's what I'll hold you to.")
-                .font(Typography.voice(17))
-                .foregroundStyle(Palette.ink)
-                .padding(.top, Space.xxs)
+        Card(tint: Palette.surfaceRaised, elevation: .floating, padding: Space.md) {
+            VStack(alignment: .leading, spacing: Space.md) {
+                HStack(alignment: .bottom) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("DAILY ENERGY")
+                            .sectionLabelStyle()
+                        HStack(alignment: .firstTextBaseline, spacing: 5) {
+                            Text("\(shownKcal)")
+                                .font(Typography.display(34))
+                                .foregroundStyle(Palette.accent)
+                                .contentTransition(.numericText(value: Double(shownKcal)))
+                                .monospacedDigit()
+                            Text("kcal")
+                                .font(Typography.data(13))
+                                .foregroundStyle(Palette.inkFaint)
+                        }
+                    }
+                    Spacer()
+                    if let protein = model.result?.dailyProteinTargetG {
+                        VStack(alignment: .trailing, spacing: 2) {
+                            Text("PROTEIN")
+                                .sectionLabelStyle()
+                            Text("\(protein) g")
+                                .font(Typography.data(20, weight: .semibold))
+                                .foregroundStyle(Palette.ink)
+                        }
+                        .appearIn(2)
+                    }
+                }
+                Divider().overlay(Palette.hairline)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Your daily target.")
+                        .font(Typography.voice(17))
+                        .foregroundStyle(Palette.ink)
+                    if let goalLine {
+                        Text(goalLine)
+                            .font(Typography.data(12))
+                            .foregroundStyle(Palette.inkSoft)
+                    }
+                }
                 .appearIn(3)
-            if let goalLine {
-                Text(goalLine)
-                    .font(Typography.data(13))
-                    .foregroundStyle(Palette.inkSoft)
-                    .appearIn(3)
             }
         }
         .appearIn(1)

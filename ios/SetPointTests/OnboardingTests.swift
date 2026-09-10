@@ -55,21 +55,37 @@ final class OnboardingTests: XCTestCase {
         let vm = OnboardingViewModel(api: AppEnvironment.preview().api, onComplete: {})
         XCTAssertEqual(vm.step, .welcome)
         XCTAssertTrue(vm.canAdvance)              // the intro gates nothing
-        vm.advance()                             // → you
+        vm.advance()                             // → goal
+        XCTAssertEqual(vm.step, .goal)
+        XCTAssertFalse(vm.canAdvance)             // direction not chosen
+        vm.draft.goal = .bulk
+        XCTAssertTrue(vm.canAdvance)
+        vm.advance()                             // → baseline
         XCTAssertEqual(vm.step, .you)
         XCTAssertFalse(vm.canAdvance)             // no height/weight
         vm.draft.heightCm = 175
         vm.draft.weightKg = 70
-        XCTAssertTrue(vm.canAdvance)
-        vm.advance()                             // → goal
-        XCTAssertEqual(vm.step, .goal)
-        XCTAssertFalse(vm.canAdvance)             // goal not chosen
-        vm.draft.goal = .bulk
         XCTAssertFalse(vm.canAdvance)             // bulk needs a target weight
+        vm.draft.targetWeightKg = 65
+        XCTAssertFalse(vm.canAdvance)             // gain target must be above the baseline
         vm.draft.targetWeightKg = 76
         XCTAssertTrue(vm.canAdvance)
         vm.draft.goal = .maintain
         XCTAssertTrue(vm.canAdvance)              // maintain needs no target
+    }
+
+    @MainActor
+    func testDailyRhythmRequiresChronologicalAnchors() {
+        let vm = OnboardingViewModel(api: AppEnvironment.preview().api, onComplete: {})
+        vm.step = .checkins
+        XCTAssertTrue(vm.canAdvance)
+
+        vm.draft.lunchMin = vm.draft.breakfastMin
+        XCTAssertFalse(vm.canAdvance)
+
+        vm.draft.lunchMin = 780
+        vm.draft.dinnerMin = 700
+        XCTAssertFalse(vm.canAdvance)
     }
 
     @MainActor
@@ -91,8 +107,10 @@ final class OnboardingTests: XCTestCase {
     func testThreadIndexSkipsWelcomeAndOutcome() {
         let vm = OnboardingViewModel(api: AppEnvironment.preview().api, onComplete: {})
         XCTAssertNil(vm.threadIndex)              // welcome
-        vm.step = .you
+        vm.step = .goal
         XCTAssertEqual(vm.threadIndex, 0)
+        vm.step = .you
+        XCTAssertEqual(vm.threadIndex, 1)
         vm.step = .review
         XCTAssertEqual(vm.threadIndex, 4)
         vm.step = .outcome

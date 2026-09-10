@@ -94,7 +94,7 @@ struct PrescriptionView: View {
     @ViewBuilder
     private var feedbackRow: some View {
         HStack(spacing: Space.sm) {
-            Text("Was this the right moment?")
+            Text("Good timing?")
                 .font(Typography.data(12))
                 .foregroundStyle(Palette.inkFaint)
             Spacer()
@@ -128,7 +128,7 @@ struct PrescriptionView: View {
                 try await work()
                 onResolved()
             } catch {
-                self.error = (error as? LocalizedError)?.errorDescription ?? "Something went wrong."
+            self.error = UserFacingError.message(for: error, fallback: "Couldn't do that. Try again.")
             }
             busy = false
         }
@@ -140,6 +140,7 @@ struct PrescriptionView: View {
             "/api/meals",
             LogMealRequest(text: nil, macros: nil, prescriptionId: rx.id)
         )
+        env.changes.mealsChanged()
     }
 
     private func deferCheckIn() async throws {

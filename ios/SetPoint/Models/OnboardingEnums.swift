@@ -9,15 +9,15 @@ enum Goal: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .bulk: return "Gain"
-        case .diet: return "Lean out"
+        case .diet: return "Cut"
         case .maintain: return "Maintain"
         }
     }
     var blurb: String {
         switch self {
-        case .bulk: return "Put on size. The hard part is eating enough, consistently."
-        case .diet: return "Drop fat without under-eating. The floor matters more than the ceiling."
-        case .maintain: return "Hold your weight. Keep eating enough so it doesn't drift."
+        case .bulk: return "Gain size consistently."
+        case .diet: return "Lose fat safely."
+        case .maintain: return "Keep weight steady."
         }
     }
 
@@ -54,7 +54,7 @@ enum GoalPace: String, CaseIterable, Identifiable {
 
     func blurb(for goal: Goal) -> String {
         let kg = kgPerWeek(for: goal)
-        return String(format: "about %.2f kg / week", kg)
+        return String(format: "%.2f kg/wk", kg)
     }
 
     /// The pace whose rate is nearest a stored kg/week value.
@@ -88,9 +88,9 @@ enum ActivityLevel: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var title: String {
         switch self {
-        case .sedentary: return "Mostly sitting"
-        case .light: return "Lightly active"
-        case .moderate: return "Moderately active"
+        case .sedentary: return "Sitting"
+        case .light: return "Light"
+        case .moderate: return "Moderate"
         case .active: return "Active"
         case .veryActive: return "Very active"
         }

@@ -82,10 +82,10 @@ struct OnboardingDraft {
 @Observable
 final class OnboardingViewModel {
     /// The intake, as beats rather than a form split into pages. `welcome` sets
-    /// the tone before any data; `you → goal → checkins → safety` are the input
+    /// the tone before any data; `goal → you → checkins → safety` are the input
     /// beats shown on the progress thread; `review` confirms; `outcome` delivers.
     enum Step: Int, CaseIterable {
-        case welcome, you, goal, checkins, safety, review, outcome
+        case welcome, goal, you, checkins, safety, review, outcome
     }
 
     var step: Step = .welcome
@@ -103,25 +103,40 @@ final class OnboardingViewModel {
     }
 
     /// Beats that carry the progress thread (welcome + outcome don't).
-    static let threadedSteps: [Step] = [.you, .goal, .checkins, .safety, .review]
+    static let threadedSteps: [Step] = [.goal, .you, .checkins, .safety, .review]
 
     /// 0-based position of `step` within the thread, or nil if it isn't threaded.
     var threadIndex: Int? {
         Self.threadedSteps.firstIndex(of: step)
     }
 
+    var targetWeightIsValid: Bool {
+        guard let goal = draft.goal else { return false }
+        guard goal.hasWeightTarget else { return true }
+        guard let current = draft.weightKg, let target = draft.targetWeightKg else { return false }
+        switch goal {
+        case .bulk: return target > current
+        case .diet: return target < current
+        case .maintain: return true
+        }
+    }
+
+    var mealAnchorsAreValid: Bool {
+        draft.breakfastMin < draft.lunchMin && draft.lunchMin < draft.dinnerMin
+    }
+
     var canGoBack: Bool {
-        ![.welcome, .you, .outcome].contains(step) && !submitting
+        step != .welcome && step != .outcome && !submitting
     }
 
     var canAdvance: Bool {
         switch step {
         case .welcome: return true
-        case .you: return draft.heightCm != nil && draft.weightKg != nil
-        case .goal:
-            guard let goal = draft.goal else { return false }
-            return !goal.hasWeightTarget || draft.targetWeightKg != nil
-        case .checkins: return true
+        case .goal: return draft.goal != nil
+        case .you:
+            guard draft.heightCm != nil, draft.weightKg != nil else { return false }
+            return targetWeightIsValid
+        case .checkins: return mealAnchorsAreValid
         case .safety: return draft.scoff.isComplete
         case .review: return !submitting
         case .outcome: return true
@@ -130,10 +145,20 @@ final class OnboardingViewModel {
 
     var primaryTitle: String {
         switch step {
-        case .welcome: return "Set this up"
-        case .review: return submitting ? "Setting up…" : "Start"
-        case .outcome: return "Go to today"
-        default: return "Continue"
+        case .welcome, .goal, .you, .checkins, .safety: return "Continue"
+        case .review: return submitting ? "Building…" : "Build plan"
+        case .outcome: return "Start"
+        }
+    }
+
+    var stepTitle: String? {
+        switch step {
+        case .goal: return "Direction"
+        case .you: return "Baseline"
+        case .checkins: return "Rhythm"
+        case .safety: return "Boundaries"
+        case .review: return "Ready"
+        default: return nil
         }
     }
 
@@ -156,18 +181,36 @@ final class OnboardingViewModel {
         submitting = true
         error = nil
         defer { submitting = false }
+        #if DEBUG
+        if previewOnly {
+            result = OnboardingResponse(
+                dailyKcalTarget: 3120, dailyProteinTargetG: 142,
+                targetWeightKg: 85, paceKgPerWeek: 0.25,
+                enforcementEnabled: true, enforcementDisabledReason: nil
+            )
+            step = .outcome
+            return
+        }
+        #endif
         do {
             let response: OnboardingResponse = try await api.post("/api/onboarding", draft.toRequest())
             result = response
             step = .outcome
         } catch {
-            self.error = (error as? LocalizedError)?.errorDescription ?? "Couldn't save your setup."
+            self.error = UserFacingError.message(for: error, fallback: "Couldn't save. Try again.")
         }
     }
 
     #if DEBUG
-    static func previewed(at step: Step) -> OnboardingViewModel {
-        let vm = OnboardingViewModel(api: AppEnvironment.preview().api, onComplete: {})
+    /// When true, Review → Start skips the API so a preview can walk the whole flow.
+    var previewOnly = false
+
+    static func previewed(
+        at step: Step,
+        onComplete: @escaping @MainActor () -> Void = {}
+    ) -> OnboardingViewModel {
+        let vm = OnboardingViewModel(api: AppEnvironment.preview().api, onComplete: onComplete)
+        vm.previewOnly = true
         vm.draft.goal = .bulk
         vm.draft.heightCm = 182
         vm.draft.weightKg = 79
