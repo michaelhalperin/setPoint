@@ -13,7 +13,14 @@ final class AppEnvironment {
 
     init(tokenStore: TokenStore = SessionTokenStore()) {
         self.auth = AuthStore(tokenStore: tokenStore)
-        self.api = APIClient(tokenProvider: { tokenStore.read() })
+        self.api = APIClient(
+            tokenProvider: { tokenStore.read() },
+            onTokenRefresh: { renewed in
+                // Only replace a live session — never resurrect one after sign-out.
+                guard tokenStore.read() != nil else { return }
+                tokenStore.write(renewed)
+            }
+        )
         push.api = api
         health.api = api
     }

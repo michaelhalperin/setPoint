@@ -19,10 +19,16 @@ private struct APIErrorBody: Decodable {
 
 /// Thin async/await JSON client. Attaches the bearer token from `tokenProvider`
 /// on every request; maps 401 to `.unauthorized` so the UI can sign out.
+///
+/// The backend renews sessions: when a token is over a week old it returns a
+/// fresh one in the `x-session-token` header, handed to `onTokenRefresh`.
 actor APIClient {
+    static let sessionRenewalHeader = "x-session-token"
+
     private let baseURL: URL
     private let session: URLSession
     private let tokenProvider: @Sendable () -> String?
+    private let onTokenRefresh: @Sendable (String) -> Void
 
     private static let decoder = JSONDecoder()
     private static let encoder: JSONEncoder = {
@@ -34,11 +40,13 @@ actor APIClient {
     init(
         baseURL: URL = APIConfig.baseURL,
         session: URLSession = .shared,
-        tokenProvider: @escaping @Sendable () -> String?
+        tokenProvider: @escaping @Sendable () -> String?,
+        onTokenRefresh: @escaping @Sendable (String) -> Void = { _ in }
     ) {
         self.baseURL = baseURL
         self.session = session
         self.tokenProvider = tokenProvider
+        self.onTokenRefresh = onTokenRefresh
     }
 
     func get<T: Decodable>(_ path: String, query: [String: String] = [:]) async throws -> T {
@@ -105,6 +113,9 @@ actor APIClient {
 
         switch http.statusCode {
         case 200 ..< 300:
+            if let renewed = http.value(forHTTPHeaderField: Self.sessionRenewalHeader), !renewed.isEmpty {
+                onTokenRefresh(renewed)
+            }
             if data.isEmpty, let empty = EmptyResponse() as? T { return empty }
             do {
                 return try Self.decoder.decode(T.self, from: data)
