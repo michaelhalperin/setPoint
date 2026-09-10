@@ -88,16 +88,34 @@ describe('logMeal', () => {
     expect(prisma.__tables.escalationStates[0]).toMatchObject({ consecutiveMisses: 0, currentTier: 1, backedOffUntil: null });
   });
 
-  it('keeps the photo on the meal so the client can show it later', async () => {
+  it('puts the photo in object storage and keeps only its key on the meal', async () => {
     const prisma = fakePrisma();
-    await logMeal({ prisma: prisma as unknown as PrismaClient, parseMeal: parser }, 'u1', {
+    const put = vi.fn(async () => 'meals/u1/photo.jpg');
+    const photos = { put, signedUrl: vi.fn(), delete: vi.fn(), deleteAllForUser: vi.fn() };
+    await logMeal({ prisma: prisma as unknown as PrismaClient, parseMeal: parser, photos }, 'u1', {
       image: { data: 'AAAA', mediaType: 'image/jpeg' },
     });
+    expect(put).toHaveBeenCalledWith('u1', Buffer.from('AAAA', 'base64'), 'image/jpeg');
     expect(prisma.__tables.meals[0]).toMatchObject({
       source: 'PHOTO',
-      photoUrl: 'data:image/jpeg;base64,AAAA',
+      photoKey: 'meals/u1/photo.jpg',
       items: [{ name: 'Bagel', quantity: '1', kcal: 257, proteinG: 10, carbsG: 50, fatG: 1.5 }],
     });
+    expect(prisma.__tables.meals[0]).not.toHaveProperty('photoUrl');
+  });
+
+  it('still logs the meal when the photo upload fails', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const prisma = fakePrisma();
+    const put = vi.fn(async () => {
+      throw new Error('storage down');
+    });
+    const photos = { put, signedUrl: vi.fn(), delete: vi.fn(), deleteAllForUser: vi.fn() };
+    const res = await logMeal({ prisma: prisma as unknown as PrismaClient, parseMeal: parser, photos }, 'u1', {
+      image: { data: 'AAAA', mediaType: 'image/jpeg' },
+    });
+    expect(res.meal.kcal).toBe(257);
+    expect(prisma.__tables.meals[0]).toMatchObject({ photoKey: null });
   });
 
   it('accepts explicit macros without calling the parser', async () => {

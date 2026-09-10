@@ -21,6 +21,14 @@ const schema = z.object({
   // Shown in the privacy policy / terms footer and the app's support link.
   SUPPORT_EMAIL: z.string().default('support@setpoint.app'),
 
+  // Meal-photo object storage — any S3-compatible bucket (Cloudflare R2
+  // recommended). When unset, photos are still parsed by the AI but not kept.
+  PHOTO_BUCKET: z.string().default(''),
+  PHOTO_S3_ENDPOINT: z.string().default(''),
+  PHOTO_S3_REGION: z.string().default('auto'),
+  PHOTO_S3_ACCESS_KEY_ID: z.string().default(''),
+  PHOTO_S3_SECRET_ACCESS_KEY: z.string().default(''),
+
   // Error reporting (Sentry). No-op when SENTRY_DSN is unset.
   SENTRY_DSN: z.string().default(''),
   SENTRY_ENVIRONMENT: z.string().default(''),

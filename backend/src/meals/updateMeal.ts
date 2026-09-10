@@ -1,5 +1,6 @@
 import type { PrismaClient } from '@prisma/client';
-import { toMealSummary, type MealItem, type MealSummary } from './summary.js';
+import type { PhotoStore } from '../photos/store.js';
+import { toMealSummaries, type MealItem, type MealSummary } from './summary.js';
 
 export class MealNotFoundError extends Error {}
 
@@ -10,6 +11,8 @@ export type UpdateMealInput = {
 
 export type UpdateMealDeps = {
   prisma: PrismaClient;
+  /** Signs the meal's photo URL. Null/absent: a stored photo is omitted. */
+  photos?: PhotoStore | null;
 };
 
 const round1 = (value: number): number => Math.round(value * 10) / 10;
@@ -48,5 +51,6 @@ export async function updateMeal(
     },
   });
 
-  return toMealSummary(updated);
+  const [summary] = await toMealSummaries([updated], deps.photos ?? null);
+  return summary!;
 }

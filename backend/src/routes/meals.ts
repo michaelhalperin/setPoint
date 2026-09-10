@@ -7,6 +7,8 @@ import { getPrisma } from '../db/client.js';
 import { EmptyMealError, MealParsingUnavailableError, logMeal } from '../meals/logMeal.js';
 import { listMealsForDate } from '../meals/listMeals.js';
 import { MealNotFoundError, updateMeal } from '../meals/updateMeal.js';
+import { captureError } from '../observability/sentry.js';
+import { getPhotoStore } from '../photos/store.js';
 
 const body = z
   .object({
@@ -62,19 +64,29 @@ export async function mealRoutes(app: FastifyInstance): Promise<void> {
   // Today's meals (or a specific local date) — listing cards on Today / Week day detail.
   app.get('/', async (req) => {
     const { date } = dateQuery.parse(req.query);
-    return listMealsForDate({ prisma: getPrisma() }, (req as AuthedRequest).userId, date);
+    return listMealsForDate(
+      { prisma: getPrisma(), photos: getPhotoStore() },
+      (req as AuthedRequest).userId,
+      date,
+    );
   });
 
   // Log a meal (§5.5). Free text or photo is AI-parsed into macros; explicit
   // macros skip the model. Resolves any open check-in.
   app.post('/', async (req) => {
     const input = body.parse(req.body);
+    const userId = (req as AuthedRequest).userId;
+    const prisma = getPrisma();
     const client = getAnthropic();
 
     try {
-      const result = await logMeal(
-        { prisma: getPrisma(), parseMeal: client ? createMealParser(client) : null },
-        (req as AuthedRequest).userId,
+      return await logMeal(
+        {
+          prisma,
+          parseMeal: client ? createMealParser(client) : null,
+          photos: getPhotoStore(),
+        },
+        userId,
         {
           text: input.text,
           image: input.image,
@@ -83,7 +95,6 @@ export async function mealRoutes(app: FastifyInstance): Promise<void> {
           prescriptionId: input.prescriptionId,
         },
       );
-      return result;
     } catch (err) {
       if (err instanceof MealParsingUnavailableError) throw app.httpErrors.serviceUnavailable(err.message);
       if (err instanceof EmptyMealError) throw app.httpErrors.badRequest(err.message);
@@ -97,7 +108,12 @@ export async function mealRoutes(app: FastifyInstance): Promise<void> {
     const { id } = z.object({ id: z.string().min(1) }).parse(req.params);
     const input = correctionBody.parse(req.body);
     try {
-      const meal = await updateMeal({ prisma: getPrisma() }, (req as AuthedRequest).userId, id, input);
+      const meal = await updateMeal(
+        { prisma: getPrisma(), photos: getPhotoStore() },
+        (req as AuthedRequest).userId,
+        id,
+        input,
+      );
       return { meal };
     } catch (err) {
       if (err instanceof MealNotFoundError) throw app.httpErrors.notFound(err.message);
@@ -105,13 +121,26 @@ export async function mealRoutes(app: FastifyInstance): Promise<void> {
     }
   });
 
-  // Undo a just-logged meal (e.g. the photo parse was wrong).
+  // Remove a meal (e.g. the photo parse was wrong) — and its stored photo.
   app.delete('/:id', async (req) => {
     const { id } = z.object({ id: z.string().min(1) }).parse(req.params);
-    const result = await getPrisma().meal.deleteMany({
-      where: { id, userId: (req as AuthedRequest).userId },
-    });
-    if (result.count === 0) throw app.httpErrors.notFound('meal not found');
+    const userId = (req as AuthedRequest).userId;
+    const prisma = getPrisma();
+
+    const meal = await prisma.meal.findFirst({ where: { id, userId }, select: { photoKey: true } });
+    const result = await prisma.meal.deleteMany({ where: { id, userId } });
+    if (!meal || result.count === 0) throw app.httpErrors.notFound('meal not found');
+
+    const photos = getPhotoStore();
+    if (meal.photoKey && photos) {
+      try {
+        await photos.delete(meal.photoKey);
+      } catch (err) {
+        // The meal is gone either way; an orphaned object is cleaned up with the account.
+        req.log.warn({ err, mealId: id }, 'photo delete failed');
+        captureError(err, { userId, tags: { area: 'photos' } });
+      }
+    }
     return { deleted: true };
   });
 }

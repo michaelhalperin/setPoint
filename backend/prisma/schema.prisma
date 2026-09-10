@@ -286,7 +286,8 @@ model Meal {
   source   MealSource
 
   rawInput        String? // free text or photo caption
-  photoUrl        String?
+  photoUrl        String? // legacy inline data URL — new photos use photoKey
+  photoKey        String? // object-storage key (meals/<userId>/<uuid>.jpg), served via a signed URL
   parsedByAI      Boolean @default(false)
   parseConfidence Float?
   /// Assumptions the parser made (portion size, prep).

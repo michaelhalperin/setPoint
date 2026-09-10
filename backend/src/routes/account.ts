@@ -6,6 +6,7 @@ import { OnboardingIncompleteError } from '../dashboard/home.js';
 import { getPrisma } from '../db/client.js';
 import { AlreadyOnboardedError, MissingTargetError, runOnboarding } from '../onboarding/onboard.js';
 import { getSettings, updateSettings } from '../onboarding/settings.js';
+import { getPhotoStore } from '../photos/store.js';
 
 const minutes = z.number().int().min(0).max(1439);
 const mealTimes = z.object({ breakfastMin: minutes, lunchMin: minutes, dinnerMin: minutes });
@@ -97,7 +98,10 @@ export async function accountRoutes(app: FastifyInstance): Promise<void> {
   app.delete('/account', async (req) => {
     deleteBody.parse(req.body);
     try {
-      return await deleteAccount({ prisma: getPrisma() }, (req as AuthedRequest).userId);
+      return await deleteAccount(
+        { prisma: getPrisma(), photos: getPhotoStore() },
+        (req as AuthedRequest).userId,
+      );
     } catch (err) {
       if (err instanceof AccountNotFoundError) throw app.httpErrors.notFound(err.message);
       throw err;

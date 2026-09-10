@@ -1,13 +1,16 @@
 import type { PrismaClient } from '@prisma/client';
 import { hoursBetween, msSinceLocalMidnight, startOfLocalDay, type Goal } from '../engine/index.js';
 import type { ManagerVoice } from '../managerVoice/types.js';
-import { toMealSummary, type MealSummary } from '../meals/summary.js';
+import { toMealSummaries, type MealSummary } from '../meals/summary.js';
+import type { PhotoStore } from '../photos/store.js';
 import { homeFraming, type FramingState } from './classify.js';
 import { mealWindow } from '../managerVoice/fallback.js';
 
 export type HomeDeps = {
   prisma: PrismaClient;
   voice: ManagerVoice;
+  /** Signs meal-photo URLs. Null/absent: stored photos are omitted. */
+  photos?: PhotoStore | null;
   now?: Date;
 };
 
@@ -80,6 +83,7 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
         source: true,
         rawInput: true,
         photoUrl: true,
+        photoKey: true,
         notes: true,
         items: true,
         parseConfidence: true,
@@ -139,7 +143,7 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
       heroKcal: framing.heroKcal,
     },
     managerNote,
-    meals: todayMeals.map(toMealSummary),
+    meals: await toMealSummaries(todayMeals, deps.photos ?? null, now),
     mealTimes: {
       breakfastMin: profile.breakfastMin,
       lunchMin: profile.lunchMin,

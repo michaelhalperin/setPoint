@@ -1,9 +1,12 @@
 import type { PrismaClient } from '@prisma/client';
 import { localDateISO, localDayRange } from '../engine/index.js';
-import { toMealSummary, type MealSummary } from './summary.js';
+import type { PhotoStore } from '../photos/store.js';
+import { toMealSummaries, type MealSummary } from './summary.js';
 
 export type ListMealsDeps = {
   prisma: PrismaClient;
+  /** Signs meal-photo URLs. Null/absent: stored photos are omitted. */
+  photos?: PhotoStore | null;
   now?: Date;
 };
 
@@ -22,6 +25,7 @@ const mealSelect = {
   source: true,
   rawInput: true,
   photoUrl: true,
+  photoKey: true,
   notes: true,
   items: true,
   parseConfidence: true,
@@ -47,5 +51,5 @@ export async function listMealsForDate(
     select: mealSelect,
   });
 
-  return { date, meals: rows.map(toMealSummary) };
+  return { date, meals: await toMealSummaries(rows, deps.photos ?? null, now) };
 }

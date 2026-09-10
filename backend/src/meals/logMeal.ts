@@ -1,5 +1,7 @@
 import type { PrismaClient } from '@prisma/client';
 import type { MealImage, MealParser, ParsedMeal } from '../ai/parseMeal.js';
+import { captureError } from '../observability/sentry.js';
+import type { PhotoStore } from '../photos/store.js';
 
 export class MealParsingUnavailableError extends Error {}
 export class EmptyMealError extends Error {}
@@ -17,6 +19,8 @@ export type LogMealDeps = {
   prisma: PrismaClient;
   /** null when no AI key is configured — text/photo logging then requires explicit macros. */
   parseMeal: MealParser | null;
+  /** Where meal photos are kept. Null/absent: the photo is parsed but not stored. */
+  photos?: PhotoStore | null;
 };
 
 export type LoggedMeal = {
@@ -82,6 +86,9 @@ export async function logMeal(
     throw new EmptyMealError('provide text, an image, or macros');
   }
 
+  // The photo goes to object storage — never inline in Postgres.
+  const photoKey = input.image ? await storePhoto(deps.photos ?? null, userId, input.image) : null;
+
   const meal = await deps.prisma.meal.create({
     data: {
       userId,
@@ -94,7 +101,7 @@ export async function logMeal(
       proteinG: macros.proteinG,
       carbsG: macros.carbsG,
       fatG: macros.fatG,
-      photoUrl: input.image ? `data:${input.image.mediaType};base64,${input.image.data}` : null,
+      photoKey,
       notes: parsed?.notes ?? null,
       items: parsed?.items ?? [],
       prescriptionId: input.prescriptionId ?? null,
@@ -145,4 +152,16 @@ export async function logMeal(
     parsed,
     resolvedCheckInId,
   };
+}
+
+async function storePhoto(photos: PhotoStore | null, userId: string, image: MealImage): Promise<string | null> {
+  if (!photos) return null;
+  try {
+    return await photos.put(userId, Buffer.from(image.data, 'base64'), image.mediaType);
+  } catch (err) {
+    // A storage hiccup must not lose the meal itself — keep it without the photo.
+    console.error('[photos] upload failed; logging the meal without its photo', err);
+    captureError(err, { userId, tags: { area: 'photos' } });
+    return null;
+  }
 }

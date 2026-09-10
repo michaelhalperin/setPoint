@@ -3,6 +3,7 @@ import { requireAuth, type AuthedRequest } from '../auth/index.js';
 import { OnboardingIncompleteError, buildHome, buildSettlement } from '../dashboard/index.js';
 import { getPrisma } from '../db/client.js';
 import { createManagerVoice } from '../managerVoice/factory.js';
+import { getPhotoStore } from '../photos/store.js';
 
 export async function dashboardRoutes(app: FastifyInstance): Promise<void> {
   app.addHook('preHandler', requireAuth(app));
@@ -11,7 +12,7 @@ export async function dashboardRoutes(app: FastifyInstance): Promise<void> {
   app.get('/home', async (req) => {
     try {
       return await buildHome(
-        { prisma: getPrisma(), voice: createManagerVoice() },
+        { prisma: getPrisma(), voice: createManagerVoice(), photos: getPhotoStore() },
         (req as AuthedRequest).userId,
       );
     } catch (err) {

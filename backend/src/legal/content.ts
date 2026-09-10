@@ -65,7 +65,7 @@ service and we never sell your data or use health data for advertising.</p>
 <ul>
   <li><strong>Account</strong> — your Apple ID identifier and, if you share it during Sign in with Apple, your email address. Used to sign you in and to contact you about the service.</li>
   <li><strong>Your profile</strong> — height, weight, date of birth, sex, activity level, goal, target weight and pace, preferred meal times, quiet hours, and time zone. Used to calculate your calorie and protein targets and to decide when a check-in is due.</li>
-  <li><strong>Meals you log</strong> — the text or photo you enter, and the resulting calorie and macronutrient estimate. Photos and text you submit for automatic parsing are sent to our AI provider (see "Service providers").</li>
+  <li><strong>Meals you log</strong> — the text or photo you enter, and the resulting calorie and macronutrient estimate. Photos and text you submit for automatic parsing are sent to our AI provider (see "Service providers"). Meal photos are kept in private storage that is only readable through short-lived links the app requests.</li>
   <li><strong>Dietary restrictions</strong> — allergies and restrictions you enter, used as hard exclusions when suggesting food.</li>
   <li><strong>Safety screening answers</strong> — a medical-supervision question and a validated eating-concern questionnaire, used once to decide whether the app's active check-ins should be enabled for you. Stored so you don't have to answer again; never used for any other purpose.</li>
   <li><strong>Weight entries</strong> — weigh-ins you record or that are read from Apple Health.</li>
@@ -98,6 +98,7 @@ in iOS Settings.</p>
   <li><strong>Anthropic</strong> — processes the meal text or photo you submit to return a nutrition estimate, and generates the wording of check-in messages. Input is sent over an encrypted connection for that purpose.</li>
   <li><strong>Vercel</strong> — hosts the backend service.</li>
   <li><strong>Neon</strong> — hosts the database.</li>
+  <li><strong>Cloudflare</strong> — stores the meal photos you log, in private storage.</li>
   <li><strong>Sentry</strong> — receives crash and error reports (technical details and an internal account identifier — never meal contents or health data) so we can fix problems.</li>
   <li><strong>Apple Push Notification service</strong> — delivers notifications.</li>
 </ul>
@@ -105,7 +106,7 @@ in iOS Settings.</p>
 
 <h2>Retention</h2>
 <p>We keep your data while your account exists. When you delete your account (see
-below) all of it is erased from our database, and the stored push token is
+below) all of it — including stored meal photos — is erased, and the stored push token is
 revoked. Backups roll off on their normal cycle.</p>
 
 <h2>Your choices and rights</h2>
