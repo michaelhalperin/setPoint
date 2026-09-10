@@ -39,6 +39,8 @@
 	<string>Attach a photo of a meal to log it.</string>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
+	<key>SentryDSN</key>
+	<string>$(SENTRY_DSN)</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>Fraunces-Regular.ttf</string>

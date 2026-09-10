@@ -6,6 +6,10 @@ struct SetPointApp: App {
     @Environment(\.scenePhase) private var scenePhase
     @State private var env = AppEnvironment()
 
+    init() {
+        CrashReporting.start()
+    }
+
     var body: some Scene {
         WindowGroup {
             RootView()
