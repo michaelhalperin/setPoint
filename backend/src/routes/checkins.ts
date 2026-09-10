@@ -82,9 +82,16 @@ export async function checkInRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // Defer / snooze (§2). The scoring job re-checks when `deferUntil` passes.
+  // An optional `minutes` lets the user pick the snooze length (e.g. "in 1 hour"
+  // or "after my next meal", the app computing the gap); it's clamped to a sane
+  // band and falls back to the engine default.
   app.post('/:id/defer', async (req) => {
     const { id } = params.parse(req.params);
-    const deferUntil = new Date(Date.now() + ENGINE_CONFIG.snoozeHours * 3_600_000);
+    const { minutes } = z
+      .object({ minutes: z.number().int().min(15).max(360).optional() })
+      .parse(req.body ?? {});
+    const snoozeMs = (minutes ?? ENGINE_CONFIG.snoozeHours * 60) * 60_000;
+    const deferUntil = new Date(Date.now() + snoozeMs);
     const result = await getPrisma().checkIn.updateMany({
       where: {
         id,
