@@ -50,3 +50,40 @@ struct MealPhoto: Equatable {
     }
     #endif
 }
+
+/// Loads meal photos for display. Stored photos arrive as signed URLs that
+/// rotate hourly, so images are kept in memory by meal id — a re-rendered list
+/// or a fresh URL for the same meal doesn't refetch or flicker. Legacy inline
+/// photos decode straight away.
+actor MealPhotoCache {
+    static let shared = MealPhotoCache()
+
+    private let cache = NSCache<NSString, UIImage>()
+    private var inFlight: [String: Task<UIImage?, Never>] = [:]
+    private let session: URLSession
+
+    init(session: URLSession = .shared) {
+        self.session = session
+        cache.countLimit = 60
+    }
+
+    func image(for meal: MealSummary) async -> UIImage? {
+        if let inline = meal.photoImage { return inline }
+        guard let url = meal.remotePhotoURL else { return nil }
+
+        let key = meal.id as NSString
+        if let cached = cache.object(forKey: key) { return cached }
+        if let running = inFlight[meal.id] { return await running.value }
+
+        let task = Task<UIImage?, Never> { [session] in
+            guard let (data, response) = try? await session.data(from: url),
+                  (response as? HTTPURLResponse)?.statusCode == 200 else { return nil }
+            return UIImage(data: data)
+        }
+        inFlight[meal.id] = task
+        let image = await task.value
+        inFlight[meal.id] = nil
+        if let image { cache.setObject(image, forKey: key) }
+        return image
+    }
+}

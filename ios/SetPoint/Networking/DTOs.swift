@@ -83,7 +83,7 @@ struct MealSummary: Decodable, Identifiable, Hashable {
     let fatG: Double
     let source: String
     let summary: String?
-    /// Data URL when the meal was logged from a photo. Older payloads omit this.
+    /// A signed https URL for a stored photo, or a legacy inline data URL. Nil without a photo.
     let photoUrl: String?
     let notes: String?
     let items: [Item]?
@@ -113,6 +113,13 @@ struct MealSummary: Decodable, Identifiable, Hashable {
         }
     }
 
+    /// A stored photo's signed URL — load it through `MealPhotoCache`.
+    var remotePhotoURL: URL? {
+        guard let photoUrl, photoUrl.hasPrefix("https://") else { return nil }
+        return URL(string: photoUrl)
+    }
+
+    /// A legacy inline (data URL) photo, decoded.
     var photoImage: UIImage? {
         guard let photoUrl, photoUrl.hasPrefix("data:image") else { return nil }
         guard let comma = photoUrl.firstIndex(of: ",") else { return nil }

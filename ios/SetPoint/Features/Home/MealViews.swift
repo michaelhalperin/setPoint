@@ -551,10 +551,11 @@ struct DayLedger: View {
 /// Listing card for a logged meal — typographic cover, kcal as the "price".
 struct MealCard: View {
     let meal: MealSummary
+    @State private var photo: UIImage?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            MealCover(title: meal.title, height: 132, photo: meal.photoImage)
+            MealCover(title: meal.title, height: 132, photo: photo)
 
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 3) {
@@ -581,6 +582,7 @@ struct MealCard: View {
                 .strokeBorder(Palette.hairline)
         )
         .elevation(.resting)
+        .task(id: meal.photoUrl) { photo = await MealPhotoCache.shared.image(for: meal) }
     }
 }
 
@@ -642,13 +644,14 @@ struct MealDetailSheet: View {
     @State private var detent: PresentationDetent = .medium
     @State private var removing = false
     @State private var error: String?
+    @State private var photo: UIImage?
 
     private var expanded: Bool { detent == .large }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                if let photo = meal.photoImage {
+                if let photo {
                     Image(uiImage: photo)
                         .resizable()
                         .scaledToFill()
@@ -672,7 +675,7 @@ struct MealDetailSheet: View {
                     .accessibilityHidden(!expanded)
                 }
                 .padding(.horizontal, Space.gutter)
-                .padding(.top, meal.photoImage == nil ? Space.lg : Space.md)
+                .padding(.top, photo == nil ? Space.lg : Space.md)
                 .padding(.bottom, Space.lg)
             }
         }
@@ -685,6 +688,7 @@ struct MealDetailSheet: View {
         .presentationDragIndicator(.visible)
         .presentationBackground(Palette.background)
         .animation(Motion.adaptive(Motion.sheet, reduceMotion: reduceMotion), value: expanded)
+        .task { photo = await MealPhotoCache.shared.image(for: meal) }
     }
 
     private var glance: some View {
