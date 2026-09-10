@@ -3,6 +3,7 @@ import type { Goal } from '../engine/types.js';
 import { normalizeToken } from '../solver/exclusions.js';
 import {
   ageFromBirthDate,
+  assertHealthyTarget,
   clampPaceKgPerWeek,
   computeCalorieTarget,
   computeProteinTarget,
@@ -77,6 +78,8 @@ export async function runOnboarding(
   const paceKgPerWeek = clampPaceKgPerWeek(input.goal, input.weightKg ?? null, input.paceKgPerWeek ?? 0.25);
   const targetWeightKg =
     input.goal === 'MAINTAIN' ? null : (input.targetWeightKg ?? null);
+  // Safety floor: never set a diet target below a healthy weight for the height.
+  assertHealthyTarget(input.goal, targetWeightKg, input.heightCm);
   const startWeightKg = input.goal === 'MAINTAIN' ? null : (input.weightKg ?? null);
   const goalStartedAt = input.goal === 'MAINTAIN' ? null : now;
 

@@ -3,6 +3,7 @@ import sensible from '@fastify/sensible';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { ZodError } from 'zod';
 import { env } from './env.js';
+import { UnhealthyTargetError } from './onboarding/targets.js';
 import { accountRoutes } from './routes/account.js';
 import { adminRoutes } from './routes/admin.js';
 import { authRoutes } from './routes/auth.js';
@@ -36,6 +37,11 @@ export async function buildApp(): Promise<FastifyInstance> {
   app.setErrorHandler((err: unknown, req, reply) => {
     if (err instanceof ZodError) {
       return reply.status(400).send({ error: 'Bad Request', message: 'validation failed', issues: err.issues });
+    }
+    if (err instanceof UnhealthyTargetError) {
+      return reply
+        .status(400)
+        .send({ error: 'Bad Request', message: err.message, minWeightKg: err.minWeightKg });
     }
     // Deliberate errors from `app.httpErrors.*` carry a statusCode; honour it and
     // expose their message. Everything else is an unexpected 500.

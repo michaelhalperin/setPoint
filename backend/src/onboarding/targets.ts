@@ -41,6 +41,39 @@ export function clampPaceKgPerWeek(goal: Goal, weightKg: number | null, paceKgPe
   return round2(Math.min(Math.max(magnitude, PACE_CAPS.minKgPerWeek), ceiling));
 }
 
+/**
+ * The lowest BMI a weight target may imply — the WHO underweight cutoff.
+ * SetPoint is about eating *enough* (§3); it never helps anyone diet below this.
+ */
+export const HEALTHY_BMI_FLOOR = 18.5;
+
+/** Lowest healthy target weight for a height, rounded up to 0.1 kg. */
+export function minHealthyWeightKg(heightCm: number): number {
+  const meters = heightCm / 100;
+  return Math.ceil(HEALTHY_BMI_FLOOR * meters * meters * 10) / 10;
+}
+
+export class UnhealthyTargetError extends Error {
+  constructor(readonly minWeightKg: number) {
+    super(`The lowest target I'll set for your height is ${minWeightKg} kg.`);
+  }
+}
+
+/**
+ * Throws UnhealthyTargetError when a DIET target sits below the healthy floor.
+ * Only diets are checked: a gain target is above the current weight and
+ * maintain has no target. Without a height there's nothing to check against.
+ */
+export function assertHealthyTarget(
+  goal: Goal,
+  targetWeightKg: number | null | undefined,
+  heightCm: number | null | undefined,
+): void {
+  if (goal !== 'DIET' || targetWeightKg == null || heightCm == null) return;
+  const min = minHealthyWeightKg(heightCm);
+  if (targetWeightKg < min) throw new UnhealthyTargetError(min);
+}
+
 /** Signed daily calorie delta a pace implies for a goal. */
 export function paceToKcalDelta(goal: Goal, paceKgPerWeek: number): number {
   if (goal === 'MAINTAIN') return 0;

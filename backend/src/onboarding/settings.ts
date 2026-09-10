@@ -3,7 +3,7 @@ import type { Goal } from '../engine/types.js';
 import { normalizeToken } from '../solver/exclusions.js';
 import { OnboardingIncompleteError } from '../dashboard/home.js';
 import { deriveTargets } from './recompute.js';
-import { clampPaceKgPerWeek } from './targets.js';
+import { assertHealthyTarget, clampPaceKgPerWeek, minHealthyWeightKg } from './targets.js';
 
 export type SettingsView = {
   goal: Goal;
@@ -15,6 +15,9 @@ export type SettingsView = {
   paceKgPerWeek: number;
   startWeightKg: number | null;
   currentWeightKg: number | null;
+  heightCm: number | null;
+  /** Lowest DIET target accepted for this height (BMI 18.5); null without a height. */
+  minHealthyWeightKg: number | null;
   mealTimes: { breakfastMin: number; lunchMin: number; dinnerMin: number };
   quietHours: { startMin: number; endMin: number };
   checkInsPaused: boolean;
@@ -87,6 +90,13 @@ export async function updateSettings(
           patch.targetWeightKg !== undefined
             ? patch.targetWeightKg
             : (profile.targetWeightKg ?? null);
+
+        // Safety floor: a diet target never goes below a healthy weight for the
+        // height. Checked when the goal or target changes, so an unrelated edit
+        // never gets stuck on a target saved before the floor existed.
+        if (goalChanged || target !== profile.targetWeightKg) {
+          assertHealthyTarget(nextGoal, target, profile.heightCm);
+        }
 
         profileData.goal = nextGoal;
         profileData.paceKgPerWeek = pace;
@@ -186,6 +196,8 @@ function toView(user: UserWithSettings): SettingsView {
     paceKgPerWeek: p.paceKgPerWeek,
     startWeightKg: p.startWeightKg,
     currentWeightKg: user.weightEntries[0]?.weightKg ?? p.weightKg ?? null,
+    heightCm: p.heightCm,
+    minHealthyWeightKg: p.heightCm != null ? minHealthyWeightKg(p.heightCm) : null,
     mealTimes: { breakfastMin: p.breakfastMin, lunchMin: p.lunchMin, dinnerMin: p.dinnerMin },
     quietHours: { startMin: p.quietHoursStartMin, endMin: p.quietHoursEndMin },
     checkInsPaused: user.escalationState?.checkInsPaused ?? false,
