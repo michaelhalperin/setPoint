@@ -93,6 +93,22 @@ describe('buildHome', () => {
     expect(view.managerNote).toBe('MANAGER NOTE');
   });
 
+  it('feeds the note quiet mode and pace so it does not repeat the number or push in quiet mode', async () => {
+    const realVoice = (await import('../managerVoice/fallback.js')).fallbackManagerVoice;
+
+    const behind = await buildHome(
+      { prisma: fakePrisma({ meals: [{ id: 'm', loggedAt: hoursAgo(5), kcal: 600, proteinG: 30, carbsG: 0, fatG: 0, source: 'TEXT', rawInput: 'x' }] }), voice: realVoice, now: NOW },
+      'u1',
+    );
+    expect(behind.managerNote).not.toMatch(/kcal/);
+
+    const quiet = await buildHome(
+      { prisma: fakePrisma({ user: { ...defaultUser, safetyScreening: { enforcementEnabled: false } } }), voice: realVoice, now: NOW },
+      'u1',
+    );
+    expect(quiet.managerNote).toBe('Nothing logged yet today.');
+  });
+
   it('gives going over a quiet, neutral treatment', async () => {
     const prisma = fakePrisma({
       meals: [
@@ -133,6 +149,36 @@ describe('buildHome', () => {
     const view = await buildHome({ prisma, voice, now: NOW }, 'u1');
     expect(view.activeCheckIn?.id).toBe('ci_1');
     expect(view.activeCheckIn?.prescription?.items[0]?.name).toBe('Cottage cheese');
+  });
+
+  it('lays out the day: meal slots, now, and pace', async () => {
+    const prisma = fakePrisma({
+      meals: [
+        { id: 'm1', loggedAt: hoursAgo(5), kcal: 600, proteinG: 30, carbsG: 50, fatG: 10, source: 'TEXT', rawInput: 'oats' },
+        { id: 'm2', loggedAt: hoursAgo(2), kcal: 700, proteinG: 45, carbsG: 60, fatG: 18, source: 'TEXT', rawInput: 'bowl' },
+      ],
+    });
+    const view = await buildHome({ prisma, voice, now: NOW }, 'u1');
+
+    expect(view.day.nowMin).toBe(840); // 14:00 in New York
+    expect(view.day.slots.map((s) => [s.slot, s.state, s.mealIds])).toEqual([
+      ['breakfast', 'logged', ['m1']],
+      ['lunch', 'logged', ['m2']],
+      ['dinner', 'upcoming', []],
+    ]);
+    expect(view.day.pace).toEqual({
+      expectedByNowKcal: 2000,
+      behindKcal: 700,
+      status: 'behind',
+      next: { slot: 'dinner', atMin: 1140, suggestedKcal: 1700 },
+    });
+  });
+
+  it('drops pace entirely in quiet mode', async () => {
+    const prisma = fakePrisma({ user: { ...defaultUser, safetyScreening: { enforcementEnabled: false } } });
+    const view = await buildHome({ prisma, voice, now: NOW }, 'u1');
+    expect(view.day.pace).toBeNull();
+    expect(view.day.slots).toHaveLength(3);
   });
 
   it('rejects a user who has not finished onboarding', async () => {

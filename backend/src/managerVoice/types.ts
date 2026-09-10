@@ -23,6 +23,10 @@ export type HomeNoteContext = {
   nextMeal: 'breakfast' | 'lunch' | 'dinner';
   hoursSinceMeal: number | null;
   hasActiveCheckIn: boolean;
+  /** False in quiet mode (§3): the note only describes the day, never prompts. */
+  enforcementEnabled: boolean;
+  /** Pace vs. the user's usual meal times, or null when there's nothing to pace against. */
+  paceStatus: 'behind' | 'on_pace' | 'ahead' | null;
 };
 
 export type DaySummaryContext = {

@@ -19,43 +19,40 @@ export const fallbackManagerVoice: ManagerVoice = {
   },
 
   async homeNote(ctx: HomeNoteContext): Promise<string> {
-    const remaining = Math.round(ctx.remainingKcal);
-    const size = mealSize(remaining, ctx.nextMeal);
-    const meal = ctx.nextMeal;
+    // The screen shows the numbers; the note is about timing and what's next.
+    const meal = cap(ctx.nextMeal);
 
-    if (ctx.hasActiveCheckIn) {
-      return `Open check-in: log a meal or use its suggestion.`;
+    // Quiet mode (§3): describe the day, never prompt or push.
+    if (!ctx.enforcementEnabled) {
+      return ctx.mealsToday === 0 ? `Nothing logged yet today.` : `Here's today so far.`;
     }
 
-    if (ctx.mealsToday === 0) {
-      if (meal === 'breakfast') {
-        return `${Math.round(ctx.targetKcal)} kcal today. Breakfast: ~${size} kcal.`;
-      }
-      if (meal === 'lunch') {
-        return `Nothing logged. Lunch: ~${size} kcal.`;
-      }
-      return `Nothing logged. Dinner: ~${size} kcal.`;
+    if (ctx.hasActiveCheckIn) {
+      return `There's a check-in waiting just below.`;
     }
 
     if (ctx.state === 'over') {
-      return `Over target. Continue tomorrow.`;
+      return `A bit past target today. Nothing to fix — steer back tomorrow.`;
+    }
+
+    if (ctx.mealsToday === 0) {
+      if (ctx.nextMeal === 'breakfast') return `A real breakfast now keeps lunch and dinner ordinary.`;
+      if (ctx.nextMeal === 'lunch') return `Nothing logged yet — lunch needs to be a full one.`;
+      return `Nothing logged yet — dinner has to carry the day.`;
     }
 
     if (ctx.state === 'on_track') {
-      return `On track. Next: ${meal}.`;
+      return `On track. ${meal} rounds it out.`;
     }
 
-    const hours = ctx.hoursSinceMeal;
-    if (hours != null && hours >= 5) {
-      return `${Math.round(hours)} hours since eating. ${remaining} kcal left; next meal ~${size}.`;
+    switch (ctx.paceStatus) {
+      case 'behind':
+        return `${meal} is running late — worth making it a full one.`;
+      case 'ahead':
+        return `Ahead of your usual pace. ${meal} next.`;
+      default:
+        return `Good rhythm so far. ${meal} next.`;
     }
-
-    const protein = ctx.remainingProteinG;
-    if (protein != null && protein >= 50) {
-      return `${remaining} kcal · ${Math.round(protein)} g protein left.`;
-    }
-
-    return `${remaining} kcal left. ${cap(meal)}: ~${size} kcal.`;
   },
 
   async daySummary(ctx: DaySummaryContext): Promise<string> {
@@ -79,11 +76,6 @@ export function mealWindow(
   if (mins < times.lunchMin) return 'breakfast';
   if (mins < times.dinnerMin) return 'lunch';
   return 'dinner';
-}
-
-function mealSize(remaining: number, window: HomeNoteContext['nextMeal']): number {
-  const parts = window === 'breakfast' ? 3 : window === 'lunch' ? 2 : 1;
-  return Math.max(350, Math.round(remaining / parts / 50) * 50);
 }
 
 function cap(s: string): string {

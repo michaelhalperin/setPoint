@@ -13,6 +13,8 @@ const base: HomeNoteContext = {
   nextMeal: 'dinner',
   hoursSinceMeal: 2,
   hasActiveCheckIn: false,
+  enforcementEnabled: true,
+  paceStatus: 'on_pace',
 };
 
 describe('mealWindow', () => {
@@ -25,38 +27,37 @@ describe('mealWindow', () => {
 });
 
 describe('fallback homeNote', () => {
-  it('sizes the next meal instead of pointing at the field', async () => {
+  it('talks about rhythm, never restating the calorie total', async () => {
     const note = await fallbackManagerVoice.homeNote(base);
-    expect(note).toBe('1860 kcal · 93 g protein left.');
+    expect(note).toBe('Good rhythm so far. Dinner next.');
+    expect(note).not.toMatch(/kcal|\\d{3,}/);
   });
 
-  it('names breakfast when the day is empty', async () => {
-    const note = await fallbackManagerVoice.homeNote({
-      ...base,
-      consumedKcal: 0,
-      remainingKcal: 3100,
-      remainingProteinG: 165,
-      mealsToday: 0,
-      nextMeal: 'breakfast',
-      hoursSinceMeal: null,
-    });
-    expect(note).toMatch(/breakfast: ~1,?050 kcal/i);
+  it('names the meal that is running late when behind', async () => {
+    const note = await fallbackManagerVoice.homeNote({ ...base, nextMeal: 'lunch', paceStatus: 'behind' });
+    expect(note).toBe('Lunch is running late — worth making it a full one.');
   });
 
-  it('keeps the original over-target line', async () => {
-    const note = await fallbackManagerVoice.homeNote({
-      ...base,
-      state: 'over',
-      remainingKcal: -250,
-      remainingProteinG: 10,
-      mealsToday: 4,
-    });
-    expect(note).toBe('Over target. Continue tomorrow.');
+  it('frames an empty day by the meal that has to carry it', async () => {
+    const note = await fallbackManagerVoice.homeNote({ ...base, mealsToday: 0, nextMeal: 'breakfast', hoursSinceMeal: null });
+    expect(note).toBe('A real breakfast now keeps lunch and dinner ordinary.');
   });
 
-  it('points at the check-in when one is open', async () => {
+  it('keeps going-over calm and never says to fix it urgently', async () => {
+    const note = await fallbackManagerVoice.homeNote({ ...base, state: 'over', remainingKcal: -250, mealsToday: 4 });
+    expect(note).toBe('A bit past target today. Nothing to fix — steer back tomorrow.');
+  });
+
+  it('in quiet mode only describes the day, never prompting', async () => {
+    expect(await fallbackManagerVoice.homeNote({ ...base, enforcementEnabled: false })).toBe("Here's today so far.");
+    expect(await fallbackManagerVoice.homeNote({ ...base, enforcementEnabled: false, mealsToday: 0 })).toBe(
+      'Nothing logged yet today.',
+    );
+  });
+
+  it('points at the check-in when one is open, without explaining the field', async () => {
     const note = await fallbackManagerVoice.homeNote({ ...base, hasActiveCheckIn: true, mealsToday: 0 });
-    expect(note).toMatch(/check-in/i);
+    expect(note).toMatch(/check-in waiting/i);
     expect(note).not.toMatch(/drop it in|tell me/i);
   });
 });

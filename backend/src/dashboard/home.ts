@@ -4,6 +4,7 @@ import type { ManagerVoice } from '../managerVoice/types.js';
 import { toMealSummaries, type MealSummary } from '../meals/summary.js';
 import type { PhotoStore } from '../photos/store.js';
 import { homeFraming, type FramingState } from './classify.js';
+import { buildDay, type DayView } from './day.js';
 import { mealWindow } from '../managerVoice/fallback.js';
 
 export type HomeDeps = {
@@ -37,6 +38,8 @@ export type HomeView = {
   managerNote: string;
   meals: MealSummary[];
   mealTimes: { breakfastMin: number; lunchMin: number; dinnerMin: number };
+  /** Today's meal-time slots, where now sits, and pace (pace is null in quiet mode). */
+  day: DayView;
   activeCheckIn: null | {
     id: string;
     tier: number;
@@ -108,6 +111,21 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
   const remainingProteinG = targetProteinG === null ? null : round1(targetProteinG - consumedProteinG);
   const hoursSinceMeal = lastMeal ? hoursBetween(lastMeal.loggedAt, now) : null;
   const mins = Math.floor(msSinceLocalMidnight(now, user.timezone) / 60_000);
+  const enforcementEnabled = user.safetyScreening?.enforcementEnabled ?? false;
+
+  const day = buildDay({
+    nowMin: mins,
+    mealTimes: { breakfastMin: profile.breakfastMin, lunchMin: profile.lunchMin, dinnerMin: profile.dinnerMin },
+    meals: todayMeals.map((m) => ({
+      id: m.id,
+      minuteOfDay: Math.floor(msSinceLocalMidnight(m.loggedAt, user.timezone) / 60_000),
+      kcal: m.kcal,
+    })),
+    targetKcal,
+    consumedKcal,
+    framingState: framing.state,
+    enforcementEnabled,
+  });
 
   const managerNote = await deps.voice.homeNote({
     goal,
@@ -117,15 +135,18 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
     remainingKcal,
     remainingProteinG,
     mealsToday: todayMeals.length,
-    nextMeal: mealWindow(mins, { lunchMin: profile.lunchMin, dinnerMin: profile.dinnerMin }),
+    nextMeal:
+      day.pace?.next?.slot ?? mealWindow(mins, { lunchMin: profile.lunchMin, dinnerMin: profile.dinnerMin }),
     hoursSinceMeal,
     hasActiveCheckIn: activeCheckIn !== null,
+    enforcementEnabled,
+    paceStatus: day.pace?.status ?? null,
   });
 
   return {
     goal,
     mode: profile.mode,
-    enforcementEnabled: user.safetyScreening?.enforcementEnabled ?? false,
+    enforcementEnabled,
     ledger: {
       consumedKcal,
       targetKcal,
@@ -149,6 +170,7 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
       lunchMin: profile.lunchMin,
       dinnerMin: profile.dinnerMin,
     },
+    day,
     activeCheckIn: activeCheckIn
       ? {
           id: activeCheckIn.id,

@@ -49,4 +49,19 @@ describe('createAiManagerVoice', () => {
     const voice = createAiManagerVoice(fakeClient(async () => ({ content: [] })), fallback);
     expect(await voice.checkInMessage(ctx)).toBe('FALLBACK LINE');
   });
+
+  it('tells the model not to restate totals and to go quiet in quiet mode', async () => {
+    const client = fakeClient(async () => ({ content: [{ type: 'text', text: 'Lunch next.' }] }));
+    const voice = createAiManagerVoice(client, fallback);
+    await voice.homeNote({
+      goal: 'BULK', state: 'under', consumedKcal: 600, targetKcal: 3000, remainingKcal: 2400,
+      remainingProteinG: 120, mealsToday: 1, nextMeal: 'lunch', hoursSinceMeal: 3,
+      hasActiveCheckIn: false, enforcementEnabled: false, paceStatus: 'behind',
+    });
+    const call = (client.messages.create as ReturnType<typeof vi.fn>).mock.calls[0]![0];
+    expect(call.system).toMatch(/do not restate them|X kcal left/i);
+    expect(call.system).toMatch(/when quietmode is true/i);
+    expect(JSON.parse(call.messages[0].content)).toMatchObject({ quietMode: true, pace: 'behind' });
+    expect(JSON.parse(call.messages[0].content)).not.toHaveProperty('caloriesToTarget');
+  });
 });
