@@ -28,7 +28,7 @@ enum UserFacingError {
         case 429:
             return "Too many tries. Wait."
         case 500 ... 599:
-            return "Server error. Retry later."
+            return "The server had a problem. Try again in a bit."
         default:
             return fallback
         }
