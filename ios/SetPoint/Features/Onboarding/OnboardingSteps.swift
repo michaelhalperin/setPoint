@@ -128,10 +128,11 @@ struct YouStep: View {
                             range: 25 ... 350,
                             value: $model.draft.targetWeightKg
                         )
-                        if model.draft.targetWeightKg != nil, !model.targetWeightIsValid {
-                            Text(goal == .bulk ? "Above current weight." : "Below current weight.")
+                        if let message = model.targetWeightMessage {
+                            Text(message)
                                 .font(Typography.data(11, weight: .medium))
                                 .foregroundStyle(Palette.accent)
+                                .fixedSize(horizontal: false, vertical: true)
                         }
                         HStack(spacing: Space.xs) {
                             ForEach(GoalPace.allCases) { pace in
@@ -187,7 +188,10 @@ struct YouStep: View {
         guard model.draft.targetWeightKg == nil, let weight = model.draft.weightKg else { return }
         switch goal {
         case .bulk: model.draft.targetWeightKg = (weight + 4).rounded()
-        case .diet: model.draft.targetWeightKg = (weight - 5).rounded()
+        case .diet:
+            // Suggest 5 kg down, but never below a healthy weight for the height.
+            let floor = model.draft.heightCm.map { HealthyWeight.minKg(heightCm: $0) } ?? 0
+            model.draft.targetWeightKg = max((weight - 5).rounded(), floor)
         case .maintain: break
         }
     }

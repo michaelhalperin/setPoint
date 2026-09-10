@@ -355,6 +355,9 @@ struct SettingsResponse: Decodable {
     let restrictions: [Restriction]
     let enforcementEnabled: Bool
     let enforcementDisabledReason: String?
+    var heightCm: Double? = nil
+    /// Lowest diet target the backend accepts for this height (BMI 18.5).
+    var minHealthyWeightKg: Double? = nil
 
     struct Restriction: Decodable, Identifiable {
         var id: String { token }

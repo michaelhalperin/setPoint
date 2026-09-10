@@ -14,6 +14,22 @@ struct ScoffAnswers {
     }
 }
 
+/// The healthy-weight floor for a diet target — BMI 18.5, mirroring the backend's
+/// `minHealthyWeightKg`. SetPoint never helps anyone diet below it (§3).
+enum HealthyWeight {
+    static let bmiFloor = 18.5
+
+    /// Lowest healthy target weight for a height, rounded up to 0.1 kg.
+    static func minKg(heightCm: Double) -> Double {
+        let meters = heightCm / 100
+        return (bmiFloor * meters * meters * 10).rounded(.up) / 10
+    }
+
+    static func floorMessage(_ floor: Double) -> String {
+        "The lowest target I'll set for your height is \(floor.formatted(.number.precision(.fractionLength(0 ... 1)))) kg."
+    }
+}
+
 struct OnboardingDraft {
     var goal: Goal?
     var sex: Sex = .unspecified
@@ -113,11 +129,27 @@ final class OnboardingViewModel {
     var targetWeightIsValid: Bool {
         guard let goal = draft.goal else { return false }
         guard goal.hasWeightTarget else { return true }
-        guard let current = draft.weightKg, let target = draft.targetWeightKg else { return false }
+        guard draft.weightKg != nil, draft.targetWeightKg != nil else { return false }
+        return targetWeightMessage == nil
+    }
+
+    /// Why the entered target won't work, or nil when it's fine (or not entered yet).
+    var targetWeightMessage: String? {
+        guard let goal = draft.goal, goal.hasWeightTarget,
+              let current = draft.weightKg, let target = draft.targetWeightKg else { return nil }
         switch goal {
-        case .bulk: return target > current
-        case .diet: return target < current
-        case .maintain: return true
+        case .bulk:
+            return target > current ? nil : "Above current weight."
+        case .diet:
+            let floor = draft.heightCm.map { HealthyWeight.minKg(heightCm: $0) }
+            if let floor, current <= floor {
+                return "At your height, I won't set a lower target. Maintain is the better fit."
+            }
+            if target >= current { return "Below current weight." }
+            if let floor, target < floor { return HealthyWeight.floorMessage(floor) }
+            return nil
+        case .maintain:
+            return nil
         }
     }
 

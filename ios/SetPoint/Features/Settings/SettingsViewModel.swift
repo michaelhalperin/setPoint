@@ -30,6 +30,7 @@ final class SettingsViewModel {
     private(set) var mode = "BASIC"
     private(set) var startWeightKg: Double?
     private(set) var currentWeightKg: Double?
+    private(set) var minHealthyWeightKg: Double?
     private(set) var enforcementEnabled = true
     private(set) var enforcementDisabledReason: String?
 
@@ -67,6 +68,20 @@ final class SettingsViewModel {
             || Set(restrictions) != Set(o.restrictions.map(\.label))
     }
 
+    /// Why the diet target can't be saved — the same healthy floor the backend
+    /// enforces (BMI 18.5 at the user's height). Nil when it's fine.
+    var targetWeightMessage: String? {
+        guard goal == .diet, let target = targetWeightKg, let floor = minHealthyWeightKg, target < floor else {
+            return nil
+        }
+        return HealthyWeight.floorMessage(floor)
+    }
+
+    /// Save stays off while an edited target sits below the floor.
+    var blocksSave: Bool {
+        weightGoalDirty && targetWeightMessage != nil
+    }
+
     func revertToOriginal() {
         guard let o = original else { return }
         apply(o)
@@ -87,6 +102,10 @@ final class SettingsViewModel {
 
     func save() async {
         guard dirty, !saving else { return }
+        if weightGoalDirty, let message = targetWeightMessage {
+            error = message
+            return
+        }
         saving = true
         error = nil
         defer { saving = false }
@@ -152,6 +171,7 @@ final class SettingsViewModel {
         pace = GoalPace.closest(toKgPerWeek: s.paceKgPerWeek, for: goal)
         startWeightKg = s.startWeightKg
         currentWeightKg = s.currentWeightKg
+        minHealthyWeightKg = s.minHealthyWeightKg
         kcalTarget = s.dailyKcalTarget
         proteinTarget = s.dailyProteinTargetG
         mealTimes = s.mealTimes
@@ -174,7 +194,8 @@ final class SettingsViewModel {
             quietHours: .init(startMin: 1380, endMin: 420),
             checkInsPaused: false,
             restrictions: [.init(label: "Dairy", token: "dairy", source: "INTOLERANCE")],
-            enforcementEnabled: true, enforcementDisabledReason: nil
+            enforcementEnabled: true, enforcementDisabledReason: nil,
+            heightCm: 182, minHealthyWeightKg: 61.3
         ))
         vm.phase = .loaded
         return vm

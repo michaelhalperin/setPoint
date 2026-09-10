@@ -136,6 +136,14 @@ struct GoalSettingsView: View {
                     }
                 }
 
+                if let message = model.targetWeightMessage {
+                    Text(message)
+                        .font(Typography.data(12, weight: .medium))
+                        .foregroundStyle(Palette.accentDeep)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .transition(.opacity)
+                }
+
                 Divider().overlay(Palette.hairline)
 
                 VStack(alignment: .leading, spacing: Space.xs) {
@@ -867,7 +875,7 @@ private extension View {
             if model.dirty {
                 ToolbarItem(placement: .confirmationAction) {
                     Button(model.saving ? "Saving…" : "Save") { Task { await model.save() } }
-                        .disabled(model.saving)
+                        .disabled(model.saving || model.blocksSave)
                 }
             }
         }

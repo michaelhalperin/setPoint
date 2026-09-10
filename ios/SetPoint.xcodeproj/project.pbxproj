@@ -31,6 +31,7 @@
 		47C8F715DE3DE17989FABB04 /* AuthStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB2AE29FD58952E4C0CC1673 /* AuthStore.swift */; };
 		48057628537DBDD275A9295A /* OnboardingComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7936684A077EC94FC463DA02 /* OnboardingComponents.swift */; };
 		49442018BF61D9F41867AA35 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA3DC0E46B48127DCBFF92E2 /* RootView.swift */; };
+		4F70AD6F8F35DF388CEABDEE /* APIClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 229F87D031BDD792B3C98A80 /* APIClientTests.swift */; };
 		54832F545561456785F06973 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FE8898ED389F591B06A7F951 /* SwiftUI.framework */; };
 		5BDD75C4C4F37BE56005ECF6 /* OnboardingFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D059857EA5ACFC913EC5A43 /* OnboardingFlow.swift */; };
 		5C2C73BA6DBBD160F71960E6 /* TokenStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87A7B143B2CF06863A727EC5 /* TokenStore.swift */; };
@@ -40,6 +41,7 @@
 		6B5F95997AD3DA7FD3C892FA /* SettingsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7549A2446F88FB282FAF3FE /* SettingsViewModel.swift */; };
 		6D94F5185B579414DC0888AC /* OnboardingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D5EBB067542BB4ED82F2416 /* OnboardingTests.swift */; };
 		6D9DD0557112AE6BC94F23B8 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFAFAB70735B9ADE9DCADFA8 /* MainTabView.swift */; };
+		7208B8BA780CC1686F09C978 /* HealthyWeightTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 164B6BA9F86C99092FEC618E /* HealthyWeightTests.swift */; };
 		7561CB75F82F5F0BACE5B54B /* DTOs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A5329FB3FC5CBA4889FD372 /* DTOs.swift */; };
 		7C7F485203CDA854B2BE17D4 /* WeekStationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6F65D827DDE1784524655AF /* WeekStationTests.swift */; };
 		7CFAE8ECEBEFDAE72E3B8C05 /* DaySlotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 225B16B082F978CAB9C65D3A /* DaySlotTests.swift */; };
@@ -65,6 +67,7 @@
 		B34F74442FE761C505CF1E1F /* SignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D05051B152A3F34D639B5E9 /* SignInView.swift */; };
 		B34F7F3928C138D83B538026 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAD1C0245E5FF739BB28DB58 /* SettingsView.swift */; };
 		B4B0ADB19420BAAB4941E580 /* HealthKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D30AE53D7C45CA2C47D23C96 /* HealthKit.framework */; };
+		C197B73ADE00D3776F148A54 /* CrashReporting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D57D01CD3323AC9AF1DB175 /* CrashReporting.swift */; };
 		C7E6BD3F022C447E43FE1584 /* UserFacingError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86D8304C476B77D8C38E8772 /* UserFacingError.swift */; };
 		C99996C6FE78F9F2EF44FA14 /* ActivityKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 19F7ECB0DD3A7883A2824FC1 /* ActivityKit.framework */; };
 		D96CBB38A59F458B632BF989 /* SettlementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41940FEB3FCE32BEAD7DFF75 /* SettlementView.swift */; };
@@ -78,6 +81,7 @@
 		EA55542A09FC3324D9F8491C /* HomePreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA25A32CB6EE0D5D7341FC74 /* HomePreview.swift */; };
 		EFD8318506645CEC90249B44 /* ActivityKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 19F7ECB0DD3A7883A2824FC1 /* ActivityKit.framework */; };
 		F0C64D45A9745584D8B2D980 /* Motion.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA50138B8097773BBC7F74C3 /* Motion.swift */; };
+		F129B1B44B93E3B02474239A /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = 9D9571F40A093D740ECA0E21 /* Sentry */; };
 		F5C127BA64C922FA0B491F82 /* BiosignalStats.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11862FADC2373C54323DDAE4 /* BiosignalStats.swift */; };
 		F8132AA5435F1AE2BBF13367 /* HealthKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC89EFB897DDB22BB5344B9D /* HealthKitManager.swift */; };
 /* End PBXBuildFile section */
@@ -123,9 +127,11 @@
 		11862FADC2373C54323DDAE4 /* BiosignalStats.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiosignalStats.swift; sourceTree = "<group>"; };
 		14219540B9F9117D76AF9B3A /* WeekStation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeekStation.swift; sourceTree = "<group>"; };
 		1445D836A22672FF8571409D /* BiosignalStatsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiosignalStatsTests.swift; sourceTree = "<group>"; };
+		164B6BA9F86C99092FEC618E /* HealthyWeightTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthyWeightTests.swift; sourceTree = "<group>"; };
 		19F7ECB0DD3A7883A2824FC1 /* ActivityKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ActivityKit.framework; path = System/Library/Frameworks/ActivityKit.framework; sourceTree = SDKROOT; };
 		21981A8CC1F3D3E6093F7478 /* Typography.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Typography.swift; sourceTree = "<group>"; };
 		225B16B082F978CAB9C65D3A /* DaySlotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DaySlotTests.swift; sourceTree = "<group>"; };
+		229F87D031BDD792B3C98A80 /* APIClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClientTests.swift; sourceTree = "<group>"; };
 		2E759921224AC595C2B9DF05 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		2EAFBFE5FC7C3F7CDAD9E1D0 /* CheckInLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckInLiveActivity.swift; sourceTree = "<group>"; };
 		306DD98DE1DE503E86CEB6DD /* MotionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MotionTests.swift; sourceTree = "<group>"; };
@@ -142,6 +148,7 @@
 		607F057E746FE3D54FF7FFCD /* SetPoint.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SetPoint.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		6827E7745F7D8558E4078C9D /* Components.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components.swift; sourceTree = "<group>"; };
 		6B5888ECCC1D863A84318CA1 /* MealPhoto.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealPhoto.swift; sourceTree = "<group>"; };
+		6D57D01CD3323AC9AF1DB175 /* CrashReporting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrashReporting.swift; sourceTree = "<group>"; };
 		710ED9EE39FE068431D74DB0 /* SetPointApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetPointApp.swift; sourceTree = "<group>"; };
 		72122AA0FFF3F9BD35A066C4 /* SetPointWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = SetPointWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		75E6AAF6106EF78152D6BCB7 /* OnboardingSteps.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingSteps.swift; sourceTree = "<group>"; };
@@ -207,6 +214,7 @@
 			files = (
 				C99996C6FE78F9F2EF44FA14 /* ActivityKit.framework in Frameworks */,
 				B4B0ADB19420BAAB4941E580 /* HealthKit.framework in Frameworks */,
+				F129B1B44B93E3B02474239A /* Sentry in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -228,6 +236,7 @@
 			children = (
 				E6FBF6B25E85349394163FF0 /* AppDelegate.swift */,
 				77CC24E27F4C73628B9222FB /* AppEnvironment.swift */,
+				6D57D01CD3323AC9AF1DB175 /* CrashReporting.swift */,
 				DFAFAB70735B9ADE9DCADFA8 /* MainTabView.swift */,
 				CA3DC0E46B48127DCBFF92E2 /* RootView.swift */,
 				710ED9EE39FE068431D74DB0 /* SetPointApp.swift */,
@@ -250,10 +259,12 @@
 		56B15F5A4708550024E1E373 /* SetPointTests */ = {
 			isa = PBXGroup;
 			children = (
+				229F87D031BDD792B3C98A80 /* APIClientTests.swift */,
 				1445D836A22672FF8571409D /* BiosignalStatsTests.swift */,
 				ECFB3596BCF94EF40A22F565 /* CheckInTests.swift */,
 				225B16B082F978CAB9C65D3A /* DaySlotTests.swift */,
 				AF7E9A8FF4A34FCEA8BD592A /* DTOTests.swift */,
+				164B6BA9F86C99092FEC618E /* HealthyWeightTests.swift */,
 				8AEEC804F40BC95701983A78 /* LogMealTests.swift */,
 				306DD98DE1DE503E86CEB6DD /* MotionTests.swift */,
 				3D5EBB067542BB4ED82F2416 /* OnboardingTests.swift */,
@@ -516,6 +527,7 @@
 			);
 			name = SetPoint;
 			packageProductDependencies = (
+				9D9571F40A093D740ECA0E21 /* Sentry */,
 			);
 			productName = SetPoint;
 			productReference = 607F057E746FE3D54FF7FFCD /* SetPoint.app */;
@@ -553,6 +565,9 @@
 			);
 			mainGroup = EFA25081FBCEF6F6876072E3;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				6FBE76F23667734EF43FC49C /* XCRemoteSwiftPackageReference "sentry-cocoa" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = ED0CBF30ED1C2F7FD98ED5D5 /* Products */;
 			projectDirPath = "";
@@ -595,6 +610,7 @@
 				248F71AF6CBF269F32B6F2DC /* Components.swift in Sources */,
 				A9CF52A7862CFCC5B4349050 /* ConversationView.swift in Sources */,
 				9878761462D8114645F21FB4 /* ConversationViewModel.swift in Sources */,
+				C197B73ADE00D3776F148A54 /* CrashReporting.swift in Sources */,
 				7561CB75F82F5F0BACE5B54B /* DTOs.swift in Sources */,
 				A6EFF5D44E0196FF46FE6359 /* DaySlot.swift in Sources */,
 				1515C5462FAF3F0B4ECDB200 /* DeepLink.swift in Sources */,
@@ -650,10 +666,12 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4F70AD6F8F35DF388CEABDEE /* APIClientTests.swift in Sources */,
 				90EC59D1929AB926863E3FEA /* BiosignalStatsTests.swift in Sources */,
 				2ED1614D4E3A411BAD72206A /* CheckInTests.swift in Sources */,
 				E24AAC6BB063241D3E3A0D79 /* DTOTests.swift in Sources */,
 				7CFAE8ECEBEFDAE72E3B8C05 /* DaySlotTests.swift in Sources */,
+				7208B8BA780CC1686F09C978 /* HealthyWeightTests.swift in Sources */,
 				9F0D1EC76A037AFE96546243 /* LogMealTests.swift in Sources */,
 				3ED98D31B3CAEA9D98194499 /* MotionTests.swift in Sources */,
 				6D94F5185B579414DC0888AC /* OnboardingTests.swift in Sources */,
@@ -695,6 +713,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.setpoint.app;
 				SDKROOT = iphoneos;
+				SENTRY_DSN = "";
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
@@ -877,6 +896,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.setpoint.app;
 				SDKROOT = iphoneos;
+				SENTRY_DSN = "";
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
@@ -955,6 +975,25 @@
 			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		6FBE76F23667734EF43FC49C /* XCRemoteSwiftPackageReference "sentry-cocoa" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/getsentry/sentry-cocoa";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 9.28.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		9D9571F40A093D740ECA0E21 /* Sentry */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 6FBE76F23667734EF43FC49C /* XCRemoteSwiftPackageReference "sentry-cocoa" */;
+			productName = Sentry;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 08139A4B2D67AF92880C8A35 /* Project object */;
 }
