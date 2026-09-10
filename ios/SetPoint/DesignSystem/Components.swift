@@ -59,6 +59,40 @@ struct ActionButton: View {
     }
 }
 
+/// A compact CTA for sticky bars — not full-width.
+struct PillButton: View {
+    enum Kind { case primary, secondary }
+
+    let title: String
+    var kind: Kind = .primary
+    let action: () -> Void
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @GestureState private var pressed = false
+
+    var body: some View {
+        Text(title)
+            .font(Typography.data(15, weight: .semibold))
+            .foregroundStyle(kind == .primary ? Color.white : Palette.ink)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 14)
+            .background {
+                Capsule(style: .continuous)
+                    .fill(kind == .primary ? Palette.accent : Palette.surfaceSunk)
+                    .elevation(kind == .primary && !pressed ? .resting : .flat)
+            }
+            .scaleEffect(pressed ? 0.97 : 1)
+            .brightness(pressed && kind == .primary ? -0.04 : 0)
+            .animation(Motion.adaptive(Motion.snappy, reduceMotion: reduceMotion), value: pressed)
+            .contentShape(Capsule())
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .updating($pressed) { _, state, _ in state = true }
+                    .onEnded { _ in action() }
+            )
+    }
+}
+
 /// A tappable card that presses in — scales down slightly, shadow softens.
 struct PressableCard: ButtonStyle {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -92,5 +126,45 @@ struct ManagerNote: View {
             (emphasised ? Palette.accentTint : Palette.surfaceSunk.opacity(0.6)),
             in: RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
         )
+    }
+}
+
+/// Building blocks used by each destination to mirror its own loaded layout.
+struct SkeletonBlock: View {
+    var width: CGFloat?
+    let height: CGFloat
+    var radius: CGFloat = 7
+    var tint: Color = Palette.surfaceSunk
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: radius, style: .continuous)
+            .fill(tint)
+            .frame(maxWidth: width == nil ? .infinity : nil)
+            .frame(width: width, height: height)
+    }
+}
+
+struct SkeletonCard<Content: View>: View {
+    var height: CGFloat?
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        content
+            .padding(Space.md)
+            .frame(maxWidth: .infinity, minHeight: height, alignment: .topLeading)
+            .background(Palette.surface, in: RoundedRectangle(cornerRadius: Radius.lg, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: Radius.lg, style: .continuous)
+                    .strokeBorder(Palette.hairline)
+            }
+    }
+}
+
+extension View {
+    func skeletonLoading() -> some View {
+        self
+            .shimmering()
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Loading")
     }
 }

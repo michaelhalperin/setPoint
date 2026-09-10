@@ -6,17 +6,9 @@ enum APIError: Error, LocalizedError {
     case decoding(Error)
     case transport(Error)
 
+    /// Always a line a person can read — never a server or framework string.
     var errorDescription: String? {
-        switch self {
-        case .unauthorized:
-            return "Your session expired. Sign in again."
-        case let .http(status, message):
-            return message ?? "The server returned an error (\(status))."
-        case .decoding:
-            return "The server sent something unexpected."
-        case let .transport(error):
-            return (error as? URLError)?.localizedDescription ?? "Couldn't reach the server."
-        }
+        UserFacingError.message(for: self)
     }
 }
 
@@ -49,8 +41,8 @@ actor APIClient {
         self.tokenProvider = tokenProvider
     }
 
-    func get<T: Decodable>(_ path: String) async throws -> T {
-        try await perform(path, method: "GET", body: nil)
+    func get<T: Decodable>(_ path: String, query: [String: String] = [:]) async throws -> T {
+        try await perform(path, method: "GET", body: nil, query: query)
     }
 
     func post<T: Decodable>(_ path: String, _ body: some Encodable) async throws -> T {
@@ -82,15 +74,22 @@ actor APIClient {
         let _: EmptyResponse = try await perform(path, method: "DELETE", body: nil)
     }
 
-    private func perform<T: Decodable>(_ path: String, method: String, body: Data?) async throws -> T {
-        var request = URLRequest(url: baseURL.appending(path: path))
+    private func perform<T: Decodable>(_ path: String, method: String, body: Data?, query: [String: String] = [:]) async throws -> T {
+        var url = baseURL.appending(path: path)
+        if !query.isEmpty, var components = URLComponents(url: url, resolvingAgainstBaseURL: false) {
+            components.queryItems = query.map { URLQueryItem(name: $0.key, value: $0.value) }
+            if let withQuery = components.url { url = withQuery }
+        }
+        var request = URLRequest(url: url)
         request.httpMethod = method
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         if let token = tokenProvider() {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
-        request.httpBody = body
+        if let body {
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = body
+        }
 
         let data: Data
         let response: URLResponse

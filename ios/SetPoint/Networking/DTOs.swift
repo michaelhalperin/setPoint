@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 
 // Mirrors of the backend's JSON responses. The backend already emits camelCase,
 // so no key-decoding strategy is needed.
@@ -15,7 +16,12 @@ struct HomeResponse: Decodable {
     let ledger: Ledger
     let framing: Framing
     let managerNote: String
+    let meals: [MealSummary]
+    /// Usual breakfast / lunch / dinner minutes-from-midnight. Older payloads omit this.
+    let mealTimes: MealTimesPayload?
     let activeCheckIn: ActiveCheckIn?
+
+    var resolvedMealTimes: MealTimesPayload { mealTimes ?? .standard }
 
     struct Ledger: Decodable {
         let consumedKcal: Int
@@ -65,6 +71,60 @@ struct HomeResponse: Decodable {
             }
         }
     }
+}
+
+/// A logged meal as it appears on Today and in a Week day detail.
+struct MealSummary: Decodable, Identifiable, Hashable {
+    let id: String
+    let loggedAt: String
+    let kcal: Int
+    let proteinG: Double
+    let carbsG: Double
+    let fatG: Double
+    let source: String
+    let summary: String?
+    /// Data URL when the meal was logged from a photo. Older payloads omit this.
+    let photoUrl: String?
+    let notes: String?
+    let items: [Item]?
+    let parseConfidence: Double?
+
+    struct Item: Decodable, Hashable, Identifiable {
+        var id: String { "\(name)|\(quantity)" }
+        let name: String
+        let quantity: String
+        let kcal: Int
+        let proteinG: Double
+        let carbsG: Double
+        let fatG: Double
+    }
+
+    var title: String {
+        let trimmed = summary?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return trimmed.isEmpty ? "Logged meal" : trimmed
+    }
+
+    var sourceLabel: String {
+        switch source {
+        case "PHOTO": return "Photo"
+        case "TEXT": return "Text"
+        case "PRESCRIPTION": return "Check-in"
+        default: return "Logged"
+        }
+    }
+
+    var photoImage: UIImage? {
+        guard let photoUrl, photoUrl.hasPrefix("data:image") else { return nil }
+        guard let comma = photoUrl.firstIndex(of: ",") else { return nil }
+        let b64 = String(photoUrl[photoUrl.index(after: comma)...])
+        guard let data = Data(base64Encoded: b64) else { return nil }
+        return UIImage(data: data)
+    }
+}
+
+struct MealsListResponse: Decodable {
+    let date: String
+    let meals: [MealSummary]
 }
 
 struct SettlementResponse: Decodable {
@@ -161,6 +221,24 @@ struct LogMealResponse: Decodable {
     }
 }
 
+struct MealCorrectionRequest: Encodable {
+    let summary: String
+    let items: [Item]
+
+    struct Item: Encodable {
+        let name: String
+        let quantity: String
+        let kcal: Int
+        let proteinG: Double
+        let carbsG: Double
+        let fatG: Double
+    }
+}
+
+struct MealCorrectionResponse: Decodable {
+    let meal: MealSummary
+}
+
 struct ConversationRequest: Encodable {
     let message: String
 }
@@ -245,6 +323,8 @@ struct MealTimesPayload: Codable, Equatable {
     var breakfastMin: Int
     var lunchMin: Int
     var dinnerMin: Int
+
+    static let standard = MealTimesPayload(breakfastMin: 480, lunchMin: 780, dinnerMin: 1140)
 }
 
 struct QuietHoursPayload: Codable, Equatable {

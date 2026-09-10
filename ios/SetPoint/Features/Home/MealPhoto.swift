@@ -28,4 +28,25 @@ struct MealPhoto: Equatable {
         guard let jpeg = resized.jpegData(compressionQuality: 0.7) else { return nil }
         return MealPhoto(base64: jpeg.base64EncodedString(), mediaType: "image/jpeg", preview: resized)
     }
+
+    #if DEBUG
+    /// A stand-in plate for confirmation previews — not a real meal photo.
+    static var demoPlate: MealPhoto {
+        let size = CGSize(width: 800, height: 600)
+        let format = UIGraphicsImageRendererFormat.default()
+        format.scale = 1
+        let image = UIGraphicsImageRenderer(size: size, format: format).image { ctx in
+            UIColor(red: 0.984, green: 0.965, blue: 0.941, alpha: 1).setFill()
+            ctx.fill(CGRect(origin: .zero, size: size))
+            UIColor(red: 0.949, green: 0.918, blue: 0.875, alpha: 1).setFill()
+            ctx.cgContext.fillEllipse(in: CGRect(x: 120, y: 50, width: 560, height: 500))
+            UIColor(red: 0.835, green: 0.380, blue: 0.227, alpha: 0.45).setFill()
+            ctx.cgContext.fillEllipse(in: CGRect(x: 230, y: 150, width: 340, height: 280))
+            UIColor(red: 0.431, green: 0.541, blue: 0.404, alpha: 0.55).setFill()
+            ctx.cgContext.fillEllipse(in: CGRect(x: 280, y: 210, width: 160, height: 120))
+        }
+        return MealPhoto.make(from: image.jpegData(compressionQuality: 0.7) ?? Data())
+            ?? MealPhoto(base64: "", mediaType: "image/jpeg", preview: image)
+    }
+    #endif
 }

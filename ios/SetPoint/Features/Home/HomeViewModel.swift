@@ -15,10 +15,16 @@ final class HomeViewModel {
 
     private let api: APIClient
     private let onUnauthorized: @MainActor () -> Void
+    private let onMealChanged: @MainActor () -> Void
 
-    init(api: APIClient, onUnauthorized: @escaping @MainActor () -> Void) {
+    init(
+        api: APIClient,
+        onUnauthorized: @escaping @MainActor () -> Void,
+        onMealChanged: @escaping @MainActor () -> Void = {}
+    ) {
         self.api = api
         self.onUnauthorized = onUnauthorized
+        self.onMealChanged = onMealChanged
     }
 
     func load(showSpinner: Bool = true) async {
@@ -36,8 +42,19 @@ final class HomeViewModel {
         }
     }
 
+    func removeMeal(id: String) async throws {
+        do {
+            try await api.delete("/api/meals/\(id)")
+            onMealChanged()
+            await load(showSpinner: false)
+        } catch APIError.unauthorized {
+            onUnauthorized()
+            throw APIError.unauthorized
+        }
+    }
+
     private func message(for error: Error) -> String {
-        (error as? LocalizedError)?.errorDescription ?? "Something went wrong."
+        UserFacingError.message(for: error, fallback: "Couldn't load. Try again.")
     }
 
     #if DEBUG

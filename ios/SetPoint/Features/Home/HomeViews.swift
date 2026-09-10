@@ -1,71 +1,5 @@
 import SwiftUI
 
-/// The hero stat (§5.2): the running gap, framed by goal. Never hard-cuts — the
-/// number counts to its new value (§5a, `.contentTransition(.numericText)`).
-struct LedgerHero: View {
-    let ledger: HomeResponse.Ledger
-    let framing: HomeResponse.Framing
-
-    private var underEating: Bool { framing.state == "under" }
-
-    private var caption: String {
-        switch framing.state {
-        case "under": return "to eat today"
-        case "over": return "over today"
-        default: return "on target today"
-        }
-    }
-
-    var body: some View {
-        Card(tint: underEating ? Palette.accentTint : Palette.surface, padding: Space.md) {
-            VStack(alignment: .leading, spacing: Space.xs) {
-                Text(caption)
-                    .sectionLabelStyle()
-                    .foregroundStyle(underEating ? Palette.accentDeep.opacity(0.7) : Palette.inkFaint)
-
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text("\(abs(framing.heroKcal))")
-                        .font(Typography.hero)
-                        .foregroundStyle(underEating ? Palette.accent : Palette.ink)
-                        .contentTransition(.numericText(value: Double(framing.heroKcal)))
-                        .monospacedDigit()
-                        .firstAppearPulse(underEating)
-                    Text("kcal")
-                        .font(Typography.data(17, weight: .medium))
-                        .foregroundStyle(Palette.inkFaint)
-                }
-
-                Text("\(ledger.consumedKcal) of \(ledger.targetKcal) · \(ledger.mealsToday) meal\(ledger.mealsToday == 1 ? "" : "s") today")
-                    .font(Typography.data(13))
-                    .foregroundStyle(underEating ? Palette.accentDeep.opacity(0.65) : Palette.inkFaint)
-            }
-        }
-    }
-}
-
-struct ProteinRow: View {
-    let ledger: HomeResponse.Ledger
-
-    var body: some View {
-        if let target = ledger.targetProteinG {
-            let consumed = Int(ledger.consumedProteinG.rounded())
-            let goal = Int(target.rounded())
-            Card {
-                HStack {
-                    Text("Protein")
-                        .font(Typography.data(14, weight: .medium))
-                        .foregroundStyle(Palette.inkSoft)
-                    Spacer()
-                    Text("\(consumed) / \(goal) g")
-                        .font(Typography.data(15, weight: .semibold))
-                        .foregroundStyle(Palette.ink)
-                        .contentTransition(.numericText(value: Double(consumed)))
-                }
-            }
-        }
-    }
-}
-
 /// The check-in's content, shared between the Home card and the full-screen
 /// prescription view — the same view at two sizes so `matchedGeometryEffect`
 /// can morph one into the other (§5a).
@@ -77,12 +11,12 @@ struct CheckInContent: View {
     var restingElevation: Elevation = .resting
 
     private var tierThreePrompt: String? {
-        checkIn.tier >= 3 ? "The last few days haven't gone to plan. Let's sort out what needs to change." : nil
+        checkIn.tier >= 3 ? "Rough few days. Let’s adjust." : nil
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: expanded ? 14 : 10) {
-            Text(checkIn.tier >= 3 ? "Let's talk" : (checkIn.tier >= 2 ? "Check-in · firm" : "Check-in"))
+            Text(checkIn.tier >= 3 ? "Let's talk" : "Check-in")
                 .sectionLabelStyle()
                 .foregroundStyle(Palette.accent)
 
