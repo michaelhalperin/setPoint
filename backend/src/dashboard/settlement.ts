@@ -153,17 +153,17 @@ function buildWeightGoal(
 }
 
 function weekSummary(days: SettlementDay[], goal: Goal): string {
-  if (days.length === 0) return `First week underway — the pattern starts now.`;
+  if (days.length === 0) return `First week underway.`;
 
   const onTrack = days.filter((d) => d.kind === 'ON_TRACK').length;
   const missed = days.filter((d) => d.kind === 'MISSED').length;
   const under = days.filter((d) => d.kind === 'UNDER').length;
 
-  if (onTrack >= days.length - 1) return `${onTrack} of ${days.length} days on target. That's the pattern to hold.`;
+  if (onTrack >= days.length - 1) return `${onTrack} of ${days.length} days on target.`;
   if (missed + under >= Math.ceil(days.length / 2)) {
-    if (goal === 'BULK') return `Under target more days than not this week — the gain needs the extra food.`;
-    if (goal === 'MAINTAIN') return `Under your maintenance line most days this week — worth topping up.`;
-    return `Coming up short most days this week — let's get the floor up.`;
+    if (goal === 'BULK') return `Mostly under target. Eat more for your gain goal.`;
+    if (goal === 'MAINTAIN') return `Mostly under maintenance.`;
+    return `Mostly under target.`;
   }
-  return `${onTrack} of ${days.length} days on target. Some ground to make up, nothing dramatic.`;
+  return `${onTrack} of ${days.length} days on target.`;
 }

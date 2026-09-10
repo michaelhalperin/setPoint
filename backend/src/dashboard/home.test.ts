@@ -33,7 +33,15 @@ function fakePrisma(over: { user?: AnyRow | null; meals?: AnyRow[]; checkIn?: An
 const defaultUser: AnyRow = {
   id: 'u1',
   timezone: 'America/New_York',
-  onboarding: { goal: 'BULK', mode: 'SMART', dailyKcalTarget: 3000, dailyProteinTargetG: 180 },
+  onboarding: {
+    goal: 'BULK',
+    mode: 'SMART',
+    dailyKcalTarget: 3000,
+    dailyProteinTargetG: 180,
+    breakfastMin: 480,
+    lunchMin: 780,
+    dinnerMin: 1140,
+  },
   safetyScreening: { enforcementEnabled: true },
 };
 
@@ -41,8 +49,27 @@ describe('buildHome', () => {
   it('sums today\'s ledger and frames a bulk deficit with the accent', async () => {
     const prisma = fakePrisma({
       meals: [
-        { loggedAt: hoursAgo(5), kcal: 600, proteinG: 30 },
-        { loggedAt: hoursAgo(2), kcal: 700, proteinG: 45 },
+        {
+          id: 'm1',
+          loggedAt: hoursAgo(5),
+          kcal: 600,
+          proteinG: 30,
+          carbsG: 50,
+          fatG: 10,
+          source: 'TEXT',
+          rawInput: 'oats',
+        },
+        {
+          id: 'm2',
+          loggedAt: hoursAgo(2),
+          kcal: 700,
+          proteinG: 45,
+          carbsG: 60,
+          fatG: 18,
+          source: 'PHOTO',
+          rawInput: 'chicken bowl',
+          photoUrl: 'data:image/jpeg;base64,AAAA',
+        },
       ],
     });
 
@@ -54,12 +81,33 @@ describe('buildHome', () => {
     expect(view.ledger.consumedProteinG).toBe(75);
     expect(view.ledger.remainingProteinG).toBe(105);
     expect(view.ledger.mealsToday).toBe(2);
+    expect(view.meals.map((m) => m.id)).toEqual(['m1', 'm2']);
+    expect(view.meals[0]).toMatchObject({ summary: 'oats', kcal: 600, source: 'TEXT', photoUrl: null });
+    expect(view.meals[1]).toMatchObject({
+      summary: 'chicken bowl',
+      source: 'PHOTO',
+      photoUrl: 'data:image/jpeg;base64,AAAA',
+    });
+    expect(view.mealTimes).toEqual({ breakfastMin: 480, lunchMin: 780, dinnerMin: 1140 });
     expect(view.framing).toMatchObject({ state: 'under', accent: true, primaryCta: 'log_meal', heroKcal: 1700 });
     expect(view.managerNote).toBe('MANAGER NOTE');
   });
 
   it('gives going over a quiet, neutral treatment', async () => {
-    const prisma = fakePrisma({ meals: [{ loggedAt: hoursAgo(1), kcal: 3400, proteinG: 200 }] });
+    const prisma = fakePrisma({
+      meals: [
+        {
+          id: 'm3',
+          loggedAt: hoursAgo(1),
+          kcal: 3400,
+          proteinG: 200,
+          carbsG: 0,
+          fatG: 0,
+          source: 'MANUAL',
+          rawInput: 'big dinner',
+        },
+      ],
+    });
     const view = await buildHome({ prisma, voice, now: NOW }, 'u1');
     expect(view.framing).toMatchObject({ state: 'over', accent: false, primaryCta: null });
   });

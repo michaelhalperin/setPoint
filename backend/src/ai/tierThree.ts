@@ -37,7 +37,7 @@ const SYSTEM = [
   '  1. adjust the plan — a lower daily target, different meal times, or fewer check-ins',
   '  2. pause check-ins for a while',
   '  3. if they mention struggling with eating, food, or their body, gently suggest talking to a professional',
-  'Rules: 1–2 sentences per reply. Warm, direct, never a lecture. Never mention weight, guilt, or failure.',
+  'Rules: one brief sentence per reply, under 90 characters. Warm and direct. Never mention weight, guilt, or failure.',
   'After at most 3 of your replies, land on an outcome and set done=true.',
   'Always call reply_to_user.',
 ].join('\n');
@@ -68,7 +68,7 @@ const replySchema = z.object({
 
 export const fallbackTierThree: TierThreeConversant = {
   opener() {
-    return "This hasn't been working the last few days. Want to lower the target, shift your check-ins, or pause them for a bit?";
+    return 'Change your target, timing, or pause check-ins?';
   },
   async respond(history) {
     const last = history.filter((t) => t.role === 'user').at(-1)?.content.toLowerCase() ?? '';
@@ -76,28 +76,27 @@ export const fallbackTierThree: TierThreeConversant = {
 
     if (/(struggl|hard time|can't eat|cant eat|disorder|therap)/.test(last)) {
       return {
-        reply:
-          "Thanks for telling me. SetPoint will keep tracking without pushing — and talking to a professional can really help. The NEDA helpline is a good place to start.",
+        reply: 'Quiet tracking is on. Consider support from a qualified professional.',
         outcome: 'SUGGEST_PROFESSIONAL',
         done: true,
       };
     }
     if (/(pause|stop|break|too much|leave me)/.test(last)) {
       return {
-        reply: "Done — check-ins are paused. Turn them back on in Settings whenever you're ready.",
+        reply: 'Check-ins paused. Resume them in Settings.',
         outcome: 'PAUSE_CHECKINS',
         done: true,
       };
     }
     if (assistantTurns >= 2) {
       return {
-        reply: "Let's ease off the target for now and see how the week goes. You can fine-tune it in Settings.",
+        reply: 'Target eased. Adjust it in Settings.',
         outcome: 'ADJUST_PLAN',
         done: true,
       };
     }
     return {
-      reply: 'What would make this easier — a smaller target, later check-ins, or a pause?',
+      reply: 'Would a smaller target, later check-ins, or a pause help?',
       outcome: 'NONE',
       done: false,
     };

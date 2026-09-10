@@ -1,7 +1,9 @@
 import type { PrismaClient } from '@prisma/client';
-import { hoursBetween, startOfLocalDay, type Goal } from '../engine/index.js';
+import { hoursBetween, msSinceLocalMidnight, startOfLocalDay, type Goal } from '../engine/index.js';
 import type { ManagerVoice } from '../managerVoice/types.js';
+import { toMealSummary, type MealSummary } from '../meals/summary.js';
 import { homeFraming, type FramingState } from './classify.js';
+import { mealWindow } from '../managerVoice/fallback.js';
 
 export type HomeDeps = {
   prisma: PrismaClient;
@@ -30,6 +32,8 @@ export type HomeView = {
     heroKcal: number;
   };
   managerNote: string;
+  meals: MealSummary[];
+  mealTimes: { breakfastMin: number; lunchMin: number; dinnerMin: number };
   activeCheckIn: null | {
     id: string;
     tier: number;
@@ -65,7 +69,21 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
   const [todayMeals, lastMeal, activeCheckIn] = await Promise.all([
     prisma.meal.findMany({
       where: { userId, loggedAt: { gte: dayStart } },
-      select: { kcal: true, proteinG: true },
+      orderBy: { loggedAt: 'asc' },
+      select: {
+        id: true,
+        loggedAt: true,
+        kcal: true,
+        proteinG: true,
+        carbsG: true,
+        fatG: true,
+        source: true,
+        rawInput: true,
+        photoUrl: true,
+        notes: true,
+        items: true,
+        parseConfidence: true,
+      },
     }),
     prisma.meal.findFirst({ where: { userId }, orderBy: { loggedAt: 'desc' }, select: { loggedAt: true } }),
     prisma.checkIn.findFirst({
@@ -83,7 +101,9 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
 
   const framing = homeFraming(goal, consumedKcal, targetKcal);
   const remainingKcal = Math.round(targetKcal - consumedKcal);
+  const remainingProteinG = targetProteinG === null ? null : round1(targetProteinG - consumedProteinG);
   const hoursSinceMeal = lastMeal ? hoursBetween(lastMeal.loggedAt, now) : null;
+  const mins = Math.floor(msSinceLocalMidnight(now, user.timezone) / 60_000);
 
   const managerNote = await deps.voice.homeNote({
     goal,
@@ -91,6 +111,9 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
     consumedKcal,
     targetKcal,
     remainingKcal,
+    remainingProteinG,
+    mealsToday: todayMeals.length,
+    nextMeal: mealWindow(mins, { lunchMin: profile.lunchMin, dinnerMin: profile.dinnerMin }),
     hoursSinceMeal,
     hasActiveCheckIn: activeCheckIn !== null,
   });
@@ -105,7 +128,7 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
       remainingKcal,
       consumedProteinG,
       targetProteinG,
-      remainingProteinG: targetProteinG === null ? null : round1(targetProteinG - consumedProteinG),
+      remainingProteinG,
       mealsToday: todayMeals.length,
       lastMealAt: lastMeal?.loggedAt.toISOString() ?? null,
     },
@@ -116,6 +139,12 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
       heroKcal: framing.heroKcal,
     },
     managerNote,
+    meals: todayMeals.map(toMealSummary),
+    mealTimes: {
+      breakfastMin: profile.breakfastMin,
+      lunchMin: profile.lunchMin,
+      dinnerMin: profile.dinnerMin,
+    },
     activeCheckIn: activeCheckIn
       ? {
           id: activeCheckIn.id,

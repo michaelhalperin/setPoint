@@ -45,3 +45,24 @@ export function shiftDateISO(iso: string, days: number): string {
   const shifted = new Date(dateOnly(iso).getTime() + days * 86_400_000);
   return shifted.toISOString().slice(0, 10);
 }
+
+/**
+ * An instant that falls on local calendar date `iso` in `timeZone`. Used to
+ * snap `startOfLocalDay` onto a YYYY-MM-DD the caller already has.
+ */
+function instantOnLocalDate(iso: string, timeZone: string): Date {
+  const candidates = [
+    new Date(`${iso}T00:00:00.000Z`),
+    new Date(`${iso}T08:00:00.000Z`),
+    new Date(`${iso}T12:00:00.000Z`),
+    new Date(`${iso}T20:00:00.000Z`),
+  ];
+  return candidates.find((d) => localDateISO(d, timeZone) === iso) ?? candidates[2]!;
+}
+
+/** Inclusive local-day start and exclusive next-day start for `iso` in `timeZone`. */
+export function localDayRange(iso: string, timeZone: string): { start: Date; end: Date } {
+  const start = startOfLocalDay(instantOnLocalDate(iso, timeZone), timeZone);
+  const end = startOfLocalDay(instantOnLocalDate(shiftDateISO(iso, 1), timeZone), timeZone);
+  return { start, end };
+}

@@ -17,6 +17,10 @@ export type HomeNoteContext = {
   consumedKcal: number;
   targetKcal: number;
   remainingKcal: number;
+  remainingProteinG: number | null;
+  mealsToday: number;
+  /** breakfast / lunch / dinner — whichever window we're in now. */
+  nextMeal: 'breakfast' | 'lunch' | 'dinner';
   hoursSinceMeal: number | null;
   hasActiveCheckIn: boolean;
 };

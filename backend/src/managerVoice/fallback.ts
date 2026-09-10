@@ -13,32 +13,79 @@ export const fallbackManagerVoice: ManagerVoice = {
   async checkInMessage(ctx: ManagerVoiceContext): Promise<string> {
     const directive = ctx.prescriptionSummary ? ` Try ${ctx.prescriptionSummary}.` : '';
     if (ctx.tier <= 1) {
-      return `It's been a while since you ate.${directive || ' Worth grabbing something now.'}`;
+      return `Time to eat.${directive || ''}`;
     }
-    return `You're well past your usual meal gap. Let's get food in now.${directive}`;
+    return `Eat now.${directive}`;
   },
 
   async homeNote(ctx: HomeNoteContext): Promise<string> {
-    if (ctx.state === 'under') {
-      const gap = Math.round(ctx.remainingKcal);
-      return `About ${gap} kcal to go today. Keep it moving — a solid meal now makes the rest easy.`;
+    const remaining = Math.round(ctx.remainingKcal);
+    const size = mealSize(remaining, ctx.nextMeal);
+    const meal = ctx.nextMeal;
+
+    if (ctx.hasActiveCheckIn) {
+      return `Open check-in: log a meal or use its suggestion.`;
     }
+
+    if (ctx.mealsToday === 0) {
+      if (meal === 'breakfast') {
+        return `${Math.round(ctx.targetKcal)} kcal today. Breakfast: ~${size} kcal.`;
+      }
+      if (meal === 'lunch') {
+        return `Nothing logged. Lunch: ~${size} kcal.`;
+      }
+      return `Nothing logged. Dinner: ~${size} kcal.`;
+    }
+
     if (ctx.state === 'over') {
-      return `A bit past target today. Nothing to fix — just steer back tomorrow.`;
+      return `Over target. Continue tomorrow.`;
     }
-    return `Right on track today. Hold the line.`;
+
+    if (ctx.state === 'on_track') {
+      return `On track. Next: ${meal}.`;
+    }
+
+    const hours = ctx.hoursSinceMeal;
+    if (hours != null && hours >= 5) {
+      return `${Math.round(hours)} hours since eating. ${remaining} kcal left; next meal ~${size}.`;
+    }
+
+    const protein = ctx.remainingProteinG;
+    if (protein != null && protein >= 50) {
+      return `${remaining} kcal · ${Math.round(protein)} g protein left.`;
+    }
+
+    return `${remaining} kcal left. ${cap(meal)}: ~${size} kcal.`;
   },
 
   async daySummary(ctx: DaySummaryContext): Promise<string> {
     switch (ctx.kind) {
       case 'MISSED':
-        return `Nothing logged. Tomorrow's a clean start.`;
+        return `Nothing logged.`;
       case 'UNDER':
-        return `Came in ${Math.round(ctx.kcalTarget - ctx.kcalConsumed)} kcal short. Let's close that gap tomorrow.`;
+        return `${Math.round(ctx.kcalTarget - ctx.kcalConsumed)} kcal under target.`;
       case 'OVER':
-        return `Over target, but not by much. Steady as you go.`;
+        return `Over target.`;
       default:
-        return `Landed on target. That's the pattern to keep.`;
+        return `On target.`;
     }
   },
 };
+
+export function mealWindow(
+  mins: number,
+  times: { lunchMin: number; dinnerMin: number },
+): HomeNoteContext['nextMeal'] {
+  if (mins < times.lunchMin) return 'breakfast';
+  if (mins < times.dinnerMin) return 'lunch';
+  return 'dinner';
+}
+
+function mealSize(remaining: number, window: HomeNoteContext['nextMeal']): number {
+  const parts = window === 'breakfast' ? 3 : window === 'lunch' ? 2 : 1;
+  return Math.max(350, Math.round(remaining / parts / 50) * 50);
+}
+
+function cap(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
