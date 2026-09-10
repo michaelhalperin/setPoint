@@ -82,4 +82,15 @@ final class SettingsTests: XCTestCase {
         XCTAssertEqual(json["weightKg"] as? Double, 78.4)
         XCTAssertNil(json["source"])
     }
+
+    @MainActor
+    func testRevertToOriginalRestoresDraft() {
+        let vm = SettingsViewModel.previewed()
+        let originalGoal = vm.goal
+        vm.goal = originalGoal == .bulk ? .diet : .bulk
+        XCTAssertTrue(vm.dirty)
+        vm.revertToOriginal()
+        XCTAssertEqual(vm.goal, originalGoal)
+        XCTAssertFalse(vm.dirty)
+    }
 }

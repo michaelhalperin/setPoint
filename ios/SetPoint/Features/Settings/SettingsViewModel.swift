@@ -28,6 +28,7 @@ final class SettingsViewModel {
 
     // Read-only
     private(set) var mode = "BASIC"
+    private(set) var startWeightKg: Double?
     private(set) var currentWeightKg: Double?
     private(set) var enforcementEnabled = true
     private(set) var enforcementDisabledReason: String?
@@ -66,6 +67,12 @@ final class SettingsViewModel {
             || Set(restrictions) != Set(o.restrictions.map(\.label))
     }
 
+    func revertToOriginal() {
+        guard let o = original else { return }
+        apply(o)
+        error = nil
+    }
+
     func load() async {
         do {
             let s: SettingsResponse = try await api.get("/api/settings")
@@ -74,7 +81,7 @@ final class SettingsViewModel {
         } catch APIError.unauthorized {
             onUnauthorized()
         } catch {
-            phase = .failed(message(error))
+            phase = .failed(UserFacingError.message(for: error, fallback: "Couldn't load profile."))
         }
     }
 
@@ -109,7 +116,7 @@ final class SettingsViewModel {
         } catch APIError.unauthorized {
             onUnauthorized()
         } catch {
-            self.error = message(error)
+            self.error = UserFacingError.message(for: error, fallback: "Couldn't save.")
         }
     }
 
@@ -124,7 +131,17 @@ final class SettingsViewModel {
         } catch APIError.unauthorized {
             onUnauthorized()
         } catch {
-            self.error = message(error)
+            self.error = UserFacingError.message(for: error, fallback: "Couldn't delete account.")
+        }
+    }
+
+    func setCheckInsPaused(_ paused: Bool) async {
+        guard enforcementEnabled, checkInsPaused != paused, !saving else { return }
+        let previous = checkInsPaused
+        checkInsPaused = paused
+        await save()
+        if error != nil {
+            checkInsPaused = previous
         }
     }
 
@@ -133,6 +150,7 @@ final class SettingsViewModel {
         goal = Goal(rawValue: s.goal) ?? .bulk
         targetWeightKg = s.targetWeightKg
         pace = GoalPace.closest(toKgPerWeek: s.paceKgPerWeek, for: goal)
+        startWeightKg = s.startWeightKg
         currentWeightKg = s.currentWeightKg
         kcalTarget = s.dailyKcalTarget
         proteinTarget = s.dailyProteinTargetG
@@ -143,10 +161,6 @@ final class SettingsViewModel {
         mode = s.mode
         enforcementEnabled = s.enforcementEnabled
         enforcementDisabledReason = s.enforcementDisabledReason
-    }
-
-    private func message(_ error: Error) -> String {
-        (error as? LocalizedError)?.errorDescription ?? "Something went wrong."
     }
 
     #if DEBUG
