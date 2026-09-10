@@ -1,28 +1,49 @@
 import SwiftUI
 
-struct StepHeader: View {
-    let title: String
-    var subtitle: String?
+/// The manager opening a beat of the intake — first person, editorial serif,
+/// with the same accent rule the check-in voice uses, so it reads as the same
+/// person talking. An optional `context` line above acknowledges the last answer.
+struct ManagerLine: View {
+    /// A short note on what you just told it, e.g. "Gaining to 84 kg." Shown
+    /// above the line.
+    var context: String?
+    /// What the manager says to open this beat.
+    let line: String
+    /// A quiet aside under the line (the old "subtitle" — practical detail).
+    var aside: String?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Space.sm) {
-            Text(title)
-                .font(Typography.display(30))
-                .foregroundStyle(Palette.ink)
-                .lineSpacing(1)
-                .fixedSize(horizontal: false, vertical: true)
-                .appearIn(0)
-            if let subtitle {
-                Text(subtitle)
-                    .font(Typography.voice(15))
-                    .foregroundStyle(Palette.inkSoft)
-                    .lineSpacing(2)
+        HStack(alignment: .top, spacing: Space.sm) {
+            RoundedRectangle(cornerRadius: 2)
+                .fill(Palette.accent)
+                .frame(width: 3)
+                .padding(.vertical, 2)
+
+            VStack(alignment: .leading, spacing: Space.xs) {
+                if let context {
+                    Text(context)
+                        .sectionLabelStyle()
+                        .foregroundStyle(Palette.accent)
+                        .appearIn(0)
+                }
+                Text(line)
+                    .font(Typography.voice(24))
+                    .foregroundStyle(Palette.ink)
+                    .lineSpacing(3)
                     .fixedSize(horizontal: false, vertical: true)
-                    .appearIn(1)
+                    .appearIn(context == nil ? 0 : 1)
+                if let aside {
+                    Text(aside)
+                        .font(Typography.data(13))
+                        .foregroundStyle(Palette.inkSoft)
+                        .lineSpacing(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .appearIn(context == nil ? 1 : 2)
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.bottom, Space.xs)
+        .padding(.bottom, Space.sm)
     }
 }
 
@@ -226,10 +247,3 @@ struct ProgressThread: View {
     }
 }
 
-/// Kept for older call sites / previews.
-struct OnboardingProgressBar: View {
-    let progress: Double
-    var body: some View {
-        ProgressThread(step: Int((progress * 6).rounded()), total: 7)
-    }
-}

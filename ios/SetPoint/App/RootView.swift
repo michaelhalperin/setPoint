@@ -90,9 +90,11 @@ enum DebugPreviewStub {
         switch CommandLine.arguments[index + 1] {
         case "home": return .home(.sampleUnder)
         case "home-over": return .home(.sampleOver)
-        case "onboarding": return .onboarding(.goal)
-        case "onboarding-rhythm": return .onboarding(.rhythm)
-        case "onboarding-health": return .onboarding(.health)
+        case "onboarding": return .onboarding(.welcome)
+        case "onboarding-you": return .onboarding(.you)
+        case "onboarding-goal": return .onboarding(.goal)
+        case "onboarding-checkins": return .onboarding(.checkins)
+        case "onboarding-safety": return .onboarding(.safety)
         case "onboarding-review": return .onboarding(.review)
         case "onboarding-outcome": return .onboarding(.outcome)
         case "prescription": return .prescription

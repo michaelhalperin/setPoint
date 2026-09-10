@@ -53,7 +53,10 @@ final class OnboardingTests: XCTestCase {
     @MainActor
     func testStepGatingBlocksIncompleteSteps() {
         let vm = OnboardingViewModel(api: AppEnvironment.preview().api, onComplete: {})
-        XCTAssertEqual(vm.step, .aboutYou)
+        XCTAssertEqual(vm.step, .welcome)
+        XCTAssertTrue(vm.canAdvance)              // the intro gates nothing
+        vm.advance()                             // → you
+        XCTAssertEqual(vm.step, .you)
         XCTAssertFalse(vm.canAdvance)             // no height/weight
         vm.draft.heightCm = 175
         vm.draft.weightKg = 70
@@ -67,6 +70,33 @@ final class OnboardingTests: XCTestCase {
         XCTAssertTrue(vm.canAdvance)
         vm.draft.goal = .maintain
         XCTAssertTrue(vm.canAdvance)              // maintain needs no target
+    }
+
+    @MainActor
+    func testSafetyBeatGatesUntilScreenComplete() {
+        let vm = OnboardingViewModel(api: AppEnvironment.preview().api, onComplete: {})
+        vm.step = .checkins
+        XCTAssertTrue(vm.canAdvance)              // check-ins beat gates nothing
+        vm.advance()                             // → safety
+        XCTAssertEqual(vm.step, .safety)
+        XCTAssertFalse(vm.canAdvance)             // SCOFF not answered
+        vm.draft.scoff = ScoffAnswers(
+            makeSelfSick: false, lostControl: false, lostOneStone: false,
+            believesFat: false, foodDominates: false
+        )
+        XCTAssertTrue(vm.canAdvance)
+    }
+
+    @MainActor
+    func testThreadIndexSkipsWelcomeAndOutcome() {
+        let vm = OnboardingViewModel(api: AppEnvironment.preview().api, onComplete: {})
+        XCTAssertNil(vm.threadIndex)              // welcome
+        vm.step = .you
+        XCTAssertEqual(vm.threadIndex, 0)
+        vm.step = .review
+        XCTAssertEqual(vm.threadIndex, 4)
+        vm.step = .outcome
+        XCTAssertNil(vm.threadIndex)
     }
 
     @MainActor

@@ -81,11 +81,14 @@ struct OnboardingDraft {
 @MainActor
 @Observable
 final class OnboardingViewModel {
+    /// The intake, as beats rather than a form split into pages. `welcome` sets
+    /// the tone before any data; `you → goal → checkins → safety` are the input
+    /// beats shown on the progress thread; `review` confirms; `outcome` delivers.
     enum Step: Int, CaseIterable {
-        case aboutYou, goal, rhythm, wearable, restrictions, health, review, outcome
+        case welcome, you, goal, checkins, safety, review, outcome
     }
 
-    var step: Step = .aboutYou
+    var step: Step = .welcome
     var draft = OnboardingDraft()
     var submitting = false
     var result: OnboardingResponse?
@@ -99,22 +102,27 @@ final class OnboardingViewModel {
         self.onComplete = onComplete
     }
 
-    var progress: Double {
-        Double(step.rawValue) / Double(Step.review.rawValue)
+    /// Beats that carry the progress thread (welcome + outcome don't).
+    static let threadedSteps: [Step] = [.you, .goal, .checkins, .safety, .review]
+
+    /// 0-based position of `step` within the thread, or nil if it isn't threaded.
+    var threadIndex: Int? {
+        Self.threadedSteps.firstIndex(of: step)
     }
 
     var canGoBack: Bool {
-        step != .aboutYou && step != .outcome && !submitting
+        ![.welcome, .you, .outcome].contains(step) && !submitting
     }
 
     var canAdvance: Bool {
         switch step {
-        case .aboutYou: return draft.heightCm != nil && draft.weightKg != nil
+        case .welcome: return true
+        case .you: return draft.heightCm != nil && draft.weightKg != nil
         case .goal:
             guard let goal = draft.goal else { return false }
             return !goal.hasWeightTarget || draft.targetWeightKg != nil
-        case .rhythm, .wearable, .restrictions: return true
-        case .health: return draft.scoff.isComplete
+        case .checkins: return true
+        case .safety: return draft.scoff.isComplete
         case .review: return !submitting
         case .outcome: return true
         }
@@ -122,8 +130,9 @@ final class OnboardingViewModel {
 
     var primaryTitle: String {
         switch step {
-        case .review: return submitting ? "Setting up…" : "Finish"
-        case .outcome: return "Continue"
+        case .welcome: return "Set this up"
+        case .review: return submitting ? "Setting up…" : "Start"
+        case .outcome: return "Go to today"
         default: return "Continue"
         }
     }
@@ -165,6 +174,10 @@ final class OnboardingViewModel {
         vm.draft.targetWeightKg = 85
         vm.draft.pace = .steady
         vm.draft.restrictions = ["Dairy", "Peanuts"]
+        vm.draft.scoff = ScoffAnswers(
+            makeSelfSick: false, lostControl: false, lostOneStone: false,
+            believesFat: false, foodDominates: false
+        )
         if step == .outcome {
             vm.result = OnboardingResponse(
                 dailyKcalTarget: 3120, dailyProteinTargetG: 142,

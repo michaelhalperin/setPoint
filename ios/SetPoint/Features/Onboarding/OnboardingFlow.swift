@@ -4,20 +4,19 @@ struct OnboardingFlow: View {
     @Bindable var model: OnboardingViewModel
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private var stepCount: Int { OnboardingViewModel.Step.review.rawValue + 1 }
-
     var body: some View {
         VStack(spacing: 0) {
-            if model.step != .outcome {
-                ProgressThread(step: model.step.rawValue, total: stepCount)
+            if let index = model.threadIndex {
+                ProgressThread(step: index, total: OnboardingViewModel.threadedSteps.count)
                     .padding(.horizontal, Space.gutter)
                     .padding(.top, Space.sm)
+                    .transition(.opacity)
             }
 
             ScrollView {
                 stepView
                     .padding(.horizontal, Space.gutter)
-                    .padding(.top, model.step == .outcome ? 0 : Space.lg)
+                    .padding(.top, topPadding)
                     .padding(.bottom, 148) // clear the floating nav
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .transition(.opacity)
@@ -31,15 +30,21 @@ struct OnboardingFlow: View {
         .animation(Motion.adaptive(Motion.enter, reduceMotion: reduceMotion), value: model.step)
     }
 
+    private var topPadding: CGFloat {
+        switch model.step {
+        case .welcome, .outcome: return 0
+        default: return Space.lg
+        }
+    }
+
     @ViewBuilder
     private var stepView: some View {
         switch model.step {
-        case .aboutYou: AboutYouStep(model: model)
+        case .welcome: WelcomeStep()
+        case .you: YouStep(model: model)
         case .goal: GoalStep(model: model)
-        case .rhythm: RhythmStep(model: model)
-        case .wearable: WearableStep(model: model)
-        case .restrictions: RestrictionsStep(model: model)
-        case .health: HealthStep(model: model)
+        case .checkins: CheckinsStep(model: model)
+        case .safety: SafetyStep(model: model)
         case .review: ReviewStep(model: model)
         case .outcome: OutcomeStep(model: model)
         }
