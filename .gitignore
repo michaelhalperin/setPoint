@@ -17,6 +17,7 @@ coverage/
 ios/build/
 ios/DerivedData/
 ios/buildServer.json
+/buildServer.json
 ios/screenshot.png
 .build/
 **/*.xcodeproj/xcuserdata/

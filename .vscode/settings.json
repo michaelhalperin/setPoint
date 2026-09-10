@@ -2,6 +2,7 @@
   "swift.sourcekit-lsp.serverPath": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/sourcekit-lsp",
   "swift.buildArguments": [],
   "swift.disableAutoResolve": true,
+  "swift.sourcekit-lsp.backgroundIndexing": true,
   "files.associations": {
     "*.pbxproj": "text"
   },
