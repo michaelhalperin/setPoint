@@ -6,6 +6,7 @@ import {
   fallbackTierThree,
   type ConversationTurn,
 } from '../ai/tierThree.js';
+import { consumeAiQuota } from '../ai/quota.js';
 import { requireAuth, type AuthedRequest } from '../auth/index.js';
 import { getPrisma } from '../db/client.js';
 import { ENGINE_CONFIG, type Goal } from '../engine/index.js';
@@ -150,6 +151,9 @@ export async function checkInRoutes(app: FastifyInstance): Promise<void> {
     ]);
     if (!convo) throw app.httpErrors.notFound('no conversation for that check-in');
     if (convo.resolvedAt) throw app.httpErrors.conflict('this conversation is closed');
+
+    // Each turn calls the model — count it against the user's AI quota.
+    await consumeAiQuota(prisma, userId, 'tier3_message');
 
     const now = new Date();
     const history: (ConversationTurn & { at?: string })[] = readTranscript(convo.transcript);

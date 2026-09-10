@@ -2,6 +2,7 @@ import cors from '@fastify/cors';
 import sensible from '@fastify/sensible';
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import { ZodError } from 'zod';
+import { AiQuotaExceededError } from './ai/quota.js';
 import { env } from './env.js';
 import { captureError, flushSentry, initSentry } from './observability/sentry.js';
 import { UnhealthyTargetError } from './onboarding/targets.js';
@@ -40,6 +41,12 @@ export async function buildApp(): Promise<FastifyInstance> {
   app.setErrorHandler(async (err: unknown, req, reply) => {
     if (err instanceof ZodError) {
       return reply.status(400).send({ error: 'Bad Request', message: 'validation failed', issues: err.issues });
+    }
+    if (err instanceof AiQuotaExceededError) {
+      return reply
+        .status(429)
+        .header('retry-after', String(err.retryAfterSeconds))
+        .send({ error: 'Too Many Requests', message: err.message });
     }
     if (err instanceof UnhealthyTargetError) {
       return reply

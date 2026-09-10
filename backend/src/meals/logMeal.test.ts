@@ -1,6 +1,7 @@
 import type { PrismaClient } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 import type { MealParser } from '../ai/parseMeal.js';
+import { AiQuotaExceededError } from '../ai/quota.js';
 import { EmptyMealError, MealParsingUnavailableError, logMeal } from './logMeal.js';
 
 type AnyRow = Record<string, unknown>;
@@ -116,6 +117,26 @@ describe('logMeal', () => {
     });
     expect(res.meal.kcal).toBe(257);
     expect(prisma.__tables.meals[0]).toMatchObject({ photoKey: null });
+  });
+
+  it('charges the AI quota only for parsing, and stops before the model when over', async () => {
+    const prisma = fakePrisma();
+    const db = prisma as unknown as PrismaClient;
+    const quota = vi.fn(async () => {});
+    await logMeal({ prisma: db, parseMeal: parser, quota }, 'u1', { text: 'a bagel' });
+    await logMeal({ prisma: db, parseMeal: parser, quota }, 'u1', { macros: { kcal: 300 } });
+    expect(quota).toHaveBeenCalledTimes(1);
+    expect(quota).toHaveBeenCalledWith('meal_parse');
+
+    const model = vi.fn(parser);
+    const refuse = vi.fn(async () => {
+      throw new AiQuotaExceededError('meal_parse', 60);
+    });
+    await expect(
+      logMeal({ prisma: db, parseMeal: model, quota: refuse }, 'u1', { text: 'another bagel' }),
+    ).rejects.toBeInstanceOf(AiQuotaExceededError);
+    expect(model).not.toHaveBeenCalled();
+    expect(prisma.__tables.meals).toHaveLength(2);
   });
 
   it('accepts explicit macros without calling the parser', async () => {

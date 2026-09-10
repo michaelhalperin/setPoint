@@ -1,5 +1,6 @@
 import type { PrismaClient } from '@prisma/client';
 import type { MealImage, MealParser, ParsedMeal } from '../ai/parseMeal.js';
+import type { AiUsageKind } from '../ai/quota.js';
 import { captureError } from '../observability/sentry.js';
 import type { PhotoStore } from '../photos/store.js';
 
@@ -21,6 +22,8 @@ export type LogMealDeps = {
   parseMeal: MealParser | null;
   /** Where meal photos are kept. Null/absent: the photo is parsed but not stored. */
   photos?: PhotoStore | null;
+  /** Charges one AI call to the user; throws AiQuotaExceededError when over the limit. */
+  quota?: (kind: AiUsageKind) => Promise<void>;
 };
 
 export type LoggedMeal = {
@@ -76,6 +79,7 @@ export async function logMeal(
     if (!deps.parseMeal) {
       throw new MealParsingUnavailableError('AI meal parsing is not configured; send explicit macros');
     }
+    await deps.quota?.('meal_parse');
     parsed = await deps.parseMeal({ text: input.text, image: input.image });
     macros = { kcal: parsed.kcal, proteinG: parsed.proteinG, carbsG: parsed.carbsG, fatG: parsed.fatG };
     source = input.image ? 'PHOTO' : 'TEXT';

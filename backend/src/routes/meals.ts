@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { getAnthropic } from '../ai/client.js';
 import { createMealParser } from '../ai/parseMeal.js';
+import { consumeAiQuota } from '../ai/quota.js';
 import { requireAuth, type AuthedRequest } from '../auth/index.js';
 import { getPrisma } from '../db/client.js';
 import { EmptyMealError, MealParsingUnavailableError, logMeal } from '../meals/logMeal.js';
@@ -71,8 +72,9 @@ export async function mealRoutes(app: FastifyInstance): Promise<void> {
     );
   });
 
-  // Log a meal (§5.5). Free text or photo is AI-parsed into macros; explicit
-  // macros skip the model. Resolves any open check-in.
+  // Log a meal (§5.5). Free text or photo is AI-parsed into macros (counted
+  // against the user's AI quota); explicit macros skip the model. Resolves any
+  // open check-in.
   app.post('/', async (req) => {
     const input = body.parse(req.body);
     const userId = (req as AuthedRequest).userId;
@@ -85,6 +87,7 @@ export async function mealRoutes(app: FastifyInstance): Promise<void> {
           prisma,
           parseMeal: client ? createMealParser(client) : null,
           photos: getPhotoStore(),
+          quota: (kind) => consumeAiQuota(prisma, userId, kind),
         },
         userId,
         {

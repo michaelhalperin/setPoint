@@ -139,6 +139,7 @@ model User {
   prescriptions           Prescription[]
   escalationConversations EscalationConversation[]
   dayOutcomes             DayOutcome[]
+  aiUsages                AiUsage[]
 }
 
 model PushToken {
@@ -536,4 +537,20 @@ model DayOutcome {
 
   @@unique([userId, date])
   @@index([userId, date])
+}
+
+// ---------------------------------------------------------------------------
+// AI usage — per-user quota on the endpoints that call a paid model
+// ---------------------------------------------------------------------------
+
+model AiUsage {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  kind      String // "meal_parse" | "tier3_message"
+  createdAt DateTime @default(now())
+
+  @@index([userId, kind, createdAt])
+  @@index([createdAt])
 }

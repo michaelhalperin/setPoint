@@ -1,9 +1,10 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
+import { pruneAiUsage } from '../ai/quota.js';
 import { getPrisma } from '../db/client.js';
 import { runScoreConfidenceJob } from '../jobs/scoreConfidence.js';
 import { runSettleDayJob } from '../jobs/settleDay.js';
 import { createManagerVoice } from '../managerVoice/factory.js';
-import { flushSentry } from '../observability/sentry.js';
+import { captureError, flushSentry } from '../observability/sentry.js';
 import { createPushSender } from '../push/factory.js';
 import { env } from '../env.js';
 
@@ -44,15 +45,25 @@ export async function cronRoutes(app: FastifyInstance): Promise<void> {
     },
   });
 
-  // Daily settlement (§5.7): write yesterday's DayOutcome for every user.
+  // Daily settlement (§5.7): write yesterday's DayOutcome for every user, then
+  // drop AI-usage rows the quota no longer reads.
   app.route({
     method: ['GET', 'POST'],
     url: '/settle',
     handler: async (req) => {
       const summary = await runSettleDayJob({ prisma: getPrisma(), voice: createManagerVoice() });
-      req.log.info(summary, 'cron:settle complete');
+
+      let aiUsagePruned = 0;
+      try {
+        aiUsagePruned = await pruneAiUsage(getPrisma());
+      } catch (err) {
+        req.log.warn({ err }, 'cron:settle AI-usage prune failed');
+        captureError(err, { tags: { job: 'prune-ai-usage' } });
+      }
+
+      req.log.info({ ...summary, aiUsagePruned }, 'cron:settle complete');
       await flushSentry();
-      return summary;
+      return { ...summary, aiUsagePruned };
     },
   });
 }
