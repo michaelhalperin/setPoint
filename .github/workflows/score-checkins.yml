@@ -1,0 +1,45 @@
+name: Score check-ins
+
+# The confidence engine (plan §2) has to run often enough to notice someone
+# falling behind mid-day. Vercel's Hobby plan only allows daily crons, so this
+# workflow drives POST /api/cron/score every 15 minutes instead. The route
+# already accepts the `x-cron-secret` header, so Vercel needs no change.
+#
+# One-time setup — GitHub → Settings → Secrets and variables → Actions:
+#   secret    CRON_SECRET        same value as CRON_SECRET in Vercel
+#   variable  SETPOINT_API_URL   optional; defaults to the production URL
+#
+# Notes: GitHub may run scheduled jobs a few minutes late under load, and it
+# pauses schedules in repos with no commits for 60 days.
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch: {}
+
+# Never let two scoring runs overlap — both could see "no active check-in" for
+# the same user and fire twice.
+concurrency:
+  group: score-checkins
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  score:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: POST /api/cron/score
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          API_URL: ${{ vars.SETPOINT_API_URL || 'https://set-point-backend.vercel.app' }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::Add the CRON_SECRET repository secret (Settings → Secrets and variables → Actions)."
+            exit 1
+          fi
+          curl --fail-with-body --silent --show-error \
+            --max-time 90 --retry 2 --retry-delay 15 --retry-all-errors \
+            -X POST "$API_URL/api/cron/score" \
+            -H "x-cron-secret: $CRON_SECRET"

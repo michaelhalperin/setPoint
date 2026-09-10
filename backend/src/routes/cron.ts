@@ -7,8 +7,11 @@ import { createPushSender } from '../push/factory.js';
 import { env } from '../env.js';
 
 /**
- * Vercel Cron invokes these with a GET and `Authorization: Bearer <CRON_SECRET>`.
- * Manual / GitHub-Actions triggering can POST with `x-cron-secret: <secret>`.
+ * Two schedulers call these:
+ *   - /score every 15 minutes from GitHub Actions (.github/workflows/score-checkins.yml),
+ *     with `x-cron-secret: <secret>` — Vercel's Hobby plan only allows daily crons.
+ *   - /settle daily from Vercel Cron, with `Authorization: Bearer <CRON_SECRET>`.
+ * Either header is accepted on both routes, so manual triggering works too.
  */
 function isAuthorized(req: FastifyRequest): boolean {
   const auth = req.headers.authorization;
