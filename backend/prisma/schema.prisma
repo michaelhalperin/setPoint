@@ -289,6 +289,10 @@ model Meal {
   photoUrl        String?
   parsedByAI      Boolean @default(false)
   parseConfidence Float?
+  /// Assumptions the parser made (portion size, prep).
+  notes           String?
+  /// Parsed line items: [{ name, quantity, kcal, proteinG, carbsG, fatG }]
+  items           Json?
 
   kcal     Int
   proteinG Float @default(0)

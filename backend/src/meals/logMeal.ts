@@ -94,6 +94,9 @@ export async function logMeal(
       proteinG: macros.proteinG,
       carbsG: macros.carbsG,
       fatG: macros.fatG,
+      photoUrl: input.image ? `data:${input.image.mediaType};base64,${input.image.data}` : null,
+      notes: parsed?.notes ?? null,
+      items: parsed?.items ?? [],
       prescriptionId: input.prescriptionId ?? null,
     },
   });

@@ -88,6 +88,18 @@ describe('logMeal', () => {
     expect(prisma.__tables.escalationStates[0]).toMatchObject({ consecutiveMisses: 0, currentTier: 1, backedOffUntil: null });
   });
 
+  it('keeps the photo on the meal so the client can show it later', async () => {
+    const prisma = fakePrisma();
+    await logMeal({ prisma: prisma as unknown as PrismaClient, parseMeal: parser }, 'u1', {
+      image: { data: 'AAAA', mediaType: 'image/jpeg' },
+    });
+    expect(prisma.__tables.meals[0]).toMatchObject({
+      source: 'PHOTO',
+      photoUrl: 'data:image/jpeg;base64,AAAA',
+      items: [{ name: 'Bagel', quantity: '1', kcal: 257, proteinG: 10, carbsG: 50, fatG: 1.5 }],
+    });
+  });
+
   it('accepts explicit macros without calling the parser', async () => {
     const prisma = fakePrisma();
     const spy = vi.fn(parser);
