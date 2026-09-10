@@ -21,6 +21,10 @@ const schema = z.object({
   // Shown in the privacy policy / terms footer and the app's support link.
   SUPPORT_EMAIL: z.string().default('support@setpoint.app'),
 
+  // Error reporting (Sentry). No-op when SENTRY_DSN is unset.
+  SENTRY_DSN: z.string().default(''),
+  SENTRY_ENVIRONMENT: z.string().default(''),
+
   // Set to "true" to keep POST /api/auth/dev available on a production deploy
   // (staging only — never on the real production environment).
   ENABLE_DEV_LOGIN: z.string().default(''),

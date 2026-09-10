@@ -32,6 +32,15 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     appPromise = undefined; // let the next request retry
     const message = err instanceof Error ? err.message : String(err);
     console.error('bootstrap failed:', err);
+    try {
+      // Best effort: if the env itself is what's broken, this import fails too.
+      const sentry = await import('../src/observability/sentry.js');
+      sentry.initSentry();
+      sentry.captureError(err, { tags: { area: 'bootstrap' } });
+      await sentry.flushSentry();
+    } catch {
+      /* nothing to report with */
+    }
     res.statusCode = 500;
     res.setHeader('content-type', 'application/json');
     res.end(JSON.stringify({ error: 'Bootstrap failed', message }));

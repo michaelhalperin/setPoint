@@ -1,8 +1,9 @@
 import cors from '@fastify/cors';
 import sensible from '@fastify/sensible';
-import Fastify, { type FastifyInstance } from 'fastify';
+import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import { ZodError } from 'zod';
 import { env } from './env.js';
+import { captureError, flushSentry, initSentry } from './observability/sentry.js';
 import { UnhealthyTargetError } from './onboarding/targets.js';
 import { accountRoutes } from './routes/account.js';
 import { adminRoutes } from './routes/admin.js';
@@ -18,6 +19,8 @@ import { pushTokenRoutes } from './routes/pushTokens.js';
 import { weightRoutes } from './routes/weight.js';
 
 export async function buildApp(): Promise<FastifyInstance> {
+  initSentry();
+
   // pino-pretty (a devDependency, loaded in a worker thread) is opt-in via
   // LOG_PRETTY so it can never break a serverless bundle where it isn't traced.
   const prettyLogs = process.env.LOG_PRETTY === 'true';
@@ -34,7 +37,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(sensible);
   await app.register(cors, { origin: true });
 
-  app.setErrorHandler((err: unknown, req, reply) => {
+  app.setErrorHandler(async (err: unknown, req, reply) => {
     if (err instanceof ZodError) {
       return reply.status(400).send({ error: 'Bad Request', message: 'validation failed', issues: err.issues });
     }
@@ -47,10 +50,14 @@ export async function buildApp(): Promise<FastifyInstance> {
     // expose their message. Everything else is an unexpected 500.
     const e = err as { statusCode?: unknown; name?: string; message?: string };
     if (typeof e.statusCode === 'number' && e.statusCode >= 400 && e.statusCode < 600) {
-      if (e.statusCode >= 500) req.log.warn(err as Error);
+      if (e.statusCode >= 500) {
+        req.log.warn(err as Error);
+        await reportServerError(err, req);
+      }
       return reply.status(e.statusCode).send({ error: e.name ?? 'Error', message: e.message ?? '' });
     }
     req.log.error(err as Error);
+    await reportServerError(err, req);
     return reply.status(500).send({ error: 'Internal Server Error' });
   });
 
@@ -68,4 +75,13 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(cronRoutes, { prefix: '/api/cron' });
 
   return app;
+}
+
+/** Sends a server error to Sentry (a no-op without a DSN) before the function freezes. */
+async function reportServerError(err: unknown, req: FastifyRequest): Promise<void> {
+  captureError(err, {
+    userId: (req as { userId?: string }).userId,
+    tags: { route: req.routeOptions.url ?? 'unmatched', method: req.method },
+  });
+  await flushSentry();
 }

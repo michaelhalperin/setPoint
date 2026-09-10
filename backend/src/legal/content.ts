@@ -98,6 +98,7 @@ in iOS Settings.</p>
   <li><strong>Anthropic</strong> — processes the meal text or photo you submit to return a nutrition estimate, and generates the wording of check-in messages. Input is sent over an encrypted connection for that purpose.</li>
   <li><strong>Vercel</strong> — hosts the backend service.</li>
   <li><strong>Neon</strong> — hosts the database.</li>
+  <li><strong>Sentry</strong> — receives crash and error reports (technical details and an internal account identifier — never meal contents or health data) so we can fix problems.</li>
   <li><strong>Apple Push Notification service</strong> — delivers notifications.</li>
 </ul>
 <p>These providers process data on our behalf under their own security and privacy commitments.</p>

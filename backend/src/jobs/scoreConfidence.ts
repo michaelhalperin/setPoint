@@ -15,6 +15,7 @@ import {
   type Mode,
 } from '../engine/index.js';
 import type { ManagerVoice } from '../managerVoice/types.js';
+import { captureError } from '../observability/sentry.js';
 import type { PushSender } from '../push/types.js';
 import {
   computePrescriptionTarget,
@@ -113,6 +114,7 @@ export async function runScoreConfidenceJob(
     } catch (err) {
       summary.errors += 1;
       console.error(`scoreConfidence: user ${user.id} failed`, err);
+      captureError(err, { userId: user.id, tags: { job: 'score' } });
     }
   }
 

@@ -3,6 +3,7 @@ import { getPrisma } from '../db/client.js';
 import { runScoreConfidenceJob } from '../jobs/scoreConfidence.js';
 import { runSettleDayJob } from '../jobs/settleDay.js';
 import { createManagerVoice } from '../managerVoice/factory.js';
+import { flushSentry } from '../observability/sentry.js';
 import { createPushSender } from '../push/factory.js';
 import { env } from '../env.js';
 
@@ -38,6 +39,7 @@ export async function cronRoutes(app: FastifyInstance): Promise<void> {
         voice: createManagerVoice(),
       });
       req.log.info(summary, 'cron:score complete');
+      await flushSentry();
       return summary;
     },
   });
@@ -49,6 +51,7 @@ export async function cronRoutes(app: FastifyInstance): Promise<void> {
     handler: async (req) => {
       const summary = await runSettleDayJob({ prisma: getPrisma(), voice: createManagerVoice() });
       req.log.info(summary, 'cron:settle complete');
+      await flushSentry();
       return summary;
     },
   });

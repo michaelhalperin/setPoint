@@ -1,3 +1,4 @@
+import { captureError } from '../observability/sentry.js';
 import type { PrismaClient } from '@prisma/client';
 import { dateOnly, localDateISO, shiftDateISO, startOfLocalDay, type Goal } from '../engine/index.js';
 import { classifyDay } from '../dashboard/classify.js';
@@ -72,6 +73,7 @@ export async function runSettleDayJob(deps: SettleDayDeps): Promise<SettleDaySum
     } catch (err) {
       summary.errors += 1;
       console.error(`settleDay: user ${user.id} failed`, err);
+      captureError(err, { userId: user.id, tags: { job: 'settle' } });
     }
   }
 
