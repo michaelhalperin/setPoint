@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// A card surface — soft, warm, lifting gently off the paper ground. The app's
 /// default container.
@@ -126,6 +127,54 @@ struct ManagerNote: View {
             (emphasised ? Palette.accentTint : Palette.surfaceSunk.opacity(0.6)),
             in: RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
         )
+    }
+}
+
+/// Shown when the manager is meant to be active but iOS notifications are
+/// denied — the server-driven check-in can't actually reach the user, so the
+/// core loop is silently dead until they re-enable it (plan §2).
+struct NotificationsOffBanner: View {
+    var compact = false
+
+    var body: some View {
+        Button {
+            guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+            UIApplication.shared.open(url)
+        } label: {
+            HStack(alignment: .top, spacing: Space.sm) {
+                Image(systemName: "bell.slash.fill")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(Palette.accentDeep)
+                    .frame(width: 34, height: 34)
+                    .background(Palette.surface, in: Circle())
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Check-ins can't reach you")
+                        .font(Typography.data(15, weight: .semibold))
+                        .foregroundStyle(Palette.ink)
+                    if !compact {
+                        Text("Notifications are off for SetPoint. Turn them on so the manager can step in when you're falling behind.")
+                            .font(Typography.data(12))
+                            .foregroundStyle(Palette.inkSoft)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Text("Open Settings")
+                        .font(Typography.data(12, weight: .semibold))
+                        .foregroundStyle(Palette.accentDeep)
+                        .padding(.top, 1)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Palette.accentTint, in: RoundedRectangle(cornerRadius: Radius.md, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
+                    .strokeBorder(Palette.accent.opacity(0.28))
+            )
+        }
+        .buttonStyle(PressableCard())
+        .accessibilityHint("Opens the SetPoint section of the Settings app")
     }
 }
 

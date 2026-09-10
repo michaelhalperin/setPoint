@@ -45,6 +45,20 @@ struct HomeContent: View {
 
     private var now: Date { previewNow ?? Date() }
 
+    /// Minutes from now until the user's next meal anchor (tomorrow's breakfast
+    /// once the day's anchors have passed). Feeds the "after my next meal" snooze.
+    private func minutesUntilNextMeal() -> Int {
+        let times: MealTimesPayload
+        if case let .loaded(home) = model.phase { times = home.resolvedMealTimes } else { times = .standard }
+        let cal = Calendar.current
+        let nowMin = cal.component(.hour, from: now) * 60 + cal.component(.minute, from: now)
+        let anchors = [times.breakfastMin, times.lunchMin, times.dinnerMin].sorted()
+        if let next = anchors.first(where: { $0 > nowMin + 20 }) {
+            return next - nowMin
+        }
+        return (1440 - nowMin) + anchors[0]
+    }
+
     var body: some View {
         ZStack {
             Palette.background.ignoresSafeArea()
@@ -73,6 +87,7 @@ struct HomeContent: View {
                     } else {
                         PrescriptionView(
                             checkIn: checkIn,
+                            nextMealMinutes: minutesUntilNextMeal(),
                             namespace: checkInNamespace,
                             geometryID: Self.checkInGeometryID,
                             onDismiss: { withAnimation(springForCheckIn) { showingCheckIn = false } },
@@ -130,8 +145,12 @@ struct HomeContent: View {
         }
         .onChange(of: scenePhase) { _, phase in
             guard phase == .active, isLoaded else { return }
-            Task { await model.load(showSpinner: false) }
+            Task {
+                await env.push.syncAuthorizationStatus()
+                await model.load(showSpinner: false)
+            }
         }
+        .task { await env.push.syncAuthorizationStatus() }
     }
 
     private func handleLoggerPhase(_ phase: LogMealViewModel.Phase) {
@@ -226,6 +245,11 @@ struct HomeContent: View {
                         .foregroundStyle(Palette.inkFaint)
                 }
                 .appearIn(0)
+
+                if home.enforcementEnabled, env.push.authorizationStatus == .denied {
+                    NotificationsOffBanner()
+                        .appearIn(1)
+                }
 
                 TodayNowSurface(
                     home: home,

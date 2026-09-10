@@ -6,6 +6,9 @@ import SwiftUI
 /// down dismisses it.
 struct PrescriptionView: View {
     let checkIn: HomeResponse.ActiveCheckIn
+    /// Minutes until the user's next meal anchor — powers the "after my next
+    /// meal" snooze option. Nil hides that choice.
+    var nextMealMinutes: Int? = nil
     let namespace: Namespace.ID
     let geometryID: String
     /// Close the morph (spring back to the card).
@@ -23,6 +26,7 @@ struct PrescriptionView: View {
     @State private var rated: Bool?
     @State private var settled = false
     @State private var drag: CGFloat = 0
+    @State private var choosingSnooze = false
 
     private var dismissProgress: CGFloat { min(1, max(0, drag / 240)) }
 
@@ -82,13 +86,24 @@ struct PrescriptionView: View {
             }
             .staggerReveal(settled, index: 1)
 
-            Button("Not now") { run { try await deferCheckIn() } }
+            Button("Not now") {
+                guard !busy else { return }
+                choosingSnooze = true
+            }
                 .font(Typography.data(15, weight: .medium))
                 .foregroundStyle(Palette.inkSoft)
                 .padding(.top, 2)
                 .staggerReveal(settled, index: 2)
         }
         .disabled(busy)
+        .confirmationDialog("Snooze this check-in", isPresented: $choosingSnooze, titleVisibility: .visible) {
+            Button("In 1 hour") { run { try await deferCheckIn(minutes: 60) } }
+            Button("In 2 hours") { run { try await deferCheckIn(minutes: 120) } }
+            if let m = nextMealMinutes, m >= 45 {
+                Button("After my next meal") { run { try await deferCheckIn(minutes: m) } }
+            }
+            Button("Cancel", role: .cancel) {}
+        }
     }
 
     @ViewBuilder
@@ -143,8 +158,15 @@ struct PrescriptionView: View {
         env.changes.mealsChanged()
     }
 
-    private func deferCheckIn() async throws {
-        try await env.api.post("/api/checkins/\(checkIn.id)/defer")
+    private func deferCheckIn(minutes: Int? = nil) async throws {
+        if let minutes {
+            try await env.api.post(
+                "/api/checkins/\(checkIn.id)/defer",
+                DeferBody(minutes: min(max(minutes, 15), 360))
+            )
+        } else {
+            try await env.api.post("/api/checkins/\(checkIn.id)/defer")
+        }
     }
 
     private func rate(_ positive: Bool) async {
@@ -170,4 +192,8 @@ struct PrescriptionView: View {
 
 private struct FeedbackBody: Encodable {
     let positive: Bool
+}
+
+private struct DeferBody: Encodable {
+    let minutes: Int
 }
