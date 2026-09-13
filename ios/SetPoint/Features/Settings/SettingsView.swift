@@ -7,6 +7,7 @@ struct SettingsView: View {
     #if DEBUG
     @State private var showingDevOnboarding = false
     @State private var showingDevMealConfirm = false
+    @State private var showingDevCheckIn = false
     #endif
 
     init(previewModel: SettingsViewModel? = nil) {
@@ -136,6 +137,9 @@ struct SettingsView: View {
         .fullScreenCover(isPresented: $showingDevMealConfirm) {
             DevMealConfirmPreview()
         }
+        .fullScreenCover(isPresented: $showingDevCheckIn) {
+            DevCheckInPreview()
+        }
         #endif
     }
 
@@ -162,6 +166,14 @@ struct SettingsView: View {
             }
             .buttonStyle(PressableCard())
             .appearIn(7)
+
+            Button {
+                showingDevCheckIn = true
+            } label: {
+                DestinationRow(title: "Check-in", subtitle: "Full-screen, demo data")
+            }
+            .buttonStyle(PressableCard())
+            .appearIn(8)
         }
     }
     #endif
@@ -574,6 +586,33 @@ private struct DevMealConfirmPreview: View {
             onReject: { dismiss() },
             onKeep: { dismiss() }
         )
+    }
+}
+
+/// The full-screen check-in (§5.3/§5.4) over a dimmed Home, same staging as
+/// `-uiStub prescription` — reachable from Settings so it doesn't need a real
+/// check-in to be pending.
+private struct DevCheckInPreview: View {
+    @Environment(\.dismiss) private var dismiss
+    @Namespace private var ns
+
+    var body: some View {
+        ZStack {
+            HomeContent(model: .previewed(.loaded(.sampleUnder)))
+                .disabled(true)
+                .overlay { Palette.scrim.ignoresSafeArea().allowsHitTesting(false) }
+
+            if let checkIn = HomeResponse.sampleUnder.activeCheckIn {
+                PrescriptionView(
+                    checkIn: checkIn,
+                    namespace: ns,
+                    geometryID: "dev-check-in",
+                    onDismiss: { dismiss() },
+                    onResolved: { dismiss() },
+                    onLogSomethingElse: { dismiss() }
+                )
+            }
+        }
     }
 }
 
