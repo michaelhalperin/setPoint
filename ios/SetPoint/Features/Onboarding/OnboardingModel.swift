@@ -43,6 +43,7 @@ struct OnboardingDraft {
     var targetWeightKg: Double?
     var pace: GoalPace = .gentle
 
+    var mealRhythmPreset: MealRhythmPreset = .standard
     var breakfastMin = 480    // 08:00
     var lunchMin = 780        // 13:00
     var dinnerMin = 1140      // 19:00
@@ -53,6 +54,9 @@ struct OnboardingDraft {
     var restrictionsFreeText = ""
     var medicalSupervisionRequired = false
     var scoff = ScoffAnswers()
+
+    /// Explicit consent to the privacy policy + terms, checked on Review.
+    var agreedToTerms = false
 
     func toRequest() -> OnboardingRequest {
         let df = DateFormatter()
@@ -97,14 +101,16 @@ struct OnboardingDraft {
 @MainActor
 @Observable
 final class OnboardingViewModel {
-    /// The intake, as beats rather than a form split into pages. `welcome` sets
-    /// the tone before any data; `goal → you → checkins → safety` are the input
-    /// beats shown on the progress thread; `review` confirms; `outcome` delivers.
+    /// The intake as many small beats rather than a few dense forms — each
+    /// screen is one decision. `hook`/`demo` sell before asking for anything;
+    /// `outcome` delivers. Everything between is threaded with a progress bar.
     enum Step: Int, CaseIterable {
-        case welcome, goal, you, checkins, safety, review, outcome
+        case hook, demo
+        case goal, vitals, birthdate, sex, activity, target, rhythm, wearable, restrictions, medical, safety
+        case review, outcome
     }
 
-    var step: Step = .welcome
+    var step: Step = .hook
     var draft = OnboardingDraft()
     var submitting = false
     var result: OnboardingResponse?
@@ -118,8 +124,10 @@ final class OnboardingViewModel {
         self.onComplete = onComplete
     }
 
-    /// Beats that carry the progress thread (welcome + outcome don't).
-    static let threadedSteps: [Step] = [.goal, .you, .checkins, .safety, .review]
+    /// Beats that carry the progress thread (the sell and the payoff don't).
+    static let threadedSteps: [Step] = [
+        .goal, .vitals, .birthdate, .sex, .activity, .target, .rhythm, .wearable, .restrictions, .medical, .safety, .review,
+    ]
 
     /// 0-based position of `step` within the thread, or nil if it isn't threaded.
     var threadIndex: Int? {
@@ -158,39 +166,55 @@ final class OnboardingViewModel {
     }
 
     var canGoBack: Bool {
-        step != .welcome && step != .outcome && !submitting
+        step != .hook && step != .outcome && !submitting
     }
 
     var canAdvance: Bool {
         switch step {
-        case .welcome: return true
+        case .hook, .demo: return true
         case .goal: return draft.goal != nil
-        case .you:
-            guard draft.heightCm != nil, draft.weightKg != nil else { return false }
-            return targetWeightIsValid
-        case .checkins: return mealAnchorsAreValid
+        case .vitals: return draft.heightCm != nil && draft.weightKg != nil
+        case .birthdate, .sex, .activity, .wearable, .medical: return true
+        case .target: return targetWeightIsValid && draft.targetWeightKg != nil
+        case .rhythm: return draft.mealRhythmPreset != .custom || mealAnchorsAreValid
+        case .restrictions: return true
         case .safety: return draft.scoff.isComplete
-        case .review: return !submitting
+        case .review: return !submitting && draft.agreedToTerms
         case .outcome: return true
         }
     }
 
     var primaryTitle: String {
         switch step {
-        case .welcome, .goal, .you, .checkins, .safety: return "Continue"
+        case .hook: return "Let's go"
         case .review: return submitting ? "Building…" : "Build plan"
         case .outcome: return "Start"
+        default: return "Continue"
         }
     }
 
     var stepTitle: String? {
         switch step {
         case .goal: return "Direction"
-        case .you: return "Baseline"
-        case .checkins: return "Rhythm"
-        case .safety: return "Boundaries"
+        case .vitals: return "Body"
+        case .birthdate: return "Birthday"
+        case .sex, .activity: return "About you"
+        case .target: return "Target"
+        case .rhythm: return "Rhythm"
+        case .wearable: return "Signal"
+        case .restrictions: return "Boundaries"
+        case .medical: return "Medical"
+        case .safety: return "Safety check"
         case .review: return "Ready"
         default: return nil
+        }
+    }
+
+    /// `.target` only applies to a goal with a weight target — Maintain skips it.
+    private func shouldSkip(_ step: Step) -> Bool {
+        switch step {
+        case .target: return draft.goal?.hasWeightTarget != true
+        default: return false
         }
     }
 
@@ -201,12 +225,27 @@ final class OnboardingViewModel {
         case .outcome:
             onComplete()
         default:
-            if let next = Step(rawValue: step.rawValue + 1) { step = next }
+            var next = step.rawValue + 1
+            while let candidate = Step(rawValue: next), shouldSkip(candidate) { next += 1 }
+            if let nextStep = Step(rawValue: next) { step = nextStep }
         }
     }
 
     func goBack() {
-        if let prev = Step(rawValue: step.rawValue - 1) { step = prev }
+        var prev = step.rawValue - 1
+        while let candidate = Step(rawValue: prev), shouldSkip(candidate) { prev -= 1 }
+        if let prevStep = Step(rawValue: prev) { step = prevStep }
+    }
+
+    /// A single-choice screen (goal, sex, activity, a rhythm preset, wearable,
+    /// medical) advances itself shortly after the tap — no separate Continue
+    /// needed. Guards against firing if the user has already navigated away.
+    func autoAdvance(from origin: Step, after seconds: Double = 0.32) {
+        Task {
+            try? await Task.sleep(for: .seconds(seconds))
+            guard self.step == origin else { return }
+            advance()
+        }
     }
 
     private func submit() async {

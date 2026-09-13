@@ -38,7 +38,7 @@ struct OnboardingFlow: View {
 
     private var topPadding: CGFloat {
         switch model.step {
-        case .welcome, .outcome: return 0
+        case .hook, .demo, .outcome: return 0
         default: return Space.lg
         }
     }
@@ -46,10 +46,18 @@ struct OnboardingFlow: View {
     @ViewBuilder
     private var stepView: some View {
         switch model.step {
-        case .welcome: WelcomeStep()
-        case .you: YouStep(model: model)
+        case .hook: HookStep()
+        case .demo: DemoStep()
         case .goal: GoalStep(model: model)
-        case .checkins: CheckinsStep(model: model)
+        case .vitals: VitalsStep(model: model)
+        case .birthdate: BirthdateStep(model: model)
+        case .sex: SexStep(model: model)
+        case .activity: ActivityStep(model: model)
+        case .target: TargetStep(model: model)
+        case .rhythm: RhythmStep(model: model)
+        case .wearable: WearableStep(model: model)
+        case .restrictions: RestrictionsStep(model: model)
+        case .medical: MedicalStep(model: model)
         case .safety: SafetyStep(model: model)
         case .review: ReviewStep(model: model)
         case .outcome: OutcomeStep(model: model)

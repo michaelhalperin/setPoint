@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// The manager opening a beat of the intake — first person, editorial serif,
 /// with the same accent rule the check-in voice uses, so it reads as the same
@@ -103,85 +104,124 @@ struct ChoiceCard: View {
     }
 }
 
-/// A yes/no question — two pills. Unanswered until one is tapped.
-struct YesNoRow: View {
-    let question: String
-    @Binding var answer: Bool?
+/// A scrollable ruler for a single numeric value (height, weight, target
+/// weight) — drag to scrub, snaps to the nearest step, a light tick per unit
+/// crossed. The tactile, single-focus alternative to a text field + keyboard:
+/// one big number, one gesture, nothing else on screen to read.
+struct RulerPicker: View {
+    @Binding var value: Double
+    let range: ClosedRange<Double>
+    var step: Double = 1
+    let unit: String
+    /// Numerals are drawn under ticks that land on a multiple of this.
+    var majorStep: Double = 10
+
+    @State private var dragStartValue: Double?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private let pxPerStep: CGFloat = 16
+    private let tickAreaHeight: CGFloat = 64
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(question)
-                .font(Typography.data(15))
-                .foregroundStyle(Palette.ink)
-                .fixedSize(horizontal: false, vertical: true)
-            HStack(spacing: 10) {
-                pill("No", isOn: answer == false) { answer = false }
-                pill("Yes", isOn: answer == true) { answer = true }
+        VStack(spacing: Space.md) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text(String(Int(value.rounded())))
+                    .font(Typography.data(52, weight: .semibold))
+                    .foregroundStyle(Palette.ink)
+                    .monospacedDigit()
+                    .contentTransition(.numericText(value: value))
+                Text(unit)
+                    .font(Typography.data(18, weight: .medium))
+                    .foregroundStyle(Palette.inkFaint)
+            }
+            .animation(Motion.adaptive(Motion.settle, reduceMotion: reduceMotion), value: value)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("\(Int(value.rounded())) \(unit)")
+            .accessibilityAdjustableAction { direction in
+                switch direction {
+                case .increment: setValue(min(range.upperBound, value + step))
+                case .decrement: setValue(max(range.lowerBound, value - step))
+                @unknown default: break
+                }
+            }
+
+            GeometryReader { geo in
+                let width = geo.size.width
+                // `.topLeading` so the tape isn't auto-centered by the ZStack
+                // before `tape(width:)`'s own offset runs — a ZStack centers
+                // its children by default, which would double up the shift.
+                ZStack(alignment: .topLeading) {
+                    tape(width: width)
+                        .mask(edgeFade)
+                }
+                // `.frame` also centers an oversized child by default — this is
+                // the second place that centering sneaks back in.
+                .frame(width: width, height: tickAreaHeight, alignment: .topLeading)
+                .clipped()
+                .overlay {
+                    Capsule()
+                        .fill(Palette.accent)
+                        .frame(width: 3, height: 40)
+                }
+                .contentShape(Rectangle())
+                .gesture(drag)
+            }
+            .frame(height: tickAreaHeight)
+        }
+    }
+
+    private func tape(width: CGFloat) -> some View {
+        let totalSteps = Int(((range.upperBound - range.lowerBound) / step).rounded())
+        let offset = width / 2 - CGFloat((value - range.lowerBound) / step) * pxPerStep - pxPerStep / 2
+        return HStack(spacing: 0) {
+            ForEach(0 ... totalSteps, id: \.self) { i in
+                let v = range.lowerBound + Double(i) * step
+                let isMajor = v.truncatingRemainder(dividingBy: majorStep) == 0
+                VStack(spacing: 4) {
+                    Capsule()
+                        .fill(isMajor ? Palette.inkSoft : Palette.inkFaint.opacity(0.45))
+                        .frame(width: isMajor ? 2 : 1, height: isMajor ? 26 : 14)
+                    Text(isMajor ? String(Int(v)) : "")
+                        .font(Typography.data(10, weight: .medium))
+                        .foregroundStyle(Palette.inkFaint)
+                        .fixedSize()
+                        .frame(height: 12)
+                }
+                .frame(width: pxPerStep)
             }
         }
-        .padding(.vertical, 6)
+        .offset(x: offset)
     }
 
-    private func pill(_ label: String, isOn: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(label)
-                .font(Typography.data(15, weight: .semibold))
-                .foregroundStyle(isOn ? .white : Palette.inkSoft)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 11)
-                .background(
-                    isOn ? Palette.ink : Palette.surfaceSunk,
-                    in: RoundedRectangle(cornerRadius: 11, style: .continuous)
-                )
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-/// A numeric measure entry (height, weight).
-struct MeasureField: View {
-    let label: String
-    let unit: String
-    let range: ClosedRange<Double>
-    @Binding var value: Double?
-
-    @State private var text = ""
-
-    var body: some View {
-        HStack {
-            Text(label)
-                .font(Typography.data(15))
-                .foregroundStyle(Palette.inkSoft)
-            Spacer()
-            TextField("—", text: $text)
-                .keyboardType(.decimalPad)
-                .multilineTextAlignment(.trailing)
-                .font(Typography.data(17, weight: .semibold))
-                .foregroundStyle(Palette.ink)
-                .frame(width: 72)
-                .onChange(of: text) { _, new in
-                    if let parsed = Double(new.replacingOccurrences(of: ",", with: ".")), range.contains(parsed) {
-                        value = parsed
-                    } else if new.isEmpty {
-                        value = nil
-                    }
-                }
-                .onAppear { if let value { text = formatted(value) } }
-            Text(unit)
-                .font(Typography.data(14))
-                .foregroundStyle(Palette.inkFaint)
-        }
-        .padding(14)
-        .background {
-            RoundedRectangle(cornerRadius: Radius.sm, style: .continuous)
-                .fill(Palette.surface)
-                .elevation(.resting)
-                .overlay(RoundedRectangle(cornerRadius: Radius.sm, style: .continuous).strokeBorder(Palette.hairline))
-        }
+    private var edgeFade: some View {
+        LinearGradient(
+            stops: [
+                .init(color: .clear, location: 0),
+                .init(color: .black, location: 0.16),
+                .init(color: .black, location: 0.84),
+                .init(color: .clear, location: 1),
+            ],
+            startPoint: .leading, endPoint: .trailing
+        )
     }
 
-    private func formatted(_ v: Double) -> String {
-        v.rounded() == v ? String(Int(v)) : String(v)
+    private var drag: some Gesture {
+        DragGesture(minimumDistance: 1)
+            .onChanged { g in
+                let base = dragStartValue ?? value
+                if dragStartValue == nil { dragStartValue = value }
+                let deltaSteps = (g.translation.width / pxPerStep).rounded(.towardZero)
+                let proposed = base - Double(deltaSteps) * step
+                setValue(min(range.upperBound, max(range.lowerBound, proposed)))
+            }
+            .onEnded { _ in dragStartValue = nil }
+    }
+
+    private func setValue(_ raw: Double) {
+        let snapped = (raw / step).rounded() * step
+        guard snapped != value else { return }
+        value = snapped
+        if !reduceMotion { UISelectionFeedbackGenerator().selectionChanged() }
     }
 }
 
