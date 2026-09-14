@@ -211,7 +211,10 @@ struct HomeContent: View {
                         pending: pendingMeal,
                         landingNamespace: photoLogNamespace,
                         landingCardID: photoLandingCardID,
-                        onOpenMeal: { selectedMeal = $0 },
+                        onOpenMeal: { meal in
+                            composerFocused = false
+                            selectedMeal = meal
+                        },
                         onLogMissed: logMissed
                     )
                     .appearIn(2)
@@ -219,6 +222,9 @@ struct HomeContent: View {
                 .padding(.horizontal, Space.gutter)
             }
             .padding(.bottom, Space.lg)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+            .simultaneousGesture(TapGesture().onEnded { composerFocused = false })
             .animation(Motion.adaptive(Motion.morph, reduceMotion: reduceMotion), value: moment.takesOver)
         }
         .scrollBounceBehavior(.basedOnSize)
@@ -278,7 +284,7 @@ struct HomeContent: View {
 
     private func logMissed(_ slot: HomeResponse.Day.Slot) {
         logger?.backdate = .init(slot: slot.meal, at: TodayLayout.today(atMin: slot.atMin, now: now))
-        composerFocused = true
+        Task { composerFocused = true }
     }
 
     private func ateThis() {
@@ -324,14 +330,19 @@ struct HomeContent: View {
             composerFocused = false
             Haptics.landed()
             if logged.fromPhoto { return }
-            Task {
-                await model.load(showSpinner: false)
-                guard case .logged = logger?.phase else { return }
-                logger?.clearAfterSuccess()
-            }
+            landLoggedMeal()
+            logger?.clearAfterSuccess()
+            Task { await model.load(showSpinner: false) }
         case .compose:
             break
         }
+    }
+
+    /// Place the just-logged meal under its slot immediately, so Today doesn't
+    /// show it in the wrong section until Home reloads.
+    private func landLoggedMeal() {
+        guard let logger, let meal = logger.pendingMealSummary() else { return }
+        model.applyLoggedMeal(meal, slot: pendingSlot)
     }
 
     private func keepPhotoLog() async {
@@ -371,17 +382,33 @@ struct HomeContent: View {
 
     private var pendingMeal: TodayPending? {
         if logger?.confirmingPhoto == true { return nil }
+        let slot = pendingSlot
         switch logger?.phase {
         case .parsing:
             let title = logger?.submittedPrompt ?? ""
-            return .parsing(title: title.isEmpty ? "Estimating…" : title)
+            return .parsing(title: title.isEmpty ? "Estimating…" : title, slot: slot)
         case let .logged(logged):
-            // Once Home reloads, the real meal is in the log — don't show it twice.
+            // Once Home has the real meal — from the optimistic insert or a
+            // reload — don't show it twice.
             if loadedHome?.meals.contains(where: { $0.id == logged.mealId }) == true { return nil }
-            return .logged(title: logged.summary ?? "Logged", kcal: logged.kcal)
+            return .logged(title: logged.summary ?? "Logged", kcal: logged.kcal, slot: slot)
         default:
             return nil
         }
+    }
+
+    /// Where an in-flight log belongs: an explicit backdate (Add breakfast),
+    /// else the slot closest to the time it was logged, matching the backend.
+    private var pendingSlot: MealSlot {
+        if let slot = logger?.submittedSlot { return slot }
+        let times = loadedHome?.resolvedMealTimes ?? .standard
+        let minute: Int
+        if let at = logger?.submittedLoggedAt {
+            minute = TodayLayout.minuteOfDay(from: at)
+        } else {
+            minute = loadedHome?.day?.nowMin ?? TodayLayout.minuteOfDay(from: now)
+        }
+        return TodayLayout.slot(forMinute: minute, times: times)
     }
 
     /// Minutes until the next meal time — the "after my next meal" snooze.
@@ -420,56 +447,150 @@ private struct RetryState: View {
 struct HomeSkeletonView: View {
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: Space.md) {
-                VStack(alignment: .leading, spacing: Space.xs) {
-                    SkeletonBlock(width: 150, height: 13)
-                    SkeletonBlock(height: 22, radius: 8)
-                    SkeletonBlock(width: 220, height: 22, radius: 8)
-                }
-
-                SkeletonCard(height: 196) {
-                    VStack(alignment: .leading, spacing: Space.md) {
-                        HStack(alignment: .top) {
-                            VStack(alignment: .leading, spacing: 8) {
-                                SkeletonBlock(width: 150, height: 40, radius: 10)
-                                SkeletonBlock(width: 120, height: 12)
-                            }
-                            Spacer()
-                            VStack(alignment: .trailing, spacing: 6) {
-                                SkeletonBlock(width: 56, height: 10)
-                                SkeletonBlock(width: 70, height: 20)
-                                SkeletonBlock(width: 84, height: 5, radius: 3)
-                            }
-                        }
-                        SkeletonBlock(height: 6, radius: 3)
-                        SkeletonBlock(width: 200, height: 12)
+            VStack(alignment: .leading, spacing: Space.lg) {
+                VStack(alignment: .leading, spacing: Space.md) {
+                    dial
+                    VStack(alignment: .leading, spacing: 8) {
+                        SkeletonBlock(width: 220, height: 34, radius: 8)
+                        SkeletonBlock(width: 168, height: 16, radius: 6)
                     }
                 }
-
-                SkeletonCard(height: 76) {
-                    HStack(spacing: Space.sm) {
-                        SkeletonBlock(width: 40, height: 40, radius: 20)
-                        VStack(alignment: .leading, spacing: 6) {
-                            SkeletonBlock(width: 60, height: 10)
-                            SkeletonBlock(width: 170, height: 16)
-                        }
-                    }
-                }
-
-                VStack(alignment: .leading, spacing: Space.xs) {
-                    SkeletonBlock(width: 120, height: 11)
-                    SkeletonCard(height: 64) {
-                        SkeletonBlock(width: 180, height: 16)
-                    }
-                }
+                .padding(.horizontal, Space.gutter)
                 .padding(.top, Space.sm)
+
+                VStack(alignment: .leading, spacing: Space.lg) {
+                    fuel
+                    meals
+                }
+                .padding(.horizontal, Space.gutter)
             }
-            .padding(.horizontal, Space.gutter)
-            .padding(.top, Space.sm)
+            .padding(.bottom, Space.lg)
         }
-        .background(Palette.background.ignoresSafeArea())
+        .scrollBounceBehavior(.basedOnSize)
         .scrollDisabled(true)
+        .background(Palette.background.ignoresSafeArea())
+        .safeAreaInset(edge: .bottom, spacing: 0) { dock }
         .skeletonLoading()
+    }
+
+    /// Muted stand-in for the day dial: ring, three meal knobs, a number in the middle.
+    private var dial: some View {
+        GeometryReader { geo in
+            let size = min(geo.size.width, geo.size.height)
+            let r = size * 0.33
+            let ringWidth = size * 0.076
+            let knob = min(44, max(18, size * 0.13))
+            let c = CGPoint(x: geo.size.width / 2, y: geo.size.height / 2)
+
+            ZStack {
+                Circle()
+                    .stroke(Palette.surfaceSunk, lineWidth: ringWidth)
+                    .frame(width: r * 2, height: r * 2)
+                    .position(c)
+
+                ForEach([480, 780, 1140], id: \.self) { minute in
+                    Circle()
+                        .fill(Palette.surface)
+                        .overlay(Circle().strokeBorder(Palette.hairline, lineWidth: 2))
+                        .frame(width: knob, height: knob)
+                        .position(dialPoint(minute, radius: r, center: c))
+                }
+
+                VStack(spacing: 8) {
+                    SkeletonBlock(width: size * 0.28, height: size * 0.11, radius: 10)
+                    SkeletonBlock(width: size * 0.2, height: 10)
+                }
+                .fixedSize()
+                .position(c)
+            }
+        }
+        .aspectRatio(1, contentMode: .fit)
+        .frame(maxWidth: 320)
+        .frame(maxWidth: .infinity)
+    }
+
+    private func dialPoint(_ minute: Int, radius: CGFloat, center: CGPoint) -> CGPoint {
+        let angle = CGFloat(minute) / 1440 * 2 * .pi
+        return CGPoint(x: center.x + radius * sin(angle), y: center.y - radius * cos(angle))
+    }
+
+    private var fuel: some View {
+        HStack(spacing: 10) {
+            fuelCell(numberWidth: 56, unitWidth: 72)
+            fuelCell(numberWidth: 40, unitWidth: 88)
+        }
+    }
+
+    private func fuelCell(numberWidth: CGFloat, unitWidth: CGFloat) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .firstTextBaseline, spacing: 5) {
+                SkeletonBlock(width: numberWidth, height: 22, radius: 6)
+                SkeletonBlock(width: unitWidth, height: 12)
+            }
+            Capsule().fill(Palette.surfaceSunk).frame(height: 6)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background {
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Palette.surface)
+                .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Palette.hairline))
+        }
+    }
+
+    private var meals: some View {
+        VStack(alignment: .leading, spacing: Space.md) {
+            mealSection(labelWidth: 148)
+            mealSection(labelWidth: 118)
+        }
+    }
+
+    private func mealSection(labelWidth: CGFloat) -> some View {
+        VStack(alignment: .leading, spacing: Space.xs) {
+            SkeletonBlock(width: labelWidth, height: 11)
+            mealRow(titleWidth: 152)
+        }
+    }
+
+    private func mealRow(titleWidth: CGFloat) -> some View {
+        HStack(spacing: Space.sm) {
+            SkeletonBlock(width: 44, height: 44, radius: 10)
+            VStack(alignment: .leading, spacing: 4) {
+                SkeletonBlock(width: titleWidth, height: 16)
+                SkeletonBlock(width: 64, height: 12)
+            }
+            Spacer(minLength: 8)
+            SkeletonBlock(width: 62, height: 14)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Palette.surface, in: RoundedRectangle(cornerRadius: Radius.md, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
+                .strokeBorder(Palette.hairline)
+        )
+    }
+
+    private var dock: some View {
+        HStack(spacing: 8) {
+            SkeletonBlock(height: 44, radius: 22)
+            Circle()
+                .fill(Palette.surfaceSunk)
+                .frame(width: 34, height: 34)
+        }
+        .padding(.horizontal, Space.gutter)
+        .padding(.vertical, 10)
+        .background {
+            Rectangle()
+                .fill(.ultraThinMaterial)
+                .overlay(Palette.background.opacity(0.84))
+                .overlay(alignment: .top) {
+                    Rectangle().fill(Palette.hairline).frame(height: 1)
+                }
+                .ignoresSafeArea(edges: .bottom)
+        }
     }
 }
 
@@ -502,5 +623,9 @@ struct HomeSkeletonView: View {
 #Preview("Logging") {
     HomeContent(model: .previewed(.loaded(.sampleOnPace)), previewLogger: .sampleParsing)
         .environment(AppEnvironment.preview())
+}
+
+#Preview("Skeleton") {
+    HomeSkeletonView()
 }
 #endif

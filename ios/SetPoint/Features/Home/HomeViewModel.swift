@@ -53,6 +53,11 @@ final class HomeViewModel {
         }
     }
 
+    func applyLoggedMeal(_ meal: MealSummary, slot: MealSlot) {
+        guard case let .loaded(home) = phase else { return }
+        phase = .loaded(home.inserting(meal, into: slot))
+    }
+
     private func message(for error: Error) -> String {
         UserFacingError.message(for: error, fallback: "Couldn't load. Try again.")
     }

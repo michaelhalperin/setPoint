@@ -46,6 +46,11 @@ final class LogMealViewModel {
     }
     var backdate: Backdate?
 
+    /// Slot / time of the in-flight log, so Today can place the pending row
+    /// (and then the real meal) under the right meal time before Home reloads.
+    private(set) var submittedSlot: MealSlot?
+    private(set) var submittedLoggedAt: Date?
+
     /// Recent meals, newest first, one per name — the "Again?" chips.
     private(set) var recents: [MealSummary] = []
 
@@ -90,6 +95,8 @@ final class LogMealViewModel {
         submittedPhoto = snapshotPhoto
         confirmingPhoto = fromPhoto
         submittedPrompt = prompt.isEmpty ? (fromPhoto ? "From your photo" : "Working it out…") : prompt
+        submittedSlot = snapshotBackdate?.slot
+        submittedLoggedAt = snapshotBackdate?.at ?? Date()
         text = ""
         photo = nil
         backdate = nil
@@ -116,6 +123,8 @@ final class LogMealViewModel {
             submittedPhoto = nil
             confirmingPhoto = false
             backdate = snapshotBackdate
+            submittedSlot = nil
+            submittedLoggedAt = nil
             phase = .failed(UserFacingError.message(for: error, fallback: "Couldn't log. Try again."))
         }
     }
@@ -147,6 +156,8 @@ final class LogMealViewModel {
         guard phase != .parsing else { return }
         let snapshotBackdate = backdate
         submittedPrompt = meal.summary ?? "Logged"
+        submittedSlot = snapshotBackdate?.slot
+        submittedLoggedAt = snapshotBackdate?.at ?? Date()
         backdate = nil
         phase = .parsing
         do {
@@ -174,6 +185,8 @@ final class LogMealViewModel {
             onMealChanged()
         } catch {
             backdate = snapshotBackdate
+            submittedSlot = nil
+            submittedLoggedAt = nil
             phase = .failed(UserFacingError.message(for: error, fallback: "Couldn't log. Try again."))
         }
     }
@@ -190,6 +203,8 @@ final class LogMealViewModel {
             confirmingPhoto = false
             submittedPhoto = nil
             submittedPrompt = ""
+            submittedSlot = nil
+            submittedLoggedAt = nil
             phase = .compose
             onMealChanged()
         } catch {
@@ -254,6 +269,39 @@ final class LogMealViewModel {
     func reset() {
         phase = .compose
         actionError = nil
+        submittedSlot = nil
+        submittedLoggedAt = nil
+    }
+
+    /// Enough of a meal card to drop into Today before Home reloads.
+    func pendingMealSummary() -> MealSummary? {
+        guard case let .logged(logged) = phase else { return nil }
+        let at = submittedLoggedAt ?? Date()
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return MealSummary(
+            id: logged.mealId,
+            loggedAt: formatter.string(from: at),
+            kcal: logged.kcal,
+            proteinG: logged.proteinG,
+            carbsG: logged.items.reduce(0) { $0 + $1.carbsG },
+            fatG: logged.items.reduce(0) { $0 + $1.fatG },
+            source: logged.fromPhoto ? "PHOTO" : "TEXT",
+            summary: logged.summary,
+            photoUrl: nil,
+            notes: logged.notes,
+            items: logged.items.map {
+                .init(
+                    name: $0.name,
+                    quantity: $0.quantity,
+                    kcal: $0.kcal,
+                    proteinG: $0.proteinG,
+                    carbsG: $0.carbsG,
+                    fatG: $0.fatG
+                )
+            },
+            parseConfidence: logged.confidence
+        )
     }
 
     /// After a kept log, wipe the composer so the next meal starts blank.
@@ -265,6 +313,8 @@ final class LogMealViewModel {
         submittedPrompt = ""
         confirmingPhoto = false
         backdate = nil
+        submittedSlot = nil
+        submittedLoggedAt = nil
         phase = .compose
         actionError = nil
         removing = false

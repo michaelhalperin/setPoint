@@ -27,7 +27,7 @@ struct MealLog: View {
     @ViewBuilder
     private var content: some View {
         if let day = home.day {
-            let pendingSlotID = pending == nil ? nil : pendingSlot(in: day)
+            let pendingSlotID = pending?.slot.rawValue
             let sections = day.slots.filter { slot in
                 slot.slotState == .logged
                     || (slot.slotState == .missed && home.enforcementEnabled)
@@ -45,14 +45,6 @@ struct MealLog: View {
         } else {
             flatList
         }
-    }
-
-    /// Where a meal being logged right now shows up: the slot that's due, else
-    /// the latest one with food.
-    private func pendingSlot(in day: HomeResponse.Day) -> String? {
-        day.slots.first { $0.slotState == .now }?.id
-            ?? day.slots.last { $0.slotState == .logged }?.id
-            ?? day.slots.last?.id
     }
 
     private func section(_ slot: HomeResponse.Day.Slot, holdsPending: Bool) -> some View {
@@ -126,10 +118,10 @@ struct MealLog: View {
     @ViewBuilder
     private func pendingRow(_ pending: TodayPending) -> some View {
         switch pending {
-        case let .parsing(title):
+        case let .parsing(title, _):
             TodayMealRow(title: title, detail: "Working it out…", kcal: 640, redacted: true)
                 .shimmering(true)
-        case let .logged(title, kcal):
+        case let .logged(title, kcal, _):
             landing(TodayMealRow(title: title, detail: "Just now", kcal: kcal))
         }
     }

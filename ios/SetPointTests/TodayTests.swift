@@ -106,6 +106,31 @@ final class TodayTests: XCTestCase {
         XCTAssertEqual(TodayLayout.meals(in: slot, from: meals).map(\.id), ["b", "a"])
     }
 
+    func testSlotUsesHalfwayBoundaries() {
+        let times = MealTimesPayload.standard // 08:00 / 13:00 / 19:00 → 10:30 and 16:00
+        XCTAssertEqual(TodayLayout.slot(forMinute: 600, times: times), .breakfast) // 10:00
+        XCTAssertEqual(TodayLayout.slot(forMinute: 770, times: times), .lunch)     // 12:50
+        XCTAssertEqual(TodayLayout.slot(forMinute: 900, times: times), .lunch)     // 15:00
+        XCTAssertEqual(TodayLayout.slot(forMinute: 990, times: times), .dinner)    // 16:30
+    }
+
+    func testInsertingAMealLandsInTheSlotWithoutWaitingOnReload() {
+        let before = home(day: day())
+        let meal = MealSummary(
+            id: "new", loggedAt: "2026-09-10T08:00:00Z", kcal: 420, proteinG: 22,
+            carbsG: 40, fatG: 12, source: "TEXT", summary: "Oats", photoUrl: nil,
+            notes: nil, items: nil, parseConfidence: nil
+        )
+        let after = before.inserting(meal, into: .breakfast)
+        XCTAssertEqual(after.meals.map(\.id), ["new"])
+        XCTAssertEqual(after.day?.slots[0].state, "logged")
+        XCTAssertEqual(after.day?.slots[0].mealIds, ["m1", "new"])
+        XCTAssertEqual(after.day?.slots[0].kcal, 920)
+        XCTAssertEqual(after.ledger.consumedKcal, before.ledger.consumedKcal + 420)
+        XCTAssertEqual(after.ledger.mealsToday, before.ledger.mealsToday + 1)
+        XCTAssertEqual(after.inserting(meal, into: .breakfast).meals.count, 1)
+    }
+
     func testBackdateLandsOnTodayAtTheMealTime() {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: "UTC")!

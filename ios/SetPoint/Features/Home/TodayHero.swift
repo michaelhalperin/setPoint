@@ -15,10 +15,6 @@ struct TodayHero: View {
         let times = home.resolvedMealTimes
         let quiet = home.resolvedQuietHours
         VStack(alignment: .leading, spacing: Space.md) {
-            Text(date.formatted(.dateTime.weekday(.wide).day().month(.wide)))
-                .font(Typography.data(13, weight: .bold))
-                .foregroundStyle(Palette.inkFaint)
-
             DayDial(
                 breakfastMin: times.breakfastMin, lunchMin: times.lunchMin, dinnerMin: times.dinnerMin,
                 quietStartMin: quiet.startMin, quietEndMin: quiet.endMin,
@@ -147,6 +143,8 @@ struct CheckInTakeover: View {
     let onAlreadyAte: () -> Void
     let onSnooze: () -> Void
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var body: some View {
         VStack(alignment: .leading, spacing: Space.sm) {
             HStack(spacing: 8) {
@@ -214,7 +212,7 @@ struct CheckInTakeover: View {
         } else {
             HStack(spacing: 8) {
                 if checkIn.prescription != nil {
-                    creamButton(busy ? "Logging…" : "I ate this", action: onAteThis)
+                    creamButton("I ate this", busy: busy, busyTitle: "Logging", action: onAteThis)
                 }
                 Button(action: onAlreadyAte) {
                     Text("I already ate")
@@ -241,15 +239,26 @@ struct CheckInTakeover: View {
         }
     }
 
-    private func creamButton(_ title: String, action: @escaping () -> Void) -> some View {
+    private func creamButton(
+        _ title: String,
+        busy: Bool = false,
+        busyTitle: String? = nil,
+        action: @escaping () -> Void
+    ) -> some View {
         Button(action: action) {
-            Text(title)
-                .font(Typography.data(16, weight: .bold))
-                .foregroundStyle(Palette.accentDeep)
-                .frame(maxWidth: .infinity, minHeight: 52)
-                .background(Palette.background, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            BusyLabel(
+                title: busy ? (busyTitle ?? title) : title,
+                busy: busy,
+                tint: Palette.accentDeep
+            )
+            .font(Typography.data(16, weight: .bold))
+            .foregroundStyle(Palette.accentDeep)
+            .frame(maxWidth: .infinity, minHeight: 52)
+            .background(Palette.background, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
         .buttonStyle(PressableCard())
+        .disabled(busy)
+        .animation(Motion.adaptive(Motion.settle, reduceMotion: reduceMotion), value: busy)
     }
 }
 

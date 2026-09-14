@@ -37,8 +37,14 @@ extension HomeResponse.Day.Slot {
 
 /// The meal being logged from the dock, shown in the log before Home reloads.
 enum TodayPending: Equatable {
-    case parsing(title: String)
-    case logged(title: String, kcal: Int)
+    case parsing(title: String, slot: MealSlot)
+    case logged(title: String, kcal: Int, slot: MealSlot)
+
+    var slot: MealSlot {
+        switch self {
+        case let .parsing(_, slot), let .logged(_, _, slot): return slot
+        }
+    }
 }
 
 /// What Today is about right now — decides the hero (the dial, or the
@@ -153,15 +159,81 @@ enum TodayLayout {
         return slot.mealIds.compactMap { byID[$0] }
     }
 
+    /// The meal time a logged minute belongs to — same rule as the backend:
+    /// closest usual time, with boundaries halfway between meals.
+    static func slot(forMinute minute: Int, times: MealTimesPayload) -> MealSlot {
+        let breakfastEnd = (times.breakfastMin + times.lunchMin) / 2
+        let lunchEnd = (times.lunchMin + times.dinnerMin) / 2
+        if minute < breakfastEnd { return .breakfast }
+        if minute < lunchEnd { return .lunch }
+        return .dinner
+    }
+
+    /// Minutes from local midnight.
+    static func minuteOfDay(from date: Date, calendar: Calendar = .current) -> Int {
+        let parts = calendar.dateComponents([.hour, .minute], from: date)
+        return (parts.hour ?? 0) * 60 + (parts.minute ?? 0)
+    }
+
     /// Minutes from local midnight for a logged-at timestamp.
     static func minuteOfDay(_ iso: String, calendar: Calendar = .current) -> Int? {
         guard let date = MealFormat.parse(iso) else { return nil }
-        let parts = calendar.dateComponents([.hour, .minute], from: date)
-        return (parts.hour ?? 0) * 60 + (parts.minute ?? 0)
+        return minuteOfDay(from: date, calendar: calendar)
     }
 
     /// Today at a minute of day — the time a missed meal gets backdated to.
     static func today(atMin minute: Int, now: Date = .now, calendar: Calendar = .current) -> Date {
         calendar.date(bySettingHour: minute / 60, minute: minute % 60, second: 0, of: now) ?? now
+    }
+}
+
+extension HomeResponse {
+    /// Drop a just-logged meal into the local home so Today doesn't wait on a
+    /// round-trip — and so it lands under the slot it was logged for.
+    func inserting(_ meal: MealSummary, into slot: MealSlot) -> HomeResponse {
+        guard !meals.contains(where: { $0.id == meal.id }) else { return self }
+        let remainingProtein = ledger.remainingProteinG.map { $0 - meal.proteinG }
+        return HomeResponse(
+            goal: goal,
+            mode: mode,
+            enforcementEnabled: enforcementEnabled,
+            ledger: .init(
+                consumedKcal: ledger.consumedKcal + meal.kcal,
+                targetKcal: ledger.targetKcal,
+                remainingKcal: ledger.remainingKcal - meal.kcal,
+                consumedProteinG: ledger.consumedProteinG + meal.proteinG,
+                targetProteinG: ledger.targetProteinG,
+                remainingProteinG: remainingProtein,
+                mealsToday: ledger.mealsToday + 1,
+                lastMealAt: meal.loggedAt
+            ),
+            framing: framing,
+            managerNote: managerNote,
+            meals: meals + [meal],
+            mealTimes: mealTimes,
+            activeCheckIn: activeCheckIn,
+            day: day?.inserting(meal, into: slot),
+            nextCheckIn: nextCheckIn,
+            quietHours: quietHours
+        )
+    }
+}
+
+extension HomeResponse.Day {
+    func inserting(_ meal: MealSummary, into slot: MealSlot) -> HomeResponse.Day {
+        HomeResponse.Day(
+            nowMin: nowMin,
+            slots: slots.map { s in
+                guard s.meal == slot else { return s }
+                return .init(
+                    slot: s.slot,
+                    atMin: s.atMin,
+                    state: "logged",
+                    mealIds: s.mealIds + [meal.id],
+                    kcal: s.kcal + meal.kcal
+                )
+            },
+            pace: pace
+        )
     }
 }
