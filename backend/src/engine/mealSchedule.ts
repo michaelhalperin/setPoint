@@ -59,6 +59,16 @@ export function slotWindowStart(slot: SlotName, times: MealTimes): number {
   return Math.floor((times.lunchMin + times.dinnerMin) / 2);
 }
 
+/**
+ * The meal window `nowMin` sits in: breakfast from midnight until the lunch
+ * midpoint, lunch until the dinner midpoint, dinner after that.
+ */
+export function currentMealSlot(nowMin: number, times: MealTimes): SlotName {
+  if (nowMin < slotWindowStart('lunch', times)) return 'breakfast';
+  if (nowMin < slotWindowStart('dinner', times)) return 'lunch';
+  return 'dinner';
+}
+
 /** The next meal time after `slot`, or the end of the day after dinner. */
 function slotCloses(slot: SlotName, times: MealTimes): number {
   if (slot === 'breakfast') return times.lunchMin;

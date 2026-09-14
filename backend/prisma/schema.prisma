@@ -77,6 +77,8 @@ enum MealSource {
   PHOTO
   PRESCRIPTION
   MANUAL
+  SAVED
+  BARCODE
 }
 
 enum PrescriptionStatus {
@@ -156,6 +158,7 @@ model User {
   pushTokens              PushToken[]
   restrictions            DietaryRestriction[]
   meals                   Meal[]
+  savedMeals              SavedMeal[]
   weightEntries           WeightEntry[]
   biosignalReadings       BiosignalReading[]
   confidenceScores        ConfidenceScore[]
@@ -355,6 +358,55 @@ model Meal {
 
   @@index([userId, loggedAt])
   @@unique([userId, clientId])
+}
+
+/// A named plate the user logs in one tap. Items are a snapshot; totals are
+/// derived from them on write so a client cannot send a mismatched target.
+model SavedMeal {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name  String
+  /// [{ name, quantity, kcal, proteinG, carbsG, fatG }]
+  items Json
+
+  kcal     Int
+  proteinG Float @default(0)
+  carbsG   Float @default(0)
+  fatG     Float @default(0)
+
+  /// "breakfast" | "lunch" | "dinner". Null = no time suggestion.
+  suggestSlot   String?
+  useInCheckIns Boolean @default(false)
+
+  lastUsedAt DateTime?
+  useCount   Int       @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, lastUsedAt])
+  @@index([userId, suggestSlot])
+}
+
+/// Cached Open Food Facts lookup. Shared across users; the barcode is not a secret.
+model BarcodeFood {
+  id   String @id @default(cuid())
+  code String @unique
+
+  name     String
+  brand    String?
+  servingG Float?
+
+  kcal100g     Float
+  proteinG100g Float
+  carbsG100g   Float
+  fatG100g     Float
+
+  fetchedAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // ---------------------------------------------------------------------------

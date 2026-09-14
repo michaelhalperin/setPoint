@@ -113,8 +113,57 @@ struct HomeContent: View {
         }
         .animation(Motion.adaptive(Motion.morph, reduceMotion: reduceMotion), value: logger?.confirmingPhoto == true)
         .sheet(item: $selectedMeal) { meal in
-            MealDetailSheet(meal: meal) {
-                try await model.removeMeal(id: meal.id)
+            MealDetailSheet(
+                meal: meal,
+                onRemove: {
+                    try await model.removeMeal(id: meal.id)
+                },
+                onSaveAsMeal: {
+                    logger?.openEditor(from: meal)
+                    selectedMeal = nil
+                }
+            )
+        }
+        .fullScreenCover(isPresented: scannerPresented) {
+            BarcodeScannerView(
+                onCode: { code in
+                    Task { await logger?.handleScannedCode(code) }
+                },
+                onCancel: {
+                    logger?.showScanner = false
+                    logger?.mode = .type
+                }
+            )
+        }
+        .sheet(item: productBinding) { product in
+            BarcodeProductSheet(
+                product: Binding(
+                    get: { logger?.product ?? product },
+                    set: { logger?.product = $0 }
+                ),
+                slotTitle: logSlotTitle,
+                logging: {
+                    if case .parsing = logger?.phase { return true }
+                    return false
+                }(),
+                onLog: { Task { await logger?.logBarcode() } },
+                onSave: { logger?.openEditorToSaveProduct() },
+                onClose: {
+                    logger?.product = nil
+                    logger?.mode = .type
+                }
+            )
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+        }
+        .sheet(item: editorBinding) { _ in
+            if let draft = Binding(editorBinding) {
+                SavedMealEditorView(
+                    draft: draft,
+                    saving: logger?.editorSaving ?? false,
+                    error: logger?.editorError,
+                    onSave: { await logger?.saveEditor() ?? false }
+                )
             }
         }
         .confirmationDialog("Snooze this check-in", isPresented: $choosingSnooze, titleVisibility: .visible) {
@@ -139,7 +188,12 @@ struct HomeContent: View {
         }
         .onChange(of: composerFocused) { _, isFocused in
             guard isFocused, let meals = loadedHome?.meals else { return }
-            Task { await logger?.loadRecents(today: meals) }
+            Task {
+                await logger?.loadRecents(today: meals)
+                if previewLogger == nil {
+                    await logger?.loadSavedMeals()
+                }
+            }
         }
         .onChange(of: logger?.phase) { _, phase in
             if let phase { handleLoggerPhase(phase) }
@@ -369,6 +423,29 @@ struct HomeContent: View {
     // MARK: Derived
 
     private var isLoaded: Bool { loadedHome != nil }
+
+    private var scannerPresented: Binding<Bool> {
+        Binding(
+            get: { logger?.showScanner == true },
+            set: { on in
+                logger?.showScanner = on
+                if !on { logger?.mode = .type }
+            }
+        )
+    }
+
+    private var productBinding: Binding<LogMealViewModel.BarcodeProduct?> {
+        Binding(get: { logger?.product }, set: { logger?.product = $0 })
+    }
+
+    private var editorBinding: Binding<SavedMealDraft?> {
+        Binding(get: { logger?.editor }, set: { logger?.editor = $0 })
+    }
+
+    private var logSlotTitle: String {
+        if let backdate = logger?.backdate { return backdate.slot.title }
+        return loadedHome?.day?.slots.first { $0.slotState == .now }?.meal.title ?? "Now"
+    }
 
     private var springForCheckIn: Animation {
         Motion.adaptive(Motion.morph, reduceMotion: reduceMotion)

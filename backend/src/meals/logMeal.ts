@@ -1,6 +1,8 @@
 import type { PrismaClient } from '@prisma/client';
 import type { MealImage, MealParser, ParsedMeal } from '../ai/parseMeal.js';
 import type { AiUsageKind } from '../ai/quota.js';
+import { lookupBarcode, macrosForServings, type BarcodeLookupDeps } from '../foods/barcode.js';
+import { mealItemsSchema, type MealItemInput } from './items.js';
 import { captureError } from '../observability/sentry.js';
 import { queuePhotoDeletion } from '../photos/cleanup.js';
 import type { PhotoStore } from '../photos/store.js';
@@ -15,6 +17,12 @@ export type LogMealInput = {
   /** Provide when the client already has macros (e.g. accepting a prescription). */
   macros?: { kcal: number; proteinG?: number; carbsG?: number; fatG?: number };
   prescriptionId?: string;
+  /** Log a named plate as-is — never AI-parsed. */
+  savedMealId?: string;
+  /** Open Food Facts / cached barcode. Pair with `servings`. Never AI-parsed. */
+  barcode?: string;
+  /** Multiplier of the product's serving size. Defaults to 1. */
+  servings?: number;
   /** The app's id for this log attempt. A repeat returns the stored meal, unchanged. */
   clientId?: string;
 };
@@ -27,6 +35,8 @@ export type LogMealDeps = {
   photos?: PhotoStore | null;
   /** Charges one AI call to the user; throws AiQuotaExceededError when over the limit. */
   quota?: (kind: AiUsageKind) => Promise<void>;
+  /** Open Food Facts + cache. Required when logging `barcode`. */
+  barcode?: Pick<BarcodeLookupDeps, 'fetchProduct' | 'now'>;
 };
 
 export type LoggedMeal = {
@@ -69,8 +79,42 @@ export async function logMeal(
   let parsedByAI = false;
   let parseConfidence: number | null = null;
   let macros: { kcal: number; proteinG: number; carbsG: number; fatG: number };
+  let items: MealItemInput[] = [];
+  let notes: string | null = null;
+  let savedMealId: string | null = null;
 
-  if (input.macros) {
+  if (input.savedMealId) {
+    const saved = await deps.prisma.savedMeal.findFirst({ where: { id: input.savedMealId, userId } });
+    if (!saved) throw new EmptyMealError('saved meal not found');
+    macros = { kcal: saved.kcal, proteinG: saved.proteinG, carbsG: saved.carbsG, fatG: saved.fatG };
+    items = mealItemsSchema.catch([]).parse(saved.items);
+    source = 'SAVED';
+    rawInput = saved.name;
+    savedMealId = saved.id;
+  } else if (input.barcode) {
+    const food = await lookupBarcode(
+      { prisma: deps.prisma, fetchProduct: deps.barcode?.fetchProduct ?? (async () => null), now: deps.barcode?.now },
+      input.barcode,
+    );
+    if (!food) throw new EmptyMealError('unknown barcode');
+    const servings = input.servings && input.servings > 0 ? input.servings : 1;
+    const portion = macrosForServings(food, servings);
+    macros = { kcal: portion.kcal, proteinG: portion.proteinG, carbsG: portion.carbsG, fatG: portion.fatG };
+    const qty = servings === 1 ? '1 serving' : `${servings} servings`;
+    items = [
+      {
+        name: food.name,
+        quantity: qty,
+        kcal: portion.kcal,
+        proteinG: portion.proteinG,
+        carbsG: portion.carbsG,
+        fatG: portion.fatG,
+      },
+    ];
+    source = 'BARCODE';
+    rawInput = food.name;
+    notes = food.brand ? `${food.brand} · ${food.code}` : food.code;
+  } else if (input.macros) {
     macros = {
       kcal: Math.round(input.macros.kcal),
       proteinG: input.macros.proteinG ?? 0,
@@ -99,8 +143,10 @@ export async function logMeal(
     rawInput = input.text ?? parsed.summary;
     parsedByAI = true;
     parseConfidence = parsed.confidence;
+    items = parsed.items ?? [];
+    notes = parsed.notes ?? null;
   } else {
-    throw new EmptyMealError('provide text, an image, or macros');
+    throw new EmptyMealError('provide text, an image, macros, a saved meal, or a barcode');
   }
 
   // The photo goes to object storage — never inline in Postgres.
@@ -122,8 +168,8 @@ export async function logMeal(
         carbsG: macros.carbsG,
         fatG: macros.fatG,
         photoKey,
-        notes: parsed?.notes ?? null,
-        items: parsed?.items ?? [],
+        notes: notes ?? parsed?.notes ?? null,
+        items: items.length > 0 ? items : (parsed?.items ?? []),
         parseQuality: parsed?.quality ?? null,
         prescriptionId: input.prescriptionId ?? null,
       },
@@ -161,6 +207,16 @@ export async function logMeal(
       where: { id: input.prescriptionId, userId },
       data: { status: 'ACCEPTED' },
     });
+  }
+
+  if (savedMealId) {
+    const saved = await deps.prisma.savedMeal.findFirst({ where: { id: savedMealId, userId } });
+    if (saved) {
+      await deps.prisma.savedMeal.update({
+        where: { id: savedMealId },
+        data: { useCount: saved.useCount + 1, lastUsedAt: loggedAt },
+      });
+    }
   }
 
   // Any logged meal breaks a miss streak and resets the escalation tier.

@@ -57,6 +57,7 @@ enum DebugPreviewStub {
     case prescription
     case conversation(resolved: Bool)
     case logMeal(LogMealStubState)
+    case savedMeal
     case settings
     case settingsGoal
     case settingsMealTimes
@@ -65,7 +66,7 @@ enum DebugPreviewStub {
     case settingsAccount
     case settingsDelete
 
-    enum LogMealStubState { case compose, parsing, result }
+    enum LogMealStubState { case compose, parsing, result, quick, scan }
     case settlement(SettlementResponse)
 
     @ViewBuilder
@@ -89,6 +90,11 @@ enum DebugPreviewStub {
             )
         case let .logMeal(state):
             LogMealStubHost(state: state)
+        case .savedMeal:
+            SavedMealEditorView(
+                draft: .constant(SavedMealDraft(from: SavedMeal.samples[0])),
+                onSave: { true }
+            )
         case .settings:
             NavigationStack { SettingsView(previewModel: .previewed()) }
         case .settingsGoal:
@@ -145,6 +151,9 @@ enum DebugPreviewStub {
         case "log-meal": return .logMeal(.compose)
         case "log-meal-parsing": return .logMeal(.parsing)
         case "log-meal-result": return .logMeal(.result)
+        case "log-quick": return .logMeal(.quick)
+        case "log-scan": return .logMeal(.scan)
+        case "saved-meal": return .savedMeal
         case "settings": return .settings
         case "you": return .settings
         case "settings-goal": return .settingsGoal
@@ -171,6 +180,14 @@ private struct LogMealStubHost: View {
                 model: .previewed(.loaded(.sampleEmpty)),
                 startComposerExpanded: true
             )
+        case .quick:
+            HomeContent(
+                model: .previewed(.loaded(.sampleEmpty)),
+                previewLogger: .sampleQuickLog,
+                startComposerExpanded: true
+            )
+        case .scan:
+            LogScanStubHost()
         case .parsing:
             HomeContent(
                 model: .previewed(.loaded(.sampleEmpty)),
@@ -180,6 +197,31 @@ private struct LogMealStubHost: View {
             HomeContent(
                 model: .previewed(.loaded(.sampleEmpty)),
                 previewLogger: .samplePhotoConfirm
+            )
+        }
+    }
+}
+
+private struct LogScanStubHost: View {
+    @State private var product = LogMealViewModel.BarcodeProduct(food: .sampleYogurt, servings: 1)
+
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            Palette.ink.ignoresSafeArea()
+            VStack(spacing: Space.sm) {
+                Image(systemName: "barcode.viewfinder")
+                    .font(.system(size: 44, weight: .medium))
+                    .foregroundStyle(Palette.lockScreenText)
+                Text("Point the camera at a barcode")
+                    .font(Typography.voice(22))
+                    .foregroundStyle(Palette.lockScreenText)
+            }
+            BarcodeProductSheet(
+                product: $product,
+                slotTitle: "Lunch",
+                onLog: {},
+                onSave: {},
+                onClose: {}
             )
         }
     }

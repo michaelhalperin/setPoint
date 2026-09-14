@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { checkInSlotAt, dueCheckIn, upcomingCheckIn, type ScheduleInput } from './mealSchedule.js';
+import { checkInSlotAt, currentMealSlot, dueCheckIn, upcomingCheckIn, type ScheduleInput } from './mealSchedule.js';
 
 const times = { breakfastMin: 480, lunchMin: 780, dinnerMin: 1140 }; // 8:00 · 13:00 · 19:00
 
@@ -66,5 +66,16 @@ describe('checkInSlotAt', () => {
     expect(checkInSlotAt(525, times)).toBe('breakfast');
     expect(checkInSlotAt(900, times)).toBe('lunch');
     expect(checkInSlotAt(1185, times)).toBe('dinner');
+  });
+});
+
+describe('currentMealSlot', () => {
+  it('uses the same midpoints as Today slot windows', () => {
+    expect(currentMealSlot(0, times)).toBe('breakfast');
+    expect(currentMealSlot(629, times)).toBe('breakfast'); // just before (480+780)/2 = 630
+    expect(currentMealSlot(630, times)).toBe('lunch');
+    expect(currentMealSlot(959, times)).toBe('lunch'); // just before (780+1140)/2 = 960
+    expect(currentMealSlot(960, times)).toBe('dinner');
+    expect(currentMealSlot(1439, times)).toBe('dinner');
   });
 });

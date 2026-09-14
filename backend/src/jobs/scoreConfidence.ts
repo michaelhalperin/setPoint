@@ -35,6 +35,7 @@ import {
   prescriptionSummary,
   type SolverFood,
 } from '../solver/index.js';
+import { prescriptionFromSavedMeal } from '../savedMeals/index.js';
 
 export type ScoreConfidenceDeps = {
   prisma: PrismaClient;
@@ -173,7 +174,7 @@ async function processUser(
   const { prisma } = deps;
   const dayStart = startOfLocalDay(now, user.timezone);
 
-  const [activeCheckIns, lastMeal, todayMeals, todayCheckIns, restrictions] = await Promise.all([
+  const [activeCheckIns, lastMeal, todayMeals, todayCheckIns, restrictions, usualForSlot] = await Promise.all([
     prisma.checkIn.findMany({
       where: { userId: user.id, status: { in: ['PENDING', 'DEFERRED'] } },
       orderBy: { createdAt: 'desc' },
@@ -188,6 +189,10 @@ async function processUser(
       select: { createdAt: true, tier: true, episodeKey: true },
     }),
     prisma.dietaryRestriction.findMany({ where: { userId: user.id, isHardExclusion: true } }),
+    prisma.savedMeal.findMany({
+      where: { userId: user.id, useInCheckIns: true },
+      orderBy: [{ lastUsedAt: 'desc' }, { useCount: 'desc' }],
+    }),
   ]);
 
   const consumedKcal = todayMeals.reduce((acc, m) => acc + m.kcal, 0);
@@ -330,8 +335,10 @@ async function processUser(
     consumedProteinG: todayMeals.reduce((acc, m) => acc + m.proteinG, 0),
   });
 
-  const rx =
-    ctx.solverFoods.length > 0
+  const usual = usualForSlot.find((m) => m.suggestSlot === due.slot) ?? null;
+  const rx = usual
+    ? prescriptionFromSavedMeal(usual, target)
+    : ctx.solverFoods.length > 0
       ? prescribe(ctx.solverFoods, {
           targetKcal: target.targetKcal,
           targetProteinG: target.targetProteinG,

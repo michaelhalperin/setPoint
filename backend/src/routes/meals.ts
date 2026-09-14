@@ -6,6 +6,7 @@ import { consumeAiQuota } from '../ai/quota.js';
 import { requireAuth, type AuthedRequest } from '../auth/index.js';
 import { getPrisma } from '../db/client.js';
 import { EmptyMealError, MealParsingUnavailableError, logMeal } from '../meals/logMeal.js';
+import { fetchOpenFoodFacts } from '../foods/barcode.js';
 import { listMealsForDate } from '../meals/listMeals.js';
 import { MealNotFoundError, updateMeal } from '../meals/updateMeal.js';
 import { captureError } from '../observability/sentry.js';
@@ -31,10 +32,13 @@ const body = z
       })
       .optional(),
     prescriptionId: z.string().optional(),
+    savedMealId: z.string().min(1).optional(),
+    barcode: z.string().min(8).max(14).optional(),
+    servings: z.number().positive().max(20).optional(),
     clientId: z.string().uuid().optional(),
   })
-  .refine((b) => b.text || b.image || b.macros || b.prescriptionId, {
-    message: 'provide text, image, macros, or a prescriptionId',
+  .refine((b) => b.text || b.image || b.macros || b.prescriptionId || b.savedMealId || b.barcode, {
+    message: 'provide text, image, macros, a prescriptionId, a savedMealId, or a barcode',
   });
 
 const dateQuery = z.object({
@@ -90,6 +94,7 @@ export async function mealRoutes(app: FastifyInstance): Promise<void> {
           parseMeal: client ? createMealParser(client) : null,
           photos: getPhotoStore(),
           quota: (kind) => consumeAiQuota(prisma, userId, kind),
+          barcode: { fetchProduct: fetchOpenFoodFacts },
         },
         userId,
         {
@@ -98,6 +103,9 @@ export async function mealRoutes(app: FastifyInstance): Promise<void> {
           loggedAt: input.loggedAt ? new Date(input.loggedAt) : undefined,
           macros: input.macros,
           prescriptionId: input.prescriptionId,
+          savedMealId: input.savedMealId,
+          barcode: input.barcode,
+          servings: input.servings,
           clientId: input.clientId,
         },
       );

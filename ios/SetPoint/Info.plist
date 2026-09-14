@@ -36,7 +36,7 @@
 		<string>x-apple-health</string>
 	</array>
 	<key>NSCameraUsageDescription</key>
-	<string>Take a photo of a meal to log it.</string>
+	<string>Take a photo of a meal or scan a barcode to log it.</string>
 	<key>NSHealthShareUsageDescription</key>
 	<string>SetPoint reads your height, weight, age and sex to set daily targets, and your body weight to track progress. Heart-rate variability and resting heart rate are optional: they may slightly adjust a check-in that is already due from a missed meal. They never diagnose under-fueling on their own.</string>
 	<key>NSPhotoLibraryUsageDescription</key>

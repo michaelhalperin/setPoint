@@ -11,6 +11,8 @@ function fakePrisma() {
   const checkIns: AnyRow[] = [];
   const escalationStates: AnyRow[] = [];
   const prescriptions: AnyRow[] = [];
+  const savedMeals: AnyRow[] = [];
+  const barcodeFoods: AnyRow[] = [];
   let seq = 0;
 
   const match = (row: AnyRow, where: AnyRow = {}): boolean =>
@@ -58,11 +60,13 @@ function fakePrisma() {
   });
 
   return {
-    __tables: { meals, checkIns, escalationStates, prescriptions },
+    __tables: { meals, checkIns, escalationStates, prescriptions, savedMeals, barcodeFoods },
     meal: coll(meals, 'm'),
     checkIn: coll(checkIns, 'ci'),
     escalationState: coll(escalationStates, 'es'),
     prescription: coll(prescriptions, 'rx'),
+    savedMeal: coll(savedMeals, 'sm'),
+    barcodeFood: coll(barcodeFoods, 'bf'),
   };
 }
 
@@ -198,6 +202,72 @@ describe('logMeal', () => {
     await expect(
       logMeal({ prisma: prisma as unknown as PrismaClient, parseMeal: parser }, 'u1', {}),
     ).rejects.toBeInstanceOf(EmptyMealError);
+  });
+
+  it('logs a saved meal without calling the parser and bumps useCount', async () => {
+    const prisma = fakePrisma();
+    prisma.__tables.savedMeals.push({
+      id: 'sm_1',
+      userId: 'u1',
+      name: 'Usual oats',
+      items: [{ name: 'Oats', quantity: '1 bowl', kcal: 420, proteinG: 18, carbsG: 60, fatG: 10 }],
+      kcal: 420,
+      proteinG: 18,
+      carbsG: 60,
+      fatG: 10,
+      useCount: 2,
+      lastUsedAt: null,
+    });
+    const spy = vi.fn(parser);
+    const res = await logMeal({ prisma: prisma as unknown as PrismaClient, parseMeal: spy }, 'u1', {
+      savedMealId: 'sm_1',
+      clientId: '7d3f1a52-51c2-4a39-9a7e-0f6c1f1f8b11',
+    });
+    expect(res.meal).toMatchObject({ kcal: 420, source: 'SAVED' });
+    expect(spy).not.toHaveBeenCalled();
+    expect(prisma.__tables.meals[0]).toMatchObject({ rawInput: 'Usual oats', parsedByAI: false });
+    expect(prisma.__tables.savedMeals[0]).toMatchObject({ useCount: 3 });
+  });
+
+  it('logs a barcode from cache without calling the parser', async () => {
+    const prisma = fakePrisma();
+    prisma.__tables.barcodeFoods.push({
+      code: '3017620422003',
+      name: 'Greek yogurt',
+      brand: 'Chobani',
+      servingG: 170,
+      kcal100g: 100,
+      proteinG100g: 10,
+      carbsG100g: 4,
+      fatG100g: 5,
+      fetchedAt: new Date(),
+    });
+    const spy = vi.fn(parser);
+    const fetchProduct = vi.fn(async () => null);
+    const res = await logMeal(
+      { prisma: prisma as unknown as PrismaClient, parseMeal: spy, barcode: { fetchProduct } },
+      'u1',
+      { barcode: '3017620422003', servings: 2 },
+    );
+    expect(res.meal.source).toBe('BARCODE');
+    expect(res.meal.kcal).toBe(340);
+    expect(spy).not.toHaveBeenCalled();
+    expect(fetchProduct).not.toHaveBeenCalled();
+    expect(prisma.__tables.meals[0]?.items).toMatchObject([{ name: 'Greek yogurt', quantity: '2 servings', kcal: 340 }]);
+  });
+
+  it('rejects an unknown barcode without parsing', async () => {
+    const prisma = fakePrisma();
+    const spy = vi.fn(parser);
+    await expect(
+      logMeal(
+        { prisma: prisma as unknown as PrismaClient, parseMeal: spy, barcode: { fetchProduct: async () => ({ status: 0 }) } },
+        'u1',
+        { barcode: '00000000' },
+      ),
+    ).rejects.toBeInstanceOf(EmptyMealError);
+    expect(spy).not.toHaveBeenCalled();
+    expect(prisma.__tables.meals).toHaveLength(0);
   });
 
   it('does not close a tier-3 conversation when an unrelated meal is logged', async () => {

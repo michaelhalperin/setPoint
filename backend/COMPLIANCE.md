@@ -32,7 +32,8 @@ Apple requires in-app account deletion for any app with account creation.
 
 - [x] `/privacy` and `/terms` describe observed meal behavior, not physiological
       certainty. Minimum age is 16. Medical eligibility includes uncertain
-      answers (passive tracking, no check-ins).
+      answers (passive tracking, no check-ins). Barcode lookups go to Open Food
+      Facts (barcode only); saved meals stay on the account.
 - [ ] App Store Connect privacy labels still need to be filed at submission.
 
 ## Safety screening

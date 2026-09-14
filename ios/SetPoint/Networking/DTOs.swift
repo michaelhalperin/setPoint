@@ -172,9 +172,13 @@ struct MealSummary: Decodable, Identifiable, Hashable {
         case "PHOTO": return "Photo"
         case "TEXT": return "Text"
         case "PRESCRIPTION": return "Check-in"
+        case "SAVED": return "My meal"
+        case "BARCODE": return "Scanned"
         default: return "Logged"
         }
     }
+
+    var isScanned: Bool { source == "BARCODE" }
 
     /// A stored photo's signed URL — load it through `MealPhotoCache`.
     var remotePhotoURL: URL? {
@@ -287,6 +291,11 @@ struct LogMealRequest: Encodable {
     var image: ImagePayload?
     var macros: Macros?
     var prescriptionId: String?
+    /// Log a named plate as-is — never AI-parsed.
+    var savedMealId: String? = nil
+    /// Cached / Open Food Facts barcode. Pair with `servings`.
+    var barcode: String? = nil
+    var servings: Double? = nil
     /// ISO timestamp for a meal eaten earlier (a missed meal time). Omitted = now.
     var loggedAt: String?
     /// Idempotency key for this log attempt (the offline queue retries with it).
@@ -533,6 +542,67 @@ struct SettingsPatch: Encodable {
         let label: String
         var source: String?
     }
+}
+
+struct SavedMealsResponse: Decodable {
+    let meals: [SavedMeal]
+    var slot: String? = nil
+}
+
+struct SavedMeal: Decodable, Identifiable, Hashable {
+    let id: String
+    let name: String
+    let items: [MealSummary.Item]
+    let kcal: Int
+    let proteinG: Double
+    let carbsG: Double
+    let fatG: Double
+    let suggestSlot: String?
+    let useInCheckIns: Bool
+    let lastUsedAt: String?
+    let useCount: Int
+    let suggested: Bool
+}
+
+struct SavedMealWrite: Encodable {
+    let name: String
+    let items: [MealCorrectionRequest.Item]
+    let suggestSlot: String?
+    let useInCheckIns: Bool
+}
+
+struct SavedMealResponse: Decodable {
+    let meal: SavedMeal
+}
+
+struct BarcodeFood: Decodable, Identifiable, Hashable {
+    var id: String { code }
+    let code: String
+    let name: String
+    let brand: String?
+    let servingG: Double?
+    let kcal100g: Double
+    let proteinG100g: Double
+    let carbsG100g: Double
+    let fatG100g: Double
+    let fetchedAt: String
+
+    func portion(servings: Double) -> (grams: Double, kcal: Int, proteinG: Double, carbsG: Double, fatG: Double) {
+        let serving = (servingG ?? 0) > 0 ? (servingG ?? 100) : 100
+        let grams = serving * servings
+        let factor = grams / 100
+        return (
+            grams,
+            Int((kcal100g * factor).rounded()),
+            (proteinG100g * factor * 10).rounded() / 10,
+            (carbsG100g * factor * 10).rounded() / 10,
+            (fatG100g * factor * 10).rounded() / 10
+        )
+    }
+}
+
+struct BarcodeFoodResponse: Decodable {
+    let food: BarcodeFood
 }
 
 struct DeleteAccountRequest: Encodable {

@@ -18,6 +18,7 @@ function makeFakePrisma(users: AnyRow[], opts: { seedFoods?: boolean } = {}) {
   const escalationStates: AnyRow[] = [];
   const escalationConversations: AnyRow[] = [];
   const meals: AnyRow[] = [];
+  const savedMeals: AnyRow[] = [];
   const pushTokens: AnyRow[] = [];
   const foodItems: AnyRow[] = [];
   const dietaryRestrictions: AnyRow[] = [];
@@ -101,6 +102,7 @@ function makeFakePrisma(users: AnyRow[], opts: { seedFoods?: boolean } = {}) {
       escalationConversations,
       prescriptions,
       pushTokens,
+      savedMeals,
     },
     user: {
       findMany: async ({ where, take }: { where?: AnyRow; take?: number } = {}) => {
@@ -115,6 +117,7 @@ function makeFakePrisma(users: AnyRow[], opts: { seedFoods?: boolean } = {}) {
     escalationState: collection(escalationStates, 'es'),
     escalationConversation: collection(escalationConversations, 'ec'),
     meal: collection(meals, 'm'),
+    savedMeal: collection(savedMeals, 'sm'),
     pushToken: collection(pushTokens, 'pt'),
     foodItem: collection(foodItems, 'fi'),
     dietaryRestriction: collection(dietaryRestrictions, 'dr'),
@@ -200,6 +203,33 @@ describe('runScoreConfidenceJob', () => {
 
     expect(summary.checkInsCreated).toBe(1);
     expect(summary.prescriptionsCreated).toBe(0);
+  });
+
+  it('uses a matching saved meal as the check-in suggestion', async () => {
+    const fake = makeFakePrisma([baseUser()]);
+    fake.__tables.savedMeals.push({
+      id: 'sm_oats',
+      userId: 'u1',
+      name: 'Usual oats',
+      suggestSlot: 'breakfast',
+      useInCheckIns: true,
+      items: [{ name: 'Oats', quantity: '1 bowl', kcal: 420, proteinG: 18, carbsG: 60, fatG: 10 }],
+      kcal: 420,
+      proteinG: 18,
+      carbsG: 60,
+      fatG: 10,
+      lastUsedAt: null,
+      useCount: 4,
+    });
+    const summary = await runScoreConfidenceJob({
+      prisma: fake as unknown as PrismaClient,
+      push,
+      voice,
+      now: NOW,
+    });
+    expect(summary.checkInsCreated).toBe(1);
+    expect(summary.prescriptionsCreated).toBe(1);
+    expect(fake.__tables.prescriptions[0]).toMatchObject({ totalKcal: 420, totalProteinG: 18 });
   });
 
   it('skips a user inside quiet hours without scoring', async () => {

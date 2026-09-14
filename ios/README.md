@@ -85,6 +85,9 @@ Screenshot a specific screen with sample data:
 ./ios/scripts/run.sh -uiStub onboarding-health # SCOFF / safety step
 ./ios/scripts/run.sh -uiStub onboarding-review # review + submit step
 ./ios/scripts/run.sh -uiStub prescription      # the full-screen check-in
+./ios/scripts/run.sh -uiStub log-quick         # log sheet with My meals + Recent
+./ios/scripts/run.sh -uiStub log-scan          # barcode product sheet
+./ios/scripts/run.sh -uiStub saved-meal        # saved-meal editor
 ./ios/scripts/run.sh -uiStub settings          # settings screen
 ./ios/scripts/run.sh -uiStub settlement        # 7-day settlement view
 ```
@@ -129,6 +132,7 @@ breakdown shows; the real numbers replace it, with "That's not what I ate —
 remove it" calling `DELETE /api/meals/:id`.
 
 Debug launch args for screenshots: `-uiStub log-meal`, `log-meal-result`,
+`log-quick`, `log-scan`, `saved-meal`,
 `conversation`, `conversation-resolved` (plus the earlier `home`, `prescription`,
 `settings`, `settlement`, `onboarding*`).
 
