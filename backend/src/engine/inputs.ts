@@ -3,8 +3,8 @@ import { hoursBetween } from './types.js';
 
 /**
  * Hours since the user's last logged meal. When they have never logged one,
- * falls back to their (capped) account age so a brand-new account cannot
- * immediately trip a check-in.
+ * falls back to their (capped) account age so a brand-new account cannot look
+ * endlessly overdue on the audit row / check-in copy.
  */
 export function deriveHoursSinceMeal(
   lastMealAt: Date | null,
@@ -16,19 +16,7 @@ export function deriveHoursSinceMeal(
   return Math.min(hoursBetween(accountCreatedAt, now), config.noMealFallbackHours);
 }
 
-/**
- * Hours since the user last logged anything. v1 treats "a log" as a meal entry;
- * when more interaction signals exist, pass the most recent of them here.
- */
-export function deriveHoursSinceLastLog(
-  lastLogAt: Date | null,
-  accountCreatedAt: Date,
-  now: Date,
-): number {
-  return hoursBetween(lastLogAt ?? accountCreatedAt, now);
-}
-
-/** Whether a BiosignalState is recent enough to feed Smart-mode scoring. */
+/** Whether a BiosignalState is recent enough to record on the audit row. */
 export function isBiosignalFresh(
   updatedAt: Date,
   now: Date,

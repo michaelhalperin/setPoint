@@ -162,32 +162,28 @@ and `User.appleRefreshToken` is populated).
 
 See [`COMPLIANCE.md`](./COMPLIANCE.md) for the App Store / privacy checklist.
 
-## Check-in timing (`src/engine/mealSchedule.ts`)
+## Check-in engine (`src/engine/`)
 
 A check-in is due at a usual meal time plus a grace period (45 min) when nothing
 has been logged for that meal, the day's target isn't met, and it's outside quiet
 hours — at most once per meal per day. `upcomingCheckIn()` is the same rule looking
-ahead, so `GET /api/home` can say when the next one would come. The weighted
-confidence formula below no longer decides when a check-in fires.
-
-## Confidence engine (`src/engine/`)
+ahead, so `GET /api/home` can say when the next one would come.
 
 Pure, deterministic, no model calls (plan §2, §7). `src/jobs/scoreConfidence.ts`
 is the only stateful layer — it maps DB rows onto the engine types and applies
-the results.
+the results. It still writes a `ConfidenceScore` audit row when a check-in fires
+(beta metrics read `confidenceScore.score`); that row is not what decides timing.
 
-| Module           | Responsibility                                                              |
-| ---------------- | -------------------------------------------------------------------------- |
-| `config.ts`      | The permanent formula's tunable weights + constants                        |
-| `confidence.ts`  | `computeConfidence()` — the weighted score, Smart falls back to Basic      |
-| `expectedGap.ts` | per-user expected inter-meal gap from their onboarding meal times          |
-| `quietHours.ts`  | timezone-aware quiet-hours window (Intl, no dependency)                    |
-| `eligibility.ts` | the pre-scoring gate (enforcement, pause, back-off, quiet hours, ...)      |
-| `escalation.ts`  | the defer → snooze → re-check → tier 1/2/3 → back-off state machine        |
-| `inputs.ts`      | deriving `hoursSinceMeal` / `loggingSilence` / biosignal freshness        |
+| Module            | Responsibility                                                              |
+| ----------------- | -------------------------------------------------------------------------- |
+| `mealSchedule.ts` | `dueCheckIn()` / `upcomingCheckIn()` — usual meal time + 45 min grace      |
+| `config.ts`       | snooze, TTL, defer/miss/tier-3, back-off, biosignal freshness              |
+| `quietHours.ts`   | timezone-aware quiet-hours window (Intl, no dependency)                    |
+| `eligibility.ts`  | the pre-scoring gate (enforcement, pause, back-off, quiet hours, ...)      |
+| `escalation.ts`   | the defer → snooze → re-check → tier 1/2/3 → back-off state machine        |
+| `inputs.ts`       | `hoursSinceMeal` (audit row) and biosignal freshness                       |
 
-Weights are v1 starting values, tuned only against beta data (§8) — the formula
-shape never changes. 47 unit tests: `pnpm --filter @setpoint/backend test`.
+Run the tests with `pnpm --filter @setpoint/backend test`.
 
 The check-in copy is behind an interface (`src/managerVoice/`) with a
 deterministic stub until `ANTHROPIC_API_KEY` exists (milestone 5).

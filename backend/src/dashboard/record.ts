@@ -3,9 +3,9 @@ import {
   SCHEDULE_CONFIG,
   SLOT_ORDER,
   slotWindowStart,
+  type MealTimes,
   type SlotName,
 } from '../engine/mealSchedule.js';
-import type { MealTimes } from '../engine/expectedGap.js';
 
 /**
  * The manager's record for the Week screen: per day and meal, whether the user

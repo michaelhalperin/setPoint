@@ -1,41 +1,16 @@
 /**
- * Confidence engine configuration.
- *
- * The FORMULA is permanent (plan §2, §7): a deterministic weighted sum, never a
- * model call, always auditable. Only these WEIGHTS and the surrounding constants
- * are tunable — and only against real beta data (§8), never by model judgement.
- *
- *   Smart: 0.5·biosignal + 0.3·(hoursSinceMeal / expectedGap) + 0.2·loggingSilence
- *   Basic:               0.6·(hoursSinceMeal / expectedGap) + 0.4·loggingSilence
- *
- * A check-in fires when confidence strictly exceeds `confidenceThreshold`.
+ * Engine configuration. Check-in timing lives in mealSchedule.ts (usual meal
+ * time + grace). These constants cover escalation, snooze, biosignal freshness
+ * for the audit row, and the hours-since-meal fallback used when nothing has
+ * been logged.
  */
 
-export const CONFIDENCE_WEIGHTS = {
-  smart: { biosignal: 0.5, mealGap: 0.3, silence: 0.2 },
-  basic: { mealGap: 0.6, silence: 0.4 },
-} as const;
-
 export const ENGINE_CONFIG = {
-  /** Check-in fires when confidence is strictly greater than this. */
-  confidenceThreshold: 0.7,
-
-  /** The meal-gap ratio (hoursSinceMeal / expectedGap) is clamped to this ceiling
-   *  so a very overdue meal still carries more weight than an exactly-due one,
-   *  without letting a single term dominate unboundedly. */
-  mealGapRatioCeiling: 1.5,
-
-  /** loggingSilence saturates to 1 after this many hours with nothing logged. */
-  silenceHorizonHours: 8,
-
   /** When the user has never logged a meal, hoursSinceMeal falls back to this
-   *  (capped account age) so a brand-new account cannot immediately fire. */
+   *  (capped account age) so a brand-new account cannot look endlessly overdue. */
   noMealFallbackHours: 16,
 
-  /** |z-score| of biosignal deviation at which the biosignal term saturates to 1. */
-  biosignalZFullScale: 2,
-
-  /** A BiosignalState older than this is ignored; Smart mode then scores as Basic. */
+  /** A BiosignalState older than this is ignored on the audit row. */
   biosignalMaxAgeHours: 6,
 
   /** Snooze length applied when the user defers a check-in. */

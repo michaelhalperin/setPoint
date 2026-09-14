@@ -1,7 +1,5 @@
 export * from './config.js';
 export * from './types.js';
-export * from './confidence.js';
-export * from './expectedGap.js';
 export * from './quietHours.js';
 export * from './time.js';
 export * from './inputs.js';

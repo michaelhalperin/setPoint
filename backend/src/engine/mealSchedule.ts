@@ -1,10 +1,15 @@
-import type { MealTimes } from './expectedGap.js';
-
 /**
  * When a check-in is due: a usual meal time plus a grace period, with nothing
  * logged for that meal and the day's target not yet met. Pure and deterministic
  * (§7) — the app shows the same schedule it runs on ("I'll check in at 13:45").
  */
+
+export type MealTimes = {
+  /** Minutes from local midnight. */
+  breakfastMin: number;
+  lunchMin: number;
+  dinnerMin: number;
+};
 
 export type SlotName = 'breakfast' | 'lunch' | 'dinner';
 
