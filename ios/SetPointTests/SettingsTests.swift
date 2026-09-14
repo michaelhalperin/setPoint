@@ -39,6 +39,15 @@ final class SettingsTests: XCTestCase {
         XCTAssertNil(json["mealTimes"])
     }
 
+    func testWeekendMealTimesEncodeExplicitNulls() throws {
+        let json = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: JSONEncoder().encode(WeekendMealTimesPayload.empty)) as? [String: Any]
+        )
+        XCTAssertEqual(json["breakfastMin"] as? NSNull, NSNull())
+        XCTAssertEqual(json["lunchMin"] as? NSNull, NSNull())
+        XCTAssertEqual(json["dinnerMin"] as? NSNull, NSNull())
+    }
+
     func testDeleteAccountRequestCarriesTheConfirmationPhrase() throws {
         let json = try XCTUnwrap(
             JSONSerialization.jsonObject(with: JSONEncoder().encode(DeleteAccountRequest())) as? [String: Any]

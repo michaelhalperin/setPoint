@@ -598,6 +598,14 @@ struct WeekendMealTimesPayload: Codable, Equatable {
 
     static let empty = WeekendMealTimesPayload(breakfastMin: nil, lunchMin: nil, dinnerMin: nil)
 
+    /// JSONEncoder omits nils by default, which the API rejects (`breakfastMin` etc. are required, null ok).
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(breakfastMin, forKey: .breakfastMin)
+        try c.encode(lunchMin, forKey: .lunchMin)
+        try c.encode(dinnerMin, forKey: .dinnerMin)
+    }
+
     func resolved(from weekdays: MealTimesPayload) -> MealTimesPayload {
         MealTimesPayload(
             breakfastMin: breakfastMin ?? weekdays.breakfastMin,
