@@ -40,6 +40,7 @@
 		5C2C73BA6DBBD160F71960E6 /* TokenStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87A7B143B2CF06863A727EC5 /* TokenStore.swift */; };
 		5CBD1DA8FA61AB27EF2F5F23 /* SetPointWidgetsBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59A5DF79076B600F6BF06497 /* SetPointWidgetsBundle.swift */; };
 		6525FA7E52886999CBF39D11 /* Fraunces-Italic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = A904DC9C092B7D3603075E01 /* Fraunces-Italic.ttf */; };
+		68C662A20CFA38C3DC99D29D /* GoalGraphics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FBD6573F65372C38D55EE1A /* GoalGraphics.swift */; };
 		6A372B8A8257F449EB6D653B /* PushTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D826278DC21A613702891DA1 /* PushTests.swift */; };
 		6B5F95997AD3DA7FD3C892FA /* SettingsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7549A2446F88FB282FAF3FE /* SettingsViewModel.swift */; };
 		6D94F5185B579414DC0888AC /* OnboardingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D5EBB067542BB4ED82F2416 /* OnboardingTests.swift */; };
@@ -160,6 +161,7 @@
 		69CD7B5DF412B5A16F78BDDE /* TodayTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayTests.swift; sourceTree = "<group>"; };
 		6B5888ECCC1D863A84318CA1 /* MealPhoto.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealPhoto.swift; sourceTree = "<group>"; };
 		6D57D01CD3323AC9AF1DB175 /* CrashReporting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrashReporting.swift; sourceTree = "<group>"; };
+		6FBD6573F65372C38D55EE1A /* GoalGraphics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoalGraphics.swift; sourceTree = "<group>"; };
 		710ED9EE39FE068431D74DB0 /* SetPointApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetPointApp.swift; sourceTree = "<group>"; };
 		72122AA0FFF3F9BD35A066C4 /* SetPointWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = SetPointWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		75E6AAF6106EF78152D6BCB7 /* OnboardingSteps.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingSteps.swift; sourceTree = "<group>"; };
@@ -299,6 +301,7 @@
 				6827E7745F7D8558E4078C9D /* Components.swift */,
 				1C42FED2C5BF3920628D76CB /* DayDial.swift */,
 				E087827D97886CF3572DF6AC /* Elevation.swift */,
+				6FBD6573F65372C38D55EE1A /* GoalGraphics.swift */,
 				ACBCF91741C03685136590B5 /* Haptics.swift */,
 				FA50138B8097773BBC7F74C3 /* Motion.swift */,
 				7936684A077EC94FC463DA02 /* OnboardingComponents.swift */,
@@ -647,6 +650,7 @@
 				F966AA38E828C45845FE35F9 /* DayDial.swift in Sources */,
 				1515C5462FAF3F0B4ECDB200 /* DeepLink.swift in Sources */,
 				06C546487C6FA154FBABC414 /* Elevation.swift in Sources */,
+				68C662A20CFA38C3DC99D29D /* GoalGraphics.swift in Sources */,
 				1D84EE987AEB8AC6F5ABFA9A /* Haptics.swift in Sources */,
 				F8132AA5435F1AE2BBF13367 /* HealthKitManager.swift in Sources */,
 				EA55542A09FC3324D9F8491C /* HomePreview.swift in Sources */,
