@@ -7,6 +7,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
         UNUserNotificationCenter.current().delegate = self
+        Task { @MainActor in PushManager.shared.registerCategories() }
         return true
     }
 
@@ -32,14 +33,20 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         [.banner, .sound]
     }
 
-    // A notification was tapped — deep-link to the check-in.
+    // A notification was tapped (deep-link to the check-in) or one of its
+    // buttons was pressed ("I ate this" / "In 1 hour" — answered in place).
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse
     ) async {
         let info = response.notification.request.content.userInfo
-        if let id = info["checkInId"] as? String {
+        guard let id = info["checkInId"] as? String else { return }
+        let prescriptionID = info["prescriptionId"] as? String
+        let action = response.actionIdentifier
+        if action == UNNotificationDefaultActionIdentifier {
             await MainActor.run { PushManager.shared.openCheckIn(id) }
+        } else {
+            await PushManager.shared.handleAction(action, checkInID: id, prescriptionID: prescriptionID)
         }
     }
 }

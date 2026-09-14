@@ -19,6 +19,38 @@ final class PushManager {
 
     private init() {}
 
+    /// The check-in notification's buttons. Both need the phone unlocked — they
+    /// call the API with the signed-in session.
+    static let checkInCategory = "CHECK_IN"
+    static let ateThisAction = "ATE_THIS"
+    static let snoozeHourAction = "SNOOZE_HOUR"
+
+    func registerCategories() {
+        let ate = UNNotificationAction(identifier: Self.ateThisAction, title: "I ate this", options: [.authenticationRequired])
+        let snooze = UNNotificationAction(identifier: Self.snoozeHourAction, title: "In 1 hour", options: [.authenticationRequired])
+        let category = UNNotificationCategory(identifier: Self.checkInCategory, actions: [ate, snooze], intentIdentifiers: [])
+        UNUserNotificationCenter.current().setNotificationCategories([category])
+    }
+
+    /// Answer a check-in straight from its notification. Falls back to opening it
+    /// when there's nothing to log or the call fails.
+    func handleAction(_ action: String, checkInID: String, prescriptionID: String?) async {
+        guard let api else { return openCheckIn(checkInID) }
+        do {
+            switch action {
+            case Self.ateThisAction:
+                guard let prescriptionID else { return openCheckIn(checkInID) }
+                try await CheckInActions.eat(prescriptionID: prescriptionID, api: api)
+            case Self.snoozeHourAction:
+                try await CheckInActions.snooze(checkInID: checkInID, minutes: 60, api: api)
+            default:
+                openCheckIn(checkInID)
+            }
+        } catch {
+            openCheckIn(checkInID)
+        }
+    }
+
     func syncAuthorizationStatus() async {
         authorizationStatus = await UNUserNotificationCenter.current()
             .notificationSettings().authorizationStatus
