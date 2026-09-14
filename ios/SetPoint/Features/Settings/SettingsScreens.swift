@@ -4,6 +4,7 @@ import UIKit
 // MARK: - Goal and pace
 
 struct GoalSettingsView: View {
+    @AppStorage(MassUnit.storageKey) private var massUnit = MassUnit.localeDefault
     @Bindable var model: SettingsViewModel
     @State private var editingTarget: DailyTargetField?
 
@@ -100,7 +101,7 @@ struct GoalSettingsView: View {
                     Text("Target weight").sectionLabelStyle()
                     Spacer()
                     if let current = model.currentWeightKg {
-                        Text("\(current.formatted(.number.precision(.fractionLength(1)))) kg now")
+                        Text("\(massUnit.formatKg(current)) now")
                             .font(Typography.data(13, weight: .bold))
                             .foregroundStyle(Palette.inkSoft)
                             .monospacedDigit()
@@ -128,18 +129,18 @@ struct GoalSettingsView: View {
             stepperButton("minus", delta: -1)
             Spacer()
             HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text(targetKg.formatted(.number.precision(.fractionLength(0))))
+                Text(massUnit.number(targetKg, digits: 0 ... 0))
                     .font(Typography.data(60, weight: .heavy))
                     .tracking(-2)
                     .monospacedDigit()
                     .foregroundStyle(Palette.ink)
                     .contentTransition(.numericText(value: targetKg))
-                Text("kg")
+                Text(massUnit.abbreviation)
                     .font(Typography.data(20, weight: .bold))
                     .foregroundStyle(Palette.inkFaint)
             }
             .accessibilityElement(children: .combine)
-            .accessibilityLabel("Target \(Int(targetKg.rounded())) kilograms")
+            .accessibilityLabel("Target \(massUnit.number(targetKg, digits: 0 ... 0)) \(massUnit.spokenName)")
             .accessibilityAdjustableAction { direction in
                 switch direction {
                 case .increment: nudge(1)
@@ -284,7 +285,7 @@ struct GoalSettingsView: View {
 
     private var curveStartLabel: String {
         if let current = model.currentWeightKg {
-            return "\(current.formatted(.number.precision(.fractionLength(0 ... 1)))) kg · now"
+            return "\(massUnit.number(current)) \(massUnit.abbreviation) · now"
         }
         return "Now"
     }
@@ -308,7 +309,7 @@ struct GoalSettingsView: View {
     private func nudge(_ delta: Double) {
         UISelectionFeedbackGenerator().selectionChanged()
         withAnimation(Motion.settle) {
-            model.targetWeightKg = min(350, max(25, (targetKg + delta).rounded()))
+            model.targetWeightKg = min(350, max(25, massUnit.nudge(kg: targetKg, by: delta)))
         }
     }
 
@@ -786,7 +787,7 @@ struct HealthSettingsView: View {
             LoopingPhase(period: 1.6, still: 0) { t in
                 Image(systemName: "heart.fill")
                     .font(.system(size: 26, weight: .semibold))
-                    .foregroundStyle(Color(hex: 0xFF8A73))
+                    .foregroundStyle(Palette.onInkHeart)
                     .frame(width: 56, height: 56)
                     .background(Palette.background.opacity(0.1), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                     .scaleEffect(1 + 0.08 * 0.5 * (1 - cos(t * 2 * .pi)))
@@ -804,7 +805,7 @@ struct HealthSettingsView: View {
             if env.health.connected {
                 Text(env.health.statusLine)
                     .font(Typography.data(12, weight: .bold))
-                    .foregroundStyle(Color(hex: 0xB9D3B1))
+                    .foregroundStyle(Palette.onInkPositive)
                     .padding(.horizontal, 11)
                     .padding(.vertical, 6)
                     .background(Palette.dayOnTrack.opacity(0.25), in: Capsule())
@@ -839,7 +840,7 @@ struct HealthSettingsView: View {
                 if let message = env.health.lastError {
                     Text(message)
                         .font(Typography.data(13))
-                        .foregroundStyle(Color(hex: 0xFF8A73))
+                        .foregroundStyle(Palette.onInkHeart)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }

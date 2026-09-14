@@ -62,8 +62,9 @@ enum GoalPace: String, CaseIterable, Identifiable {
     }
 
     func blurb(for goal: Goal) -> String {
-        let kg = kgPerWeek(for: goal)
-        return String(format: "%.2f kg/wk", kg)
+        let unit = MassUnit.current
+        let rate = unit.fromKg(kgPerWeek(for: goal))
+        return "\(rate.formatted(.number.precision(.fractionLength(unit == .lb ? 1 : 2)))) \(unit.abbreviation)/wk"
     }
 
     /// The pace whose rate is nearest a stored kg/week value.

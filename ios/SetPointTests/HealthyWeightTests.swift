@@ -4,6 +4,20 @@ import XCTest
 /// The healthy-weight floor on diet targets (BMI 18.5), mirrored from the backend.
 @MainActor
 final class HealthyWeightTests: XCTestCase {
+    private var savedUnit: String?
+
+    // Messages are in the user's unit; pin kg so the simulator's region can't change them.
+    override func setUp() {
+        super.setUp()
+        savedUnit = UserDefaults.standard.string(forKey: MassUnit.storageKey)
+        MassUnit.current = .kg
+    }
+
+    override func tearDown() {
+        UserDefaults.standard.set(savedUnit, forKey: MassUnit.storageKey)
+        super.tearDown()
+    }
+
     func testFloorMatchesTheBackendRounding() {
         XCTAssertEqual(HealthyWeight.minKg(heightCm: 175), 56.7)   // 18.5 × 1.75² = 56.66
         XCTAssertEqual(HealthyWeight.minKg(heightCm: 160), 47.4)   // 18.5 × 1.60² = 47.36

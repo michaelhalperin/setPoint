@@ -379,7 +379,7 @@ struct DayDial<Center: View>: View {
     }
 
     private var quietColor: Color {
-        theme == .terra ? Palette.ink.opacity(0.28) : Color(hex: 0xCDBFAE)
+        theme == .terra ? Palette.ink.opacity(0.28) : Palette.quietArc
     }
 
     private var faceColor: Color {

@@ -68,19 +68,19 @@ export function suggestTargetAdaptation(input: AdaptInput): AdaptSuggestion | nu
   if (input.goal === 'BULK') {
     if (drift < -0.1) {
       delta = clampStep(Math.round((-drift * 7700) / 7));
-      reason = `Weight rose ${fmt(trendKgPerWeek)} kg/week over ${Math.round(spanDays)} days, slower than the planned ${fmt(expected)} kg/week.`;
+      reason = `Over ${Math.round(spanDays)} days you're gaining slower than planned.`;
     } else if (drift > 0.25) {
       delta = -clampStep(Math.round((drift * 7700) / 7));
-      reason = `Weight rose ${fmt(trendKgPerWeek)} kg/week — faster than planned. A small cut keeps the pace honest.`;
+      reason = `You're gaining faster than planned. A small cut keeps the pace steady.`;
     }
   } else {
     // DIET: trend should be negative. Faster loss than planned → ease the cut.
     if (drift < -0.15) {
       delta = clampStep(Math.round((-drift * 7700) / 7));
-      reason = `Weight fell ${fmt(-trendKgPerWeek)} kg/week — faster than planned. Easing the target is safer.`;
+      reason = `You're losing faster than planned. Easing the cut is safer.`;
     } else if (drift > 0.1) {
       delta = -clampStep(Math.round((drift * 7700) / 7));
-      reason = `Weight moved ${fmt(trendKgPerWeek)} kg/week over ${Math.round(spanDays)} days, slower than the planned ${fmt(expected)} kg/week.`;
+      reason = `Over ${Math.round(spanDays)} days you're losing slower than planned.`;
     }
   }
 
@@ -120,8 +120,4 @@ function linearKgPerWeek(samples: WeightSample[]): number {
 function clampStep(n: number): number {
   const mag = Math.min(ADAPT_CONFIG.maxKcalStep, Math.max(ADAPT_CONFIG.minKcalStep, Math.abs(n)));
   return n < 0 ? -mag : mag;
-}
-
-function fmt(n: number): string {
-  return (Math.round(Math.abs(n) * 100) / 100).toString();
 }

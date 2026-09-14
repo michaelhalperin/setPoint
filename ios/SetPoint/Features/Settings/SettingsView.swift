@@ -4,7 +4,7 @@ import SwiftUI
 struct SettingsView: View {
     @Environment(AppEnvironment.self) private var env
     @State private var model: SettingsViewModel?
-    @State private var massUnit = MassUnit.current
+    @AppStorage(MassUnit.storageKey) private var massUnit = MassUnit.localeDefault
     #if DEBUG
     @State private var showingDevOnboarding = false
     @State private var showingDevMealConfirm = false
@@ -91,7 +91,6 @@ struct SettingsView: View {
                     rowDivider
                     Button {
                         massUnit = massUnit == .kg ? .lb : .kg
-                        MassUnit.current = massUnit
                     } label: {
                         YouRow(symbol: "scalemass", title: "Units", value: massUnit.title)
                     }
@@ -223,7 +222,7 @@ struct SettingsView: View {
                         planMetric("\(protein) g", label: "protein")
                     }
                     if let current = model.currentWeightKg, model.goal.hasWeightTarget {
-                        planMetric(current.formatted(.number.precision(.fractionLength(1))), label: "kg now")
+                        planMetric(massUnit.number(current, digits: 1 ... 1), label: "\(massUnit.abbreviation) now")
                     }
                     Spacer(minLength: 0)
                 }
@@ -331,7 +330,7 @@ struct SettingsView: View {
         guard model.goal.hasWeightTarget, let target = model.targetWeightKg else {
             return "Hold steady"
         }
-        return "\(model.goal.directionVerb) \(Int(target.rounded())) kg"
+        return "\(model.goal.directionVerb) \(massUnit.formatKg(target, digits: 0))"
     }
 
     private func planProgress(_ model: SettingsViewModel) -> Double? {

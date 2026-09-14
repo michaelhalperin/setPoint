@@ -26,7 +26,8 @@ enum HealthyWeight {
     }
 
     static func floorMessage(_ floor: Double) -> String {
-        "The lowest target I'll set for your height is \(floor.formatted(.number.precision(.fractionLength(0 ... 1)))) kg."
+        let unit = MassUnit.current
+        return "The lowest target I'll set for your height is \(unit.number(floor)) \(unit.abbreviation)."
     }
 }
 
@@ -150,7 +151,10 @@ enum SafetyQuestion: Int, CaseIterable {
         case .medical: return "Do you have a medical condition that affects how you should eat — including eating under a doctor’s or dietitian’s care?"
         case .makeSelfSick: return "Do you make yourself sick because you feel uncomfortably full?"
         case .lostControl: return "Do you worry you have lost control over how much you eat?"
-        case .lostOneStone: return "Have you recently lost more than 6 kg in a three-month period?"
+        case .lostOneStone:
+            // SCOFF's "one stone": 6.35 kg / 14 lb.
+            let amount = MassUnit.current == .lb ? "14 lb" : "6 kg"
+            return "Have you recently lost more than \(amount) in a three-month period?"
         case .believesFat: return "Do you believe yourself to be fat when others say you are too thin?"
         case .foodDominates: return "Would you say that food dominates your life?"
         }

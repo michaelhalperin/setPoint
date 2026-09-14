@@ -75,7 +75,7 @@ struct MiniDayDial: View {
             let c = CGPoint(x: size.width / 2, y: size.height / 2)
             let r = min(size.width, size.height) / 2 - 5
             let ring = Path(ellipseIn: CGRect(x: c.x - r, y: c.y - r, width: r * 2, height: r * 2))
-            context.stroke(ring, with: .color(today ? Palette.accentSoft : Color(hex: 0xE4D9CA)), lineWidth: 3.5)
+            context.stroke(ring, with: .color(today ? Palette.accentSoft : Palette.idleRing), lineWidth: 3.5)
 
             for (index, minute) in [480, 780, 1140].enumerated() {
                 let angle = Double(minute) / 1440 * 2 * .pi
@@ -114,7 +114,7 @@ struct RecordCard: View {
                     .foregroundStyle(Palette.background)
                 Text(record.checkIns == 0 ? "You kept your own rhythm." : "You logged after \(record.afterCheckIn) of them.")
                     .font(Typography.voiceItalic(28))
-                    .foregroundStyle(Color(hex: 0xFFE3D3))
+                    .foregroundStyle(Palette.onAccentVoice)
             }
             .fixedSize(horizontal: false, vertical: true)
 
@@ -217,18 +217,19 @@ struct WeightTrendCard: View {
     let onWeighIn: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @AppStorage(MassUnit.storageKey) private var massUnit = MassUnit.localeDefault
     @State private var drawn: CGFloat = 0
 
     var body: some View {
         VStack(alignment: .leading, spacing: Space.sm) {
             HStack(alignment: .firstTextBaseline) {
                 HStack(alignment: .firstTextBaseline, spacing: 5) {
-                    Text(goal.currentWeightKg.map(oneDecimal) ?? "—")
+                    Text(goal.currentWeightKg.map { massUnit.number($0, digits: 1 ... 1) } ?? "—")
                         .font(Typography.data(36, weight: .heavy))
                         .foregroundStyle(Palette.ink)
                         .monospacedDigit()
                         .contentTransition(.numericText())
-                    Text("kg")
+                    Text(massUnit.abbreviation)
                         .font(Typography.data(15, weight: .semibold))
                         .foregroundStyle(Palette.inkFaint)
                 }
@@ -267,11 +268,11 @@ struct WeightTrendCard: View {
             }
 
             HStack {
-                Text(goal.startWeightKg.map { MassUnit.current.formatKg($0) } ?? "Start")
+                Text(goal.startWeightKg.map { massUnit.formatKg($0) } ?? "Start")
                     .foregroundStyle(Palette.inkFaint)
                 Spacer()
                 if let remaining = goal.remainingKg, let target = goal.targetWeightKg, goal.status != "reached" {
-                    Text("\(MassUnit.current.formatKg(remaining)) to \(MassUnit.current.formatKg(target))")
+                    Text("\(massUnit.formatKg(remaining)) to \(massUnit.formatKg(target))")
                         .foregroundStyle(Palette.ink)
                 }
             }
@@ -393,6 +394,17 @@ struct TargetReviewCard: View {
     let onAccept: () -> Void
     let onLater: () -> Void
 
+    @AppStorage(MassUnit.storageKey) private var massUnit = MassUnit.localeDefault
+
+    /// "gaining 0.1 lb a week" — the server sends kg, shown in the user's unit.
+    private var trendLine: String {
+        let rate = massUnit.fromKg(abs(review.trendKgPerWeek))
+        let digits = massUnit == .lb ? 1 : 2
+        let amount = "\(rate.formatted(.number.precision(.fractionLength(digits)))) \(massUnit.abbreviation) a week"
+        if rate < 0.005 { return "weight holding steady" }
+        return review.trendKgPerWeek > 0 ? "gaining \(amount)" : "losing \(amount)"
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Target review").sectionLabelStyle()
@@ -403,7 +415,7 @@ struct TargetReviewCard: View {
                 .font(Typography.data(14))
                 .foregroundStyle(Palette.inkSoft)
                 .fixedSize(horizontal: false, vertical: true)
-            Text("Based on \(review.weighInCount) weigh-ins, \(review.trendKgPerWeek.formatted(.number.precision(.fractionLength(2)))) kg/week.")
+            Text("Based on \(review.weighInCount) weigh-ins · \(trendLine)")
                 .font(Typography.data(13))
                 .foregroundStyle(Palette.inkFaint)
             HStack(spacing: 8) {

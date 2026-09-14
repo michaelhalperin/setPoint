@@ -136,7 +136,7 @@ struct SettlementView: View {
         .alert("Target reached", isPresented: reachedBinding(model)) {
             Button("OK") { model.reachedGoalTarget = nil }
         } message: {
-            Text("\(oneDp(model.reachedGoalTarget ?? 0)) kg reached. Maintenance is now active.")
+            Text("\(MassUnit.current.formatKg(model.reachedGoalTarget ?? 0)) reached. Maintenance is now active.")
         }
     }
 

@@ -123,7 +123,7 @@ private struct PageDots: View {
         HStack(spacing: 6) {
             ForEach(0 ..< count, id: \.self) { index in
                 Capsule()
-                    .fill(index == current ? Palette.accent : Color(hex: 0xDDD3C6))
+                    .fill(index == current ? Palette.accent : Palette.idleRing)
                     .frame(width: index == current ? 22 : 6, height: 6)
             }
         }

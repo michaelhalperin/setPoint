@@ -35,7 +35,8 @@ describe('suggestTargetAdaptation', () => {
     expect(r).not.toBeNull();
     expect(r!.proposedKcal - r!.previousKcal).toBeGreaterThanOrEqual(ADAPT_CONFIG.minKcalStep);
     expect(r!.proposedKcal - r!.previousKcal).toBeLessThanOrEqual(ADAPT_CONFIG.maxKcalStep);
-    expect(r!.reason).toMatch(/slower than the planned/i);
+    expect(r!.reason).toMatch(/slower than planned/i);
+    expect(r!.reason).not.toMatch(/kg/);
   });
 
   it('never auto-applies — it only returns a suggestion', () => {

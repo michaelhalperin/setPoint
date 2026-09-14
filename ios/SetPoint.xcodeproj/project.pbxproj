@@ -62,6 +62,7 @@
 		95CD52B41C432324EF56E83B /* HomeViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EFB517EFB36132E4ED9E74E /* HomeViewModel.swift */; };
 		9878761462D8114645F21FB4 /* ConversationViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B975D8AD90E038FB0E7082D6 /* ConversationViewModel.swift */; };
 		9B0C59C6A3F3D67DA3DD2DB7 /* APIConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B48D8D6E1339295933EFC28 /* APIConfig.swift */; };
+		9BFF374841C89CA935F78B0A /* MassUnitTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B9A434B0F6DB211B7FFFBF7 /* MassUnitTests.swift */; };
 		9C07678D8D87D62BEE19D4E6 /* Fraunces-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 0A514773AC47B6B837D1A84F /* Fraunces-Medium.ttf */; };
 		9F0D1EC76A037AFE96546243 /* LogMealTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AEEC804F40BC95701983A78 /* LogMealTests.swift */; };
 		A1E337DF032F197F35D4D31B /* PrescriptionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC5D2AA52B39239A03B631E7 /* PrescriptionView.swift */; };
@@ -170,6 +171,7 @@
 		6827E7745F7D8558E4078C9D /* Components.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components.swift; sourceTree = "<group>"; };
 		69CD7B5DF412B5A16F78BDDE /* TodayTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayTests.swift; sourceTree = "<group>"; };
 		6B5888ECCC1D863A84318CA1 /* MealPhoto.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealPhoto.swift; sourceTree = "<group>"; };
+		6B9A434B0F6DB211B7FFFBF7 /* MassUnitTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MassUnitTests.swift; sourceTree = "<group>"; };
 		6D57D01CD3323AC9AF1DB175 /* CrashReporting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrashReporting.swift; sourceTree = "<group>"; };
 		6FBD6573F65372C38D55EE1A /* GoalGraphics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoalGraphics.swift; sourceTree = "<group>"; };
 		7021ED198E64F06CF3DED7DD /* HealthKitManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitManagerTests.swift; sourceTree = "<group>"; };
@@ -311,6 +313,7 @@
 				7021ED198E64F06CF3DED7DD /* HealthKitManagerTests.swift */,
 				164B6BA9F86C99092FEC618E /* HealthyWeightTests.swift */,
 				8AEEC804F40BC95701983A78 /* LogMealTests.swift */,
+				6B9A434B0F6DB211B7FFFBF7 /* MassUnitTests.swift */,
 				306DD98DE1DE503E86CEB6DD /* MotionTests.swift */,
 				E386E3A32DE63D1A145C81BA /* OfflineMealQueueTests.swift */,
 				3D5EBB067542BB4ED82F2416 /* OnboardingTests.swift */,
@@ -771,6 +774,7 @@
 				6557D90382A31A210B260EA5 /* HealthKitManagerTests.swift in Sources */,
 				7208B8BA780CC1686F09C978 /* HealthyWeightTests.swift in Sources */,
 				9F0D1EC76A037AFE96546243 /* LogMealTests.swift in Sources */,
+				9BFF374841C89CA935F78B0A /* MassUnitTests.swift in Sources */,
 				3ED98D31B3CAEA9D98194499 /* MotionTests.swift in Sources */,
 				D4936AF39D9B12A642403907 /* OfflineMealQueueTests.swift in Sources */,
 				6D94F5185B579414DC0888AC /* OnboardingTests.swift in Sources */,

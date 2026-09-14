@@ -22,6 +22,22 @@ enum Palette {
     static let accent = Color(hex: 0xD5613A)
     static let accentDeep = Color(uiColor: .setPointAccentDeep)
 
+    // Accents drawn on an ink card (which turns light in dark mode).
+    static let onInkHeart = Color(uiColor: .setPointOnInkHeart)
+    static let onInkPositive = Color(uiColor: .setPointOnInkPositive)
+    /// The italic second voice on a terracotta card.
+    static let onAccentVoice = Color(uiColor: .setPointOnAccentVoice)
+
+    // Quiet decorative strokes and fills.
+    static let idleRing = Color(uiColor: .setPointIdleRing)
+    static let quietArc = Color(uiColor: .setPointQuietArc)
+    static let stackedCardNear = Color(uiColor: .setPointStackedCardNear)
+    static let stackedCardFar = Color(uiColor: .setPointStackedCardFar)
+
+    /// Illustrations of the system lock screen stay dark in both appearances.
+    static let lockScreenInk = Color(hex: 0x2B2622)
+    static let lockScreenText = Color(hex: 0xFBF6F0)
+
     static let dayOnTrack = Color(hex: 0x6E8A67)
     static let dayUnder = accent
     static let dayOver = Color(uiColor: .setPointDayOver)
@@ -77,4 +93,11 @@ private extension UIColor {
     static let setPointAccentDeep = adaptive(light: 0x9E4023, dark: 0xE08A6A)
     static let setPointDayOver = adaptive(light: 0xC3B8A8, dark: 0x6E655A)
     static let setPointDayMissed = adaptive(light: 0xD8CFC2, dark: 0x4A433C)
+    static let setPointOnInkHeart = adaptive(light: 0xFF8A73, dark: 0xD5613A)
+    static let setPointOnInkPositive = adaptive(light: 0xB9D3B1, dark: 0x4F7A47)
+    static let setPointOnAccentVoice = adaptive(light: 0xFFE3D3, dark: 0x4A2418)
+    static let setPointIdleRing = adaptive(light: 0xE4D9CA, dark: 0x4A433C)
+    static let setPointQuietArc = adaptive(light: 0xCDBFAE, dark: 0x5A5148)
+    static let setPointStackedCardNear = adaptive(light: 0xF1E8DC, dark: 0x3A332D)
+    static let setPointStackedCardFar = adaptive(light: 0xE9DFD1, dark: 0x302A25)
 }

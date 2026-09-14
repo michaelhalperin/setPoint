@@ -102,6 +102,7 @@ private struct GoalTile: View {
 struct AboutStep: View {
     @Bindable var model: OnboardingViewModel
     @Environment(AppEnvironment.self) private var env
+    @AppStorage(MassUnit.storageKey) private var massUnit = MassUnit.localeDefault
 
     enum Field: String, Identifiable {
         case height, weight, age, activity
@@ -132,7 +133,7 @@ struct AboutStep: View {
 
             LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
                 statTile("Height", value: model.draft.heightCm.map { "\(Int($0.rounded()))" }, unit: "cm") { editing = .height }
-                statTile("Weight", value: model.draft.weightKg.map { $0.formatted(.number.precision(.fractionLength(0 ... 1))) }, unit: "kg") { editing = .weight }
+                statTile("Weight", value: model.draft.weightKg.map { massUnit.number($0) }, unit: massUnit.abbreviation) { editing = .weight }
                 statTile("Age", value: "\(model.draft.age)", unit: "yrs") { editing = .age }
                 sexTile
             }
@@ -168,7 +169,7 @@ struct AboutStep: View {
                     } else {
                         Image(systemName: health == .filled ? "checkmark" : "heart.fill")
                             .font(.system(size: 19, weight: .semibold))
-                            .foregroundStyle(health == .filled ? Palette.background : Color(hex: 0xFF8A73))
+                            .foregroundStyle(health == .filled ? Palette.background : Palette.onInkHeart)
                     }
                 }
                 .frame(width: 46, height: 46)
@@ -327,7 +328,7 @@ struct AboutStep: View {
         case .height:
             rulerSheet("Height", value: optionalBinding(\.heightCm, default: 170), range: 120 ... 230, unit: "cm")
         case .weight:
-            rulerSheet("Weight", value: optionalBinding(\.weightKg, default: 70), range: 35 ... 250, unit: "kg")
+            weightSheet
         case .age:
             VStack(spacing: Space.md) {
                 Text("Birthday").sectionLabelStyle()
@@ -355,6 +356,27 @@ struct AboutStep: View {
             .padding(.top, Space.xs)
             .presentationDetents([.large])
         }
+    }
+
+    /// Weight in the user's unit, with a switch — stored in kg either way.
+    private var weightSheet: some View {
+        VStack(spacing: Space.md) {
+            HStack {
+                Text("Weight").sectionLabelStyle()
+                Spacer()
+                SegmentedPills(options: MassUnit.allCases, selection: $massUnit, title: { $0.abbreviation })
+                    .frame(width: 120)
+            }
+            RulerPicker(
+                value: massUnit.binding(kg: optionalBinding(\.weightKg, default: 70)),
+                range: massUnit.range(kg: 35 ... 250),
+                unit: massUnit.abbreviation
+            )
+            ActionButton(title: "Done") { editing = nil }
+        }
+        .padding(Space.gutter)
+        .presentationDetents([.height(340)])
+        .onAppear { model.draft.weightKg = model.draft.weightKg ?? 70 } // commit the default if unset
     }
 
     private func rulerSheet(_ title: String, value: Binding<Double>, range: ClosedRange<Double>, unit: String) -> some View {
@@ -396,6 +418,7 @@ private struct TileBackground: ViewModifier {
 /// Target weight + pace. Skipped for Maintain.
 struct TargetStep: View {
     @Bindable var model: OnboardingViewModel
+    @AppStorage(MassUnit.storageKey) private var massUnit = MassUnit.localeDefault
 
     private var goal: Goal { model.draft.goal ?? .bulk }
     private var target: Double { model.draft.targetWeightKg ?? (model.draft.weightKg ?? 70) }
@@ -412,17 +435,17 @@ struct TargetStep: View {
                 stepperButton("minus", delta: -1)
                 Spacer()
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text(target.formatted(.number.precision(.fractionLength(0 ... 1))))
+                    Text(massUnit.number(target))
                         .font(Typography.data(80, weight: .bold))
                         .monospacedDigit()
                         .contentTransition(.numericText(value: target))
                         .foregroundStyle(Palette.ink)
-                    Text("kg")
+                    Text(massUnit.abbreviation)
                         .font(Typography.data(22, weight: .semibold))
                         .foregroundStyle(Palette.inkFaint)
                 }
                 .accessibilityElement(children: .combine)
-                .accessibilityLabel("Target \(Int(target.rounded())) kilograms")
+                .accessibilityLabel("Target \(massUnit.number(target, digits: 0 ... 0)) \(massUnit.spokenName)")
                 .accessibilityAdjustableAction { direction in
                     switch direction {
                     case .increment: nudge(1)
@@ -491,8 +514,7 @@ struct TargetStep: View {
     }
 
     private var startLabel: String {
-        let weight = (model.draft.weightKg ?? 0).formatted(.number.precision(.fractionLength(0 ... 1)))
-        return "\(weight) kg · now"
+        "\(massUnit.number(model.draft.weightKg ?? 0)) \(massUnit.abbreviation) · now"
     }
 
     private func stepperButton(_ symbol: String, delta: Double) -> some View {
@@ -510,7 +532,7 @@ struct TargetStep: View {
     private func nudge(_ delta: Double) {
         UISelectionFeedbackGenerator().selectionChanged()
         withAnimation(Motion.settle) {
-            model.draft.targetWeightKg = min(350, max(25, (target + delta).rounded()))
+            model.draft.targetWeightKg = min(350, max(25, massUnit.nudge(kg: target, by: delta)))
         }
     }
 

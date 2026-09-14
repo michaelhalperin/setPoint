@@ -17,10 +17,10 @@ struct SafetyStep: View {
 
             ZStack {
                 if remainingBehind >= 2 {
-                    backCard(color: Color(hex: 0xE9DFD1), rotation: -4, y: 22, scale: 0.9)
+                    backCard(color: Palette.stackedCardFar, rotation: -4, y: 22, scale: 0.9)
                 }
                 if remainingBehind >= 1 {
-                    backCard(color: Color(hex: 0xF1E8DC), rotation: 3, y: 11, scale: 0.95)
+                    backCard(color: Palette.stackedCardNear, rotation: 3, y: 11, scale: 0.95)
                 }
                 frontCard
                     .id(model.safetyIndex)
