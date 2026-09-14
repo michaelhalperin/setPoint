@@ -1,3 +1,4 @@
+import type { SlotName } from '../engine/mealSchedule.js';
 import type { FramingState } from './classify.js';
 
 /**
@@ -5,10 +6,10 @@ import type { FramingState } from './classify.js';
  * slots (what's logged, what's due now, what passed with nothing logged), where
  * "now" sits, and whether intake is keeping pace with their usual rhythm.
  *
- * Pure. Presentation math only — it never feeds the confidence engine, which
- * keeps its own deterministic formula (§2).
+ * Pure. Presentation math only — when check-ins fire is decided by
+ * `engine/mealSchedule.ts`.
  */
-export type SlotName = 'breakfast' | 'lunch' | 'dinner';
+export type { SlotName };
 export type SlotState = 'logged' | 'now' | 'missed' | 'upcoming';
 
 export type DaySlotView = {
