@@ -181,10 +181,13 @@ model OnboardingProfile {
 
   // Weight goal (§5.1, M16). BULK/DIET carry a target and a pace; MAINTAIN
   // neither. `paceKgPerWeek` is an unsigned magnitude — direction is the goal.
-  startWeightKg  Float?
-  targetWeightKg Float?
-  paceKgPerWeek  Float     @default(0.25)
-  goalStartedAt  DateTime?
+  // `preferredDurationWeeks` is the user's timeframe; pace is derived from it
+  // and then clamped so a short ask never outruns the safety caps.
+  startWeightKg           Float?
+  targetWeightKg          Float?
+  paceKgPerWeek           Float     @default(0.25)
+  preferredDurationWeeks  Int?
+  goalStartedAt           DateTime?
 
   // Target snapshot; recomputed when stats, goal, target, or pace change.
   dailyKcalTarget     Int

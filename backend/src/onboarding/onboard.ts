@@ -4,9 +4,10 @@ import { normalizeToken } from '../solver/exclusions.js';
 import {
   ageFromBirthDate,
   assertHealthyTarget,
-  clampPaceKgPerWeek,
   computeCalorieTarget,
   computeProteinTarget,
+  remainingKg,
+  resolveGoalPace,
   type ActivityLevel,
   type Sex,
 } from './targets.js';
@@ -31,6 +32,8 @@ export type OnboardingInput = {
   /** Weight goal (M16). Ignored for MAINTAIN. Pace is an unsigned kg/week. */
   targetWeightKg?: number;
   paceKgPerWeek?: number;
+  /** User's timeframe in weeks. When set with a remaining gap, pace is derived from it. */
+  preferredDurationWeeks?: number;
 
   /** Explicit override; otherwise computed from stats. Required when stats are absent. */
   dailyKcalTarget?: number;
@@ -52,6 +55,7 @@ export type OnboardingResult = {
   dailyProteinTargetG: number | null;
   targetWeightKg: number | null;
   paceKgPerWeek: number;
+  preferredDurationWeeks: number | null;
   enforcementEnabled: boolean;
   enforcementDisabledReason: string | null;
 };
@@ -74,10 +78,19 @@ export async function runOnboarding(
     input.weightKg != null && input.heightCm != null && input.birthDate != null && input.activityLevel != null;
 
   // Weight goal (M16): a clamped pace drives the surplus/deficit; MAINTAIN and
-  // an unset goal weight leave it neutral.
-  const paceKgPerWeek = clampPaceKgPerWeek(input.goal, input.weightKg ?? null, input.paceKgPerWeek ?? 0.25);
+  // an unset goal weight leave it neutral. A user timeframe, when present,
+  // wins over the raw kg/week and is snapped to the honest (capped) ETA.
   const targetWeightKg =
     input.goal === 'MAINTAIN' ? null : (input.targetWeightKg ?? null);
+  const resolved = resolveGoalPace({
+    goal: input.goal,
+    weightKg: input.weightKg ?? null,
+    remainingKg: remainingKg(input.goal, input.weightKg ?? null, targetWeightKg),
+    preferredDurationWeeks: input.preferredDurationWeeks,
+    paceKgPerWeek: input.paceKgPerWeek ?? 0.25,
+  });
+  const paceKgPerWeek = resolved.paceKgPerWeek;
+  const preferredDurationWeeks = resolved.preferredDurationWeeks;
   // Safety floor: never set a diet target below a healthy weight for the height.
   assertHealthyTarget(input.goal, targetWeightKg, input.heightCm);
   const startWeightKg = input.goal === 'MAINTAIN' ? null : (input.weightKg ?? null);
@@ -131,6 +144,7 @@ export async function runOnboarding(
         startWeightKg,
         targetWeightKg,
         paceKgPerWeek,
+        preferredDurationWeeks,
         goalStartedAt,
         dailyKcalTarget,
         dailyProteinTargetG,
@@ -147,6 +161,7 @@ export async function runOnboarding(
         startWeightKg,
         targetWeightKg,
         paceKgPerWeek,
+        preferredDurationWeeks,
         goalStartedAt,
         dailyKcalTarget,
         dailyProteinTargetG,
@@ -213,6 +228,7 @@ export async function runOnboarding(
     dailyProteinTargetG,
     targetWeightKg,
     paceKgPerWeek,
+    preferredDurationWeeks,
     enforcementEnabled: enforcement.enforcementEnabled,
     enforcementDisabledReason: enforcement.enforcementDisabledReason,
   };

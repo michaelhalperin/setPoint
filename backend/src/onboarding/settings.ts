@@ -3,7 +3,7 @@ import type { Goal } from '../engine/types.js';
 import { normalizeToken } from '../solver/exclusions.js';
 import { OnboardingIncompleteError } from '../dashboard/home.js';
 import { deriveTargets } from './recompute.js';
-import { assertHealthyTarget, clampPaceKgPerWeek, minHealthyWeightKg } from './targets.js';
+import { assertHealthyTarget, minHealthyWeightKg, remainingKg, resolveGoalPace } from './targets.js';
 
 export type SettingsView = {
   goal: Goal;
@@ -13,6 +13,7 @@ export type SettingsView = {
   dailyProteinTargetG: number | null;
   targetWeightKg: number | null;
   paceKgPerWeek: number;
+  preferredDurationWeeks: number | null;
   startWeightKg: number | null;
   currentWeightKg: number | null;
   heightCm: number | null;
@@ -28,8 +29,10 @@ export type SettingsView = {
 
 export type SettingsPatch = {
   goal?: Goal;
+  mode?: 'BASIC' | 'SMART';
   targetWeightKg?: number | null;
   paceKgPerWeek?: number;
+  preferredDurationWeeks?: number | null;
   dailyKcalTarget?: number;
   dailyProteinTargetG?: number | null;
   mealTimes?: { breakfastMin: number; lunchMin: number; dinnerMin: number };
@@ -67,13 +70,17 @@ export async function updateSettings(
     const goalChanged = patch.goal != null && patch.goal !== profile.goal;
     const nextGoal = (patch.goal ?? profile.goal) as Goal;
     const weightGoalTouched =
-      goalChanged || patch.targetWeightKg !== undefined || patch.paceKgPerWeek !== undefined;
+      goalChanged ||
+      patch.targetWeightKg !== undefined ||
+      patch.paceKgPerWeek !== undefined ||
+      patch.preferredDurationWeeks !== undefined;
 
     if (weightGoalTouched) {
       if (nextGoal === 'MAINTAIN') {
         profileData.goal = 'MAINTAIN';
         profileData.targetWeightKg = null;
         profileData.paceKgPerWeek = 0;
+        profileData.preferredDurationWeeks = null;
         profileData.goalStartedAt = null;
       } else {
         const latest = await tx.weightEntry.findFirst({
@@ -81,11 +88,6 @@ export async function updateSettings(
           orderBy: { measuredAt: 'desc' },
         });
         const currentWeight = latest?.weightKg ?? profile.weightKg ?? null;
-        const pace = clampPaceKgPerWeek(
-          nextGoal,
-          currentWeight,
-          patch.paceKgPerWeek ?? profile.paceKgPerWeek,
-        );
         const target =
           patch.targetWeightKg !== undefined
             ? patch.targetWeightKg
@@ -98,8 +100,19 @@ export async function updateSettings(
           assertHealthyTarget(nextGoal, target, profile.heightCm);
         }
 
+        const remaining = remainingKg(nextGoal, currentWeight, target);
+        const duration = durationForPatch(patch, profile, goalChanged);
+        const resolved = resolveGoalPace({
+          goal: nextGoal,
+          weightKg: currentWeight,
+          remainingKg: remaining,
+          preferredDurationWeeks: duration,
+          paceKgPerWeek: patch.paceKgPerWeek ?? profile.paceKgPerWeek,
+        });
+
         profileData.goal = nextGoal;
-        profileData.paceKgPerWeek = pace;
+        profileData.paceKgPerWeek = resolved.paceKgPerWeek;
+        profileData.preferredDurationWeeks = resolved.preferredDurationWeeks;
         profileData.targetWeightKg = target;
 
         // Switching goal (or setting one up for the first time) re-anchors
@@ -120,7 +133,7 @@ export async function updateSettings(
               weightKg: currentWeight,
               activityLevel: profile.activityLevel,
               goal: nextGoal,
-              paceKgPerWeek: pace,
+              paceKgPerWeek: resolved.paceKgPerWeek,
             },
             now,
           );
@@ -144,6 +157,7 @@ export async function updateSettings(
       profileData.quietHoursStartMin = patch.quietHours.startMin;
       profileData.quietHoursEndMin = patch.quietHours.endMin;
     }
+    if (patch.mode) profileData.mode = patch.mode;
     if (Object.keys(profileData).length > 0) {
       await tx.onboardingProfile.update({ where: { userId }, data: profileData });
     }
@@ -194,6 +208,7 @@ function toView(user: UserWithSettings): SettingsView {
     dailyProteinTargetG: p.dailyProteinTargetG,
     targetWeightKg: p.targetWeightKg,
     paceKgPerWeek: p.paceKgPerWeek,
+    preferredDurationWeeks: p.preferredDurationWeeks ?? null,
     startWeightKg: p.startWeightKg,
     currentWeightKg: user.weightEntries[0]?.weightKg ?? p.weightKg ?? null,
     heightCm: p.heightCm,
@@ -224,4 +239,20 @@ function dedupe(
     });
   }
   return [...seen.values()];
+}
+
+/**
+ * Duration wins when the client sends it. A goal switch without a timeframe
+ * drops the old one (pace/pills start the new plan). A target-only tweak keeps
+ * the stored weeks so the user isn't bounced back to an auto ETA.
+ */
+function durationForPatch(
+  patch: SettingsPatch,
+  profile: { preferredDurationWeeks?: number | null },
+  goalChanged: boolean,
+): number | null {
+  if (patch.preferredDurationWeeks !== undefined) return patch.preferredDurationWeeks;
+  if (goalChanged) return null;
+  if (patch.paceKgPerWeek !== undefined && patch.targetWeightKg === undefined) return null;
+  return profile.preferredDurationWeeks ?? null;
 }

@@ -31,6 +31,7 @@ const onboardingBody = z.object({
   activityLevel: z.enum(['SEDENTARY', 'LIGHT', 'MODERATE', 'ACTIVE', 'VERY_ACTIVE']).optional(),
   targetWeightKg: z.number().positive().max(400).optional(),
   paceKgPerWeek: z.number().positive().max(2).optional(),
+  preferredDurationWeeks: z.number().int().min(1).max(104).optional(),
   dailyKcalTarget: z.number().int().min(800).max(8000).optional(),
   dailyProteinTargetG: z.number().int().min(0).max(400).optional(),
   mealTimes: mealTimes.optional(),
@@ -46,8 +47,10 @@ const onboardingBody = z.object({
 const settingsPatch = z
   .object({
     goal: z.enum(['BULK', 'DIET', 'MAINTAIN']).optional(),
+    mode: z.enum(['BASIC', 'SMART']).optional(),
     targetWeightKg: z.number().positive().max(400).nullable().optional(),
     paceKgPerWeek: z.number().positive().max(2).optional(),
+    preferredDurationWeeks: z.number().int().min(1).max(104).nullable().optional(),
     dailyKcalTarget: z.number().int().min(800).max(8000).optional(),
     dailyProteinTargetG: z.number().int().min(0).max(400).nullable().optional(),
     mealTimes: mealTimes.optional(),

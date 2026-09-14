@@ -61,7 +61,11 @@ describe('logWeight', () => {
     expect(res.goalReached).toBe(true);
     expect(res.goal).toBe('MAINTAIN');
     expect(res.progress).toBeNull();
-    expect(prisma.__state.profile).toMatchObject({ goal: 'MAINTAIN', paceKgPerWeek: 0 });
+    expect(prisma.__state.profile).toMatchObject({
+      goal: 'MAINTAIN',
+      paceKgPerWeek: 0,
+      preferredDurationWeeks: null,
+    });
     // maintenance target has no deficit, so it's above the old diet target
     expect(res.dailyKcalTarget).toBeGreaterThan(2200);
   });

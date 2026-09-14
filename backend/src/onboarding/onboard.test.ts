@@ -142,4 +142,20 @@ describe('runOnboarding', () => {
     const prisma = fakePrisma({ onboarding: { completedAt: new Date('2026-01-01') } });
     await expect(runOnboarding({ prisma, now: NOW }, 'u1', baseInput())).rejects.toBeInstanceOf(AlreadyOnboardedError);
   });
+
+  it('derives a clamped pace from the user timeframe', async () => {
+    const prisma = fakePrisma();
+    const result = await runOnboarding(
+      { prisma, now: NOW },
+      'u1',
+      baseInput({ goal: 'DIET', targetWeightKg: 72, preferredDurationWeeks: 4 }),
+    );
+    // 6 kg in 4 weeks would be 1.5 kg/wk; diet cap at 78 kg is 0.59.
+    expect(result.paceKgPerWeek).toBe(0.59);
+    expect(result.preferredDurationWeeks).toBe(11);
+    expect(prisma.__store.onboardingProfile[0]).toMatchObject({
+      preferredDurationWeeks: 11,
+      paceKgPerWeek: 0.59,
+    });
+  });
 });

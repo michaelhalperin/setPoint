@@ -6,6 +6,7 @@ import {
   computeProteinTarget,
   mifflinStJeorRmr,
   paceToKcalDelta,
+  resolveGoalPace,
   type BodyStats,
 } from './targets.js';
 
@@ -66,6 +67,48 @@ describe('pace (M16)', () => {
     expect(clampPaceKgPerWeek('BULK', 80, 5)).toBe(0.5);
     expect(clampPaceKgPerWeek('DIET', 80, 0)).toBe(0.1); // floored, never zero for a real goal
     expect(clampPaceKgPerWeek('MAINTAIN', 80, 0.5)).toBe(0);
+  });
+
+  it('resolveGoalPace derives pace from a timeframe and snaps unsafe asks', () => {
+    // 5 kg in 20 weeks → 0.25 kg/wk, already inside the diet cap.
+    expect(
+      resolveGoalPace({
+        goal: 'DIET',
+        weightKg: 80,
+        remainingKg: 5,
+        preferredDurationWeeks: 20,
+      }),
+    ).toEqual({ paceKgPerWeek: 0.25, preferredDurationWeeks: 20 });
+
+    // 5 kg in 4 weeks would be 1.25 kg/wk — cap at 0.6, honest ETA is 9 weeks.
+    expect(
+      resolveGoalPace({
+        goal: 'DIET',
+        weightKg: 80,
+        remainingKg: 5,
+        preferredDurationWeeks: 4,
+      }),
+    ).toEqual({ paceKgPerWeek: 0.6, preferredDurationWeeks: 9 });
+
+    expect(
+      resolveGoalPace({
+        goal: 'MAINTAIN',
+        weightKg: 80,
+        remainingKg: 5,
+        preferredDurationWeeks: 8,
+      }),
+    ).toEqual({ paceKgPerWeek: 0, preferredDurationWeeks: null });
+  });
+
+  it('resolveGoalPace falls back to kg/week when no timeframe is given', () => {
+    expect(
+      resolveGoalPace({
+        goal: 'BULK',
+        weightKg: 80,
+        remainingKg: 6,
+        paceKgPerWeek: 0.25,
+      }),
+    ).toEqual({ paceKgPerWeek: 0.25, preferredDurationWeeks: 24 });
   });
 
   it('computeCalorieTarget derives the deficit from pace when given', () => {

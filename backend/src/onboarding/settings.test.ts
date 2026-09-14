@@ -102,6 +102,12 @@ describe('settings', () => {
     expect(view.checkInsPaused).toBe(true);
   });
 
+  it('persists a mode change', async () => {
+    const prisma = fakePrisma(onboardedUser());
+    const view = await updateSettings({ prisma }, 'u1', { mode: 'SMART' });
+    expect(view.mode).toBe('SMART');
+  });
+
   it('replaces the restriction set, normalizing tokens', async () => {
     const prisma = fakePrisma(onboardedUser());
     const view = await updateSettings({ prisma }, 'u1', {
@@ -113,4 +119,68 @@ describe('settings', () => {
   it('rejects settings for a user who has not onboarded', async () => {
     await expect(getSettings({ prisma: fakePrisma(null) }, 'u1')).rejects.toBeInstanceOf(OnboardingIncompleteError);
   });
+
+  it('derives pace from a timeframe and clamps a too-fast ask', async () => {
+    const prisma = fakePrisma(dietUser());
+    const view = await updateSettings({ prisma }, 'u1', { preferredDurationWeeks: 4 });
+    expect(view.paceKgPerWeek).toBe(0.6);
+    expect(view.preferredDurationWeeks).toBe(9);
+  });
+
+  it('keeps the stored weeks when only the target moves', async () => {
+    const prisma = fakePrisma(dietUser());
+    const view = await updateSettings({ prisma }, 'u1', { targetWeightKg: 74 });
+    expect(view.preferredDurationWeeks).toBe(20);
+    expect(view.paceKgPerWeek).toBe(0.3); // 6 kg / 20 weeks
+  });
+
+  it('clears the timeframe when the goal becomes maintain', async () => {
+    const prisma = fakePrisma(dietUser());
+    const view = await updateSettings({ prisma }, 'u1', { goal: 'MAINTAIN' });
+    expect(view.paceKgPerWeek).toBe(0);
+    expect(view.preferredDurationWeeks).toBeNull();
+    expect(view.targetWeightKg).toBeNull();
+  });
+
+  it('drops the old timeframe when the goal changes', async () => {
+    const prisma = fakePrisma(dietUser());
+    const view = await updateSettings({ prisma }, 'u1', {
+      goal: 'BULK',
+      targetWeightKg: 84,
+      paceKgPerWeek: 0.25,
+    });
+    expect(view.goal).toBe('BULK');
+    expect(view.preferredDurationWeeks).toBe(16); // 4 kg at 0.25, not the old 20
+    expect(view.paceKgPerWeek).toBe(0.25);
+  });
+});
+
+const dietUser = (): AnyRow => ({
+  id: 'u1',
+  timezone: 'America/New_York',
+  onboarding: {
+    goal: 'DIET',
+    mode: 'BASIC',
+    sex: 'MALE',
+    birthDate: new Date('1994-05-01'),
+    heightCm: 180,
+    weightKg: 80,
+    activityLevel: 'MODERATE',
+    dailyKcalTarget: 2200,
+    dailyProteinTargetG: 160,
+    startWeightKg: 80,
+    targetWeightKg: 75,
+    paceKgPerWeek: 0.25,
+    preferredDurationWeeks: 20,
+    goalStartedAt: new Date('2026-08-01'),
+    breakfastMin: 480,
+    lunchMin: 780,
+    dinnerMin: 1140,
+    quietHoursStartMin: 1380,
+    quietHoursEndMin: 420,
+  },
+  weightEntries: [{ weightKg: 80 }],
+  safetyScreening: { enforcementEnabled: true, enforcementDisabledReason: null },
+  escalationState: { checkInsPaused: false },
+  restrictions: [],
 });

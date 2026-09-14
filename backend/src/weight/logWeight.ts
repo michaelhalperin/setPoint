@@ -88,7 +88,7 @@ export async function logWeight(
 
     await prisma.onboardingProfile.update({
       where: { userId },
-      data: { goal: 'MAINTAIN', paceKgPerWeek: 0, dailyKcalTarget, dailyProteinTargetG },
+      data: { goal: 'MAINTAIN', paceKgPerWeek: 0, preferredDurationWeeks: null, dailyKcalTarget, dailyProteinTargetG },
     });
     // Progress is done — recompute against MAINTAIN so the response is consistent.
     progress = null;

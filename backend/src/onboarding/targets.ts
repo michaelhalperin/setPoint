@@ -31,6 +31,12 @@ export const PACE_CAPS = {
   bulkMaxKgPerWeek: 0.5,
 } as const;
 
+/** Bounds on a user-picked timeframe. The true floor is still the pace cap. */
+export const DURATION_CAPS = {
+  minWeeks: 1,
+  maxWeeks: 104,
+} as const;
+
 export function clampPaceKgPerWeek(goal: Goal, weightKg: number | null, paceKgPerWeek: number): number {
   if (goal === 'MAINTAIN') return 0;
   const magnitude = Math.abs(paceKgPerWeek) || PACE_CAPS.minKgPerWeek;
@@ -39,6 +45,63 @@ export function clampPaceKgPerWeek(goal: Goal, weightKg: number | null, paceKgPe
       ? Math.max(PACE_CAPS.minKgPerWeek, weightKg * PACE_CAPS.dietMaxFractionPerWeek)
       : PACE_CAPS.bulkMaxKgPerWeek;
   return round2(Math.min(Math.max(magnitude, PACE_CAPS.minKgPerWeek), ceiling));
+}
+
+/** Kilograms still to move toward the target. Null when there isn't a weight goal. */
+export function remainingKg(
+  goal: Goal,
+  currentWeightKg: number | null | undefined,
+  targetWeightKg: number | null | undefined,
+): number | null {
+  if (goal === 'MAINTAIN' || currentWeightKg == null || targetWeightKg == null) return null;
+  const delta = goal === 'BULK' ? targetWeightKg - currentWeightKg : currentWeightKg - targetWeightKg;
+  return Math.max(0, delta);
+}
+
+/** Whole weeks at a pace, or null when there is nothing to move. */
+export function etaWeeksFromPace(remaining: number, paceKgPerWeek: number): number | null {
+  if (remaining <= 0 || paceKgPerWeek <= 0) return null;
+  return Math.ceil(remaining / paceKgPerWeek);
+}
+
+/**
+ * Turn a user's timeframe (or a fallback kg/week) into a clamped pace and an
+ * achievable week count. Duration wins when both are present: a short ask is
+ * not honored past the safety cap, and the stored weeks snap to the honest ETA.
+ */
+export function resolveGoalPace(opts: {
+  goal: Goal;
+  weightKg: number | null | undefined;
+  remainingKg: number | null | undefined;
+  preferredDurationWeeks?: number | null;
+  paceKgPerWeek?: number | null;
+}): { paceKgPerWeek: number; preferredDurationWeeks: number | null } {
+  if (opts.goal === 'MAINTAIN') return { paceKgPerWeek: 0, preferredDurationWeeks: null };
+
+  const remaining = opts.remainingKg ?? null;
+  let requestedPace: number;
+  if (
+    opts.preferredDurationWeeks != null &&
+    opts.preferredDurationWeeks > 0 &&
+    remaining != null &&
+    remaining > 0
+  ) {
+    requestedPace = remaining / opts.preferredDurationWeeks;
+  } else {
+    requestedPace = opts.paceKgPerWeek ?? 0.25;
+  }
+
+  const paceKgPerWeek = clampPaceKgPerWeek(opts.goal, opts.weightKg ?? null, requestedPace);
+
+  let weeks: number | null = remaining != null ? etaWeeksFromPace(remaining, paceKgPerWeek) : null;
+  if (weeks == null && opts.preferredDurationWeeks != null && opts.preferredDurationWeeks > 0) {
+    weeks = opts.preferredDurationWeeks;
+  }
+  if (weeks != null) {
+    weeks = Math.min(DURATION_CAPS.maxWeeks, Math.max(DURATION_CAPS.minWeeks, weeks));
+  }
+
+  return { paceKgPerWeek, preferredDurationWeeks: weeks };
 }
 
 /**
