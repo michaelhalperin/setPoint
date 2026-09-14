@@ -25,6 +25,54 @@ struct Card<Content: View>: View {
     }
 }
 
+/// Three dots that light up in sequence — the in-button stand-in for a spinner
+/// (§5a: never a spinner). Holds a mid-frame under Reduce Motion.
+struct BusyDots: View {
+    var tint: Color = Palette.ink
+    var period: Double = 0.9
+
+    var body: some View {
+        LoopingPhase(period: period, still: 0.45) { t in
+            HStack(spacing: 3.5) {
+                ForEach(0..<3, id: \.self) { i in
+                    let peak = (Double(i) + 0.5) / 3
+                    let dist = min(abs(t - peak), 1 - abs(t - peak))
+                    let lit = max(0, 1 - dist / 0.28)
+                    Circle()
+                        .fill(tint.opacity(0.22 + 0.78 * lit))
+                        .frame(width: 5.5, height: 5.5)
+                        .scaleEffect(0.82 + 0.18 * lit)
+                }
+            }
+        }
+        .accessibilityHidden(true)
+    }
+}
+
+/// Title plus a working/done mark — used inside buttons so "Saving…" isn't just
+/// a text swap.
+struct BusyLabel: View {
+    let title: String
+    var busy = false
+    var done = false
+    var tint: Color = Palette.ink
+
+    var body: some View {
+        HStack(spacing: 8) {
+            if done {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 13, weight: .bold))
+                    .transition(.scale.combined(with: .opacity))
+            } else if busy {
+                BusyDots(tint: tint)
+                    .transition(.opacity.combined(with: .scale(scale: 0.7)))
+            }
+            Text(title)
+                .contentTransition(.interpolate)
+        }
+    }
+}
+
 /// The primary action button. Accent-filled only where the plan allows a primary
 /// CTA (under-eating); everything else uses `.secondary`.
 struct ActionButton: View {
@@ -32,31 +80,53 @@ struct ActionButton: View {
 
     let title: String
     var kind: Kind = .primary
+    var busy: Bool = false
+    var busyTitle: String? = nil
+    var done: Bool = false
+    var doneTitle: String? = nil
     let action: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @GestureState private var pressed = false
 
+    private var shownTitle: String {
+        if done { return doneTitle ?? title }
+        if busy { return busyTitle ?? title }
+        return title
+    }
+
+    private var tint: Color { kind == .primary ? Color.white : Palette.ink }
+
     var body: some View {
-        Text(title)
+        BusyLabel(title: shownTitle, busy: busy && !done, done: done, tint: tint)
             .font(Typography.data(16, weight: .semibold))
-            .foregroundStyle(kind == .primary ? Color.white : Palette.ink)
+            .foregroundStyle(tint)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 16)
             .background {
                 RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
                     .fill(kind == .primary ? Palette.accent : Palette.surfaceSunk)
-                    .elevation(kind == .primary && !pressed ? .resting : .flat)
+                    .elevation(kind == .primary && !pressed && !busy ? .resting : .flat)
             }
             .scaleEffect(pressed ? 0.97 : 1)
             .brightness(pressed && kind == .primary ? -0.04 : 0)
             .animation(Motion.adaptive(Motion.snappy, reduceMotion: reduceMotion), value: pressed)
+            .animation(Motion.adaptive(Motion.settle, reduceMotion: reduceMotion), value: busy)
+            .animation(Motion.adaptive(Motion.settle, reduceMotion: reduceMotion), value: done)
             .contentShape(Rectangle())
             .gesture(
                 DragGesture(minimumDistance: 0)
-                    .updating($pressed) { _, state, _ in state = true }
-                    .onEnded { _ in action() }
+                    .updating($pressed) { _, state, _ in
+                        guard !busy, !done else { return }
+                        state = true
+                    }
+                    .onEnded { _ in
+                        guard !busy, !done else { return }
+                        action()
+                    }
             )
+            .accessibilityAddTraits(busy ? .updatesFrequently : [])
+            .accessibilityLabel(shownTitle)
     }
 }
 

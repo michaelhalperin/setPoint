@@ -71,7 +71,7 @@ struct PrescriptionView: View {
 
             VStack(spacing: Space.xs) {
                 if checkIn.prescription != nil {
-                    ActionButton(title: busy ? "Logging…" : "I ate this") { run(eatThis) }
+                    ActionButton(title: "I ate this", busy: busy, busyTitle: "Logging") { run(eatThis) }
                 }
                 ActionButton(title: "I already ate", kind: .secondary) { run(alreadyAte, then: onAlreadyAte) }
             }

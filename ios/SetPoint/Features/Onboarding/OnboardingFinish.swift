@@ -22,7 +22,7 @@ struct ReachStep: View {
             Spacer(minLength: 0)
 
             VStack(spacing: Space.xxs) {
-                ActionButton(title: asking ? "One moment…" : "Turn on check-ins") {
+                ActionButton(title: "Turn on check-ins", busy: asking, busyTitle: "One moment") {
                     guard !asking else { return }
                     asking = true
                     Task {

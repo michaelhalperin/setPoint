@@ -157,6 +157,8 @@ struct PatternCard: View {
     let onApply: () -> Void
     let onKeep: () -> Void
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     private var slotTitle: String {
         MealSlot(rawValue: pattern.slot)?.title ?? "A meal"
     }
@@ -172,14 +174,19 @@ struct PatternCard: View {
                 .foregroundStyle(Palette.inkSoft)
             HStack(spacing: 8) {
                 Button(action: onApply) {
-                    Text(busy ? "Moving…" : "Expect it at \(formatMinutes(pattern.suggestedMin))")
-                        .font(Typography.data(15, weight: .bold))
-                        .foregroundStyle(Palette.accentDeep)
-                        .frame(maxWidth: .infinity, minHeight: 46)
-                        .background(Palette.accentTint, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    BusyLabel(
+                        title: "Expect it at \(formatMinutes(pattern.suggestedMin))",
+                        busy: busy,
+                        tint: Palette.accentDeep
+                    )
+                    .font(Typography.data(15, weight: .bold))
+                    .foregroundStyle(Palette.accentDeep)
+                    .frame(maxWidth: .infinity, minHeight: 46)
+                    .background(Palette.accentTint, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                 }
                 .buttonStyle(PressableCard())
                 .disabled(busy)
+                .animation(Motion.adaptive(Motion.settle, reduceMotion: reduceMotion), value: busy)
                 Button(action: onKeep) {
                     Text("Keep")
                         .font(Typography.data(15, weight: .bold))
@@ -271,26 +278,32 @@ struct WeightTrendCard: View {
             .font(Typography.data(12, weight: .bold))
             .monospacedDigit()
 
-            Divider().overlay(Palette.hairline)
-
             Button(action: onWeighIn) {
-                HStack(spacing: 12) {
-                    Image(systemName: "scalemass")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(Palette.ink)
-                        .frame(width: 38, height: 38)
-                        .background(Palette.surfaceSunk, in: Circle())
-                    Text("Weigh-in")
-                        .font(Typography.data(16, weight: .bold))
-                        .foregroundStyle(Palette.ink)
-                    Spacer()
-                    Text(busy ? "Saving…" : goal.needsWeighIn ? "Due" : "Log weight")
-                        .font(Typography.data(14, weight: .bold))
-                        .foregroundStyle(goal.needsWeighIn ? Palette.accent : Palette.inkSoft)
+                HStack(spacing: 8) {
+                    if busy {
+                        BusyDots(tint: goal.needsWeighIn ? Color.white : Palette.ink)
+                    } else {
+                        Image(systemName: "scalemass.fill")
+                            .font(.system(size: 15, weight: .semibold))
+                    }
+                    Text(busy ? "Saving" : "Log weight")
+                        .font(Typography.data(16, weight: .semibold))
+                        .contentTransition(.interpolate)
                 }
+                .foregroundStyle(goal.needsWeighIn ? Color.white : Palette.ink)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
+                .background {
+                    RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
+                        .fill(goal.needsWeighIn ? Palette.accent : Palette.surfaceSunk)
+                        .elevation(goal.needsWeighIn && !busy ? .resting : .flat)
+                }
+                .animation(Motion.adaptive(Motion.settle, reduceMotion: reduceMotion), value: busy)
             }
             .buttonStyle(PressableCard())
             .disabled(busy)
+            .padding(.top, Space.xs)
+            .accessibilityLabel("Log weight")
         }
         .padding(18)
         .background {
@@ -419,9 +432,14 @@ struct WeighInSheet: View {
                     .contentTransition(.numericText())
             }
 
-            ActionButton(title: phase == .idle ? "Save" : phase == .saving ? "Saving…" : "✓ Saved") { save() }
-                .disabled(phase != .idle)
-                .animation(Motion.adaptive(Motion.settle, reduceMotion: reduceMotion), value: phase)
+            ActionButton(
+                title: "Save",
+                busy: phase == .saving,
+                busyTitle: "Saving",
+                done: phase == .saved,
+                doneTitle: "Saved"
+            ) { save() }
+            .animation(Motion.adaptive(Motion.settle, reduceMotion: reduceMotion), value: phase)
         }
         .padding(Space.gutter)
         .padding(.top, Space.xs)
