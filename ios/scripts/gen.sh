@@ -5,6 +5,14 @@ source "$(dirname "$0")/_common.sh"
 
 require xcodegen "brew install xcodegen"
 cd "$IOS_DIR"
+
+# project.yml references Config/Signing.xcconfig (gitignored). Seed it from the
+# example so a fresh clone can generate the project; replace the Team ID locally.
+mkdir -p "$IOS_DIR/Config"
+if [ ! -f "$IOS_DIR/Config/Signing.xcconfig" ]; then
+  cp "$IOS_DIR/Config/Signing.xcconfig.example" "$IOS_DIR/Config/Signing.xcconfig"
+fi
+
 xcodegen generate
 
 if command -v xcode-build-server >/dev/null 2>&1; then

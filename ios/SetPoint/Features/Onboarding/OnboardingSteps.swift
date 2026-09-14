@@ -213,13 +213,14 @@ struct AboutStep: View {
     private func fillFromHealth() {
         health = .reading
         Task {
-            guard await env.health.connect() else {
+            let state = await env.health.connect()
+            guard state == .connected else {
                 health = .idle
                 return
             }
             let profile = await env.health.readProfile()
             withAnimation(Motion.settle) { model.draft.apply(profile) }
-            model.draft.hasWearable = await env.health.hasRecentSignal()
+            model.draft.hasWearable = env.health.hasHeartData
             health = profile == HealthProfile() ? .empty : .filled
             if health == .filled { Haptics.landed() }
         }

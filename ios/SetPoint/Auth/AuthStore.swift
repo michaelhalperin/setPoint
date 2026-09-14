@@ -38,6 +38,7 @@ final class AuthStore {
     func signOut() {
         tokenStore.clear()
         status = .signedOut
+        HealthKitManager.shared.clearAccountSyncState()
     }
 
     /// Called by the caller when any request comes back 401.

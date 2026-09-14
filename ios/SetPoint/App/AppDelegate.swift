@@ -7,7 +7,25 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
         UNUserNotificationCenter.current().delegate = self
-        Task { @MainActor in PushManager.shared.registerCategories() }
+        Task { @MainActor in
+            PushManager.shared.registerCategories()
+            // HealthKit may relaunch us for background delivery before SwiftUI
+            // builds AppEnvironment — attach the API client first.
+            if HealthKitManager.shared.api == nil {
+                let tokenStore = SessionTokenStore()
+                HealthKitManager.shared.api = APIClient(
+                    tokenProvider: { tokenStore.read() },
+                    onTokenRefresh: { renewed in
+                        guard tokenStore.read() != nil else { return }
+                        tokenStore.write(renewed)
+                    }
+                )
+            }
+            await HealthKitManager.shared.refreshState()
+            if HealthKitManager.shared.state == .connected {
+                await HealthKitManager.shared.startBackgroundObservers()
+            }
+        }
         return true
     }
 

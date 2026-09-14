@@ -23,11 +23,14 @@ struct SetPointApp: App {
                 .task {
                     LiveActivityController.shared.observePushToStartToken()
                     await env.push.registerIfAuthorized()
-                    env.health.refreshConnectionState()
+                    await env.health.refreshState()
                 }
                 .onChange(of: scenePhase) { _, phase in
-                    guard phase == .active, env.auth.hasToken, env.health.connected else { return }
-                    Task { await env.health.sync() }
+                    guard phase == .active else { return }
+                    Task {
+                        await env.health.refreshState()
+                        await env.health.sync()
+                    }
                 }
         }
     }

@@ -74,6 +74,10 @@ actor APIClient {
         try await perform(path, method: "PATCH", body: try Self.encoder.encode(body))
     }
 
+    func patch(_ path: String, _ body: some Encodable) async throws {
+        let _: EmptyResponse = try await perform(path, method: "PATCH", body: try Self.encoder.encode(body))
+    }
+
     func delete<T: Decodable>(_ path: String, _ body: some Encodable) async throws -> T {
         try await perform(path, method: "DELETE", body: try Self.encoder.encode(body))
     }

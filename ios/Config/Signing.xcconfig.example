@@ -1,0 +1,8 @@
+// Apple Developer Team ID (10 characters). Copy this file to Signing.xcconfig
+// (gitignored) and replace XXXXXXXXXX with your team:
+//
+//   cp ios/Config/Signing.xcconfig.example ios/Config/Signing.xcconfig
+//
+// The App ID com.setpoint.app must have the HealthKit capability (with
+// background delivery) enabled in the Apple Developer portal.
+SETPOINT_TEAM_ID = XXXXXXXXXX

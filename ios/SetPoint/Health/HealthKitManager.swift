@@ -1,6 +1,7 @@
 import Foundation
 import HealthKit
 import Observation
+import UIKit
 
 /// What Apple Health knows about the body, for prefilling onboarding.
 struct HealthProfile: Equatable {
@@ -10,19 +11,43 @@ struct HealthProfile: Equatable {
     var sex: Sex?
 }
 
+/// Honest HealthKit read-auth state. HealthKit never reveals whether *read*
+/// access was granted — only whether the permission sheet has been shown.
+enum HealthState: Equatable {
+    case unavailable       // HKHealthStore.isHealthDataAvailable() == false (e.g. some iPads)
+    case notConnected      // permission sheet never shown (statusForAuthorizationRequest == .shouldRequest)
+    case connected         // sheet shown (.unnecessary) — access may still be off for some types
+}
+
+enum HealthMode: String {
+    case basic = "BASIC"
+    case smart = "SMART"
+}
+
 /// Reads HRV + resting heart rate, computes the deviation from personal baseline
 /// on-device, and sends only the z-scores to `POST /api/biosignals` (plan §2, §4).
 @MainActor
 @Observable
 final class HealthKitManager {
     static let shared = HealthKitManager()
-    private static let lastSyncKey = "com.setpoint.app.health.lastSyncAt"
+
+    static let lastSyncKey = "com.setpoint.app.health.lastSyncAt"
+    static let bodyMassAnchorKey = "com.setpoint.app.health.anchor.bodyMass"
+    static let lastModeKey = "com.setpoint.app.health.lastMode"
 
     var api: APIClient?
-    private(set) var connected = false
+    private(set) var state: HealthState
+    private(set) var hasHeartData = false
     private(set) var lastSyncAt: Date?
+    private(set) var connecting = false
+    private(set) var lastError: String?
+    var connected: Bool { state == .connected }
 
-    private let store = HKHealthStore()
+    private let source: HealthDataSource
+    private let defaults: UserDefaults
+    private let tokenStore: TokenStore
+    private let clock: () -> Date
+
     private let hrvType = HKQuantityType(.heartRateVariabilitySDNN)
     private let rhrType = HKQuantityType(.restingHeartRate)
     private let bodyMassType = HKQuantityType(.bodyMass)
@@ -31,46 +56,103 @@ final class HealthKitManager {
     private let rhrUnit = HKUnit(from: "count/min")
     private let kgUnit = HKUnit.gramUnit(with: .kilo)
 
-    private init() {
-        lastSyncAt = UserDefaults.standard.object(forKey: Self.lastSyncKey) as? Date
+    private var observersStarted = false
+    private var lastKnownMode: String?
+
+    init(
+        source: HealthDataSource = HKHealthStoreSource(),
+        defaults: UserDefaults = .standard,
+        tokenStore: TokenStore = SessionTokenStore(),
+        now: @escaping () -> Date = Date.init
+    ) {
+        self.source = source
+        self.defaults = defaults
+        self.tokenStore = tokenStore
+        self.clock = now
+        self.lastSyncAt = defaults.object(forKey: Self.lastSyncKey) as? Date
+        self.lastKnownMode = defaults.string(forKey: Self.lastModeKey)
+        self.state = source.isAvailable ? .notConnected : .unavailable
     }
 
-    var isAvailable: Bool { HKHealthStore.isHealthDataAvailable() }
+    var isAvailable: Bool { source.isAvailable }
+
+    /// Settings hero / row copy. Never claims data is flowing when it isn't.
+    var statusLine: String {
+        switch state {
+        case .unavailable, .notConnected:
+            return "Not connected"
+        case .connected:
+            if !hasHeartData { return "Connected · no heart data yet" }
+            if let lastSyncAt {
+                return "Connected · last sync \(Self.timeOnly(lastSyncAt))"
+            }
+            return "Connected"
+        }
+    }
 
     private var readTypes: Set<HKObjectType> {
         [hrvType, rhrType, bodyMassType, heightType,
          HKCharacteristicType(.dateOfBirth), HKCharacteristicType(.biologicalSex)]
     }
 
-    /// Prompts for read access. HealthKit never reveals whether *read* was
-    /// granted, so we treat "the sheet was shown without error" as connected and
-    /// let a later empty query be the real signal.
+    /// Prompts for read access, then refreshes honest state, starts observers,
+    /// and forces a sync. Errors leave `state` unchanged.
     @discardableResult
-    func connect() async -> Bool {
-        guard isAvailable else { return false }
+    func connect() async -> HealthState {
+        guard isAvailable else { return state }
+        connecting = true
+        lastError = nil
+        defer { connecting = false }
         do {
-            try await store.requestAuthorization(toShare: [], read: readTypes)
-            connected = true
-            enableBackgroundDelivery()
-            await sync()
-            return true
+            try await source.requestAuthorization(read: readTypes)
         } catch {
-            return false
+            lastError = Self.message(forConnect: error)
+            return state
         }
+        await refreshState()
+        await startBackgroundObservers()
+        await sync(force: true)
+        if hasHeartData { await setMode(.smart) }
+        return state
     }
 
-    func refreshConnectionState() {
-        connected = isAvailable
-            && store.authorizationStatus(for: hrvType) != .notDetermined
+    /// Recompute `state` from `statusForAuthorizationRequest`, then `hasHeartData`
+    /// via a cheap HRV query. Call at launch and whenever the app becomes active.
+    func refreshState() async {
+        guard isAvailable else {
+            state = .unavailable
+            return
+        }
+        let status = await source.requestStatus(read: readTypes)
+        state = status == .unnecessary ? .connected : .notConnected
+        do {
+            let to = clock()
+            let from = Calendar.current.date(byAdding: .day, value: -21, to: to) ?? to
+            let hrv = try await source.samples(type: hrvType, unit: hrvUnit, from: from, to: to)
+            hasHeartData = !hrv.isEmpty
+        } catch {
+            if isLockedDevice(error) { return }
+            hasHeartData = false
+        }
     }
 
     /// Whether Health actually holds recent HRV data — the real test of "a
     /// compatible device is connected" (§1). Used at onboarding to decide Smart
     /// vs Basic mode rather than trusting a toggle.
     func hasRecentSignal(days: Int = 21) async -> Bool {
-        guard isAvailable else { return false }
-        let hrv = await samples(hrvType, unit: hrvUnit, days: days)
-        return !hrv.isEmpty
+        guard isAvailable else {
+            hasHeartData = false
+            return false
+        }
+        do {
+            let to = clock()
+            let from = Calendar.current.date(byAdding: .day, value: -days, to: to) ?? to
+            let hrv = try await source.samples(type: hrvType, unit: hrvUnit, from: from, to: to)
+            hasHeartData = !hrv.isEmpty
+            return hasHeartData
+        } catch {
+            return hasHeartData
+        }
     }
 
     /// Height, weight, birth date and sex as far as Health knows them — the
@@ -85,11 +167,10 @@ final class HealthKitManager {
         var profile = HealthProfile()
         if let heightCm, (120 ... 230).contains(heightCm) { profile.heightCm = heightCm.rounded() }
         if let weightKg, (35 ... 250).contains(weightKg) { profile.weightKg = (weightKg * 10).rounded() / 10 }
-        if let components = try? store.dateOfBirthComponents(),
-           let date = Calendar.current.date(from: components) {
+        if let date = try? source.dateOfBirth() {
             profile.birthDate = date
         }
-        switch (try? store.biologicalSex())?.biologicalSex {
+        switch try? source.biologicalSex() {
         case .male: profile.sex = .male
         case .female: profile.sex = .female
         default: break
@@ -98,90 +179,145 @@ final class HealthKitManager {
     }
 
     /// Fetch → compute → upload. Safe to call often; no-ops without access.
-    func sync() async {
-        guard isAvailable, let api else { return }
+    func sync(force: Bool = false) async {
+        guard isAvailable, state == .connected, api != nil, tokenStore.read() != nil else { return }
+        if !force, let lastSyncAt, clock().timeIntervalSince(lastSyncAt) < 15 * 60 { return }
 
-        async let hrv = samples(hrvType, unit: hrvUnit, days: 30)
-        async let rhr = samples(rhrType, unit: rhrUnit, days: 30)
-        let (hrvSamples, rhrSamples) = await (hrv, rhr)
-        defer { recordSync() }
+        let now = clock()
+        do {
+            async let hrv = source.samples(type: hrvType, unit: hrvUnit, from: daysAgo(30, from: now), to: now)
+            async let rhr = source.samples(type: rhrType, unit: rhrUnit, from: daysAgo(30, from: now), to: now)
+            let (hrvSamples, rhrSamples) = try await (hrv, rhr)
 
-        let now = Date()
-        guard let hrvZ = BiosignalStats.zScore(hrvSamples, now: now) else { return }
-        let rhrZ = BiosignalStats.zScore(rhrSamples, now: now)
+            let cutoff21 = daysAgo(21, from: now)
+            hasHeartData = hrvSamples.contains { $0.date >= cutoff21 }
 
-        struct Body: Encodable {
-            let hrvDeviation: Double
-            let rhrDeviation: Double?
-            let source = "healthkit"
-        }
-        try? await api.post("/api/biosignals", Body(hrvDeviation: hrvZ, rhrDeviation: rhrZ))
-
-        await syncWeight()
-    }
-
-    private func recordSync() {
-        lastSyncAt = Date()
-        UserDefaults.standard.set(lastSyncAt, forKey: Self.lastSyncKey)
-    }
-
-    /// Push the latest body-mass sample to the weight log (M16). Idempotent —
-    /// the backend upserts on (user, measuredAt), so re-sending is harmless.
-    private func syncWeight() async {
-        guard isAvailable, let api else { return }
-        let recent = await samples(bodyMassType, unit: kgUnit, days: 14)
-        guard let latest = recent.last, latest.value >= 25, latest.value <= 400 else { return }
-        try? await api.post(
-            "/api/weight",
-            WeightLogRequest(
-                weightKg: (latest.value * 10).rounded() / 10,
-                measuredAt: ISO8601DateFormatter().string(from: latest.date),
-                source: "healthkit"
-            )
-        )
-    }
-
-    // MARK: HealthKit plumbing
-
-    private func enableBackgroundDelivery() {
-        for type in [hrvType, rhrType] {
-            store.enableBackgroundDelivery(for: type, frequency: .hourly) { _, _ in }
-            let query = HKObserverQuery(sampleType: type, predicate: nil) { [weak self] _, completion, _ in
-                Task { await self?.sync(); completion() }
+            if let hrvZ = BiosignalStats.zScore(hrvSamples, now: now) {
+                let rhrZ = BiosignalStats.zScore(rhrSamples, now: now)
+                struct Body: Encodable {
+                    let hrvDeviation: Double
+                    let rhrDeviation: Double?
+                    let source = "healthkit"
+                }
+                try? await api?.post("/api/biosignals", Body(hrvDeviation: hrvZ, rhrDeviation: rhrZ))
             }
-            store.execute(query)
+
+            try await syncWeight(now: now)
+
+            lastSyncAt = now
+            defaults.set(lastSyncAt, forKey: Self.lastSyncKey)
+
+            if hasHeartData {
+                await setMode(.smart)
+            } else {
+                await setMode(.basic)
+            }
+        } catch {
+            if isLockedDevice(error) { return }
         }
+    }
+
+    /// Idempotent. HealthKit relaunches the app for background delivery, so
+    /// observers must be registered on every launch, not only right after connect.
+    func startBackgroundObservers() async {
+        guard !observersStarted, isAvailable, state == .connected else { return }
+        observersStarted = true
+
+        try? await source.enableBackgroundDelivery(type: hrvType, frequency: .hourly)
+        try? await source.enableBackgroundDelivery(type: rhrType, frequency: .hourly)
+        try? await source.enableBackgroundDelivery(type: bodyMassType, frequency: .immediate)
+
+        let handle: HealthObserverHandler = { [weak self] completion in
+            var task = UIBackgroundTaskIdentifier.invalid
+            task = UIApplication.shared.beginBackgroundTask(withName: "health-sync") {
+                UIApplication.shared.endBackgroundTask(task)
+                task = .invalid
+            }
+            Task { @MainActor in
+                defer {
+                    completion()
+                    if task != .invalid {
+                        UIApplication.shared.endBackgroundTask(task)
+                        task = .invalid
+                    }
+                }
+                await self?.sync()
+            }
+        }
+        source.startObserver(type: hrvType, handler: handle)
+        source.startObserver(type: rhrType, handler: handle)
+        source.startObserver(type: bodyMassType, handler: handle)
+    }
+
+    /// Sign-out: HealthKit permission is user-level (don't stop observers), but
+    /// the weight cursor and last-sync stamp belong to the account.
+    func clearAccountSyncState() {
+        lastSyncAt = nil
+        defaults.removeObject(forKey: Self.lastSyncKey)
+        defaults.removeObject(forKey: Self.bodyMassAnchorKey)
+    }
+
+    /// `PATCH /api/settings { mode }`. Fire-and-forget; cached so we don't repeat.
+    func setMode(_ mode: HealthMode) async {
+        guard lastKnownMode != mode.rawValue, let api else { return }
+        do {
+            try await api.patch("/api/settings", SettingsPatch(mode: mode.rawValue))
+            lastKnownMode = mode.rawValue
+            defaults.set(mode.rawValue, forKey: Self.lastModeKey)
+        } catch {
+            // try? equivalent — leave the cache unset so the next sync retries.
+        }
+    }
+
+    // MARK: Internals
+
+    private func syncWeight(now: Date) async throws {
+        guard let api else { return }
+        let stored = defaults.data(forKey: Self.bodyMassAnchorKey)
+        let since: Date? = stored == nil ? daysAgo(14, from: now) : nil
+        let (samples, newAnchor) = try await source.anchoredSamples(
+            type: bodyMassType,
+            unit: kgUnit,
+            anchor: stored,
+            since: since
+        )
+        for sample in samples {
+            guard (25 ... 400).contains(sample.value) else { continue }
+            try await api.post(
+                "/api/weight",
+                WeightLogRequest(
+                    weightKg: (sample.value * 10).rounded() / 10,
+                    measuredAt: ISO8601DateFormatter().string(from: sample.date),
+                    source: "healthkit"
+                )
+            )
+        }
+        defaults.set(newAnchor, forKey: Self.bodyMassAnchorKey)
     }
 
     private func latest(_ type: HKQuantityType, unit: HKUnit) async -> Double? {
-        let sort = NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)
-        return await withCheckedContinuation { continuation in
-            let query = HKSampleQuery(sampleType: type, predicate: nil, limit: 1, sortDescriptors: [sort]) { _, results, _ in
-                let value = (results?.first as? HKQuantitySample)?.quantity.doubleValue(for: unit)
-                continuation.resume(returning: value)
-            }
-            store.execute(query)
-        }
+        (try? await source.latestSample(type: type, unit: unit))?.value
     }
 
-    private func samples(_ type: HKQuantityType, unit: HKUnit, days: Int) async -> [BiosignalSample] {
-        let start = Calendar.current.date(byAdding: .day, value: -days, to: Date()) ?? Date()
-        let predicate = HKQuery.predicateForSamples(withStart: start, end: Date())
-        let sort = NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: true)
+    private func daysAgo(_ days: Int, from date: Date) -> Date {
+        Calendar.current.date(byAdding: .day, value: -days, to: date) ?? date
+    }
 
-        return await withCheckedContinuation { continuation in
-            let query = HKSampleQuery(
-                sampleType: type,
-                predicate: predicate,
-                limit: HKObjectQueryNoLimit,
-                sortDescriptors: [sort]
-            ) { _, results, _ in
-                let samples = (results as? [HKQuantitySample] ?? []).map {
-                    BiosignalSample(value: $0.quantity.doubleValue(for: unit), date: $0.endDate)
-                }
-                continuation.resume(returning: samples)
-            }
-            store.execute(query)
+    private func isLockedDevice(_ error: Error) -> Bool {
+        let ns = error as NSError
+        return ns.domain == HKErrorDomain && ns.code == HKError.Code.errorDatabaseInaccessible.rawValue
+    }
+
+    static func timeOnly(_ date: Date) -> String {
+        date.formatted(date: .omitted, time: .shortened)
+    }
+
+    static func message(forConnect error: Error) -> String {
+        let ns = error as NSError
+        let text = ns.localizedDescription.lowercased()
+        if ns.domain == HKErrorDomain, text.contains("entitlement") {
+            return "This simulator build isn’t signed for Health. Quit SetPoint and launch with SIGNED=1 ./ios/scripts/run.sh"
         }
+        return "Couldn't open the Health permission sheet."
     }
 }

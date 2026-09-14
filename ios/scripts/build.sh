@@ -10,7 +10,7 @@ xcodebuild build \
   -project "$PROJECT" -scheme "$SCHEME" \
   -sdk iphonesimulator -destination "platform=iOS Simulator,name=$SIM_NAME" \
   -derivedDataPath "$DERIVED" \
-  CODE_SIGNING_ALLOWED=NO 2>&1 | tee "$DERIVED/build.log" \
+  "${SIGNING_ARGS[@]}" 2>&1 | tee "$DERIVED/build.log" \
   | grep -E "error:|warning:.*\.swift|BUILD (SUCCEEDED|FAILED)" | grep -v "IDELogStore"
 set -e
 

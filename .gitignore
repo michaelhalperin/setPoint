@@ -14,6 +14,7 @@ dist/
 coverage/
 
 # iOS / Xcode
+ios/Config/Signing.xcconfig
 ios/build/
 ios/DerivedData/
 ios/buildServer.json

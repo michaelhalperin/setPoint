@@ -34,13 +34,40 @@ Helper scripts (also wired as VS Code tasks — ⇧⌘P → "Tasks: Run Task"):
 | Script | What it does |
 | --- | --- |
 | `./ios/scripts/gen.sh` | regenerate the project + `buildServer.json` — **run after adding/removing files** |
-| `./ios/scripts/build.sh` | build for the simulator, prints only warnings/errors |
+| `./ios/scripts/build.sh` | build for the simulator, prints only warnings/errors (unsigned; CI / unit tests) |
+| `SIGNED=1 ./ios/scripts/build.sh` | same build, ad-hoc "Sign to Run Locally" so HealthKit entitlements are embedded |
 | `./ios/scripts/run.sh` | build → boot simulator → install → launch |
+| `SIGNED=1 ./ios/scripts/run.sh` | signed simulator build, then launch — required for Apple Health |
 | `./ios/scripts/run.sh -uiStub home` | launch straight into Home with sample data |
-| `./ios/scripts/test.sh` | run the XCTest suite |
+| `./ios/scripts/test.sh` | run the XCTest suite (always unsigned) |
 | `./ios/scripts/shot.sh out.png` | screenshot the running simulator |
 
 Set `SETPOINT_SIM="iPhone 16"` to target a different simulator.
+
+## Signing
+
+`project.yml` reads `DEVELOPMENT_TEAM` from `$(SETPOINT_TEAM_ID)`. Copy the example
+and put your 10-character Apple Developer Team ID in the git-ignored file:
+
+```bash
+cp ios/Config/Signing.xcconfig.example ios/Config/Signing.xcconfig
+# then edit SETPOINT_TEAM_ID
+```
+
+`./ios/scripts/gen.sh` copies the example if `Signing.xcconfig` is missing, so a
+fresh clone still generates. Unsigned simulator builds (`./ios/scripts/build.sh`,
+`./ios/scripts/test.sh`) ignore the team and strip entitlements — that's the CI
+path. HealthKit on a simulator **requires** `SIGNED=1` so Xcode writes HealthKit
+into the simulator entitlements file (injected at launch). Do not re-sign the
+`.app` with that file — SpringBoard will refuse to launch it.
+
+In the Apple Developer portal, the App ID `com.setpoint.app` must have the
+HealthKit capability (with background delivery) enabled. Verify a signed build:
+
+```bash
+SIGNED=1 ./ios/scripts/build.sh
+grep -A2 healthkit ios/DerivedData/Build/Intermediates.noindex/SetPoint.build/Debug-iphonesimulator/SetPoint.build/SetPoint.app-Simulated.xcent
+```
 
 ### Pointing at the backend
 
@@ -118,9 +145,10 @@ prompt when the last one is over a week old. `WeighInSheet` → `POST /api/weigh
 reaching the target flips the goal to Maintain server-side and the card shows a
 one-time "you hit your target" alert.
 
-`HealthKitManager.syncWeight()` also pushes the latest HealthKit body-mass sample
-to `/api/weight` (`source: healthkit`) on each sync — idempotent (backend upserts
-on user + measuredAt).
+`HealthKitManager.sync()` also pushes **new** HealthKit body-mass samples to
+`/api/weight` (`source: healthkit`) using an anchored query — idempotent
+(backend upserts on user + measuredAt). Raw HRV / resting heart rate never leave
+the phone; only z-scores go to `/api/biosignals`.
 
 ## Design system (Pass 0 — foundation)
 
@@ -168,14 +196,37 @@ Test a notification locally: `xcrun simctl push <device> com.setpoint.app payloa
 
 - `BiosignalStats` (pure, tested) — personal baseline (mean + std, excluding the
   recent window) and the deviation z-score of the last ~12 h
-- `HealthKitManager` — read auth for HRV + resting HR + body mass, `HKObserverQuery`
-  + hourly background delivery, computes on-device and posts only the z-scores to
-  `/api/biosignals` (§4 — raw samples never leave the device); latest body-mass
-  sample → `/api/weight` (M16)
-- Prompted from the onboarding outcome and Settings → Health; synced on
-  `scenePhase == .active` for connected users
-- Entitlement `com.apple.developer.healthkit`; `NSHealthShareUsageDescription`
-  in Info.plist
+- `HealthDataSource` / `HKHealthStoreSource` — injectable HealthKit; tests use a fake
+- `HealthKitManager` — honest `HealthState` (sheet shown vs not; HealthKit never
+  reveals *read* grants), HRV + resting HR + body mass + height / age / sex,
+  `HKObserverQuery` + hourly (heart) / immediate (weight) background delivery.
+  Computes on-device and posts only the z-scores to `/api/biosignals` (§4 — raw
+  samples never leave the device). Anchored body-mass samples → `/api/weight`
+  (M16). Nothing is written to Health (`NSHealthUpdateUsageDescription` is omitted
+  on purpose).
+- Prompted from onboarding About you ("Fill from Apple Health") and Settings →
+  Apple Health; `refreshState()` + `sync()` on launch and `scenePhase == .active`;
+  observers re-registered in `AppDelegate` so background delivery survives relaunch
+- Entitlements `com.apple.developer.healthkit` + `…healthkit.background-delivery`;
+  `NSHealthShareUsageDescription` in Info.plist; `LSApplicationQueriesSchemes`
+  includes `x-apple-health`
+
+### Manual verification
+
+1. Put your Team ID in `ios/Config/Signing.xcconfig`. In the Apple Developer
+   portal, the App ID `com.setpoint.app` must have the HealthKit capability
+   (with background delivery) enabled.
+2. Simulator: `SIGNED=1 ./ios/scripts/run.sh`. In the simulator's Health app →
+   Browse → Heart → Heart Rate Variability → Add Data, add at least 8 samples on
+   different past days plus 1 from today. Add Resting Heart Rate, Weight and Height
+   the same way, and set date of birth and sex under Health Details.
+3. Onboarding → About you → Fill from Apple Health: the fields fill in, and
+   Settings → Apple Health shows "Connected · last sync …".
+4. Watch backend logs: `POST /api/biosignals` with only z-scores, and
+   `POST /api/weight` with `source: healthkit`.
+5. Real device with an Apple Watch: background, add a weight in the Health app,
+   and confirm `POST /api/weight` arrives without opening SetPoint (background
+   delivery).
 
 ## Next
 

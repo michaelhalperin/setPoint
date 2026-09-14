@@ -19,6 +19,7 @@ open -a Simulator
 APP="$(app_path)"
 [ -n "$APP" ] || { echo "✗ build product not found"; exit 1; }
 
+xcrun simctl uninstall "$UDID" "$BUNDLE_ID" 2>/dev/null || true
 xcrun simctl install "$UDID" "$APP"
 xcrun simctl terminate "$UDID" "$BUNDLE_ID" 2>/dev/null || true
 
@@ -27,4 +28,7 @@ if [ "$CONSOLE" = "1" ]; then
 else
   xcrun simctl launch "$UDID" "$BUNDLE_ID" "$@"
   echo "✓ launched — ./ios/scripts/shot.sh to screenshot"
+fi
+if [ "${SIGNED:-0}" != "1" ]; then
+  echo "Note: Apple Health needs a signed build — SIGNED=1 ./ios/scripts/run.sh"
 fi

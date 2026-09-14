@@ -784,39 +784,52 @@ struct HealthSettingsView: View {
                 .font(Typography.display(30))
                 .foregroundStyle(Palette.background)
 
-            Text(
-                env.health.connected
-                    ? "Your heart-rate data is flowing in."
-                    : "Connect to fill in your body stats and read recovery."
-            )
-            .font(Typography.data(14))
-            .foregroundStyle(Palette.background.opacity(0.7))
-            .fixedSize(horizontal: false, vertical: true)
+            Text(heroDetail)
+                .font(Typography.data(14))
+                .foregroundStyle(Palette.background.opacity(0.7))
+                .fixedSize(horizontal: false, vertical: true)
 
-            if env.health.connected, let at = env.health.lastSyncAt {
-                HStack(spacing: 6) {
-                    Circle().fill(Color(hex: 0xB9D3B1)).frame(width: 6, height: 6)
-                    Text("Last sync \(timeOnly(at))")
-                        .font(Typography.data(12, weight: .bold))
-                        .foregroundStyle(Color(hex: 0xB9D3B1))
-                }
-                .padding(.horizontal, 11)
-                .padding(.vertical, 6)
-                .background(Palette.dayOnTrack.opacity(0.25), in: Capsule())
+            if env.health.connected {
+                Text(env.health.statusLine)
+                    .font(Typography.data(12, weight: .bold))
+                    .foregroundStyle(Color(hex: 0xB9D3B1))
+                    .padding(.horizontal, 11)
+                    .padding(.vertical, 6)
+                    .background(Palette.dayOnTrack.opacity(0.25), in: Capsule())
+            }
+
+            if env.health.state == .connected && !env.health.hasHeartData {
+                Text("No heart data yet. Wear your Apple Watch, or check SetPoint’s access in Health → Sharing → Apps.")
+                    .font(Typography.data(13))
+                    .foregroundStyle(Palette.background.opacity(0.7))
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             if !env.health.connected {
                 Button {
                     Task { await env.health.connect() }
                 } label: {
-                    Text("Connect Apple Health")
-                        .font(Typography.data(16, weight: .bold))
-                        .foregroundStyle(Palette.accentDeep)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 54)
-                        .background(Palette.background, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    HStack(spacing: 8) {
+                        if env.health.connecting {
+                            ProgressView().tint(Palette.accentDeep)
+                        }
+                        Text(env.health.connecting ? "Connecting…" : "Connect Apple Health")
+                            .font(Typography.data(16, weight: .bold))
+                            .foregroundStyle(Palette.accentDeep)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 54)
+                    .background(Palette.background, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
                 .buttonStyle(PressableCard())
+                .disabled(env.health.connecting)
+
+                if let message = env.health.lastError {
+                    Text(message)
+                        .font(Typography.data(13))
+                        .foregroundStyle(Color(hex: 0xFF8A73))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
         }
         .padding(22)
@@ -838,6 +851,16 @@ struct HealthSettingsView: View {
         }
         .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
         .elevation(.floating)
+    }
+
+    private var heroDetail: String {
+        if env.health.state == .connected && env.health.hasHeartData {
+            return "Your heart-rate data is flowing in."
+        }
+        if env.health.state == .connected {
+            return "Access may be off, or there’s no Watch data yet."
+        }
+        return "Connect to fill in your body stats and read recovery."
     }
 
     private var lastSyncWhen: String? {

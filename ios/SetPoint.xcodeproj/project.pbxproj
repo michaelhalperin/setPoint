@@ -40,6 +40,7 @@
 		5C2C73BA6DBBD160F71960E6 /* TokenStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87A7B143B2CF06863A727EC5 /* TokenStore.swift */; };
 		5CBD1DA8FA61AB27EF2F5F23 /* SetPointWidgetsBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59A5DF79076B600F6BF06497 /* SetPointWidgetsBundle.swift */; };
 		6525FA7E52886999CBF39D11 /* Fraunces-Italic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = A904DC9C092B7D3603075E01 /* Fraunces-Italic.ttf */; };
+		6557D90382A31A210B260EA5 /* HealthKitManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7021ED198E64F06CF3DED7DD /* HealthKitManagerTests.swift */; };
 		68C662A20CFA38C3DC99D29D /* GoalGraphics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FBD6573F65372C38D55EE1A /* GoalGraphics.swift */; };
 		6A372B8A8257F449EB6D653B /* PushTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D826278DC21A613702891DA1 /* PushTests.swift */; };
 		6B5F95997AD3DA7FD3C892FA /* SettingsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7549A2446F88FB282FAF3FE /* SettingsViewModel.swift */; };
@@ -71,6 +72,7 @@
 		B34F74442FE761C505CF1E1F /* SignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D05051B152A3F34D639B5E9 /* SignInView.swift */; };
 		B34F7F3928C138D83B538026 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAD1C0245E5FF739BB28DB58 /* SettingsView.swift */; };
 		B4B0ADB19420BAAB4941E580 /* HealthKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D30AE53D7C45CA2C47D23C96 /* HealthKit.framework */; };
+		BBDBB810DCF5117BF7DA355C /* HealthDataSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC0C1818DA4EAB84F0FD8EB3 /* HealthDataSource.swift */; };
 		BBE8017B8523475AEC566B26 /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD9BC7612AD72C12B458596D /* WelcomeView.swift */; };
 		C197B73ADE00D3776F148A54 /* CrashReporting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D57D01CD3323AC9AF1DB175 /* CrashReporting.swift */; };
 		C7E6BD3F022C447E43FE1584 /* UserFacingError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86D8304C476B77D8C38E8772 /* UserFacingError.swift */; };
@@ -153,6 +155,7 @@
 		41940FEB3FCE32BEAD7DFF75 /* SettlementView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettlementView.swift; sourceTree = "<group>"; };
 		424CD9EAF9B439E9941AC8C5 /* OnboardingEnums.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingEnums.swift; sourceTree = "<group>"; };
 		4B48D8D6E1339295933EFC28 /* APIConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIConfig.swift; sourceTree = "<group>"; };
+		4C1D0D284D9EA0510F955FE0 /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Signing.xcconfig; sourceTree = "<group>"; };
 		4C8DCB1E7E97ED4A55B7FEAE /* HomeScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeScreen.swift; sourceTree = "<group>"; };
 		4F3D4E3695433E4D796BC455 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		5200F5347EF2F9288FDE504A /* PushManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushManager.swift; sourceTree = "<group>"; };
@@ -164,6 +167,7 @@
 		6B5888ECCC1D863A84318CA1 /* MealPhoto.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealPhoto.swift; sourceTree = "<group>"; };
 		6D57D01CD3323AC9AF1DB175 /* CrashReporting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrashReporting.swift; sourceTree = "<group>"; };
 		6FBD6573F65372C38D55EE1A /* GoalGraphics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoalGraphics.swift; sourceTree = "<group>"; };
+		7021ED198E64F06CF3DED7DD /* HealthKitManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitManagerTests.swift; sourceTree = "<group>"; };
 		710ED9EE39FE068431D74DB0 /* SetPointApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetPointApp.swift; sourceTree = "<group>"; };
 		72122AA0FFF3F9BD35A066C4 /* SetPointWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = SetPointWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		75E6AAF6106EF78152D6BCB7 /* OnboardingSteps.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingSteps.swift; sourceTree = "<group>"; };
@@ -215,6 +219,7 @@
 		ECFEB95DFB5402DA4E21CA85 /* LogMealSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogMealSheet.swift; sourceTree = "<group>"; };
 		F7549A2446F88FB282FAF3FE /* SettingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewModel.swift; sourceTree = "<group>"; };
 		FA50138B8097773BBC7F74C3 /* Motion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Motion.swift; sourceTree = "<group>"; };
+		FC0C1818DA4EAB84F0FD8EB3 /* HealthDataSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthDataSource.swift; sourceTree = "<group>"; };
 		FC19D55D1281123B324AC40B /* UserFacingErrorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserFacingErrorTests.swift; sourceTree = "<group>"; };
 		FE8898ED389F591B06A7F951 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
@@ -287,6 +292,7 @@
 				1445D836A22672FF8571409D /* BiosignalStatsTests.swift */,
 				ECFB3596BCF94EF40A22F565 /* CheckInTests.swift */,
 				AF7E9A8FF4A34FCEA8BD592A /* DTOTests.swift */,
+				7021ED198E64F06CF3DED7DD /* HealthKitManagerTests.swift */,
 				164B6BA9F86C99092FEC618E /* HealthyWeightTests.swift */,
 				8AEEC804F40BC95701983A78 /* LogMealTests.swift */,
 				306DD98DE1DE503E86CEB6DD /* MotionTests.swift */,
@@ -410,9 +416,18 @@
 			isa = PBXGroup;
 			children = (
 				11862FADC2373C54323DDAE4 /* BiosignalStats.swift */,
+				FC0C1818DA4EAB84F0FD8EB3 /* HealthDataSource.swift */,
 				EC89EFB897DDB22BB5344B9D /* HealthKitManager.swift */,
 			);
 			path = Health;
+			sourceTree = "<group>";
+		};
+		B273987299F2ECF277625B38 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				4C1D0D284D9EA0510F955FE0 /* Signing.xcconfig */,
+			);
+			path = Config;
 			sourceTree = "<group>";
 		};
 		B90D1DE8F58A8028BC37ECE9 /* SetPoint */ = {
@@ -494,6 +509,7 @@
 		EFA25081FBCEF6F6876072E3 = {
 			isa = PBXGroup;
 			children = (
+				B273987299F2ECF277625B38 /* Config */,
 				B90D1DE8F58A8028BC37ECE9 /* SetPoint */,
 				56B15F5A4708550024E1E373 /* SetPointTests */,
 				7B4D4C65003906CE20C0BEA1 /* SetPointWidgets */,
@@ -584,15 +600,15 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					711BDD0D1A9C10E4A0B97BBD = {
-						DevelopmentTeam = "";
+						DevelopmentTeam = "$(SETPOINT_TEAM_ID)";
 						ProvisioningStyle = Automatic;
 					};
 					AFF5809C6E69E78F6B708F17 = {
-						DevelopmentTeam = "";
+						DevelopmentTeam = "$(SETPOINT_TEAM_ID)";
 						ProvisioningStyle = Automatic;
 					};
 					DF286BAF587190FD3428B6DA = {
-						DevelopmentTeam = "";
+						DevelopmentTeam = "$(SETPOINT_TEAM_ID)";
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -658,6 +674,7 @@
 				06C546487C6FA154FBABC414 /* Elevation.swift in Sources */,
 				68C662A20CFA38C3DC99D29D /* GoalGraphics.swift in Sources */,
 				1D84EE987AEB8AC6F5ABFA9A /* Haptics.swift in Sources */,
+				BBDBB810DCF5117BF7DA355C /* HealthDataSource.swift in Sources */,
 				F8132AA5435F1AE2BBF13367 /* HealthKitManager.swift in Sources */,
 				EA55542A09FC3324D9F8491C /* HomePreview.swift in Sources */,
 				122B4C19DE61D9CA29DADC9C /* HomeScreen.swift in Sources */,
@@ -721,6 +738,7 @@
 				90EC59D1929AB926863E3FEA /* BiosignalStatsTests.swift in Sources */,
 				2ED1614D4E3A411BAD72206A /* CheckInTests.swift in Sources */,
 				E24AAC6BB063241D3E3A0D79 /* DTOTests.swift in Sources */,
+				6557D90382A31A210B260EA5 /* HealthKitManagerTests.swift in Sources */,
 				7208B8BA780CC1686F09C978 /* HealthyWeightTests.swift in Sources */,
 				9F0D1EC76A037AFE96546243 /* LogMealTests.swift in Sources */,
 				3ED98D31B3CAEA9D98194499 /* MotionTests.swift in Sources */,
@@ -772,6 +790,7 @@
 		};
 		337536E1F3B9BC0EE3EF6278 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 4C1D0D284D9EA0510F955FE0 /* Signing.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
@@ -807,7 +826,7 @@
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = "$(SETPOINT_TEAM_ID)";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -850,6 +869,7 @@
 		};
 		51D681C4A6AB274FEF4B9598 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 4C1D0D284D9EA0510F955FE0 /* Signing.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
@@ -885,7 +905,7 @@
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = "$(SETPOINT_TEAM_ID)";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;

@@ -72,7 +72,7 @@ struct SettingsView: View {
                     if env.health.isAvailable {
                         rowDivider
                         NavigationLink { HealthSettingsView() } label: {
-                            YouRow(symbol: "heart", title: "Apple Health", value: env.health.connected ? "Connected" : "Not connected")
+                            YouRow(symbol: "heart", title: "Apple Health", value: healthRowValue)
                         }
                     }
                     rowDivider
@@ -156,6 +156,15 @@ struct SettingsView: View {
 
     private var rowDivider: some View {
         Divider().overlay(Palette.hairline).padding(.leading, 66)
+    }
+
+    private var healthRowValue: String {
+        switch env.health.state {
+        case .connected:
+            return env.health.hasHeartData ? "Connected" : "No heart data yet"
+        case .notConnected, .unavailable:
+            return "Not connected"
+        }
     }
 
     private func planCard(_ model: SettingsViewModel) -> some View {
