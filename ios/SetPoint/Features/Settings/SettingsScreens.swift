@@ -1,933 +1,1146 @@
 import SwiftUI
+import UIKit
+
+// MARK: - Goal and pace
 
 struct GoalSettingsView: View {
     @Bindable var model: SettingsViewModel
-    @State private var highlightTargetWeight = false
+    @State private var editingTarget: DailyTargetField?
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: Space.lg) {
-                header
-                    .appearIn(0)
-
-                VStack(alignment: .leading, spacing: Space.sm) {
-                    Text("Direction").sectionLabelStyle()
-
-                    HStack(spacing: Space.xs) {
-                        ForEach(Goal.allCases) { goal in
-                            GoalDirectionCard(
-                                goal: goal,
-                                selected: model.goal == goal
-                            ) {
-                                choose(goal)
-                            }
-                        }
-                    }
-                }
-                .appearIn(1)
+        SettingsScreen(title: "Goal and pace") {
+            VStack(alignment: .leading, spacing: 20) {
+                goalTiles.appearIn(2)
 
                 if model.goal.hasWeightTarget {
-                    trajectoryCard
-                        .transition(.opacity.combined(with: .move(edge: .top)))
-                        .appearIn(2)
-                } else {
-                    ManagerNote(
-                        text: "Steady target. Watching for drift."
-                    )
-                    .transition(.opacity.combined(with: .move(edge: .top)))
-                }
-
-                dailyTargets
-                    .appearIn(3)
-
-                VStack(alignment: .leading, spacing: Space.sm) {
-                    Text("Foods to avoid").sectionLabelStyle()
-                    Text("Excluded from suggestions.")
-                        .font(Typography.data(13))
-                        .foregroundStyle(Palette.inkSoft)
-                    Card {
-                        RestrictionChips(selected: $model.restrictions)
+                    targetCard.appearIn(3)
+                    pace.appearIn(4)
+                    if let weeks = etaWeeks {
+                        Label("About \(weeks) weeks", systemImage: "clock")
+                            .font(Typography.data(14, weight: .bold))
+                            .foregroundStyle(Palette.inkSoft)
+                            .frame(maxWidth: .infinity)
+                            .appearIn(5)
                     }
                 }
 
-                if let error = model.error {
-                    Text(error)
-                        .font(Typography.data(13))
-                        .foregroundStyle(Palette.accentDeep)
-                        .padding(Space.sm)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Palette.accentTint, in: RoundedRectangle(cornerRadius: Radius.sm, style: .continuous))
-                }
-            }
-            .padding(.horizontal, Space.gutter)
-            .padding(.top, Space.md)
-            .padding(.bottom, Space.xl)
-        }
-        .scrollDismissesKeyboard(.interactively)
-        .background(Palette.background.ignoresSafeArea())
-        .navigationTitle("Goal")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(Palette.background, for: .navigationBar)
-        .saveWhenDirty(model)
-        .onDisappear { model.revertToOriginal() }
-        .animation(Motion.settle, value: model.goal)
-    }
-
-    private var header: some View {
-        VStack(alignment: .leading, spacing: Space.xs) {
-            Text("Your goal")
-                .font(Typography.display(32))
-                .foregroundStyle(Palette.ink)
-            Text("Set direction and targets.")
-                .font(Typography.voice(17))
-                .foregroundStyle(Palette.inkSoft)
-        }
-    }
-
-    private var trajectoryCard: some View {
-        Card(tint: Palette.surfaceRaised, padding: Space.md) {
-            VStack(alignment: .leading, spacing: Space.md) {
-                Text("Your path").sectionLabelStyle()
-
-                HStack(alignment: .center, spacing: Space.sm) {
-                    weightPoint(
-                        label: "Now",
-                        value: model.currentWeightKg.map { "\(Int($0.rounded()))" } ?? "—",
-                        unit: model.currentWeightKg == nil ? nil : "kg"
-                    )
-
-                    HStack(spacing: 5) {
-                        Rectangle()
-                            .fill(Palette.accentSoft)
-                            .frame(height: 2)
-                        Image(systemName: "arrow.right")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundStyle(Palette.accent)
-                    }
-
-                    VStack(alignment: .trailing, spacing: 4) {
-                        Text("Target")
-                            .font(Typography.data(12, weight: .semibold))
-                            .foregroundStyle(Palette.inkFaint)
-                        HStack(alignment: .firstTextBaseline, spacing: 4) {
-                            TextField("—", value: $model.targetWeightKg, format: .number)
-                                .keyboardType(.decimalPad)
-                                .multilineTextAlignment(.trailing)
-                                .font(Typography.data(28, weight: .semibold))
-                                .foregroundStyle(Palette.accentDeep)
-                                .frame(minWidth: 48, maxWidth: 76)
-                            Text("kg")
-                                .font(Typography.data(13))
-                                .foregroundStyle(Palette.inkFaint)
-                        }
-                    }
-                    .padding(8)
-                    .background(
-                        highlightTargetWeight ? Palette.accentTint : Color.clear,
-                        in: RoundedRectangle(cornerRadius: Radius.sm, style: .continuous)
-                    )
-                    .overlay {
-                        RoundedRectangle(cornerRadius: Radius.sm, style: .continuous)
-                            .strokeBorder(highlightTargetWeight ? Palette.accent.opacity(0.55) : Color.clear)
-                    }
-                    .animation(Motion.settle, value: highlightTargetWeight)
-                    .onChange(of: model.targetWeightKg) { _, _ in
-                        highlightTargetWeight = false
-                    }
-                }
-
-                if let message = model.targetWeightMessage {
-                    Text(message)
-                        .font(Typography.data(12, weight: .medium))
-                        .foregroundStyle(Palette.accentDeep)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .transition(.opacity)
-                }
-
-                Divider().overlay(Palette.hairline)
-
-                VStack(alignment: .leading, spacing: Space.xs) {
-                    Text("Pace").sectionLabelStyle()
-                    HStack(spacing: Space.xs) {
-                        ForEach(GoalPace.allCases) { pace in
-                            PaceCard(
-                                pace: pace,
-                                goal: model.goal,
-                                selected: model.pace == pace
-                            ) {
-                                model.pace = pace
-                            }
-                        }
-                    }
-                }
-
-                Text("Changes recalculate your daily target.")
-                    .font(Typography.data(12))
-                    .foregroundStyle(Palette.inkFaint)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-    }
-
-    private var dailyTargets: some View {
-        VStack(alignment: .leading, spacing: Space.sm) {
-            Text("Daily targets").sectionLabelStyle()
-            Text("Adjust as needed.")
-                .font(Typography.data(13))
-                .foregroundStyle(Palette.inkSoft)
-
-            VStack(spacing: Space.xs) {
-                TargetAdjuster(
-                    title: "Energy",
-                    value: $model.kcalTarget,
-                    range: 1200 ... 6000,
-                    step: 50,
-                    unit: "kcal"
-                )
-                TargetAdjuster(
-                    title: "Protein",
-                    value: Binding(
-                        get: { model.proteinTarget ?? 0 },
-                        set: { model.proteinTarget = $0 }
-                    ),
-                    range: 0 ... 350,
-                    step: 5,
-                    unit: "g"
-                )
-            }
-        }
-    }
-
-    private func weightPoint(label: String, value: String, unit: String?) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(label)
-                .font(Typography.data(12, weight: .semibold))
-                .foregroundStyle(Palette.inkFaint)
-            HStack(alignment: .firstTextBaseline, spacing: 4) {
-                Text(value)
-                    .font(Typography.data(28, weight: .semibold))
-                    .foregroundStyle(Palette.ink)
-                    .monospacedDigit()
-                if let unit {
-                    Text(unit)
-                        .font(Typography.data(13))
-                        .foregroundStyle(Palette.inkFaint)
-                }
-            }
-        }
-    }
-
-    private func choose(_ goal: Goal) {
-        let directionChanged = model.goal != goal
-        model.goal = goal
-        if goal.hasWeightTarget,
-           model.targetWeightKg == nil,
-           let current = model.currentWeightKg {
-            model.targetWeightKg = (current + (goal == .bulk ? 4 : -5)).rounded()
-        }
-        highlightTargetWeight = directionChanged && goal.hasWeightTarget
-    }
-}
-
-private struct GoalDirectionCard: View {
-    let goal: Goal
-    let selected: Bool
-    let action: () -> Void
-
-    private var symbol: String {
-        switch goal {
-        case .bulk: return "arrow.up.right"
-        case .diet: return "arrow.down.right"
-        case .maintain: return "arrow.right"
-        }
-    }
-
-    var body: some View {
-        Button(action: action) {
-            VStack(alignment: .leading, spacing: Space.sm) {
-                ZStack {
-                    Circle()
-                        .fill(selected ? Palette.accent : Palette.surfaceSunk)
-                        .frame(width: 34, height: 34)
-                    Image(systemName: symbol)
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(selected ? Color.white : Palette.inkSoft)
-                }
-                Text(goal.title)
-                    .font(Typography.data(14, weight: .semibold))
-                    .foregroundStyle(Palette.ink)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-            }
-            .padding(12)
-            .frame(maxWidth: .infinity, minHeight: 92, alignment: .leading)
-            .background {
-                RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
-                    .fill(selected ? Palette.accentTint : Palette.surface)
-                    .elevation(selected ? .floating : .resting)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
-                            .strokeBorder(selected ? Palette.accent.opacity(0.4) : Palette.hairline)
-                    )
-            }
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("\(goal.title): \(goal.blurb)")
-        .accessibilityAddTraits(selected ? .isSelected : [])
-    }
-}
-
-private struct PaceCard: View {
-    let pace: GoalPace
-    let goal: Goal
-    let selected: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text(pace.title)
-                        .font(Typography.data(15, weight: .semibold))
-                    Spacer()
-                    if selected {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(Palette.accent)
-                    }
-                }
-                Text(pace.blurb(for: goal))
-                    .font(Typography.data(11))
-                    .foregroundStyle(Palette.inkSoft)
-            }
-            .foregroundStyle(Palette.ink)
-            .padding(12)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                selected ? Palette.accentTint : Palette.surfaceSunk.opacity(0.7),
-                in: RoundedRectangle(cornerRadius: Radius.sm, style: .continuous)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: Radius.sm, style: .continuous)
-                    .strokeBorder(selected ? Palette.accent.opacity(0.35) : Palette.hairline)
-            )
-        }
-        .buttonStyle(.plain)
-        .accessibilityAddTraits(selected ? .isSelected : [])
-    }
-}
-
-private struct TargetAdjuster: View {
-    let title: String
-    @Binding var value: Int
-    let range: ClosedRange<Int>
-    let step: Int
-    let unit: String
-
-    var body: some View {
-        Card(padding: 14) {
-            HStack(spacing: Space.sm) {
-                Text(title)
-                    .font(Typography.data(16, weight: .semibold))
-                    .foregroundStyle(Palette.ink)
-
-                Spacer()
-
-                adjustmentButton(symbol: "minus") {
-                    value = max(range.lowerBound, value - step)
-                }
-                .disabled(value <= range.lowerBound)
-
-                HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    Text("\(value)")
-                        .font(Typography.data(20, weight: .semibold))
-                        .foregroundStyle(Palette.ink)
-                        .monospacedDigit()
-                    Text(unit)
-                        .font(Typography.data(12))
-                        .foregroundStyle(Palette.inkFaint)
-                }
-                .frame(minWidth: 88)
-
-                adjustmentButton(symbol: "plus") {
-                    value = min(range.upperBound, value + step)
-                }
-                .disabled(value >= range.upperBound)
-            }
-        }
-    }
-
-    private func adjustmentButton(symbol: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: symbol)
-                .font(.system(size: 12, weight: .bold))
-                .foregroundStyle(Palette.inkSoft)
-                .frame(width: 32, height: 32)
-                .background(Palette.surfaceSunk, in: Circle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("\(symbol == "plus" ? "Increase" : "Decrease") \(title)")
-    }
-}
-
-struct RhythmSettingsView: View {
-    @Bindable var model: SettingsViewModel
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: Space.lg) {
-                VStack(alignment: .leading, spacing: Space.xs) {
-                    Text("Your rhythm")
-                        .font(Typography.display(32))
-                        .foregroundStyle(Palette.ink)
-                    Text("Approximate times are enough.")
-                        .font(Typography.voice(17))
-                        .foregroundStyle(Palette.inkSoft)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .appearIn(0)
-
-                VStack(alignment: .leading, spacing: Space.sm) {
-                    Text("Your meal rhythm").sectionLabelStyle()
-                    Card(tint: Palette.surfaceRaised, padding: 0) {
-                        VStack(spacing: 0) {
-                            CheckInTimeRow(
-                                title: "Breakfast",
-                                symbol: "sun.horizon.fill",
-                                minutes: $model.mealTimes.breakfastMin
-                            )
-                            Divider().overlay(Palette.hairline).padding(.leading, 58)
-                            CheckInTimeRow(
-                                title: "Lunch",
-                                symbol: "sun.max.fill",
-                                minutes: $model.mealTimes.lunchMin
-                            )
-                            Divider().overlay(Palette.hairline).padding(.leading, 58)
-                            CheckInTimeRow(
-                                title: "Dinner",
-                                symbol: "sunset.fill",
-                                minutes: $model.mealTimes.dinnerMin
-                            )
-                        }
-                    }
-                }
-                .appearIn(1)
-
-                VStack(alignment: .leading, spacing: Space.sm) {
-                    Text("Quiet hours").sectionLabelStyle()
-                    Text("No nudges.")
-                        .font(Typography.data(13))
-                        .foregroundStyle(Palette.inkSoft)
-
-                    Card(tint: Palette.surfaceRaised, padding: Space.md) {
-                        VStack(alignment: .leading, spacing: Space.md) {
-                            HStack(spacing: Space.sm) {
-                                Image(systemName: "moon.stars.fill")
-                                    .font(.system(size: 18, weight: .medium))
-                                    .foregroundStyle(Palette.accent)
-                                    .frame(width: 38, height: 38)
-                                    .background(Palette.accentTint, in: Circle())
-                                VStack(alignment: .leading, spacing: 3) {
-                                    Text("Pause check-ins")
-                                        .font(Typography.data(16, weight: .semibold))
-                                        .foregroundStyle(Palette.ink)
-                                    Text("Tracking continues.")
-                                        .font(Typography.data(12))
-                                        .foregroundStyle(Palette.inkFaint)
-                                }
-                            }
-
-                            HStack(spacing: Space.xs) {
-                                QuietTimeField(label: "From", minutes: $model.quietHours.startMin)
-                                Image(systemName: "arrow.right")
-                                    .font(.system(size: 12, weight: .bold))
-                                    .foregroundStyle(Palette.inkFaint)
-                                QuietTimeField(label: "Until", minutes: $model.quietHours.endMin)
-                            }
-                        }
-                    }
-                }
-                .appearIn(2)
-
-                Card(
-                    tint: model.checkInsPaused ? Palette.surfaceSunk : Palette.accentTint,
-                    elevation: .resting,
-                    padding: Space.md
-                ) {
-                    Toggle(isOn: $model.checkInsPaused) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(model.checkInsPaused ? "Check-ins off" : "Check-ins on")
-                                .font(Typography.data(16, weight: .semibold))
-                                .foregroundStyle(Palette.ink)
-                            Text(model.checkInsPaused ? "No nudges." : "Nudges when behind.")
-                                .font(Typography.data(12))
-                                .foregroundStyle(Palette.inkSoft)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                    }
-                    .tint(Palette.accent)
-                }
-                .appearIn(3)
+                dailyTargets.appearIn(6)
 
                 if let error = model.error {
                     SettingsErrorBanner(message: error)
                 }
             }
-            .padding(.horizontal, Space.gutter)
-            .padding(.top, Space.md)
-            .padding(.bottom, Space.xl)
         }
-        .background(Palette.background.ignoresSafeArea())
-        .navigationTitle("Rhythm")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(Palette.background, for: .navigationBar)
-        .saveWhenDirty(model)
+        .animation(Motion.settle, value: model.goal)
+        .settingsSaveBar(
+            visible: model.goalDirty,
+            note: model.goalSaveNote,
+            saving: model.saving,
+            disabled: model.blocksSave || model.saving
+        ) {
+            Task {
+                await model.save()
+                if model.error == nil { Haptics.landed() }
+            }
+        }
+        .sheet(item: $editingTarget, content: dailyTargetSheet)
+        .onDisappear { model.revertToOriginal() }
+        .onAppear { proposeTargetIfNeeded() }
+    }
+
+    private var goalTiles: some View {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 3), spacing: 10) {
+            ForEach(Goal.allCases) { goal in
+                let selected = model.goal == goal
+                Button {
+                    UISelectionFeedbackGenerator().selectionChanged()
+                    withAnimation(Motion.settle) {
+                        model.goal = goal
+                        proposeTargetIfNeeded()
+                    }
+                } label: {
+                    VStack(spacing: 8) {
+                        GoalSparkline(goal: goal)
+                            .stroke(
+                                selected ? Palette.accent : Palette.inkSoft,
+                                style: StrokeStyle(lineWidth: 4, lineCap: .round)
+                            )
+                            .frame(width: 60, height: 40)
+                        Text(goal.title)
+                            .font(Typography.data(15, weight: .heavy))
+                            .foregroundStyle(Palette.ink)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                    }
+                    .padding(.vertical, 14)
+                    .padding(.horizontal, 8)
+                    .frame(maxWidth: .infinity)
+                    .background {
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .fill(selected ? Palette.surfaceRaised : Palette.surface)
+                            .elevation(selected ? .floating : .resting)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                    .strokeBorder(
+                                        selected ? Palette.accent : Palette.hairline,
+                                        lineWidth: selected ? 2 : 1
+                                    )
+                            )
+                    }
+                }
+                .buttonStyle(PressableCard())
+                .accessibilityLabel(goal.title)
+                .accessibilityAddTraits(selected ? .isSelected : [])
+            }
+        }
+    }
+
+    private var targetCard: some View {
+        SettingsCard(padding: 18) {
+            VStack(alignment: .leading, spacing: Space.md) {
+                HStack {
+                    Text("Target weight").sectionLabelStyle()
+                    Spacer()
+                    if let current = model.currentWeightKg {
+                        Text("\(current.formatted(.number.precision(.fractionLength(1)))) kg now")
+                            .font(Typography.data(13, weight: .bold))
+                            .foregroundStyle(Palette.inkSoft)
+                            .monospacedDigit()
+                    }
+                }
+
+                TargetCurve(falling: model.goal == .diet, startLabel: curveStartLabel)
+                    .frame(height: 112)
+
+                stepperRow
+
+                if let message = model.targetWeightMessage {
+                    Text(message)
+                        .font(Typography.data(13, weight: .semibold))
+                        .foregroundStyle(Palette.accentDeep)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
+                }
+            }
+        }
+    }
+
+    private var stepperRow: some View {
+        HStack {
+            stepperButton("minus", delta: -1)
+            Spacer()
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text(targetKg.formatted(.number.precision(.fractionLength(0))))
+                    .font(Typography.data(60, weight: .heavy))
+                    .tracking(-2)
+                    .monospacedDigit()
+                    .foregroundStyle(Palette.ink)
+                    .contentTransition(.numericText(value: targetKg))
+                Text("kg")
+                    .font(Typography.data(20, weight: .bold))
+                    .foregroundStyle(Palette.inkFaint)
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Target \(Int(targetKg.rounded())) kilograms")
+            .accessibilityAdjustableAction { direction in
+                switch direction {
+                case .increment: nudge(1)
+                case .decrement: nudge(-1)
+                @unknown default: break
+                }
+            }
+            Spacer()
+            stepperButton("plus", delta: 1)
+        }
+    }
+
+    private var pace: some View {
+        SegmentedPills(
+            options: GoalPace.allCases,
+            selection: $model.pace,
+            title: { $0.title },
+            detail: { $0.blurb(for: model.goal) }
+        )
+    }
+
+    private var dailyTargets: some View {
+        SettingsCard(padding: 18) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Text("Daily targets").sectionLabelStyle()
+                    Spacer()
+                    dailyChip
+                }
+
+                LazyVGrid(
+                    columns: Array(
+                        repeating: GridItem(.flexible(), spacing: 10),
+                        count: model.proteinTarget == nil ? 1 : 2
+                    ),
+                    spacing: 10
+                ) {
+                    targetTile(
+                        value: model.kcalTarget.formatted(),
+                        struck: model.kcalEdited ? model.savedKcalTarget.formatted() : nil,
+                        caption: "kcal a day"
+                    ) { editingTarget = .kcal }
+
+                    if let protein = model.proteinTarget {
+                        targetTile(
+                            value: "\(protein) g",
+                            struck: model.proteinEdited ? savedProteinLabel : nil,
+                            caption: "protein"
+                        ) { editingTarget = .protein }
+                    }
+                }
+
+                Text("Tap a number to set it yourself.")
+                    .font(Typography.data(12))
+                    .foregroundStyle(Palette.inkFaint)
+            }
+        }
+    }
+
+    private var dailyChip: some View {
+        HStack(spacing: 4) {
+            if !model.dailyTargetsEdited {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 12, weight: .bold))
+            }
+            Text(model.dailyTargetsEdited ? "Set by you" : "Set from your goal")
+        }
+        .font(Typography.data(12, weight: .bold))
+        .foregroundStyle(model.dailyTargetsEdited ? Palette.inkSoft : Palette.accentDeep)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 5)
+        .background(
+            model.dailyTargetsEdited ? Palette.surfaceSunk : Palette.accentTint,
+            in: Capsule()
+        )
+    }
+
+    private func targetTile(value: String, struck: String?, caption: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(value)
+                        .font(Typography.data(26, weight: .heavy))
+                        .foregroundStyle(Palette.ink)
+                        .monospacedDigit()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                    if let struck {
+                        Text(struck)
+                            .font(Typography.data(16, weight: .semibold))
+                            .foregroundStyle(Palette.inkFaint)
+                            .strikethrough()
+                            .monospacedDigit()
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                    }
+                }
+                Text(caption)
+                    .font(Typography.data(12))
+                    .foregroundStyle(Palette.inkSoft)
+            }
+            .padding(.vertical, 12)
+            .padding(.horizontal, 14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Palette.surfaceSunk, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+        .buttonStyle(PressableCard())
+        .accessibilityLabel("\(value) \(caption)")
+    }
+
+    @ViewBuilder
+    private func dailyTargetSheet(_ field: DailyTargetField) -> some View {
+        DailyTargetSheet(field: field, model: model)
+            .presentationDetents([.height(320)])
+            .presentationDragIndicator(.visible)
+            .presentationBackground(Palette.background)
+            .presentationCornerRadius(28)
+    }
+
+    private var targetKg: Double {
+        model.targetWeightKg ?? model.currentWeightKg ?? 70
+    }
+
+    private var curveStartLabel: String {
+        if let current = model.currentWeightKg {
+            return "\(current.formatted(.number.precision(.fractionLength(0 ... 1)))) kg · now"
+        }
+        return "Now"
+    }
+
+    private var etaWeeks: Int? {
+        guard model.goal.hasWeightTarget,
+              let target = model.targetWeightKg,
+              let current = model.currentWeightKg else { return nil }
+        let rate = model.pace.kgPerWeek(for: model.goal)
+        guard rate > 0 else { return nil }
+        let delta = abs(target - current)
+        guard delta > 0.05 else { return nil }
+        return Int((delta / rate).rounded(.up))
+    }
+
+    private var savedProteinLabel: String? {
+        model.savedProteinTarget.map { "\($0) g" }
+    }
+
+    private func stepperButton(_ symbol: String, delta: Double) -> some View {
+        Button { nudge(delta) } label: {
+            Image(systemName: symbol)
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundStyle(Palette.ink)
+                .frame(width: 48, height: 48)
+                .background(Palette.surfaceSunk, in: Circle())
+        }
+        .buttonStyle(PressableCard())
+        .accessibilityLabel(delta > 0 ? "Increase target" : "Decrease target")
+    }
+
+    private func nudge(_ delta: Double) {
+        UISelectionFeedbackGenerator().selectionChanged()
+        withAnimation(Motion.settle) {
+            model.targetWeightKg = min(350, max(25, (targetKg + delta).rounded()))
+        }
+    }
+
+    private func proposeTargetIfNeeded() {
+        guard model.goal.hasWeightTarget, model.targetWeightKg == nil, let current = model.currentWeightKg else { return }
+        model.targetWeightKg = (current + (model.goal == .bulk ? 4 : -5)).rounded()
+    }
+}
+
+private enum DailyTargetField: String, Identifiable {
+    case kcal, protein
+    var id: String { rawValue }
+}
+
+private struct DailyTargetSheet: View {
+    let field: DailyTargetField
+    @Bindable var model: SettingsViewModel
+    @Environment(\.dismiss) private var dismiss
+    @State private var value: Double = 0
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Space.md) {
+            Text(field == .kcal ? "Daily calories" : "Daily protein")
+                .sectionLabelStyle()
+            if field == .kcal {
+                RulerPicker(value: $value, range: 1200 ... 6000, step: 50, unit: "kcal", majorStep: 500)
+            } else {
+                RulerPicker(value: $value, range: 40 ... 300, step: 5, unit: "g", majorStep: 50)
+            }
+            ActionButton(title: "Done") {
+                if field == .kcal {
+                    model.kcalTarget = Int(value.rounded())
+                } else {
+                    model.proteinTarget = Int(value.rounded())
+                }
+                dismiss()
+            }
+        }
+        .padding(Space.gutter)
+        .onAppear {
+            value = field == .kcal ? Double(model.kcalTarget) : Double(model.proteinTarget ?? 40)
+        }
+    }
+}
+
+// MARK: - Meal times
+
+struct RhythmSettingsView: View {
+    @Bindable var model: SettingsViewModel
+    @State private var editingMeal: MealSlot?
+    @State private var editingQuiet = false
+
+    var body: some View {
+        SettingsScreen(title: "Meal times", subtitle: "Drag a meal around the dial.") {
+            VStack(alignment: .leading, spacing: 20) {
+                dial.appearIn(2)
+                mealRows.appearIn(3)
+                bottomPair.appearIn(4)
+                if let error = model.error {
+                    SettingsErrorBanner(message: error)
+                }
+            }
+        }
+        .settingsSaveBar(
+            visible: model.mealTimesDirty,
+            note: model.mealTimesSaveNote,
+            saving: model.saving,
+            disabled: model.saving
+        ) {
+            Task {
+                await model.save()
+                if model.error == nil { Haptics.landed() }
+            }
+        }
+        .sheet(item: $editingMeal, content: mealSheet)
+        .sheet(isPresented: $editingQuiet) { quietSheet }
         .onDisappear { model.revertToOriginal() }
         .animation(Motion.settle, value: model.checkInsPaused)
     }
+
+    private var dial: some View {
+        DayDial(
+            breakfastMin: model.mealTimes.breakfastMin,
+            lunchMin: model.mealTimes.lunchMin,
+            dinnerMin: model.mealTimes.dinnerMin,
+            quietStartMin: model.quietHours.startMin,
+            quietEndMin: model.quietHours.endMin,
+            showsHourLabels: false,
+            onMove: { slot, minute in
+                withAnimation(Motion.settle) { model.mealTimes[slot] = minute }
+            }
+        ) {
+            VStack(spacing: 4) {
+                Text("Your day")
+                    .font(Typography.voice(22))
+                    .foregroundStyle(Palette.ink)
+                Text(model.checkInsPaused ? "Check-ins off" : "3 check-ins")
+                    .font(Typography.data(12, weight: .bold))
+                    .foregroundStyle(Palette.inkSoft)
+            }
+        }
+        .frame(maxWidth: 300)
+        .frame(maxWidth: .infinity)
+    }
+
+    private var mealRows: some View {
+        SettingsCard(padding: 0) {
+            VStack(spacing: 0) {
+                ForEach(Array(MealSlot.allCases.enumerated()), id: \.element) { index, slot in
+                    if index > 0 {
+                        Divider().overlay(Palette.hairline).padding(.leading, 66)
+                    }
+                    mealRow(slot)
+                }
+            }
+        }
+    }
+
+    private func mealRow(_ slot: MealSlot) -> some View {
+        let t = model.mealTimes[slot]
+        let checkIn = CheckInSchedule.minute(afterMeal: t)
+        return Button { editingMeal = slot } label: {
+            HStack(spacing: 14) {
+                Image(systemName: slot.symbol)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(Palette.accent)
+                    .frame(width: 38, height: 38)
+                    .background(Palette.accentTint, in: Circle())
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(slot.title)
+                        .font(Typography.data(16, weight: .heavy))
+                        .foregroundStyle(Palette.ink)
+                    HStack(spacing: 4) {
+                        Image(systemName: "bell.fill")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(Palette.accent)
+                        Text("check-in \(formatMinutes(checkIn))")
+                            .font(Typography.data(12, weight: .semibold))
+                            .foregroundStyle(Palette.inkSoft)
+                    }
+                }
+                Spacer(minLength: 8)
+                Text(formatMinutes(t))
+                    .font(Typography.data(17, weight: .heavy))
+                    .monospacedDigit()
+                    .foregroundStyle(Palette.ink)
+                    .padding(.vertical, 8)
+                    .padding(.horizontal, 12)
+                    .background(Palette.surfaceSunk, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(slot.title) \(formatMinutes(t))")
+    }
+
+    private var bottomPair: some View {
+        HStack(spacing: 10) {
+            Button { editingQuiet = true } label: {
+                VStack(alignment: .leading, spacing: 8) {
+                    Image(systemName: "moon.fill")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(Palette.inkSoft)
+                        .frame(width: 34, height: 34)
+                        .background(Palette.surfaceSunk, in: Circle())
+                    Text("Quiet")
+                        .font(Typography.data(14, weight: .heavy))
+                        .foregroundStyle(Palette.ink)
+                    Text("\(formatMinutes(model.quietHours.startMin)) – \(formatMinutes(model.quietHours.endMin))")
+                        .font(Typography.data(13))
+                        .foregroundStyle(Palette.inkSoft)
+                        .monospacedDigit()
+                }
+                .padding(.vertical, 14)
+                .padding(.horizontal, 16)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+                .background {
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(Palette.surface)
+                        .elevation(.resting)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                .strokeBorder(Palette.hairline)
+                        )
+                }
+            }
+            .buttonStyle(PressableCard())
+            .accessibilityLabel(
+                "Quiet \(formatMinutes(model.quietHours.startMin)) to \(formatMinutes(model.quietHours.endMin))"
+            )
+
+            checkInsCard
+        }
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
+    @ViewBuilder
+    private var checkInsCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if model.enforcementEnabled {
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Check-ins")
+                            .font(Typography.data(14, weight: .heavy))
+                            .foregroundStyle(Palette.ink)
+                        Text(model.checkInsPaused ? "Paused" : "On")
+                            .font(Typography.data(13))
+                            .foregroundStyle(Palette.inkSoft)
+                    }
+                    Spacer()
+                    Toggle("Check-ins", isOn: Binding(
+                        get: { !model.checkInsPaused },
+                        set: { on in Task { await model.setCheckInsPaused(!on) } }
+                    ))
+                    .labelsHidden()
+                    .tint(Palette.accent)
+                    .disabled(model.saving)
+                }
+            } else {
+                Text(enforcementNote(model.enforcementDisabledReason))
+                    .font(Typography.data(13))
+                    .foregroundStyle(Palette.inkSoft)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(.vertical, 14)
+        .padding(.horizontal, 16)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        .background {
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Palette.surface)
+                .elevation(.resting)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .strokeBorder(Palette.hairline)
+                )
+        }
+    }
+
+    private func mealSheet(_ slot: MealSlot) -> some View {
+        MealTimeSheet(slot: slot, times: $model.mealTimes)
+            .presentationDetents([.height(260)])
+            .presentationDragIndicator(.visible)
+            .presentationBackground(Palette.background)
+            .presentationCornerRadius(28)
+    }
+
+    private var quietSheet: some View {
+        QuietHoursSheet(quietHours: $model.quietHours)
+            .presentationDetents([.height(320)])
+            .presentationDragIndicator(.visible)
+            .presentationBackground(Palette.background)
+            .presentationCornerRadius(28)
+    }
 }
 
-private struct CheckInTimeRow: View {
-    let title: String
-    let symbol: String
-    @Binding var minutes: Int
+private struct MealTimeSheet: View {
+    let slot: MealSlot
+    @Binding var times: MealTimesPayload
+    @Environment(\.dismiss) private var dismiss
+    @State private var minutes = 0
 
     var body: some View {
-        HStack(spacing: Space.sm) {
-            Image(systemName: symbol)
-                .font(.system(size: 16, weight: .medium))
-                .foregroundStyle(Palette.accent)
-                .frame(width: 34, height: 34)
-                .background(Palette.accentTint, in: Circle())
+        VStack(alignment: .leading, spacing: Space.md) {
+            Text(slot.title).sectionLabelStyle()
+            MinutesField(label: slot.title, minutes: $minutes)
+            ActionButton(title: "Done") {
+                times[slot] = MealTimeEditing.clamp(
+                    minutes, slot: slot,
+                    breakfast: times.breakfastMin, lunch: times.lunchMin, dinner: times.dinnerMin
+                )
+                dismiss()
+            }
+        }
+        .padding(Space.gutter)
+        .onAppear { minutes = times[slot] }
+    }
+}
 
-            Text(title)
-                .font(Typography.data(16, weight: .semibold))
+private struct QuietHoursSheet: View {
+    @Binding var quietHours: QuietHoursPayload
+    @Environment(\.dismiss) private var dismiss
+    @State private var start = 0
+    @State private var end = 0
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Space.md) {
+            Text("Quiet hours").sectionLabelStyle()
+            MinutesField(label: "Starts", minutes: $start)
+            MinutesField(label: "Ends", minutes: $end)
+            ActionButton(title: "Done") {
+                quietHours.startMin = start
+                quietHours.endMin = end
+                dismiss()
+            }
+        }
+        .padding(Space.gutter)
+        .onAppear {
+            start = quietHours.startMin
+            end = quietHours.endMin
+        }
+    }
+}
+
+// MARK: - Foods I avoid
+
+struct FoodsSettingsView: View {
+    @Bindable var model: SettingsViewModel
+    @State private var customText = ""
+
+    private static let allergies = ["Peanuts", "Tree nuts", "Shellfish", "Fish", "Sesame", "Eggs", "Soy"]
+    private static let intolerances = ["Dairy", "Gluten"]
+    private static let dontEat = ["Pork", "Beef", "Vegetarian", "Vegan"]
+    private static var known: [String] { allergies + intolerances + dontEat }
+
+    private var customRestrictions: [String] {
+        model.restrictions.filter { item in
+            !Self.known.contains { $0.caseInsensitiveCompare(item) == .orderedSame }
+        }
+    }
+
+    var body: some View {
+        SettingsScreen(title: "Foods I avoid", subtitle: "I’ll never suggest them.") {
+            VStack(alignment: .leading, spacing: 20) {
+                chipGroup("Allergies", Self.allergies).appearIn(2)
+                chipGroup("Intolerances", Self.intolerances).appearIn(3)
+                chipGroup("I don’t eat", Self.dontEat).appearIn(4)
+                if !customRestrictions.isEmpty {
+                    chipGroup("Yours", customRestrictions).appearIn(5)
+                }
+                addYourOwn.appearIn(6)
+                reassurance.appearIn(7)
+            }
+        }
+        .settingsSaveBar(
+            visible: model.restrictionsDirty,
+            note: model.restrictionsSaveNote,
+            saving: model.saving,
+            disabled: model.saving
+        ) {
+            Task {
+                await model.save()
+                if model.error == nil { Haptics.landed() }
+            }
+        }
+        .onDisappear { model.revertToOriginal() }
+    }
+
+    private func chipGroup(_ title: String, _ options: [String]) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title).sectionLabelStyle()
+            FlowChips(options: options, selected: $model.restrictions)
+        }
+    }
+
+    private var addYourOwn: some View {
+        HStack(spacing: 8) {
+            TextField("Something else…", text: $customText)
+                .font(Typography.data(15))
                 .foregroundStyle(Palette.ink)
-
-            Spacer(minLength: Space.xs)
-
-            DatePicker("", selection: minutesBinding($minutes), displayedComponents: .hourAndMinute)
-                .labelsHidden()
-                .tint(Palette.accent)
+                .submitLabel(.done)
+                .onSubmit(submitCustom)
+            Button(action: submitCustom) {
+                Image(systemName: "plus")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(Palette.ink)
+                    .frame(width: 38, height: 38)
+                    .background(Palette.surface, in: Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Add")
         }
-        .padding(Space.md)
+        .padding(.leading, 18)
+        .padding(.trailing, 6)
+        .padding(.vertical, 6)
+        .background(Palette.surfaceSunk, in: Capsule())
+    }
+
+    private var reassurance: some View {
+        SettingsCard(padding: 16) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "checkmark.shield.fill")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(Palette.dayOnTrack)
+                    .frame(width: 40, height: 40)
+                    .background(Palette.dayOnTrack.opacity(0.13), in: Circle())
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Never in a suggestion")
+                        .font(Typography.data(15, weight: .heavy))
+                        .foregroundStyle(Palette.ink)
+                    Text("Every check-in meal skips these.")
+                        .font(Typography.data(13))
+                        .foregroundStyle(Palette.inkSoft)
+                }
+            }
+        }
+    }
+
+    private func submitCustom() {
+        model.addCustomRestriction(customText)
+        customText = ""
     }
 }
 
-private struct QuietTimeField: View {
-    let label: String
-    @Binding var minutes: Int
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: Space.xs) {
-            Text(label).sectionLabelStyle()
-            DatePicker("", selection: minutesBinding($minutes), displayedComponents: .hourAndMinute)
-                .labelsHidden()
-                .tint(Palette.accent)
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Palette.surfaceSunk.opacity(0.75), in: RoundedRectangle(cornerRadius: Radius.sm, style: .continuous))
-    }
-}
+// MARK: - Apple Health
 
 struct HealthSettingsView: View {
     @Environment(AppEnvironment.self) private var env
 
     var body: some View {
-        Form {
-            Section {
-                if env.health.connected {
-                    Label("Connected", systemImage: "checkmark.circle.fill")
-                        .foregroundStyle(Palette.dayOnTrack)
-                    Text("Reads HRV, resting heart rate, and weight. Raw data stays on this phone.")
-                        .font(Typography.data(13))
-                        .foregroundStyle(Palette.inkSoft)
-                } else {
-                    Button("Connect") { Task { await env.health.connect() } }
-                    Text("Used for Smart mode.")
-                        .font(Typography.data(13))
-                        .foregroundStyle(Palette.inkSoft)
+        SettingsScreen(title: "Apple Health") {
+            VStack(alignment: .leading, spacing: 20) {
+                hero.appearIn(2)
+
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("What I read").sectionLabelStyle()
+                    SettingsCard(padding: 0) {
+                        VStack(spacing: 0) {
+                            readingRow(
+                                symbol: "waveform.path.ecg",
+                                title: "Heart rate variability",
+                                reason: "Notices a rough day",
+                                when: lastSyncWhen
+                            )
+                            Divider().overlay(Palette.hairline).padding(.leading, 66)
+                            readingRow(
+                                symbol: "heart",
+                                title: "Resting heart rate",
+                                reason: "Alongside HRV",
+                                when: lastSyncWhen
+                            )
+                            Divider().overlay(Palette.hairline).padding(.leading, 66)
+                            readingRow(
+                                symbol: "scalemass",
+                                title: "Weight",
+                                reason: "Your weekly weigh-in",
+                                when: lastSyncWhen
+                            )
+                            Divider().overlay(Palette.hairline).padding(.leading, 66)
+                            readingRow(
+                                symbol: "ruler",
+                                title: "Height, age, sex",
+                                reason: "Your daily target",
+                                when: env.health.connected ? "At setup" : nil
+                            )
+                        }
+                    }
+                }
+                .appearIn(3)
+
+                privacyNote.appearIn(4)
+
+                ActionButton(title: "Manage in the Health app", kind: .secondary, action: openHealth)
+                    .appearIn(5)
+            }
+        }
+    }
+
+    private var hero: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            LoopingPhase(period: 1.6, still: 0) { t in
+                Image(systemName: "heart.fill")
+                    .font(.system(size: 26, weight: .semibold))
+                    .foregroundStyle(Color(hex: 0xFF8A73))
+                    .frame(width: 56, height: 56)
+                    .background(Palette.background.opacity(0.1), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .scaleEffect(1 + 0.08 * 0.5 * (1 - cos(t * 2 * .pi)))
+            }
+
+            Text(env.health.connected ? "Connected" : "Not connected")
+                .font(Typography.display(30))
+                .foregroundStyle(Palette.background)
+
+            Text(
+                env.health.connected
+                    ? "Your heart-rate data is flowing in."
+                    : "Connect to fill in your body stats and read recovery."
+            )
+            .font(Typography.data(14))
+            .foregroundStyle(Palette.background.opacity(0.7))
+            .fixedSize(horizontal: false, vertical: true)
+
+            if env.health.connected, let at = env.health.lastSyncAt {
+                HStack(spacing: 6) {
+                    Circle().fill(Color(hex: 0xB9D3B1)).frame(width: 6, height: 6)
+                    Text("Last sync \(timeOnly(at))")
+                        .font(Typography.data(12, weight: .bold))
+                        .foregroundStyle(Color(hex: 0xB9D3B1))
+                }
+                .padding(.horizontal, 11)
+                .padding(.vertical, 6)
+                .background(Palette.dayOnTrack.opacity(0.25), in: Capsule())
+            }
+
+            if !env.health.connected {
+                Button {
+                    Task { await env.health.connect() }
+                } label: {
+                    Text("Connect Apple Health")
+                        .font(Typography.data(16, weight: .bold))
+                        .foregroundStyle(Palette.accentDeep)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 54)
+                        .background(Palette.background, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+                .buttonStyle(PressableCard())
+            }
+        }
+        .padding(22)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background {
+            ZStack {
+                Palette.ink
+                LoopingPhase(period: 3, still: 1) { t in
+                    HeartbeatLine()
+                        .trim(from: 0, to: t)
+                        .stroke(
+                            Palette.accent.opacity(0.35),
+                            style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round)
+                        )
+                        .offset(x: 48)
+                        .padding(.vertical, 28)
                 }
             }
         }
-        .scrollContentBackground(.hidden)
-        .background(Palette.background)
-        .navigationTitle("Health")
-        .navigationBarTitleDisplayMode(.inline)
+        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .elevation(.floating)
+    }
+
+    private var lastSyncWhen: String? {
+        guard env.health.connected, let at = env.health.lastSyncAt else { return nil }
+        return lastSyncLabel(at)
+    }
+
+    private func readingRow(symbol: String, title: String, reason: String, when: String?) -> some View {
+        HStack(spacing: 14) {
+            Image(systemName: symbol)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(Palette.ink)
+                .frame(width: 38, height: 38)
+                .background(Palette.surfaceSunk, in: Circle())
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(Typography.data(15, weight: .heavy))
+                    .foregroundStyle(Palette.ink)
+                Text(reason)
+                    .font(Typography.data(12))
+                    .foregroundStyle(Palette.inkSoft)
+            }
+            Spacer(minLength: 8)
+            if let when {
+                Text(when)
+                    .font(Typography.data(12, weight: .bold))
+                    .foregroundStyle(Palette.inkFaint)
+                    .multilineTextAlignment(.trailing)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .accessibilityElement(children: .combine)
+    }
+
+    private var privacyNote: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "lock.fill")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(Palette.inkSoft)
+                .padding(.top, 1)
+            (
+                Text("Raw readings stay on this phone.")
+                    .font(Typography.data(13, weight: .bold))
+                    .foregroundStyle(Palette.ink)
+                + Text(" I only send how far today is from your normal.")
+                    .font(Typography.data(13))
+                    .foregroundStyle(Palette.inkSoft)
+            )
+            .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.vertical, 14)
+        .padding(.horizontal, 16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Palette.surfaceSunk.opacity(0.6), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    private func lastSyncLabel(_ date: Date) -> String {
+        let time = timeOnly(date)
+        if Calendar.current.isDateInToday(date) { return "Today \(time)" }
+        let weekday = date.formatted(.dateTime.weekday(.wide))
+        return "\(weekday) \(time)"
+    }
+
+    private func timeOnly(_ date: Date) -> String {
+        date.formatted(date: .omitted, time: .shortened)
+    }
+
+    private func openHealth() {
+        if let url = URL(string: "x-apple-health://"), UIApplication.shared.canOpenURL(url) {
+            UIApplication.shared.open(url)
+        } else if let url = URL(string: UIApplication.openSettingsURLString) {
+            UIApplication.shared.open(url)
+        }
     }
 }
+
+private struct HeartbeatLine: Shape {
+    func path(in rect: CGRect) -> Path {
+        var p = Path()
+        let y = rect.midY
+        p.move(to: CGPoint(x: 0, y: y))
+        p.addLine(to: CGPoint(x: rect.width * 0.28, y: y))
+        p.addLine(to: CGPoint(x: rect.width * 0.36, y: y - rect.height * 0.38))
+        p.addLine(to: CGPoint(x: rect.width * 0.46, y: y + rect.height * 0.32))
+        p.addLine(to: CGPoint(x: rect.width * 0.54, y: y))
+        p.addLine(to: CGPoint(x: rect.width, y: y))
+        return p
+    }
+}
+
+// MARK: - Account
 
 struct AccountSettingsView: View {
     @Environment(AppEnvironment.self) private var env
     @Bindable var model: SettingsViewModel
-    @State private var confirmingDelete = false
+    @State private var confirmingDelete: Bool
+
+    init(model: SettingsViewModel, startDeleting: Bool = false) {
+        self.model = model
+        _confirmingDelete = State(initialValue: startDeleting)
+    }
 
     var body: some View {
-        ZStack(alignment: .bottom) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: Space.lg) {
-                    VStack(alignment: .leading, spacing: Space.xs) {
-                        Text("Account")
-                            .font(Typography.display(32))
-                            .foregroundStyle(Palette.ink)
-                    }
-                    .appearIn(0)
+        SettingsScreen(title: "Account") {
+            VStack(alignment: .leading, spacing: 20) {
+                if !model.enforcementEnabled {
+                    ManagerNote(text: enforcementNote(model.enforcementDisabledReason))
+                        .appearIn(2)
+                }
 
-                    if !model.enforcementEnabled {
-                        ManagerNote(text: enforcementNote(model.enforcementDisabledReason))
-                            .appearIn(1)
-                    }
+                identity.appearIn(3)
 
-                    VStack(alignment: .leading, spacing: Space.sm) {
-                        Button { env.auth.signOut() } label: {
-                            HStack(spacing: Space.sm) {
-                                Image(systemName: "rectangle.portrait.and.arrow.right")
-                                    .font(.system(size: 16, weight: .semibold))
-                                    .foregroundStyle(Palette.inkSoft)
-                                    .frame(width: 38, height: 38)
-                                    .background(Palette.surfaceSunk, in: Circle())
-                                Text("Sign out")
-                                    .font(Typography.data(16, weight: .semibold))
-                                    .foregroundStyle(Palette.ink)
-                                Spacer()
-                                Image(systemName: "chevron.right")
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .foregroundStyle(Palette.inkFaint)
-                            }
-                            .padding(Space.md)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background {
-                                RoundedRectangle(cornerRadius: Radius.lg, style: .continuous)
-                                    .fill(Palette.surface)
-                                    .elevation(.resting)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: Radius.lg, style: .continuous)
-                                            .strokeBorder(Palette.hairline)
-                                    )
-                            }
+                SettingsCard(padding: 0) {
+                    VStack(spacing: 0) {
+                        Button(action: openNotificationSettings) {
+                            SettingsRow(symbol: "bell", title: "Notifications", value: notificationsValue)
                         }
-                        .buttonStyle(PressableCard())
-                    }
-                    .appearIn(2)
-
-                    VStack(alignment: .leading, spacing: Space.sm) {
-                        Text("Data").sectionLabelStyle()
-
-                        Card(tint: Palette.surfaceRaised, padding: Space.md) {
-                            VStack(alignment: .leading, spacing: Space.md) {
-                                HStack(spacing: Space.sm) {
-                                    Image(systemName: "archivebox.fill")
-                                        .font(.system(size: 16, weight: .medium))
-                                        .foregroundStyle(Palette.inkSoft)
-                                        .frame(width: 38, height: 38)
-                                        .background(Palette.surfaceSunk, in: Circle())
-                                    Text("Account data")
-                                        .font(Typography.data(13))
-                                        .foregroundStyle(Palette.inkSoft)
-                                }
-
-                                Divider().overlay(Palette.hairline)
-
-                                Button(role: .destructive) {
-                                    confirmingDelete = true
-                                } label: {
-                                    HStack {
-                                        VStack(alignment: .leading, spacing: 3) {
-                                            Text("Delete account")
-                                                .font(Typography.data(15, weight: .semibold))
-                                            Text("Erase all data")
-                                                .font(Typography.data(12))
-                                                .foregroundStyle(Palette.inkFaint)
-                                        }
-                                        Spacer()
-                                        Image(systemName: "trash")
-                                            .font(.system(size: 14, weight: .semibold))
-                                    }
-                                    .foregroundStyle(Palette.accentDeep)
-                                    .contentShape(Rectangle())
-                                }
-                                .buttonStyle(.plain)
-                                .disabled(model.deleting)
-                            }
-                        }
-                    }
-                    .appearIn(3)
-
-                    LegalSection()
-                        .appearIn(4)
-
-                    if model.deleting {
-                        HStack(spacing: Space.xs) {
-                            ProgressView()
-                                .tint(Palette.accent)
-                            Text("Deleting…")
-                                .font(Typography.data(13))
-                                .foregroundStyle(Palette.inkSoft)
-                        }
-                        .frame(maxWidth: .infinity)
-                    }
-
-                    if let error = model.error {
-                        SettingsErrorBanner(message: error)
+                        .buttonStyle(.plain)
+                        Divider().overlay(Palette.hairline).padding(.leading, 66)
+                        SettingsRow(
+                            symbol: "clock",
+                            title: "Time zone",
+                            value: timezoneValue,
+                            showsChevron: false
+                        )
                     }
                 }
-                .padding(.horizontal, Space.gutter)
-                .padding(.top, Space.md)
-                .padding(.bottom, Space.xl)
-            }
-            .disabled(confirmingDelete)
+                .appearIn(4)
 
-            if confirmingDelete {
-                Palette.scrim
-                    .ignoresSafeArea()
-                    .onTapGesture {
-                        guard !model.deleting else { return }
-                        confirmingDelete = false
-                    }
-                    .transition(.opacity)
-
-                DeleteAccountConfirmation(
-                    deleting: model.deleting,
-                    cancel: { confirmingDelete = false },
-                    confirm: {
-                        Task {
-                            await model.deleteAccount()
-                            confirmingDelete = false
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Legal and support").sectionLabelStyle()
+                    SettingsCard(padding: 0) {
+                        VStack(spacing: 0) {
+                            legalRow("Privacy policy", symbol: "lock", url: privacyURL)
+                            Divider().overlay(Palette.hairline).padding(.leading, 66)
+                            legalRow("Terms", symbol: "doc.text", url: termsURL)
+                            Divider().overlay(Palette.hairline).padding(.leading, 66)
+                            legalRow("Contact support", symbol: "envelope", url: supportURL)
                         }
                     }
-                )
-                .padding(.horizontal, Space.sm)
-                .padding(.bottom, Space.xs)
-                .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+                .appearIn(5)
+
+                Button(action: env.auth.signOut) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "rectangle.portrait.and.arrow.right")
+                        Text("Sign out")
+                    }
+                    .font(Typography.data(16, weight: .semibold))
+                    .foregroundStyle(Palette.ink)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(
+                        Palette.surfaceSunk,
+                        in: RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
+                    )
+                }
+                .buttonStyle(PressableCard())
+                .appearIn(6)
+
+                HStack {
+                    Text("SetPoint \(shortVersion)")
+                        .font(Typography.data(13))
+                        .foregroundStyle(Palette.inkFaint)
+                    Spacer()
+                    Button { confirmingDelete = true } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "trash")
+                                .font(.system(size: 15, weight: .semibold))
+                            Text("Delete account")
+                                .font(Typography.data(14, weight: .bold))
+                        }
+                        .foregroundStyle(Palette.accentDeep)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(model.deleting)
+                }
+                .padding(.horizontal, 4)
+                .appearIn(7)
+
+                if let error = model.error {
+                    SettingsErrorBanner(message: error)
+                }
             }
         }
-        .background(Palette.background.ignoresSafeArea())
-        .navigationTitle("Account")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(Palette.background, for: .navigationBar)
-        .animation(Motion.sheet, value: confirmingDelete)
+        .sheet(isPresented: $confirmingDelete) {
+            DeleteAccountConfirmation(model: model)
+                .presentationDetents([.height(500)])
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Palette.background)
+                .presentationCornerRadius(28)
+                .interactiveDismissDisabled(model.deleting)
+        }
+        .task { await env.push.syncAuthorizationStatus() }
     }
-}
 
-/// Privacy policy, terms, support, and version — required for App Store review
-/// (plan §4). The pages are served by the backend at /privacy and /terms.
-private struct LegalSection: View {
+    private var identity: some View {
+        SettingsCard(padding: 18) {
+            HStack(spacing: 14) {
+                Image(systemName: "apple.logo")
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(Palette.background)
+                    .frame(width: 52, height: 52)
+                    .background(Palette.ink, in: Circle())
+                Text("Signed in with Apple")
+                    .font(Typography.data(17, weight: .heavy))
+                    .foregroundStyle(Palette.ink)
+            }
+        }
+    }
+
+    private var notificationsValue: String {
+        switch env.push.authorizationStatus {
+        case .authorized, .provisional: return "On"
+        case .denied: return "Off"
+        default: return "Not set"
+        }
+    }
+
+    private var timezoneValue: String {
+        TimeZone(identifier: model.timezone)?.localizedName(for: .generic, locale: .current) ?? model.timezone
+    }
+
+    private var shortVersion: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—"
+    }
+
     private var privacyURL: URL { APIConfig.baseURL.appending(path: "privacy") }
     private var termsURL: URL { APIConfig.baseURL.appending(path: "terms") }
     private var supportURL: URL { URL(string: "mailto:support@setpoint.app")! }
 
-    private var versionText: String {
-        let info = Bundle.main.infoDictionary
-        let v = info?["CFBundleShortVersionString"] as? String ?? "—"
-        let b = info?["CFBundleVersion"] as? String ?? "—"
-        return "Version \(v) (\(b))"
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: Space.sm) {
-            Text("Legal & support").sectionLabelStyle()
-
-            VStack(spacing: 0) {
-                row("Privacy Policy", systemImage: "hand.raised", url: privacyURL)
-                Divider().overlay(Palette.hairline).padding(.leading, 46)
-                row("Terms of Service", systemImage: "doc.text", url: termsURL)
-                Divider().overlay(Palette.hairline).padding(.leading, 46)
-                row("Contact support", systemImage: "envelope", url: supportURL)
-            }
-            .background {
-                RoundedRectangle(cornerRadius: Radius.lg, style: .continuous)
-                    .fill(Palette.surface)
-                    .elevation(.resting)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: Radius.lg, style: .continuous)
-                            .strokeBorder(Palette.hairline)
-                    )
-            }
-
-            Text(versionText)
-                .font(Typography.data(11))
-                .foregroundStyle(Palette.inkFaint)
-                .frame(maxWidth: .infinity, alignment: .center)
-                .padding(.top, Space.xs)
-        }
-    }
-
-    private func row(_ title: String, systemImage: String, url: URL) -> some View {
+    private func legalRow(_ title: String, symbol: String, url: URL) -> some View {
         Link(destination: url) {
-            HStack(spacing: Space.sm) {
-                Image(systemName: systemImage)
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(Palette.inkSoft)
-                    .frame(width: 30)
-                Text(title)
-                    .font(Typography.data(15, weight: .medium))
-                    .foregroundStyle(Palette.ink)
-                Spacer()
-                Image(systemName: "arrow.up.right")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(Palette.inkFaint)
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 13)
-            .contentShape(Rectangle())
+            SettingsRow(symbol: symbol, title: title)
         }
         .buttonStyle(.plain)
     }
-}
 
-private struct DeleteAccountConfirmation: View {
-    let deleting: Bool
-    let cancel: () -> Void
-    let confirm: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: Space.md) {
-            HStack(alignment: .top) {
-                Image(systemName: "trash.fill")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(Palette.accentDeep)
-                    .frame(width: 42, height: 42)
-                    .background(Palette.accentTint, in: Circle())
-
-                Spacer()
-
-                Button(action: cancel) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(Palette.inkSoft)
-                        .frame(width: 34, height: 34)
-                        .background(Palette.surfaceSunk, in: Circle())
-                }
-                .buttonStyle(.plain)
-                .disabled(deleting)
-                .accessibilityLabel("Close")
-            }
-
-            VStack(alignment: .leading, spacing: Space.xs) {
-                Text("Delete account?")
-                    .font(Typography.display(28))
-                    .foregroundStyle(Palette.ink)
-                Text("Removes all data permanently. Can’t be undone.")
-                    .font(Typography.data(14))
-                    .foregroundStyle(Palette.inkSoft)
-                    .lineSpacing(2)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            VStack(spacing: Space.xs) {
-                Button(action: confirm) {
-                    HStack(spacing: Space.xs) {
-                        if deleting {
-                            ProgressView()
-                                .tint(.white)
-                        }
-                        Text(deleting ? "Deleting…" : "Delete account")
-                    }
-                    .font(Typography.data(16, weight: .semibold))
-                    .foregroundStyle(Color.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 15)
-                    .background(Palette.accentDeep, in: RoundedRectangle(cornerRadius: Radius.md, style: .continuous))
-                }
-                .buttonStyle(.plain)
-                .disabled(deleting)
-
-                Button("Keep account", action: cancel)
-                    .font(Typography.data(15, weight: .semibold))
-                    .foregroundStyle(Palette.ink)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(Palette.surfaceSunk, in: RoundedRectangle(cornerRadius: Radius.md, style: .continuous))
-                    .buttonStyle(.plain)
-                    .disabled(deleting)
-            }
-        }
-        .padding(Space.md)
-        .background {
-            RoundedRectangle(cornerRadius: Radius.xl, style: .continuous)
-                .fill(Palette.surfaceRaised)
-                .elevation(.lifted)
-                .overlay(
-                    RoundedRectangle(cornerRadius: Radius.xl, style: .continuous)
-                        .strokeBorder(Palette.hairline)
-                )
+    private func openNotificationSettings() {
+        if let url = URL(string: UIApplication.openNotificationSettingsURLString) {
+            UIApplication.shared.open(url)
         }
     }
 }
 
-private struct SettingsErrorBanner: View {
-    let message: String
+struct DeleteAccountConfirmation: View {
+    @Bindable var model: SettingsViewModel
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        Text(message)
-            .font(Typography.data(13))
-            .foregroundStyle(Palette.accentDeep)
-            .padding(Space.sm)
+        VStack(alignment: .leading, spacing: 16) {
+            Image(systemName: "trash")
+                .font(.system(size: 26, weight: .semibold))
+                .foregroundStyle(Palette.accentDeep)
+                .frame(width: 56, height: 56)
+                .background(Palette.accentTint, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+
+            Text("Delete everything?")
+                .font(Typography.display(32))
+                .foregroundStyle(Palette.ink)
+
+            Text("This can’t be undone.")
+                .font(Typography.data(15))
+                .foregroundStyle(Palette.inkSoft)
+
+            VStack(alignment: .leading, spacing: 10) {
+                goneRow("Every meal and photo")
+                goneRow("Weight history and your plan")
+                goneRow("Check-ins and your week record")
+            }
+            .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Palette.accentTint, in: RoundedRectangle(cornerRadius: Radius.sm, style: .continuous))
-    }
-}
+            .background(Palette.surfaceSunk, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
 
-private extension View {
-    func saveWhenDirty(_ model: SettingsViewModel) -> some View {
-        toolbar {
-            if model.dirty {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(model.saving ? "Saving…" : "Save") { Task { await model.save() } }
-                        .disabled(model.saving || model.blocksSave)
-                }
+            Button {
+                Task { await model.deleteAccount() }
+            } label: {
+                Text(model.deleting ? "Deleting…" : "Delete my account")
+                    .font(Typography.data(16, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 54)
+                    .background(Palette.accentDeep, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
+            .buttonStyle(.plain)
+            .disabled(model.deleting)
+
+            Button("Keep it") { dismiss() }
+                .font(Typography.data(15, weight: .bold))
+                .foregroundStyle(Palette.ink)
+                .frame(maxWidth: .infinity)
+                .disabled(model.deleting)
         }
-    }
-}
-
-private func minutesBinding(_ minutes: Binding<Int>) -> Binding<Date> {
-    Binding(
-        get: {
-            var c = DateComponents()
-            c.hour = minutes.wrappedValue / 60
-            c.minute = minutes.wrappedValue % 60
-            return Calendar.current.date(from: c) ?? .now
-        },
-        set: { date in
-            let c = Calendar.current.dateComponents([.hour, .minute], from: date)
-            minutes.wrappedValue = (c.hour ?? 0) * 60 + (c.minute ?? 0)
-        }
-    )
-}
-
-/// Selectable allergen / restriction chips — common ones plus anything already set.
-struct RestrictionChips: View {
-    @Binding var selected: [String]
-
-    private let common = ["Dairy", "Eggs", "Gluten", "Peanuts", "Tree nuts", "Soy", "Fish", "Shellfish", "Sesame", "Vegetarian", "Vegan"]
-
-    private var options: [String] {
-        common + selected.filter { s in !common.contains { $0.caseInsensitiveCompare(s) == .orderedSame } }
+        .padding(Space.gutter)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(Palette.background)
     }
 
-    var body: some View {
-        FlexWrap(spacing: 8, lineSpacing: 8) {
-            ForEach(options, id: \.self) { option in
-                let isOn = selected.contains { $0.caseInsensitiveCompare(option) == .orderedSame }
-                Button {
-                    if isOn {
-                        selected.removeAll { $0.caseInsensitiveCompare(option) == .orderedSame }
-                    } else {
-                        selected.append(option)
-                    }
-                } label: {
-                    Text(option)
-                        .font(Typography.data(14, weight: .medium))
-                        .foregroundStyle(isOn ? .white : Palette.inkSoft)
-                        .padding(.horizontal, 13)
-                        .padding(.vertical, 8)
-                        .background(isOn ? Palette.ink : Palette.surfaceSunk, in: Capsule())
-                }
-                .buttonStyle(.plain)
-            }
+    private func goneRow(_ text: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "xmark")
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(Palette.accentDeep)
+                .frame(width: 16)
+            Text(text)
+                .font(Typography.data(15, weight: .semibold))
+                .foregroundStyle(Palette.ink)
         }
-        .padding(.vertical, 4)
     }
 }

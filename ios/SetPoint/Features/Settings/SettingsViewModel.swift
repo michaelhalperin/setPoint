@@ -27,6 +27,7 @@ final class SettingsViewModel {
     var restrictions: [String] = []
 
     // Read-only
+    private(set) var timezone = ""
     private(set) var mode = "BASIC"
     private(set) var startWeightKg: Double?
     private(set) var currentWeightKg: Double?
@@ -66,6 +67,90 @@ final class SettingsViewModel {
             || quietHours != o.quietHours
             || checkInsPaused != o.checkInsPaused
             || Set(restrictions) != Set(o.restrictions.map(\.label))
+    }
+
+    var goalDirty: Bool {
+        guard let o = original else { return false }
+        return weightGoalDirty
+            || kcalTarget != o.dailyKcalTarget
+            || proteinTarget != o.dailyProteinTargetG
+    }
+
+    var mealTimesDirty: Bool {
+        guard let o = original else { return false }
+        return mealTimes != o.mealTimes || quietHours != o.quietHours
+    }
+
+    var restrictionsDirty: Bool {
+        guard let o = original else { return false }
+        return Set(restrictions) != Set(o.restrictions.map(\.label))
+    }
+
+    var kcalEdited: Bool {
+        original.map { kcalTarget != $0.dailyKcalTarget } ?? false
+    }
+
+    var proteinEdited: Bool {
+        original.map { proteinTarget != $0.dailyProteinTargetG } ?? false
+    }
+
+    var dailyTargetsEdited: Bool { kcalEdited || proteinEdited }
+
+    var savedKcalTarget: Int { original?.dailyKcalTarget ?? kcalTarget }
+    var savedProteinTarget: Int? { original?.dailyProteinTargetG }
+
+    var goalSaveNote: String? {
+        guard let o = original, goalDirty else { return nil }
+        var parts: [String] = []
+        if goal.hasWeightTarget, let oldT = o.targetWeightKg, let newT = targetWeightKg, oldT != newT {
+            parts.append("Target \(formatKg(oldT)) → \(formatKg(newT)) kg")
+        }
+        let oldGoal = Goal(rawValue: o.goal) ?? goal
+        let oldPace = GoalPace.closest(toKgPerWeek: o.paceKgPerWeek, for: oldGoal)
+        if goal.hasWeightTarget, oldPace != pace {
+            parts.append("Pace \(oldPace.title.lowercased()) → \(pace.title.lowercased())")
+        }
+        if kcalEdited {
+            parts.append("Daily target \(o.dailyKcalTarget.formatted()) → \(kcalTarget.formatted()) kcal")
+        } else if weightGoalDirty {
+            parts.append("Your daily target will be recalculated.")
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
+    var mealTimesSaveNote: String? {
+        guard let o = original, mealTimesDirty else { return nil }
+        var parts: [String] = []
+        if mealTimes.breakfastMin != o.mealTimes.breakfastMin {
+            parts.append("Breakfast \(formatMinutes(o.mealTimes.breakfastMin)) → \(formatMinutes(mealTimes.breakfastMin))")
+        }
+        if mealTimes.lunchMin != o.mealTimes.lunchMin {
+            parts.append("Lunch \(formatMinutes(o.mealTimes.lunchMin)) → \(formatMinutes(mealTimes.lunchMin))")
+        }
+        if mealTimes.dinnerMin != o.mealTimes.dinnerMin {
+            parts.append("Dinner \(formatMinutes(o.mealTimes.dinnerMin)) → \(formatMinutes(mealTimes.dinnerMin))")
+        }
+        if quietHours != o.quietHours {
+            parts.append(
+                "Quiet \(formatMinutes(o.quietHours.startMin))–\(formatMinutes(o.quietHours.endMin)) → \(formatMinutes(quietHours.startMin))–\(formatMinutes(quietHours.endMin))"
+            )
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
+    var restrictionsSaveNote: String {
+        switch restrictions.count {
+        case 0: return "Nothing avoided"
+        case 1: return "1 food · applies to your next check-in"
+        default: return "\(restrictions.count) foods · applies to your next check-in"
+        }
+    }
+
+    func addCustomRestriction(_ raw: String) {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        if restrictions.contains(where: { $0.caseInsensitiveCompare(trimmed) == .orderedSame }) { return }
+        restrictions.append(trimmed)
     }
 
     /// Why the diet target can't be saved — the same healthy floor the backend
@@ -179,8 +264,15 @@ final class SettingsViewModel {
         checkInsPaused = s.checkInsPaused
         restrictions = s.restrictions.map(\.label)
         mode = s.mode
+        timezone = s.timezone
         enforcementEnabled = s.enforcementEnabled
         enforcementDisabledReason = s.enforcementDisabledReason
+    }
+
+    private func formatKg(_ kg: Double) -> String {
+        abs(kg.rounded() - kg) < 0.05
+            ? String(Int(kg.rounded()))
+            : kg.formatted(.number.precision(.fractionLength(1)))
     }
 
     #if DEBUG

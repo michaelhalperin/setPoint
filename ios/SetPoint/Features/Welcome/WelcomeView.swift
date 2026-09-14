@@ -9,9 +9,13 @@ struct WelcomeView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private let pageCount = 4
+    /// When set, skip Sign in and call this instead — the developer preview
+    /// walks Welcome then the setup flow without leaving the signed-in app.
+    var onStart: (() -> Void)? = nil
 
-    init(initialPage: Int = 0) {
+    init(initialPage: Int = 0, onStart: (() -> Void)? = nil) {
         _page = State(initialValue: initialPage)
+        self.onStart = onStart
     }
 
     var body: some View {
@@ -54,10 +58,12 @@ struct WelcomeView: View {
                 }
                 .buttonStyle(PressableCard())
 
-                Button("I already have an account") { showingSignIn = true }
-                    .font(Typography.data(15, weight: .semibold))
-                    .foregroundStyle(Palette.background.opacity(0.85))
-                    .padding(.vertical, 6)
+                if onStart == nil {
+                    Button("I already have an account") { showingSignIn = true }
+                        .font(Typography.data(15, weight: .semibold))
+                        .foregroundStyle(Palette.background.opacity(0.85))
+                        .padding(.vertical, 6)
+                }
             }
         } else {
             HStack {
@@ -75,7 +81,7 @@ struct WelcomeView: View {
                     .buttonStyle(PressableCard())
                     .accessibilityLabel("Next")
                 } else {
-                    Button { showingSignIn = true } label: {
+                    Button { start() } label: {
                         HStack(spacing: 10) {
                             Text("Build my plan")
                             Image(systemName: "arrow.right")
@@ -98,6 +104,14 @@ struct WelcomeView: View {
 
     private func go(to next: Int) {
         withAnimation(Motion.adaptive(Motion.enter, reduceMotion: reduceMotion)) { page = next }
+    }
+
+    private func start() {
+        if let onStart {
+            onStart()
+        } else {
+            showingSignIn = true
+        }
     }
 }
 

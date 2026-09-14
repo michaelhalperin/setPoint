@@ -58,6 +58,12 @@ enum DebugPreviewStub {
     case conversation(resolved: Bool)
     case logMeal(LogMealStubState)
     case settings
+    case settingsGoal
+    case settingsMealTimes
+    case settingsFoods
+    case settingsHealth
+    case settingsAccount
+    case settingsDelete
 
     enum LogMealStubState { case compose, parsing, result }
     case settlement(SettlementResponse)
@@ -85,9 +91,27 @@ enum DebugPreviewStub {
             LogMealStubHost(state: state)
         case .settings:
             NavigationStack { SettingsView(previewModel: .previewed()) }
+        case .settingsGoal:
+            NavigationStack { GoalSettingsView(model: Self.goalStubModel) }
+        case .settingsMealTimes:
+            NavigationStack { RhythmSettingsView(model: .previewed()) }
+        case .settingsFoods:
+            NavigationStack { FoodsSettingsView(model: .previewed()) }
+        case .settingsHealth:
+            NavigationStack { HealthSettingsView() }
+        case .settingsAccount:
+            NavigationStack { AccountSettingsView(model: .previewed()) }
+        case .settingsDelete:
+            NavigationStack { AccountSettingsView(model: .previewed(), startDeleting: true) }
         case let .settlement(response):
             SettlementView(previewModel: .previewed(response))
         }
+    }
+
+    private static var goalStubModel: SettingsViewModel {
+        let model = SettingsViewModel.previewed()
+        model.pace = .gentle
+        return model
     }
 
     static func fromLaunchArguments() -> DebugPreviewStub? {
@@ -123,6 +147,12 @@ enum DebugPreviewStub {
         case "log-meal-result": return .logMeal(.result)
         case "settings": return .settings
         case "you": return .settings
+        case "settings-goal": return .settingsGoal
+        case "settings-meal-times": return .settingsMealTimes
+        case "settings-foods": return .settingsFoods
+        case "settings-health": return .settingsHealth
+        case "settings-account": return .settingsAccount
+        case "settings-delete": return .settingsDelete
         case "settlement": return .settlement(.sample)
         case "settlement-weigh-in": return .settlement(.sampleNeedsWeighIn)
         case "settlement-empty": return .settlement(.sampleEmpty)

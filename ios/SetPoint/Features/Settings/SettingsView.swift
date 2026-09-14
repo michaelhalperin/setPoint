@@ -51,17 +51,11 @@ struct SettingsView: View {
     private func profile(_ model: SettingsViewModel) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Space.md) {
-                Text("You")
-                    .font(Typography.display(42))
-                    .foregroundStyle(Palette.ink)
-                    .accessibilityAddTraits(.isHeader)
+                planCard(model)
                     .appearIn(0)
 
-                planCard(model)
-                    .appearIn(1)
-
                 checkInsCard(model)
-                    .appearIn(2)
+                    .appearIn(1)
 
                 VStack(spacing: 0) {
                     NavigationLink { GoalSettingsView(model: model) } label: {
@@ -72,7 +66,7 @@ struct SettingsView: View {
                         YouRow(symbol: "clock", title: "Meal times", value: mealTimesSubtitle(model))
                     }
                     rowDivider
-                    NavigationLink { GoalSettingsView(model: model) } label: {
+                    NavigationLink { FoodsSettingsView(model: model) } label: {
                         YouRow(symbol: "nosign", title: "Foods I avoid", value: restrictionsSubtitle(model))
                     }
                     if env.health.isAvailable {
@@ -93,7 +87,7 @@ struct SettingsView: View {
                         .elevation(.resting)
                         .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(Palette.hairline))
                 }
-                .appearIn(3)
+                .appearIn(2)
 
                 if let error = model.error {
                     Text(error)
@@ -416,66 +410,130 @@ func enforcementNote(_ reason: String?) -> String {
 }
 
 private struct SettingsSkeletonView: View {
+    private let wash = Palette.background.opacity(0.28)
+    private let washStrong = Palette.background.opacity(0.42)
+
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: Space.lg) {
-                VStack(alignment: .leading, spacing: Space.xs) {
-                    SkeletonBlock(width: 72, height: 34, radius: 10)
-                    SkeletonBlock(width: 232, height: 15)
-                }
-
-                SkeletonCard(height: 154) {
-                    VStack(alignment: .leading, spacing: Space.md) {
-                        SkeletonBlock(width: 64, height: 10)
-                        SkeletonBlock(width: 176, height: 24)
-                        SkeletonBlock(height: 5, radius: 3)
-                        HStack(spacing: Space.xl) {
-                            SkeletonBlock(width: 76, height: 34)
-                            SkeletonBlock(width: 64, height: 34)
-                        }
-                    }
-                }
-
-                SkeletonCard(height: 66) {
-                    HStack(spacing: Space.sm) {
-                        SkeletonBlock(width: 38, height: 38, radius: 19)
-                        VStack(alignment: .leading, spacing: 6) {
-                            SkeletonBlock(width: 112, height: 13)
-                            SkeletonBlock(width: 196, height: 10)
-                        }
-                    }
-                }
-
-                HStack(spacing: Space.sm) {
-                    SkeletonCard(height: 122) { SkeletonBlock(width: 84, height: 50) }
-                    SkeletonCard(height: 122) { SkeletonBlock(width: 98, height: 50) }
-                }
-
-                VStack(spacing: Space.sm) {
-                    destinationRow(titleWidth: 72, detailWidth: 94)
-                    destinationRow(titleWidth: 82, detailWidth: 0)
-                }
+            VStack(alignment: .leading, spacing: Space.md) {
+                plan
+                checkIns
+                rows
             }
             .padding(Space.gutter)
         }
-        .background(Palette.background.ignoresSafeArea())
         .scrollDisabled(true)
+        .background(Palette.background.ignoresSafeArea())
         .skeletonLoading()
     }
 
-    private func destinationRow(titleWidth: CGFloat, detailWidth: CGFloat) -> some View {
-        SkeletonCard(height: 48) {
+    private var plan: some View {
+        VStack(alignment: .leading, spacing: Space.md) {
             HStack {
-                VStack(alignment: .leading, spacing: 7) {
-                    SkeletonBlock(width: titleWidth, height: 15)
-                    if detailWidth > 0 {
-                        SkeletonBlock(width: detailWidth, height: 11)
-                    }
-                }
+                SkeletonBlock(width: 72, height: 10, tint: wash)
                 Spacer()
-                SkeletonBlock(width: 8, height: 16, radius: 4)
+                SkeletonBlock(width: 32, height: 13, tint: wash)
+            }
+            SkeletonBlock(width: 196, height: 30, radius: 8, tint: washStrong)
+            Capsule().fill(wash).frame(height: 18)
+            HStack(spacing: Space.md) {
+                planMetric(width: 64)
+                planMetric(width: 48)
+                planMetric(width: 52)
+                Spacer(minLength: 0)
             }
         }
+        .padding(22)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Palette.accent, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+    }
+
+    private func planMetric(width: CGFloat) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            SkeletonBlock(width: width, height: 24, radius: 6, tint: washStrong)
+            SkeletonBlock(width: width - 8, height: 10, tint: wash)
+        }
+    }
+
+    private var checkIns: some View {
+        HStack(spacing: Space.sm) {
+            mutedDial
+                .frame(width: 124, height: 124)
+
+            VStack(alignment: .leading, spacing: Space.xs) {
+                HStack {
+                    SkeletonBlock(width: 92, height: 18)
+                    Spacer()
+                    Capsule().fill(Palette.surfaceSunk).frame(width: 51, height: 31)
+                }
+                SkeletonBlock(width: 168, height: 13)
+                SkeletonBlock(width: 128, height: 13)
+                SkeletonBlock(width: 118, height: 24, radius: Radius.pill)
+            }
+        }
+        .padding(16)
+        .background {
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(Palette.surface)
+                .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(Palette.hairline))
+        }
+    }
+
+    private var mutedDial: some View {
+        GeometryReader { geo in
+            let size = min(geo.size.width, geo.size.height)
+            let r = size * 0.33
+            let c = CGPoint(x: geo.size.width / 2, y: geo.size.height / 2)
+            ZStack {
+                Circle()
+                    .stroke(Palette.surfaceSunk, lineWidth: size * 0.076)
+                    .frame(width: r * 2, height: r * 2)
+                    .position(c)
+                ForEach([480, 780, 1140], id: \.self) { minute in
+                    let angle = CGFloat(minute) / 1440 * 2 * .pi
+                    Circle()
+                        .fill(Palette.surface)
+                        .overlay(Circle().strokeBorder(Palette.hairline, lineWidth: 1.5))
+                        .frame(width: size * 0.13, height: size * 0.13)
+                        .position(x: c.x + r * sin(angle), y: c.y - r * cos(angle))
+                }
+            }
+        }
+    }
+
+    private var rows: some View {
+        VStack(spacing: 0) {
+            youRow(titleWidth: 118, valueWidth: 96)
+            divider
+            youRow(titleWidth: 92, valueWidth: 128)
+            divider
+            youRow(titleWidth: 124, valueWidth: 48)
+            divider
+            youRow(titleWidth: 72, valueWidth: 0)
+        }
+        .background {
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(Palette.surface)
+                .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(Palette.hairline))
+        }
+    }
+
+    private var divider: some View {
+        Divider().overlay(Palette.hairline).padding(.leading, 66)
+    }
+
+    private func youRow(titleWidth: CGFloat, valueWidth: CGFloat) -> some View {
+        HStack(spacing: 14) {
+            Circle().fill(Palette.surfaceSunk).frame(width: 36, height: 36)
+            SkeletonBlock(width: titleWidth, height: 16)
+            Spacer(minLength: 8)
+            if valueWidth > 0 {
+                SkeletonBlock(width: valueWidth, height: 14)
+            }
+            SkeletonBlock(width: 8, height: 12, radius: 3)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
     }
 }
 
@@ -483,18 +541,22 @@ private struct SettingsSkeletonView: View {
 private struct DevOnboardingPreview: View {
     @Environment(\.dismiss) private var dismiss
     @State private var model: OnboardingViewModel?
+    @State private var showingSetup = false
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
-            if let model {
+            if showingSetup, let model {
                 OnboardingFlow(model: model)
             } else {
-                Palette.background.ignoresSafeArea()
+                WelcomeView(onStart: { showingSetup = true })
             }
 
             Button("Close preview") { dismiss() }
                 .font(Typography.data(13, weight: .medium))
-                .foregroundStyle(Palette.inkFaint)
+                .foregroundStyle(Palette.inkSoft)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(.ultraThinMaterial, in: Capsule())
                 .padding(.trailing, Space.gutter)
                 .padding(.top, 6)
         }
@@ -552,5 +614,9 @@ private struct DevCheckInPreview: View {
 #Preview {
     NavigationStack { SettingsView(previewModel: .previewed()) }
         .environment(AppEnvironment.preview())
+}
+
+#Preview("Skeleton") {
+    SettingsSkeletonView()
 }
 #endif
