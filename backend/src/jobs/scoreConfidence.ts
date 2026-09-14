@@ -5,6 +5,7 @@ import {
   checkEligibility,
   checkInSlotAt,
   computeBehaviorScore,
+  SCORE_CONFIG,
   decideEscalation,
   deriveHoursSinceMeal,
   dueCheckIn,
@@ -16,11 +17,14 @@ import {
   startOfLocalDay,
   TIER,
   userInWearableCohort,
+  wearableModifierKillSwitchOn,
   type EscalationDecision,
   type Goal,
   type SlotName,
 } from '../engine/index.js';
+import { evaluateStopConditions } from '../engine/stopConditions.js';
 import { fallbackManagerVoice } from '../managerVoice/fallback.js';
+import { gatherStopSignals } from '../metrics/stopSignals.js';
 import type { ManagerVoice, ManagerVoiceContext } from '../managerVoice/types.js';
 import { captureError } from '../observability/sentry.js';
 import { deliverCheckIn } from '../push/deliver.js';
@@ -50,6 +54,8 @@ export type ScoreConfidenceSummary = {
   misses: number;
   tier3Started: number;
   errors: number;
+  /** The wearable modifier was on but stop conditions switched it off for this run. */
+  wearableHalted: boolean;
   skipped: Record<string, number>;
 };
 
@@ -65,6 +71,8 @@ type UserWithRelations = Prisma.UserGetPayload<{ include: typeof USER_INCLUDE }>
 type JobContext = {
   solverFoods: SolverFood[];
   foodIdBySlug: Map<string, string>;
+  /** Stop conditions tripped: every user scores as Basic this run. */
+  wearableHalted: boolean;
 };
 
 /**
@@ -89,6 +97,7 @@ export async function runScoreConfidenceJob(
     misses: 0,
     tier3Started: 0,
     errors: 0,
+    wearableHalted: false,
     skipped: {},
   };
 
@@ -106,7 +115,9 @@ export async function runScoreConfidenceJob(
       allergens: f.allergens,
     })),
     foodIdBySlug: new Map(foodRows.map((f) => [f.slug, f.id])),
+    wearableHalted: await wearableHaltedByStopConditions(deps.prisma, now),
   };
+  summary.wearableHalted = context.wearableHalted;
 
   const batchSize = env.SCORE_BATCH_SIZE;
   let cursor: string | undefined;
@@ -162,7 +173,7 @@ async function processUser(
   const { prisma } = deps;
   const dayStart = startOfLocalDay(now, user.timezone);
 
-  const [activeCheckIns, lastMeal, todayMeals, todayCheckIns, restrictions, recentCheckIns] = await Promise.all([
+  const [activeCheckIns, lastMeal, todayMeals, todayCheckIns, restrictions] = await Promise.all([
     prisma.checkIn.findMany({
       where: { userId: user.id, status: { in: ['PENDING', 'DEFERRED'] } },
       orderBy: { createdAt: 'desc' },
@@ -177,12 +188,6 @@ async function processUser(
       select: { createdAt: true, tier: true, episodeKey: true },
     }),
     prisma.dietaryRestriction.findMany({ where: { userId: user.id, isHardExclusion: true } }),
-    prisma.checkIn.findMany({
-      where: { userId: user.id, tier: { lt: TIER.CONVERSATION } },
-      orderBy: { createdAt: 'desc' },
-      take: 14,
-      select: { status: true, feedbackPositive: true, deferCount: true },
-    }),
   ]);
 
   const consumedKcal = todayMeals.reduce((acc, m) => acc + m.kcal, 0);
@@ -259,43 +264,54 @@ async function processUser(
     isBiosignalFresh(user.biosignalState.updatedAt, now)
       ? user.biosignalState
       : null;
-  const wearableEnabled = userInWearableCohort(user.id, user.wearableModifierEnabled);
+  const wearableEnabled = !ctx.wearableHalted && userInWearableCohort(user.id, user.wearableModifierEnabled);
+  // How this same meal's recent check-ins went — "already ate" / "wrong time" holds it back.
+  const slotCheckIns = await prisma.checkIn.findMany({
+    where: { userId: user.id, slot: due.slot, tier: { lt: TIER.CONVERSATION } },
+    orderBy: { createdAt: 'desc' },
+    take: SCORE_CONFIG.slotHistory,
+    select: { status: true, feedbackPositive: true },
+  });
+  const overdueMin = Math.max(0, localMinute(now, user.timezone) - due.dueMin);
   const scored = computeBehaviorScore({
-    overdueMin: Math.max(0, localMinute(now, user.timezone) - due.dueMin),
+    slot: due.slot,
+    overdueMin,
     hoursSinceMeal,
     expectedGapHours: expectedGapHours(due.slot, profile),
     consumedKcal,
     targetKcal: profile.dailyKcalTarget,
-    recentCheckIns,
+    slotCheckIns,
     wearable: wearableFresh
       ? { hrvDeviation: wearableFresh.hrvDeviation, rhrDeviation: wearableFresh.rhrDeviation }
       : null,
     wearableEnabled,
   });
 
-  const score = await prisma.confidenceScore.create({
-    data: {
-      userId: user.id,
-      computedAt: now,
-      mode: profile.mode,
-      score: scored.score,
-      scoringVersion: scored.version,
-      behaviorScore: scored.behaviorScore,
-      wearableModifier: scored.wearableModifier,
-      wearableUsed: scored.wearableUsed,
-      biosignalDeviation: wearableFresh?.hrvDeviation ?? null,
-      hoursSinceMeal,
-      expectedGapHours: expectedGapHours(due.slot, profile),
-      loggingSilence: null,
-      overdueMin: scored.components.overdue,
-      loggingReliability: scored.components.reliability,
-      deferRate: scored.components.deferRate,
-      dismissRate: scored.components.dismissRate,
-      targetCoverage: scored.components.coverage,
-      components: scored.components,
-      threshold: scored.threshold,
-      firedCheckIn: scored.shouldFire,
-    },
+  // One audit row per meal episode, refreshed each run until it fires — not a
+  // new row every 15 minutes while a meal is held.
+  const scoreData = {
+    computedAt: now,
+    mode: profile.mode,
+    score: scored.score,
+    scoringVersion: scored.version,
+    behaviorScore: scored.behaviorScore,
+    wearableModifier: scored.wearableModifier,
+    wearableUsed: scored.wearableUsed,
+    biosignalDeviation: wearableFresh?.hrvDeviation ?? null,
+    hoursSinceMeal,
+    expectedGapHours: expectedGapHours(due.slot, profile),
+    loggingSilence: null,
+    overdueMin,
+    dismissRate: scored.components.slotDismissRate,
+    targetCoverage: scored.components.consumedShare,
+    components: scored.components,
+    threshold: scored.threshold,
+    firedCheckIn: scored.shouldFire,
+  };
+  const score = await prisma.confidenceScore.upsert({
+    where: { userId_episodeKey: { userId: user.id, episodeKey } },
+    create: { userId: user.id, episodeKey, ...scoreData },
+    update: scoreData,
   });
 
   if (!scored.shouldFire) {
@@ -473,6 +489,19 @@ async function applyDecision(
       return _exhaustive;
     }
   }
+}
+
+/** Only consulted while the modifier is switched on — Basic scoring needs no signals. */
+async function wearableHaltedByStopConditions(prisma: PrismaClient, now: Date): Promise<boolean> {
+  if (!wearableModifierKillSwitchOn()) return false;
+  const evaluation = evaluateStopConditions(await gatherStopSignals(prisma, now), now);
+  if (evaluation.haltWearable) {
+    console.warn('scoreConfidence: wearable modifier halted by stop conditions', evaluation.reasons);
+    captureError(new Error('wearable modifier halted by stop conditions'), {
+      tags: { job: 'score', stop: evaluation.reasons.join(',') },
+    });
+  }
+  return evaluation.haltWearable;
 }
 
 /** How long a check-in waits for the manager's-voice line before sending the deterministic one. */

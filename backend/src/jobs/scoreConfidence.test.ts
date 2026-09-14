@@ -1,6 +1,7 @@
 import type { PrismaClient } from '@prisma/client';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { STAPLE_FOODS } from '../data/stapleFoods.js';
+import { SCORING_VERSION } from '../engine/behaviorScore.js';
 import type { ManagerVoice } from '../managerVoice/types.js';
 import type { PushPayload, PushSender } from '../push/types.js';
 import { CHECK_IN_COPY_TIMEOUT_MS, runScoreConfidenceJob } from './scoreConfidence.js';
@@ -74,7 +75,13 @@ function makeFakePrisma(users: AnyRow[], opts: { seedFoods?: boolean } = {}) {
       for (let i = rows.length - 1; i >= 0; i -= 1) if (match(rows[i]!, where)) rows.splice(i, 1);
       return { count: before - rows.length };
     },
-    upsert: async ({ where, create, update }: { where: AnyRow; create: AnyRow; update: AnyRow }) => {
+    upsert: async ({ where: rawWhere, create, update }: { where: AnyRow; create: AnyRow; update: AnyRow }) => {
+      // Compound unique keys ({ userId_episodeKey: { userId, episodeKey } }) match on their fields.
+      const where = Object.fromEntries(
+        Object.entries(rawWhere).flatMap(([k, v]) =>
+          k.includes('_') && v && typeof v === 'object' && !(v instanceof Date) ? Object.entries(v) : [[k, v]],
+        ),
+      );
       const row = rows.find((r) => match(r, where));
       if (row) {
         Object.assign(row, update);
@@ -299,7 +306,7 @@ describe('runScoreConfidenceJob', () => {
 
       expect(summary.checkInsCreated).toBe(1);
       expect(voice.checkInMessage).toHaveBeenCalledWith(expect.objectContaining({ slot: 'lunch', tier: 1 }));
-      expect(fake.__tables.confidenceScores[0]).toMatchObject({ firedCheckIn: true, scoringVersion: 'behavior.v1' });
+      expect(fake.__tables.confidenceScores[0]).toMatchObject({ firedCheckIn: true, scoringVersion: SCORING_VERSION });
     });
 
     it('does not create a second check-in for the same episode key', async () => {
@@ -356,6 +363,26 @@ describe('runScoreConfidenceJob', () => {
       } finally {
         vi.useRealTimers();
       }
+    });
+
+    it('holds a due lunch while the day is on pace, in one audit row, then fires once it runs long', async () => {
+      const fake = makeFakePrisma([baseUser()], { seedFoods: true });
+      fake.meal.create({ data: { ...breakfast, kcal: 1500 } });
+      const run = (now: Date) =>
+        runScoreConfidenceJob({ prisma: fake as unknown as PrismaClient, push, voice, now });
+
+      const first = await run(LUNCH_PLUS_50);
+      expect(first.checkInsCreated).toBe(0);
+      expect(first.skipped.below_threshold).toBe(1);
+      await run(new Date('2026-07-01T18:20:00Z')); // 14:20, still held
+      expect(fake.__tables.confidenceScores).toHaveLength(1);
+      expect(fake.__tables.confidenceScores[0]).toMatchObject({ firedCheckIn: false, episodeKey: '2026-07-01:lunch' });
+
+      const late = await run(new Date('2026-07-01T19:20:00Z')); // 15:20 — 95 min past due
+      expect(late.checkInsCreated).toBe(1);
+      expect(fake.__tables.confidenceScores).toHaveLength(1);
+      expect(fake.__tables.confidenceScores[0]).toMatchObject({ firedCheckIn: true });
+      expect(fake.__tables.checkIns[0]).toMatchObject({ slot: 'lunch', confidenceScoreId: fake.__tables.confidenceScores[0]!.id });
     });
 
     it('does not check in twice for the same meal', async () => {

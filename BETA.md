@@ -20,17 +20,21 @@ escalation rate, opt-out rate, week-2 retention, target-progress stability.
 
 ## Stop conditions
 
-Any of these immediately disables the affected feature (kill the wearable
-switch, pause scoring, or halt release):
+Measured from real data over the last 7 days (`GET /api/admin/metrics` →
+`stopConditions`), with minimum sample sizes so a handful of check-ins can't
+trip anything:
 
-- Elevated negative feedback or opt-outs
-- Unsafe copy
-- Allergy miss
-- Delivery-correlated false misses (`scheduler.stale` or high miss rate)
-- Materially worse week-2 retention
+| Signal | Measured as | Action |
+| --- | --- | --- |
+| Wearable hurts | Wearable-shaped check-ins get "already ate"/"wrong time" ≥ 10 pts more than control, or the wearable cohort pauses check-ins ≥ 10 pts more | **Automatic:** the scoring job turns the wearable modifier off (every user scores as Basic) and reports to Sentry |
+| Delivery failing | ≥ 15% of check-ins FAILED or never sent | Alert — fix APNs before trusting any miss data |
+| Scheduler stopped | No successful score run in 45 min (GitHub's 15-min cron often runs late) | Alert |
 
-Admin metrics include `stopConditions.evaluation` so a stale scheduler or
-failing delivery is visible without waiting for a human dashboard.
+Reported by people, not detectable in code — each one halts release until fixed:
+
+- Allergy or restriction miss in a suggestion
+- Unsafe or shaming copy
+- Materially worse week-2 retention in a cohort
 
 ## First release gate
 

@@ -7,94 +7,104 @@ import {
   type BehaviorScoreInput,
 } from './behaviorScore.js';
 
-const base = (over: Partial<BehaviorScoreInput> = {}): BehaviorScoreInput => ({
-  overdueMin: 50,
-  hoursSinceMeal: 5,
+const TARGET = 2400;
+
+// Lunch just came due (13:45, lunch at 13:00), breakfast of 500 kcal at 08:00.
+const lunchDue = (over: Partial<BehaviorScoreInput> = {}): BehaviorScoreInput => ({
+  slot: 'lunch',
+  overdueMin: 0,
+  hoursSinceMeal: 5.75,
   expectedGapHours: 5,
-  consumedKcal: 600,
-  targetKcal: 2200,
-  recentCheckIns: [],
+  consumedKcal: 500,
+  targetKcal: TARGET,
+  slotCheckIns: [],
   wearable: null,
   wearableEnabled: false,
   ...over,
 });
 
+const dismissed = (n: number) => Array.from({ length: n }, () => ({ status: 'EXPIRED', feedbackPositive: false }));
+const answered = (n: number) => Array.from({ length: n }, () => ({ status: 'LOGGED', feedbackPositive: null }));
+
 describe('computeBehaviorScore', () => {
-  it('fires for a clearly overdue, under-target slot with no history', () => {
-    const r = computeBehaviorScore(base());
+  it('fires as soon as a meal is due when the day is clearly behind', () => {
+    const r = computeBehaviorScore(lunchDue());
     expect(r.version).toBe(SCORING_VERSION);
-    expect(r.wearableUsed).toBe(false);
-    expect(r.wearableModifier).toBe(0);
+    expect(r.components.behind).toBe(1);
     expect(r.shouldFire).toBe(true);
-    expect(r.score).toBeGreaterThanOrEqual(SCORE_CONFIG.threshold);
   });
 
-  it('does not let a wearable independently fire when behavior is quiet', () => {
-    const quiet = computeBehaviorScore(
-      base({
-        overdueMin: 0,
-        hoursSinceMeal: 0.5,
-        expectedGapHours: 5,
-        consumedKcal: 2200,
-        targetKcal: 2200,
-        wearableEnabled: true,
-        wearable: { hrvDeviation: -3, rhrDeviation: 3 },
+  it('holds a due meal when the day is already on pace', () => {
+    const r = computeBehaviorScore(lunchDue({ consumedKcal: 1500 }));
+    expect(r.components.behind).toBeLessThan(0.3);
+    expect(r.shouldFire).toBe(false);
+  });
+
+  it('stops holding once the meal has run long enough past due', () => {
+    const later = computeBehaviorScore(
+      lunchDue({ consumedKcal: 1500, overdueMin: SCORE_CONFIG.overdueFullMin, hoursSinceMeal: 7.25 }),
+    );
+    expect(later.components.overdue).toBe(1);
+    expect(later.shouldFire).toBe(true);
+  });
+
+  it('holds a meal the user keeps dismissing, then still fires if they fall far behind', () => {
+    const history = dismissed(6);
+    expect(computeBehaviorScore(lunchDue({ slotCheckIns: history })).shouldFire).toBe(false);
+    const long = computeBehaviorScore(
+      lunchDue({ slotCheckIns: history, overdueMin: SCORE_CONFIG.overdueFullMin, hoursSinceMeal: 7.25 }),
+    );
+    expect(long.components.slotDismissRate).toBe(1);
+    expect(long.shouldFire).toBe(true);
+  });
+
+  it('never fires a meal that is always dismissed while the day is on pace', () => {
+    const r = computeBehaviorScore(
+      lunchDue({
+        consumedKcal: 1700,
+        slotCheckIns: dismissed(10),
+        overdueMin: 240,
+        hoursSinceMeal: 9,
       }),
     );
-    expect(quiet.wearableUsed).toBe(true);
-    expect(quiet.wearableModifier).toBeGreaterThan(0);
-    expect(quiet.wearableModifier).toBeLessThanOrEqual(SCORE_CONFIG.maxWearableBoost);
-    expect(quiet.shouldFire).toBe(false);
+    expect(r.shouldFire).toBe(false);
   });
 
-  it('is identical to Basic when the wearable is stale or the kill switch is off', () => {
-    const off = computeBehaviorScore(
-      base({ wearableEnabled: false, wearable: { hrvDeviation: -2, rhrDeviation: 2 } }),
-    );
-    const missing = computeBehaviorScore(base({ wearableEnabled: true, wearable: null }));
+  it('only counts negative answers as dismissals', () => {
+    const r = computeBehaviorScore(lunchDue({ slotCheckIns: [...dismissed(2), ...answered(8)] }));
+    expect(r.components.slotDismissRate).toBe(0.2);
+  });
+
+  it('does not let a wearable fire a meal that behavior holds', () => {
+    const held = lunchDue({ consumedKcal: 1500, slotCheckIns: dismissed(4) });
+    const r = computeBehaviorScore({
+      ...held,
+      wearableEnabled: true,
+      wearable: { hrvDeviation: -10, rhrDeviation: 10 },
+    });
+    expect(r.wearableUsed).toBe(true);
+    expect(r.wearableModifier).toBe(SCORE_CONFIG.maxWearableBoost);
+    expect(r.shouldFire).toBe(false);
+  });
+
+  it('is identical to Basic when the wearable is stale or switched off', () => {
+    const off = computeBehaviorScore(lunchDue({ wearableEnabled: false, wearable: { hrvDeviation: -2, rhrDeviation: 2 } }));
+    const missing = computeBehaviorScore(lunchDue({ wearableEnabled: true, wearable: null }));
     expect(off.score).toBe(missing.score);
     expect(off.wearableModifier).toBe(0);
-    expect(missing.wearableModifier).toBe(0);
   });
 
-  it('caps the wearable boost', () => {
-    const r = computeBehaviorScore(
-      base({
-        wearableEnabled: true,
-        wearable: { hrvDeviation: -10, rhrDeviation: 10 },
-      }),
-    );
-    expect(r.wearableModifier).toBe(SCORE_CONFIG.maxWearableBoost);
-  });
-
-  it('lowers the score when the user often dismisses as already-ate', () => {
-    const honest = computeBehaviorScore(base());
-    const dismissive = computeBehaviorScore(
-      base({
-        recentCheckIns: Array.from({ length: 8 }, () => ({
-          status: 'EXPIRED',
-          feedbackPositive: false,
-          deferCount: 0,
-        })),
-      }),
-    );
-    expect(dismissive.score).toBeLessThan(honest.score);
-    expect(dismissive.components.dismissRate).toBe(1);
-  });
-
-  it('stores every component for audit', () => {
-    const r = computeBehaviorScore(base({ overdueMin: 90, consumedKcal: 0, targetKcal: 2000 }));
-    expect(r.components.overdue).toBe(1);
-    expect(r.components.coverage).toBe(1);
-    expect(r.behaviorScore).toBeGreaterThan(0);
+  it('keeps the inputs behind every component for audit', () => {
+    const r = computeBehaviorScore(lunchDue({ consumedKcal: 1200 }));
+    expect(r.components).toMatchObject({ consumedShare: 0.5, expectedShare: 0.667 });
   });
 });
 
 describe('expectedGapHours', () => {
   const times = { breakfastMin: 480, lunchMin: 780, dinnerMin: 1140 };
-  it('uses the gap between usual meal times', () => {
+  it('uses the gap between usual meal times, and the overnight gap for breakfast', () => {
     expect(expectedGapHours('lunch', times)).toBe(5);
     expect(expectedGapHours('dinner', times)).toBe(6);
-    expect(expectedGapHours('breakfast', times)).toBe(8);
+    expect(expectedGapHours('breakfast', times)).toBe(13);
   });
 });

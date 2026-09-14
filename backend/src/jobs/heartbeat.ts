@@ -14,8 +14,3 @@ export async function recordHeartbeat(
     update: { lastRunAt: new Date(), lastOk: ok, durationMs, summary: summary as object },
   });
 }
-
-export function heartbeatStale(lastRunAt: Date | null | undefined, now = new Date(), maxAgeMin = 20): boolean {
-  if (!lastRunAt) return true;
-  return now.getTime() - lastRunAt.getTime() > maxAgeMin * 60_000;
-}
