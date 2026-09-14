@@ -242,42 +242,62 @@ private struct ConversationSkeletonView: View {
     var body: some View {
         VStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 14) {
-                SkeletonBlock(width: 72, height: 12)
+                HStack {
+                    SkeletonBlock(width: 72, height: 12)
+                    Spacer()
+                    Circle().fill(Palette.surfaceSunk).frame(width: 34, height: 34)
+                }
 
-                bubble(width: 258, height: 68, alignment: .leading)
-                bubble(width: 194, height: 48, alignment: .trailing, tint: Palette.accentSoft.opacity(0.65))
-                bubble(width: 226, height: 82, alignment: .leading)
+                VStack(alignment: .leading, spacing: 8) {
+                    SkeletonBlock(width: 220, height: 40, radius: 10)
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    SkeletonBlock(height: 19, radius: 6)
+                    SkeletonBlock(width: 240, height: 19, radius: 6)
+                }
+
+                VStack(spacing: 10) {
+                    quickFix
+                    quickFix
+                    quickFix
+                }
+                .padding(.top, 4)
 
                 Spacer()
             }
-            .padding(.horizontal, Space.gutter)
-            .padding(.vertical, Space.sm)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
 
             HStack(spacing: 10) {
-                SkeletonBlock(height: 48, radius: 14)
-                SkeletonBlock(width: 32, height: 32, radius: 16)
+                SkeletonBlock(height: 44, radius: 14)
+                Circle().fill(Palette.surfaceSunk).frame(width: 30, height: 30)
             }
-            .padding(.horizontal, Space.gutter)
-            .padding(.vertical, Space.sm)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
+            .background(Palette.background)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Palette.background)
         .skeletonLoading()
     }
 
-    private func bubble(
-        width: CGFloat,
-        height: CGFloat,
-        alignment: Alignment,
-        tint: Color = Palette.surfaceSunk
-    ) -> some View {
-        SkeletonBlock(
-            width: width,
-            height: height,
-            radius: Radius.md,
-            tint: tint
-        )
-        .frame(maxWidth: .infinity, alignment: alignment)
+    private var quickFix: some View {
+        HStack(spacing: 14) {
+            Circle().fill(Palette.surfaceSunk).frame(width: 44, height: 44)
+            VStack(alignment: .leading, spacing: 6) {
+                SkeletonBlock(width: 132, height: 16)
+                SkeletonBlock(width: 188, height: 13)
+            }
+            Spacer(minLength: 0)
+            SkeletonBlock(width: 12, height: 14, radius: 3)
+        }
+        .padding(16)
+        .background {
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(Palette.surface)
+                .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Palette.hairline))
+        }
     }
 }
 
@@ -367,5 +387,9 @@ private struct MessageBubble: View {
 #Preview("Resolved") {
     ConversationView(checkInID: "ci_1", onDismiss: {}, onResolved: {}, previewModel: .previewed(resolved: true))
         .environment(AppEnvironment.preview())
+}
+
+#Preview("Skeleton") {
+    ConversationSkeletonView()
 }
 #endif
