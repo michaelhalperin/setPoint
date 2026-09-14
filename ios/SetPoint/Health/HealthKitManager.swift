@@ -16,9 +16,11 @@ struct HealthProfile: Equatable {
 @Observable
 final class HealthKitManager {
     static let shared = HealthKitManager()
+    private static let lastSyncKey = "com.setpoint.app.health.lastSyncAt"
 
     var api: APIClient?
     private(set) var connected = false
+    private(set) var lastSyncAt: Date?
 
     private let store = HKHealthStore()
     private let hrvType = HKQuantityType(.heartRateVariabilitySDNN)
@@ -29,7 +31,9 @@ final class HealthKitManager {
     private let rhrUnit = HKUnit(from: "count/min")
     private let kgUnit = HKUnit.gramUnit(with: .kilo)
 
-    private init() {}
+    private init() {
+        lastSyncAt = UserDefaults.standard.object(forKey: Self.lastSyncKey) as? Date
+    }
 
     var isAvailable: Bool { HKHealthStore.isHealthDataAvailable() }
 
@@ -100,6 +104,7 @@ final class HealthKitManager {
         async let hrv = samples(hrvType, unit: hrvUnit, days: 30)
         async let rhr = samples(rhrType, unit: rhrUnit, days: 30)
         let (hrvSamples, rhrSamples) = await (hrv, rhr)
+        defer { recordSync() }
 
         let now = Date()
         guard let hrvZ = BiosignalStats.zScore(hrvSamples, now: now) else { return }
@@ -113,6 +118,11 @@ final class HealthKitManager {
         try? await api.post("/api/biosignals", Body(hrvDeviation: hrvZ, rhrDeviation: rhrZ))
 
         await syncWeight()
+    }
+
+    private func recordSync() {
+        lastSyncAt = Date()
+        UserDefaults.standard.set(lastSyncAt, forKey: Self.lastSyncKey)
     }
 
     /// Push the latest body-mass sample to the weight log (M16). Idempotent —

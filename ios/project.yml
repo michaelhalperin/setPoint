@@ -44,6 +44,7 @@ targets:
           - Fraunces-Medium.ttf
           - Fraunces-Italic.ttf
         NSHealthShareUsageDescription: "SetPoint reads your height, weight, age and sex to set your daily targets, your heart-rate variability and resting heart rate to notice when you may be under-fuelled, and your body weight to track progress toward your goal."
+        LSApplicationQueriesSchemes: ["x-apple-health"]
         NSCameraUsageDescription: "Take a photo of a meal to log it."
         NSPhotoLibraryUsageDescription: "Attach a photo of a meal to log it."
         SentryDSN: $(SENTRY_DSN)

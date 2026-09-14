@@ -31,6 +31,10 @@
 	<string>1</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>x-apple-health</string>
+	</array>
 	<key>NSCameraUsageDescription</key>
 	<string>Take a photo of a meal to log it.</string>
 	<key>NSHealthShareUsageDescription</key>
