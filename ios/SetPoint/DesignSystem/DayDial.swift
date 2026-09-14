@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Today's live state on the dial: each meal's state, the day so far, and now.
 struct DialToday: Equatable {
@@ -13,10 +14,11 @@ struct DialToday: Equatable {
     var firedSlot: MealSlot?
 }
 
-/// The day as a 24-hour dial — SetPoint's motif. Midnight at the top, running
-/// clockwise. Usual meal times are knobs on the ring, quiet hours a darker arc,
-/// and a bell sits just past each meal where a check-in would come if nothing's
-/// logged. It opens the app, the user sets it, and it's their plan at the end.
+/// The day as a 24-hour clock — SetPoint's motif. Midnight at the top, running
+/// clockwise. The face stays quiet and clock-like; the chapter ring carries
+/// quiet hours, meal knobs, a filled arc for the day so far, and a pip
+/// at now. A bell sits just past each meal where a check-in would come if
+/// nothing's logged. It opens the app, the user sets it, and it's their plan.
 struct DayDial<Center: View>: View {
     enum Theme { case paper, terra }
 
@@ -34,9 +36,12 @@ struct DayDial<Center: View>: View {
     var markersShown = true
     /// Live state for Today; nil draws the plain schedule (onboarding).
     var today: DialToday?
+    /// When set, knobs can be dragged around the ring. Onboarding leaves this nil.
+    var onMove: ((MealSlot, Int) -> Void)? = nil
     @ViewBuilder var center: () -> Center
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var dragging: MealSlot?
 
     private var meals: [(MealSlot, Int)] {
         [(.breakfast, breakfastMin), (.lunch, lunchMin), (.dinner, dinnerMin)]
@@ -46,52 +51,79 @@ struct DayDial<Center: View>: View {
         GeometryReader { geo in
             let size = min(geo.size.width, geo.size.height)
             let c = CGPoint(x: geo.size.width / 2, y: geo.size.height / 2)
-            let r = size * 0.33
-            let ringWidth = size * 0.076
+            let r = size * 0.35
+            let ringWidth = min(18, max(7, size * 0.052))
             let knobSize = min(44, max(18, size * 0.13))
             let bellSize = min(28, max(12, size * 0.082))
+            let faceR = r - ringWidth / 2 - max(4, size * 0.014)
 
             ZStack {
                 Circle()
-                    .stroke(trackColor, lineWidth: ringWidth)
+                    .fill(faceColor)
+                    .overlay {
+                        Circle()
+                            .fill(
+                                RadialGradient(
+                                    colors: [Color.clear, innerShade],
+                                    center: .center,
+                                    startRadius: faceR * 0.52,
+                                    endRadius: faceR
+                                )
+                            )
+                    }
+                    .clipShape(Circle())
+                    .overlay(Circle().strokeBorder(faceStroke, lineWidth: 1))
+                    .frame(width: faceR * 2, height: faceR * 2)
+                    .position(c)
+                    .allowsHitTesting(false)
+
+                Circle()
+                    .stroke(trackColor, style: StrokeStyle(lineWidth: ringWidth, lineCap: .round))
                     .frame(width: r * 2, height: r * 2)
                     .position(c)
+                    .allowsHitTesting(false)
 
-                quietArc(radius: r, width: ringWidth)
+                arc(from: quietStartMin, to: quietEndMin, color: quietColor, width: ringWidth, radius: r, cap: .butt)
                     .position(c)
+                    .allowsHitTesting(false)
 
-                if let nowMin = today?.nowMin, let today, nowMin > quietEndMin {
-                    Circle()
-                        .trim(from: Double(quietEndMin) / 1440, to: Double(nowMin) / 1440)
-                        .stroke(today.ringColor, style: StrokeStyle(lineWidth: 4, lineCap: .round))
-                        .rotationEffect(.degrees(-90))
-                        .frame(width: r * 2, height: r * 2)
+                if let end = elapsedEndMin, let today {
+                    arc(from: quietEndMin, to: end, color: today.ringColor, width: ringWidth, radius: r, cap: .butt)
                         .position(c)
+                        .allowsHitTesting(false)
                 }
 
                 if let ringProgress {
                     Circle()
                         .trim(from: 0, to: ringProgress)
-                        .stroke(theme == .terra ? Palette.background : Palette.accent,
-                                style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                        .stroke(
+                            theme == .terra ? Palette.background : Palette.accent,
+                            style: StrokeStyle(lineWidth: ringWidth, lineCap: .round)
+                        )
                         .rotationEffect(.degrees(-90))
                         .frame(width: r * 2, height: r * 2)
                         .position(c)
+                        .allowsHitTesting(false)
                 }
 
-                if showsHourLabels {
+                DialTicks(center: c, radius: faceR, color: tickColor)
+                    .frame(width: geo.size.width, height: geo.size.height)
+                    .allowsHitTesting(false)
+
+                if showsHourLabels, size > 200 {
                     ForEach([0, 6, 12, 18], id: \.self) { hour in
-                        Text("\(hour)")
-                            .font(Typography.data(11, weight: .semibold))
+                        Text(DialClock.cardinalLabel(hour))
+                            .font(Typography.data(size > 220 ? 11 : 9, weight: .bold))
+                            .monospacedDigit()
                             .foregroundStyle(labelColor)
-                            .position(point(hour * 60, radius: r - size * 0.11, center: c))
+                            .padding(3)
+                            .background(faceColor.opacity(0.92), in: Capsule())
+                            .position(point(hour * 60, radius: faceR - size * 0.052, center: c))
+                            .allowsHitTesting(false)
                     }
                 }
 
-                Image(systemName: "moon.fill")
-                    .font(.system(size: size * 0.036, weight: .semibold))
-                    .foregroundStyle(theme == .terra ? Palette.background.opacity(0.75) : Palette.inkSoft)
-                    .position(point(quietMidpoint, radius: r, center: c))
+                moonMark(size: max(15, ringWidth * 0.92), at: point(quietMidpoint, radius: r, center: c))
 
                 if showsHand {
                     LoopingPhase(period: 14, still: 0.54) { t in
@@ -108,11 +140,18 @@ struct DayDial<Center: View>: View {
                 ForEach(Array(meals.enumerated()), id: \.offset) { index, entry in
                     let (slot, minute) = entry
                     let state = today?.states[slot]
-                    knob(slot, state: state, size: knobSize)
-                        .scaleEffect(markersShown ? 1 : 0.2)
-                        .opacity(markersShown ? 1 : 0)
-                        .animation(markerAnimation(index), value: markersShown)
-                        .position(point(minute, radius: r, center: c))
+                    let knobPoint = point(minute, radius: r, center: c)
+                    movableKnob(slot, state: state, size: knobSize, at: knobPoint, center: c, index: index)
+                    if dragging == slot {
+                        Text(formatMinutes(minute))
+                            .font(Typography.data(11, weight: .bold))
+                            .foregroundStyle(Palette.background)
+                            .padding(.horizontal, 9)
+                            .padding(.vertical, 5)
+                            .background(Palette.ink, in: Capsule())
+                            .position(point(minute, radius: r + knobSize * 0.72 + 12, center: c))
+                            .allowsHitTesting(false)
+                    }
                     if showsBell(for: state) {
                         PingBell(
                             fill: theme == .terra ? Palette.background : Palette.accentTint,
@@ -123,21 +162,18 @@ struct DayDial<Center: View>: View {
                         .scaleEffect(markersShown ? 1 : 0.2)
                         .opacity(markersShown ? 1 : 0)
                         .animation(markerAnimation(index).delay(0.15), value: markersShown)
-                        .position(point(CheckInSchedule.minute(afterMeal: minute), radius: r + size * 0.118, center: c))
+                        .position(point(CheckInSchedule.minute(afterMeal: minute), radius: r + size * 0.105, center: c))
                     }
                 }
 
                 if let nowMin = today?.nowMin {
-                    Circle()
-                        .fill(Palette.ink)
-                        .overlay(Circle().strokeBorder(Palette.background, lineWidth: 3))
-                        .frame(width: 13, height: 13)
-                        .position(point(nowMin, radius: r, center: c))
+                    nowMarker(nowMin: nowMin, radius: r, ringWidth: ringWidth, faceR: faceR, center: c, size: size)
                 }
 
                 center()
                     .position(c)
             }
+            .coordinateSpace(name: "dayDial")
         }
         .aspectRatio(1, contentMode: .fit)
         .accessibilityElement(children: .ignore)
@@ -145,6 +181,75 @@ struct DayDial<Center: View>: View {
     }
 
     // MARK: Pieces
+
+    @ViewBuilder
+    private func arc(
+        from startMin: Int,
+        to endMin: Int,
+        color: Color,
+        width: CGFloat,
+        radius r: CGFloat,
+        cap: CGLineCap
+    ) -> some View {
+        let start = Double(((startMin % 1440) + 1440) % 1440) / 1440
+        let end = Double(((endMin % 1440) + 1440) % 1440) / 1440
+        let style = StrokeStyle(lineWidth: width, lineCap: cap)
+        ZStack {
+            if start <= end {
+                Circle().trim(from: start, to: end).stroke(color, style: style)
+            } else {
+                Circle().trim(from: start, to: 1).stroke(color, style: style)
+                Circle().trim(from: 0, to: end).stroke(color, style: style)
+            }
+        }
+        .rotationEffect(.degrees(-90))
+        .frame(width: r * 2, height: r * 2)
+    }
+
+    private func moonMark(size: CGFloat, at point: CGPoint) -> some View {
+        ZStack {
+            Circle().fill(quietColor)
+            Image(systemName: "moon.fill")
+                .font(.system(size: size * 0.48, weight: .semibold))
+                .foregroundStyle(theme == .terra ? Palette.background.opacity(0.9) : Palette.inkSoft)
+        }
+        .frame(width: size, height: size)
+        .position(point)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+
+    @ViewBuilder
+    private func nowMarker(
+        nowMin: Int,
+        radius r: CGFloat,
+        ringWidth: CGFloat,
+        faceR: CGFloat,
+        center c: CGPoint,
+        size: CGFloat
+    ) -> some View {
+        let pip = min(16, max(10, ringWidth * 0.7))
+        let stub = max(9, size * 0.038)
+        ZStack {
+            Capsule()
+                .fill(theme == .terra ? Palette.background : Palette.ink)
+                .frame(width: max(2, size * 0.007), height: stub)
+                .offset(y: -(faceR - stub / 2 - 1))
+                .rotationEffect(.degrees(Double(nowMin) / 1440 * 360))
+                .position(c)
+            Circle()
+                .fill(today?.ringColor ?? Palette.ink)
+                .overlay(Circle().strokeBorder(
+                    theme == .terra ? Palette.accent : Palette.background,
+                    lineWidth: 2.5
+                ))
+                .frame(width: pip, height: pip)
+                .position(point(nowMin, radius: r, center: c))
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
 
     @ViewBuilder
     private func knob(_ slot: MealSlot, state: SlotState?, size: CGFloat) -> some View {
@@ -200,21 +305,54 @@ struct DayDial<Center: View>: View {
         return today.showsBells && state != .logged
     }
 
+    // MARK: Dragging
+
     @ViewBuilder
-    private func quietArc(radius r: CGFloat, width: CGFloat) -> some View {
-        let start = Double(quietStartMin) / 1440
-        let end = Double(quietEndMin) / 1440
-        let color = theme == .terra ? Palette.ink.opacity(0.22) : Color(hex: 0xE4D9CA)
-        ZStack {
-            if start <= end {
-                Circle().trim(from: start, to: end).stroke(color, lineWidth: width)
-            } else {
-                Circle().trim(from: start, to: 1).stroke(color, lineWidth: width)
-                Circle().trim(from: 0, to: end).stroke(color, lineWidth: width)
-            }
+    private func movableKnob(
+        _ slot: MealSlot,
+        state: SlotState?,
+        size: CGFloat,
+        at knobPoint: CGPoint,
+        center: CGPoint,
+        index: Int
+    ) -> some View {
+        let visual = knob(slot, state: state, size: size)
+            .scaleEffect((markersShown ? 1 : 0.2) * (dragging == slot ? 1.15 : 1))
+            .opacity(markersShown ? 1 : 0)
+            .animation(markerAnimation(index), value: markersShown)
+        if onMove != nil {
+            visual
+                .frame(width: max(44, size), height: max(44, size))
+                .contentShape(Circle())
+                .position(knobPoint)
+                .gesture(dragGesture(slot, center: center))
+        } else {
+            visual.position(knobPoint)
         }
-        .rotationEffect(.degrees(-90))
-        .frame(width: r * 2, height: r * 2)
+    }
+
+    private func dragGesture(_ slot: MealSlot, center: CGPoint) -> some Gesture {
+        DragGesture(minimumDistance: 0, coordinateSpace: .named("dayDial"))
+            .onChanged { value in
+                dragging = slot
+                let raw = MealTimeEditing.minute(at: value.location, center: center)
+                let clamped = MealTimeEditing.clamp(
+                    raw, slot: slot,
+                    breakfast: breakfastMin, lunch: lunchMin, dinner: dinnerMin
+                )
+                guard clamped != minute(for: slot) else { return }
+                UISelectionFeedbackGenerator().selectionChanged()
+                onMove?(slot, clamped)
+            }
+            .onEnded { _ in dragging = nil }
+    }
+
+    private func minute(for slot: MealSlot) -> Int {
+        switch slot {
+        case .breakfast: return breakfastMin
+        case .lunch: return lunchMin
+        case .dinner: return dinnerMin
+        }
     }
 
     // MARK: Geometry
@@ -230,12 +368,38 @@ struct DayDial<Center: View>: View {
         return (quietStartMin + span / 2) % 1440
     }
 
+    /// Waking-day fill ends at now, capped at lights-out.
+    private var elapsedEndMin: Int? {
+        guard let now = today?.nowMin, now > quietEndMin else { return nil }
+        return quietStartMin > quietEndMin ? min(now, quietStartMin) : now
+    }
+
     private var trackColor: Color {
         theme == .terra ? Palette.background.opacity(0.16) : Palette.surfaceSunk
     }
 
+    private var quietColor: Color {
+        theme == .terra ? Palette.ink.opacity(0.28) : Color(hex: 0xCDBFAE)
+    }
+
+    private var faceColor: Color {
+        theme == .terra ? Palette.background.opacity(0.12) : Palette.surfaceRaised
+    }
+
+    private var innerShade: Color {
+        theme == .terra ? Palette.ink.opacity(0.055) : Palette.surfaceSunk.opacity(0.42)
+    }
+
+    private var faceStroke: Color {
+        theme == .terra ? Palette.background.opacity(0.12) : Palette.hairline
+    }
+
+    private var tickColor: Color {
+        theme == .terra ? Palette.background.opacity(0.45) : Palette.inkFaint
+    }
+
     private var labelColor: Color {
-        theme == .terra ? Palette.background.opacity(0.55) : Palette.inkFaint
+        theme == .terra ? Palette.background.opacity(0.6) : Palette.inkSoft
     }
 
     private func markerAnimation(_ index: Int) -> Animation {
@@ -245,7 +409,45 @@ struct DayDial<Center: View>: View {
 
     private var accessibilitySummary: String {
         let times = meals.map { "\($0.0.title) \(formatMinutes($0.1))" }.joined(separator: ", ")
-        return "Meal times: \(times). Quiet from \(formatMinutes(quietStartMin)) to \(formatMinutes(quietEndMin))."
+        var summary = "Meal times: \(times). Quiet from \(formatMinutes(quietStartMin)) to \(formatMinutes(quietEndMin))."
+        if let now = today?.nowMin {
+            summary += " Now \(formatMinutes(now))."
+        }
+        return summary
+    }
+}
+
+/// Hour ticks on the dial face — majors at midnight, 6, noon, 6pm.
+private struct DialTicks: View {
+    let center: CGPoint
+    let radius: CGFloat
+    let color: Color
+
+    var body: some View {
+        Canvas { context, _ in
+            for hour in 0..<24 {
+                let major = hour % 6 == 0
+                let midnight = hour == 0
+                let angle = Double(hour) / 24 * 2 * .pi
+                let len: CGFloat = radius * (midnight ? 0.13 : major ? 0.1 : 0.055)
+                let outer = radius - 1
+                let inner = outer - max(2.5, len)
+                var path = Path()
+                path.move(to: CGPoint(
+                    x: center.x + inner * CGFloat(sin(angle)),
+                    y: center.y - inner * CGFloat(cos(angle))
+                ))
+                path.addLine(to: CGPoint(
+                    x: center.x + outer * CGFloat(sin(angle)),
+                    y: center.y - outer * CGFloat(cos(angle))
+                ))
+                context.stroke(
+                    path,
+                    with: .color(color.opacity(major ? 1 : 0.45)),
+                    lineWidth: midnight ? 2.2 : major ? 1.6 : 1
+                )
+            }
+        }
     }
 }
 
@@ -275,9 +477,104 @@ private struct PingBell: View {
     }
 }
 
-#Preview {
+/// Compact cardinals so the dial reads as a clock: 12a / 6a / 12p / 6p,
+/// or 00 / 06 / 12 / 18 in 24-hour regions.
+enum DialClock {
+    static func cardinalLabel(_ hour: Int, locale: Locale = .current) -> String {
+        switch locale.hourCycle {
+        case .zeroToTwentyThree, .oneToTwentyFour:
+            return String(format: "%02d", hour)
+        default:
+            let h = hour % 12 == 0 ? 12 : hour % 12
+            return hour < 12 ? "\(h)a" : "\(h)p"
+        }
+    }
+}
+
+/// Snap, clamp, and angle math shared by the dial drag and the meal-time sheet.
+enum MealTimeEditing {
+    static let snapMinutes = 15
+    static let breakfastEarliest = 240
+    static let dinnerLatest = 1380
+    static let gap = 60
+
+    static func snap(_ minute: Int) -> Int {
+        let wrapped = ((minute % 1440) + 1440) % 1440
+        let snapped = Int((Double(wrapped) / Double(snapMinutes)).rounded()) * snapMinutes
+        return snapped == 1440 ? 0 : snapped
+    }
+
+    static func clamp(
+        _ minute: Int,
+        slot: MealSlot,
+        breakfast: Int,
+        lunch: Int,
+        dinner: Int
+    ) -> Int {
+        let snapped = snap(minute)
+        switch slot {
+        case .breakfast:
+            return min(max(snapped, breakfastEarliest), lunch - gap)
+        case .lunch:
+            return min(max(snapped, breakfast + gap), dinner - gap)
+        case .dinner:
+            return min(max(snapped, lunch + gap), dinnerLatest)
+        }
+    }
+
+    /// 0 at 12 o'clock, clockwise, in minutes from local midnight.
+    static func minute(at location: CGPoint, center: CGPoint) -> Int {
+        let dx = location.x - center.x
+        let dy = location.y - center.y
+        var angle = atan2(dx, -dy)
+        if angle < 0 { angle += 2 * .pi }
+        return Int((angle / (2 * .pi) * 1440).rounded())
+    }
+}
+
+extension MealTimesPayload {
+    subscript(slot: MealSlot) -> Int {
+        get {
+            switch slot {
+            case .breakfast: return breakfastMin
+            case .lunch: return lunchMin
+            case .dinner: return dinnerMin
+            }
+        }
+        set {
+            switch slot {
+            case .breakfast: breakfastMin = newValue
+            case .lunch: lunchMin = newValue
+            case .dinner: dinnerMin = newValue
+            }
+        }
+    }
+}
+
+#Preview("Schedule") {
     DayDial(breakfastMin: 480, lunchMin: 780, dinnerMin: 1140, quietStartMin: 1380, quietEndMin: 420) {
         Text("Standard").font(Typography.voice(26))
+    }
+    .padding()
+    .background(Palette.background)
+}
+
+#Preview("Live") {
+    DayDial(
+        breakfastMin: 480, lunchMin: 780, dinnerMin: 1140,
+        quietStartMin: 1380, quietEndMin: 420,
+        today: DialToday(
+            states: [.breakfast: .logged, .lunch: .now, .dinner: .upcoming],
+            nowMin: 800,
+            ringColor: Palette.accent
+        )
+    ) {
+        VStack(spacing: 1) {
+            Text("Next check-in").sectionLabelStyle()
+            Text("1:45 PM")
+                .font(Typography.data(42, weight: .bold))
+                .foregroundStyle(Palette.ink)
+        }
     }
     .padding()
     .background(Palette.background)
