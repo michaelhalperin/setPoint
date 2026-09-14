@@ -72,6 +72,7 @@ enum DebugPreviewStub {
     case appetite
     case checkinSmaller
     case settingsAppetite
+    case widgets
     case settingsAccount
     case settingsDelete
 
@@ -156,6 +157,8 @@ enum DebugPreviewStub {
             }
         case .settingsAppetite:
             NavigationStack { AppetiteSettingsView(previewMode: "SMALL_FREQUENT") }
+        case .widgets:
+            WidgetsStubHost()
         case .settingsAccount:
             NavigationStack { AccountSettingsView(model: .previewed()) }
         case .settingsDelete:
@@ -216,6 +219,7 @@ enum DebugPreviewStub {
         case "refuel": return .refuel
         case "checkin-smaller": return .checkinSmaller
         case "settings-appetite": return .settingsAppetite
+        case "widgets": return .widgets
         case "settings-goal": return .settingsGoal
         case "settings-meal-times": return .settingsMealTimes
         case "settings-meal-times-weekends": return .settingsMealTimesWeekends
@@ -227,6 +231,49 @@ enum DebugPreviewStub {
         case "settlement-weigh-in": return .settlement(.sampleNeedsWeighIn)
         case "settlement-empty": return .settlement(.sampleEmpty)
         default: return nil
+        }
+    }
+}
+
+private struct WidgetsStubHost: View {
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: Space.md) {
+                Text("Widgets")
+                    .font(Typography.display(28))
+                    .foregroundStyle(Palette.ink)
+                widgetCard(title: "Small") {
+                    TodayWidgetSmallView(snapshot: .preview)
+                        .frame(width: 158, height: 158)
+                        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                }
+                widgetCard(title: "Medium") {
+                    TodayWidgetMediumView(snapshot: .preview)
+                        .frame(width: 338, height: 158)
+                        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                }
+                widgetCard(title: "Lock Screen") {
+                    HStack(spacing: Space.md) {
+                        TodayLockCircularView(snapshot: .preview)
+                            .frame(width: 72, height: 72)
+                        TodayLockRectangularView(snapshot: .preview)
+                            .frame(maxWidth: .infinity, minHeight: 72, alignment: .leading)
+                    }
+                    .padding(14)
+                    .background(Palette.lockScreenInk, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                }
+            }
+            .padding(Space.lg)
+        }
+        .background(Palette.background.ignoresSafeArea())
+    }
+
+    private func widgetCard<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: Space.sm) {
+            Text(title)
+                .font(Typography.data(13, weight: .bold))
+                .foregroundStyle(Palette.inkFaint)
+            content()
         }
     }
 }

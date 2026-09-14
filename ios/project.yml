@@ -76,10 +76,16 @@ targets:
         com.apple.developer.healthkit: true
         com.apple.developer.healthkit.access: []
         com.apple.developer.healthkit.background-delivery: true
+        com.apple.security.application-groups:
+          - group.com.setpoint.app
+        keychain-access-groups:
+          - $(AppIdentifierPrefix)group.com.setpoint.app
     dependencies:
       - target: SetPointWidgets
         embed: true
       - sdk: ActivityKit.framework
+      - sdk: WidgetKit.framework
+      - sdk: AppIntents.framework
       - sdk: HealthKit.framework
       - sdk: EventKit.framework
       - sdk: VisionKit.framework
@@ -99,9 +105,17 @@ targets:
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: SetPointWidgets/Info.plist
         SKIP_INSTALL: YES
+    entitlements:
+      path: SetPointWidgets/SetPointWidgets.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.setpoint.app
+        keychain-access-groups:
+          - $(AppIdentifierPrefix)group.com.setpoint.app
     dependencies:
       - sdk: ActivityKit.framework
       - sdk: WidgetKit.framework
+      - sdk: AppIntents.framework
       - sdk: SwiftUI.framework
 
   SetPointTests:

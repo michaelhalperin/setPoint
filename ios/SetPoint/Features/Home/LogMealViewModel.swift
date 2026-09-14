@@ -239,6 +239,7 @@ final class LogMealViewModel {
         formatter.formatOptions = [.withInternetDateTime]
         let res: SavedMealsResponse? = try? await api.get("/api/saved-meals", query: ["now": formatter.string(from: now)])
         savedMeals = res?.meals ?? []
+        TodaySnapshotSync.writeSaved(savedMeals)
     }
 
     /// One-tap log of a named plate — no parse, no AI quota.

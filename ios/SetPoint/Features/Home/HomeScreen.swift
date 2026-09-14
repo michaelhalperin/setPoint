@@ -219,6 +219,13 @@ struct HomeContent: View {
             guard id != nil else { return }
             Task { await openDeepLinkedCheckIn() }
         }
+        .onChange(of: env.changes.pendingLogPhoto) { _, pending in
+            guard pending else { return }
+            env.changes.pendingLogPhoto = false
+            logger?.mode = .photo
+            logger?.showPhotoPicker = true
+            composerFocused = true
+        }
         .onChange(of: scenePhase) { _, phase in
             guard phase == .active, isLoaded else { return }
             Task {

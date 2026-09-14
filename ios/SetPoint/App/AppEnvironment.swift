@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import WidgetKit
 
 /// Lightweight DI container handed down through the SwiftUI environment.
 @MainActor
@@ -43,7 +44,14 @@ final class AppEnvironment {
 final class AppDataChanges {
     private(set) var mealRevision = 0
 
+    var pendingLogPhoto = false
+
     func mealsChanged() {
         mealRevision &+= 1
+        WidgetCenter.shared.reloadAllTimelines()
+    }
+
+    func openLogPhoto() {
+        pendingLogPhoto = true
     }
 }

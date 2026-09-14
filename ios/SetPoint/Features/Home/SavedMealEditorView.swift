@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// A named plate being created or edited. Siri is a placeholder until Phase 7.
+/// A named plate being created or edited. Siri uses "Log my usual <slot>".
 struct SavedMealDraft: Identifiable, Equatable {
     var id: String
     var existingId: String?
@@ -230,9 +230,13 @@ struct SavedMealEditorView: View {
                         .tint(Palette.accent)
                         .padding(16)
                         Divider().overlay(Palette.hairline)
-                        SettingsRow(symbol: "waveform", title: "Siri phrase", value: "Coming later", showsChevron: false)
-                            .opacity(0.55)
-                            .accessibilityLabel("Siri phrase, coming later")
+                        SettingsRow(
+                            symbol: "waveform",
+                            title: "Siri phrase",
+                            value: "Log my usual \(draft.suggestSlot ?? "meal")",
+                            showsChevron: false
+                        )
+                            .accessibilityLabel("Siri phrase, Log my usual \(draft.suggestSlot ?? "meal")")
                     }
                 }
 

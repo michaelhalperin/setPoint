@@ -34,6 +34,7 @@ final class HomeViewModel {
             let home: HomeResponse = try await api.get("/api/home")
             phase = .loaded(home)
             LiveActivityController.shared.sync(activeCheckIn: home.activeCheckIn)
+            TodaySnapshotSync.write(home: home)
         } catch APIError.unauthorized {
             onUnauthorized()
         } catch let APIError.http(status, _) where status == 409 {
@@ -57,7 +58,9 @@ final class HomeViewModel {
 
     func applyLoggedMeal(_ meal: MealSummary, slot: MealSlot) {
         guard case let .loaded(home) = phase else { return }
-        phase = .loaded(home.inserting(meal, into: slot))
+        let updated = home.inserting(meal, into: slot)
+        phase = .loaded(updated)
+        TodaySnapshotSync.write(home: updated)
     }
 
     private func message(for error: Error) -> String {

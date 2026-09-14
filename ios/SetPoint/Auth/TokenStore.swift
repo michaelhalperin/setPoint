@@ -22,12 +22,21 @@ final class SessionTokenStore: TokenStore, @unchecked Sendable {
     // MARK: TokenStore
 
     func read() -> String? {
-        if let fromKeychain = keychainRead() { return fromKeychain }
-        return UserDefaults.standard.string(forKey: defaultsKey)
+        if let fromKeychain = keychainRead() {
+            AppGroup.writeToken(fromKeychain)
+            return fromKeychain
+        }
+        if let shared = AppGroup.readToken(), !shared.isEmpty { return shared }
+        if let fallback = UserDefaults.standard.string(forKey: defaultsKey) {
+            AppGroup.writeToken(fallback)
+            return fallback
+        }
+        return nil
     }
 
     func write(_ token: String) {
         keychainWrite(token)
+        AppGroup.writeToken(token)
         // Verify the write actually stuck; if not, the Keychain isn't available.
         if keychainRead() == token {
             UserDefaults.standard.removeObject(forKey: defaultsKey)
@@ -39,6 +48,7 @@ final class SessionTokenStore: TokenStore, @unchecked Sendable {
 
     func clear() {
         SecItemDelete(baseQuery as CFDictionary)
+        AppGroup.writeToken(nil)
         UserDefaults.standard.removeObject(forKey: defaultsKey)
     }
 

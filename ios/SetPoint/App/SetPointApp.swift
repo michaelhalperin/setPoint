@@ -16,8 +16,13 @@ struct SetPointApp: App {
                 .environment(env)
                 .tint(Palette.accent)
                 .onOpenURL { url in
-                    if case let .checkIn(id) = DeepLink(url: url) {
+                    switch DeepLink(url: url) {
+                    case let .checkIn(id):
                         env.push.openCheckIn(id)
+                    case .logPhoto:
+                        env.changes.openLogPhoto()
+                    case nil:
+                        break
                     }
                 }
                 .task {
