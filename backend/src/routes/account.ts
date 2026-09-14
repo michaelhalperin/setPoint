@@ -5,8 +5,16 @@ import { requireAuth, type AuthedRequest } from '../auth/index.js';
 import { OnboardingIncompleteError } from '../dashboard/home.js';
 import { getPrisma } from '../db/client.js';
 import { AlreadyOnboardedError, MissingTargetError, runOnboarding } from '../onboarding/onboard.js';
+import { UnderageError } from '../onboarding/age.js';
 import { getSettings, updateSettings } from '../onboarding/settings.js';
 import { getPhotoStore } from '../photos/store.js';
+import {
+  acceptTargetReview,
+  dismissTargetReview,
+  NoTargetReviewError,
+  StaleTargetReviewError,
+  undoLastTargetReview,
+} from '../weight/targetReview.js';
 
 const minutes = z.number().int().min(0).max(1439);
 const mealTimes = z.object({ breakfastMin: minutes, lunchMin: minutes, dinnerMin: minutes });
@@ -38,6 +46,7 @@ const onboardingBody = z.object({
   quietHours: quietHours.optional(),
   safety: z.object({
     medicalSupervisionRequired: z.boolean(),
+    medicalConditionAffectsEating: z.boolean().optional(),
     scoff,
     restrictions: z.array(restriction).max(50).optional(),
     restrictionsFreeText: z.string().max(1000).optional(),
@@ -58,8 +67,19 @@ const settingsPatch = z
     checkInsPaused: z.boolean().optional(),
     timezone: z.string().optional(),
     restrictions: z.array(restriction).max(50).optional(),
+    pantryTokens: z.array(z.string().min(1).max(80)).max(40).optional(),
+    dislikedFoods: z.array(z.string().min(1).max(80)).max(40).optional(),
+    prepTimeMaxMin: z.number().int().min(0).max(240).nullable().optional(),
   })
   .refine((p) => Object.keys(p).length > 0, { message: 'no changes provided' });
+
+// The server computes the suggestion; the client only says what it decided and
+// which proposed target it saw.
+const targetReviewBody = z.discriminatedUnion('action', [
+  z.object({ action: z.literal('accept'), proposedKcal: z.number().int() }),
+  z.object({ action: z.literal('dismiss') }),
+  z.object({ action: z.literal('undo') }),
+]);
 
 const deleteBody = z.object({ confirmation: z.literal('delete my account') });
 
@@ -74,6 +94,7 @@ export async function accountRoutes(app: FastifyInstance): Promise<void> {
     } catch (err) {
       if (err instanceof AlreadyOnboardedError) throw app.httpErrors.conflict(err.message);
       if (err instanceof MissingTargetError) throw app.httpErrors.badRequest(err.message);
+      if (err instanceof UnderageError) throw app.httpErrors.forbidden(err.message);
       throw err;
     }
   });
@@ -93,6 +114,28 @@ export async function accountRoutes(app: FastifyInstance): Promise<void> {
       return await updateSettings({ prisma: getPrisma() }, (req as AuthedRequest).userId, patch);
     } catch (err) {
       if (err instanceof OnboardingIncompleteError) throw app.httpErrors.conflict(err.message);
+      throw err;
+    }
+  });
+
+  app.post('/settings/target-review', async (req) => {
+    const body = targetReviewBody.parse(req.body);
+    const userId = (req as AuthedRequest).userId;
+    const prisma = getPrisma();
+    try {
+      switch (body.action) {
+        case 'accept':
+          return { action: body.action, ...(await acceptTargetReview(prisma, userId, body.proposedKcal)) };
+        case 'dismiss':
+          await dismissTargetReview(prisma, userId);
+          return { action: body.action };
+        case 'undo':
+          return { action: body.action, ...(await undoLastTargetReview(prisma, userId)) };
+      }
+    } catch (err) {
+      if (err instanceof NoTargetReviewError || err instanceof StaleTargetReviewError) {
+        throw app.httpErrors.conflict(err.message);
+      }
       throw err;
     }
   });

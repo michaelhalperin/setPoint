@@ -8,6 +8,8 @@ export type ConversationTurn = { role: 'user' | 'assistant'; content: string };
 export type ConversationOutcome =
   | 'NONE'
   | 'ADJUST_PLAN'
+  | 'DELAY_CHECKINS'
+  | 'EASE_TARGET'
   | 'PAUSE_CHECKINS'
   | 'SUGGEST_PROFESSIONAL';
 
@@ -34,9 +36,8 @@ export interface TierThreeConversant {
 const SYSTEM = [
   "You are SetPoint's manager voice, checking in after the user has missed several meals in a row.",
   'This is a short conversation, not a chat. Your only goals, in order of preference based on what they say:',
-  '  1. adjust the plan — a lower daily target, different meal times, or fewer check-ins',
-  '  2. pause check-ins for a while',
-  '  3. if they mention struggling with eating, food, or their body, gently suggest talking to a professional',
+  '  1. propose DELAY_CHECKINS, EASE_TARGET, or PAUSE_CHECKINS — never claim it already happened',
+  '  2. if they mention struggling with eating, food, or their body, gently suggest talking to a professional',
   'Rules: one brief sentence per reply, under 90 characters. Warm and direct. Never mention weight, guilt, or failure.',
   'After at most 3 of your replies, land on an outcome and set done=true.',
   'Always call reply_to_user.',
@@ -52,7 +53,7 @@ const replyTool: Anthropic.Tool = {
       reply: { type: 'string' },
       outcome: {
         type: 'string',
-        enum: ['NONE', 'ADJUST_PLAN', 'PAUSE_CHECKINS', 'SUGGEST_PROFESSIONAL'],
+        enum: ['NONE', 'ADJUST_PLAN', 'DELAY_CHECKINS', 'EASE_TARGET', 'PAUSE_CHECKINS', 'SUGGEST_PROFESSIONAL'],
       },
       done: { type: 'boolean' },
     },
@@ -62,37 +63,53 @@ const replyTool: Anthropic.Tool = {
 
 const replySchema = z.object({
   reply: z.string().min(1),
-  outcome: z.enum(['NONE', 'ADJUST_PLAN', 'PAUSE_CHECKINS', 'SUGGEST_PROFESSIONAL']).default('NONE'),
+  outcome: z.enum(['NONE', 'ADJUST_PLAN', 'DELAY_CHECKINS', 'EASE_TARGET', 'PAUSE_CHECKINS', 'SUGGEST_PROFESSIONAL']).default('NONE'),
   done: z.coerce.boolean().default(false),
 });
 
 export const fallbackTierThree: TierThreeConversant = {
-  opener() {
+  opener(context) {
     return 'Change your target, timing, or pause check-ins?';
   },
   async respond(history) {
     const last = history.filter((t) => t.role === 'user').at(-1)?.content.toLowerCase() ?? '';
     const assistantTurns = history.filter((t) => t.role === 'assistant').length;
 
-    if (/(struggl|hard time|can't eat|cant eat|disorder|therap)/.test(last)) {
+    if (/(struggl|hard time|can'?t eat|disorder|therap)/.test(last)) {
       return {
-        reply: 'Quiet tracking is on. Consider support from a qualified professional.',
+        reply: 'I’ve paused check-ins. A qualified professional can offer support an app can’t.',
         outcome: 'SUGGEST_PROFESSIONAL',
         done: true,
       };
     }
-    if (/(pause|stop|break|too much|leave me)/.test(last)) {
+    if (/\b(pause|stop|break|too much|leave me)\b/.test(last)) {
       return {
-        reply: 'Check-ins paused. Resume them in Settings.',
+        reply: 'I can pause check-ins. Confirm below if you want that.',
         outcome: 'PAUSE_CHECKINS',
-        done: true,
+        done: false,
       };
     }
+    if (/\b(later|timing|more time|wrong time|too early)\b/.test(last)) {
+      return {
+        reply: 'I can shift meal times 30 minutes later. Confirm below.',
+        outcome: 'DELAY_CHECKINS',
+        done: false,
+      };
+    }
+    // Word boundaries: "please" must not read as "ease", "unless" as "less".
+    if (/\b(ease|lower|smaller target|less food|eat less)\b/.test(last)) {
+      return {
+        reply: 'I can lower your daily target by 150 kcal. Confirm below.',
+        outcome: 'EASE_TARGET',
+        done: false,
+      };
+    }
+    // No clear ask: offer the gentlest change — timing — never a lower target.
     if (assistantTurns >= 2) {
       return {
-        reply: 'Target eased. Adjust it in Settings.',
-        outcome: 'ADJUST_PLAN',
-        done: true,
+        reply: 'I can check in 30 minutes later. Confirm below if that helps.',
+        outcome: 'DELAY_CHECKINS',
+        done: false,
       };
     }
     return {

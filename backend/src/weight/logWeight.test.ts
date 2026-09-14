@@ -23,6 +23,7 @@ function fakePrisma(profile: AnyRow | null) {
         entries.push(row);
         return row;
       },
+      findMany: async () => [...entries].reverse(),
     },
   };
   return prisma as unknown as PrismaClient & { __state: typeof state; __entries: AnyRow[] };
@@ -55,8 +56,16 @@ describe('logWeight', () => {
     expect(res.progress?.remainingKg).toBeCloseTo(3.4, 1);
   });
 
-  it('flips to MAINTAIN and recomputes targets when the goal is reached', async () => {
+  it('does not flip to MAINTAIN from a single weigh-in at the target', async () => {
     const prisma = fakePrisma(dietProfile());
+    const res = await logWeight({ prisma, now: NOW }, 'u1', { weightKg: 73.8 });
+    expect(res.goalReached).toBe(false);
+    expect(res.goal).toBe('DIET');
+  });
+
+  it('flips to MAINTAIN after repeated measurements confirm the target', async () => {
+    const prisma = fakePrisma(dietProfile());
+    await logWeight({ prisma, now: new Date('2026-09-08T12:00:00Z') }, 'u1', { weightKg: 73.9 });
     const res = await logWeight({ prisma, now: NOW }, 'u1', { weightKg: 73.8 });
     expect(res.goalReached).toBe(true);
     expect(res.goal).toBe('MAINTAIN');
@@ -66,7 +75,6 @@ describe('logWeight', () => {
       paceKgPerWeek: 0,
       preferredDurationWeeks: null,
     });
-    // maintenance target has no deficit, so it's above the old diet target
     expect(res.dailyKcalTarget).toBeGreaterThan(2200);
   });
 

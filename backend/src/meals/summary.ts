@@ -25,6 +25,7 @@ export type MealSummary = {
   notes: string | null;
   items: MealItem[];
   parseConfidence: number | null;
+  parseQuality: string | null;
 };
 
 export type MealSummaryRow = {
@@ -41,6 +42,7 @@ export type MealSummaryRow = {
   notes?: string | null;
   items?: unknown;
   parseConfidence?: number | null;
+  parseQuality?: string | null;
 };
 
 export function toMealSummary(row: MealSummaryRow): MealSummary {
@@ -57,6 +59,7 @@ export function toMealSummary(row: MealSummaryRow): MealSummary {
     notes: row.notes ?? null,
     items: asItems(row.items),
     parseConfidence: row.parseConfidence ?? null,
+    parseQuality: row.parseQuality ?? null,
   };
 }
 

@@ -1,5 +1,6 @@
 import type { PrismaClient } from '@prisma/client';
 import { localDateISO, localDayRange, msSinceLocalMidnight, shiftDateISO, startOfLocalDay, type Goal } from '../engine/index.js';
+import { currentTargetSuggestion } from '../weight/targetReview.js';
 import { computeWeightProgress, type PaceStatus } from '../weight/progress.js';
 import { classifyDay, type DayKind } from './classify.js';
 import { buildWeekRecord, type WeekRecord } from './record.js';
@@ -48,6 +49,17 @@ export type SettlementView = {
   weightGoal: WeightGoalView | null;
   /** How each meal went this week, with or without a check-in. */
   record: WeekRecord;
+  /** Bounded calorie change from multi-week trend. Null until enough data. */
+  targetReview: {
+    previousKcal: number;
+    proposedKcal: number;
+    deltaKcal: number;
+    reason: string;
+    weighInCount: number;
+    trendKgPerWeek: number;
+    windowStart: string;
+    windowEnd: string;
+  } | null;
 };
 
 const WINDOW_DAYS = 7;
@@ -114,6 +126,8 @@ export async function buildSettlement(deps: SettlementDeps, userId: string): Pro
     planStartDate: profile.completedAt ? localDateISO(profile.completedAt, user.timezone) : undefined,
   });
 
+  const suggestion = await currentTargetSuggestion(prisma, userId, now);
+
   return {
     days,
     today: {
@@ -126,6 +140,18 @@ export async function buildSettlement(deps: SettlementDeps, userId: string): Pro
     weekSummary: weekSummary(days, goal),
     weightGoal: buildWeightGoal(profile, user.weightEntries[0] ?? null, now),
     record,
+    targetReview: suggestion
+      ? {
+          previousKcal: suggestion.previousKcal,
+          proposedKcal: suggestion.proposedKcal,
+          deltaKcal: suggestion.deltaKcal,
+          reason: suggestion.reason,
+          weighInCount: suggestion.weighInCount,
+          trendKgPerWeek: suggestion.trendKgPerWeek,
+          windowStart: suggestion.windowStart.toISOString(),
+          windowEnd: suggestion.windowEnd.toISOString(),
+        }
+      : null,
   };
 }
 

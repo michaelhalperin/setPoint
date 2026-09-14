@@ -19,6 +19,9 @@ const GOAL_PROTEIN_PER_KG: Record<Goal, number> = { BULK: 1.8, DIET: 2.0, MAINTA
 /** ~7,700 kcal per kg of body mass — the standard energy-balance approximation. */
 export const KCAL_PER_KG = 7700;
 
+/** No daily calorie target — computed, adapted, or eased — goes below this. */
+export const MIN_DAILY_KCAL = 1200;
+
 /**
  * Safety caps on how fast a goal may move (M16). A diet is capped as a fraction
  * of current body mass per week so it scales with the person; a bulk is capped
@@ -172,7 +175,7 @@ export function computeCalorieTarget(
   const tdee = mifflinStJeorRmr(stats) * ACTIVITY_FACTOR[stats.activityLevel];
   const delta =
     opts.paceKgPerWeek != null ? paceToKcalDelta(goal, opts.paceKgPerWeek) : GOAL_KCAL_ADJUSTMENT[goal];
-  return Math.max(1200, Math.round((tdee + delta) / 10) * 10);
+  return Math.max(MIN_DAILY_KCAL, Math.round((tdee + delta) / 10) * 10);
 }
 
 /** Daily protein target in grams from weight + goal. */

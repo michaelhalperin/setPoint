@@ -11,7 +11,7 @@ describe('fallbackTierThree', () => {
       ctx,
     );
     expect(r.outcome).toBe('PAUSE_CHECKINS');
-    expect(r.done).toBe(true);
+    expect(r.done).toBe(false);
   });
 
   it('points to support when the user mentions struggling', async () => {
@@ -31,15 +31,26 @@ describe('fallbackTierThree', () => {
     expect(r.done).toBe(false);
   });
 
-  it('lands on adjust-plan after a couple of exchanges', async () => {
+  it('offers a lower target only when the user asks for one', async () => {
+    const r = await fallbackTierThree.respond([opener, { role: 'user', content: 'can you lower my target' }], ctx);
+    expect(r.outcome).toBe('EASE_TARGET');
+    expect(r.done).toBe(false);
+  });
+
+  it('does not read "please" as "ease"', async () => {
+    const r = await fallbackTierThree.respond([opener, { role: 'user', content: 'please just help' }], ctx);
+    expect(r.outcome).toBe('NONE');
+  });
+
+  it('lands on later check-ins, never a lower target, when nothing clear was asked', async () => {
     const history: ConversationTurn[] = [
       opener,
       { role: 'user', content: 'idk' },
       { role: 'assistant', content: 'what would help?' },
-      { role: 'user', content: 'maybe less' },
+      { role: 'user', content: 'not sure honestly' },
     ];
     const r = await fallbackTierThree.respond(history, ctx);
-    expect(r.outcome).toBe('ADJUST_PLAN');
-    expect(r.done).toBe(true);
+    expect(r.outcome).toBe('DELAY_CHECKINS');
+    expect(r.done).toBe(false);
   });
 });

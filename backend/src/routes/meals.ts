@@ -30,6 +30,7 @@ const body = z
       })
       .optional(),
     prescriptionId: z.string().optional(),
+    clientId: z.string().uuid().optional(),
   })
   .refine((b) => b.text || b.image || b.macros || b.prescriptionId, {
     message: 'provide text, image, macros, or a prescriptionId',
@@ -96,6 +97,7 @@ export async function mealRoutes(app: FastifyInstance): Promise<void> {
           loggedAt: input.loggedAt ? new Date(input.loggedAt) : undefined,
           macros: input.macros,
           prescriptionId: input.prescriptionId,
+          clientId: input.clientId,
         },
       );
     } catch (err) {

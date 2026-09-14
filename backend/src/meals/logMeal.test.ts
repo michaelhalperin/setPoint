@@ -16,6 +16,7 @@ function fakePrisma() {
   const match = (row: AnyRow, where: AnyRow = {}): boolean =>
     Object.entries(where).every(([k, v]) => {
       if (v && typeof v === 'object' && 'in' in v) return (v.in as unknown[]).includes(row[k]);
+      if (v && typeof v === 'object' && 'lt' in v) return (row[k] as number) < (v.lt as number);
       return row[k] === v;
     });
 
@@ -27,6 +28,10 @@ function fakePrisma() {
     },
     findMany: async ({ where }: { where?: AnyRow } = {}) => rows.filter((r) => match(r, where)),
     findFirst: async ({ where }: { where?: AnyRow } = {}) => rows.find((r) => match(r, where)) ?? null,
+    findUnique: async ({ where }: { where: AnyRow }) => {
+      const key = (where.userId_clientId as AnyRow | undefined) ?? where;
+      return rows.find((r) => match(r, key)) ?? null;
+    },
     update: async ({ where, data }: { where: AnyRow; data: AnyRow }) => {
       const row = rows.find((r) => match(r, where));
       if (row) Object.assign(row, data);
@@ -68,13 +73,15 @@ const parser: MealParser = vi.fn(async () => ({
   carbsG: 50,
   fatG: 1.5,
   confidence: 0.6,
+  quality: 'high' as const,
+  needsReview: false,
   summary: 'Bagel',
 }));
 
 describe('logMeal', () => {
   it('AI-parses free text, stores the meal, and resolves an open check-in', async () => {
     const prisma = fakePrisma();
-    prisma.__tables.checkIns.push({ id: 'ci_open', userId: 'u1', status: 'PENDING', createdAt: new Date() });
+    prisma.__tables.checkIns.push({ id: 'ci_open', userId: 'u1', status: 'PENDING', tier: 1, createdAt: new Date() });
     prisma.__tables.escalationStates.push({ userId: 'u1', consecutiveMisses: 2, currentTier: 2, backedOffUntil: new Date() });
 
     const res = await logMeal({ prisma: prisma as unknown as PrismaClient, parseMeal: parser }, 'u1', {
@@ -191,5 +198,33 @@ describe('logMeal', () => {
     await expect(
       logMeal({ prisma: prisma as unknown as PrismaClient, parseMeal: parser }, 'u1', {}),
     ).rejects.toBeInstanceOf(EmptyMealError);
+  });
+
+  it('does not close a tier-3 conversation when an unrelated meal is logged', async () => {
+    const prisma = fakePrisma();
+    prisma.__tables.checkIns.push({ id: 'ci_t3', userId: 'u1', status: 'PENDING', tier: 3, createdAt: new Date() });
+    const res = await logMeal({ prisma: prisma as unknown as PrismaClient, parseMeal: parser }, 'u1', {
+      text: 'a bagel',
+    });
+    expect(res.resolvedCheckInId).toBeNull();
+    expect(prisma.__tables.checkIns[0]).toMatchObject({ status: 'PENDING', tier: 3 });
+  });
+
+  it('returns the stored meal for a repeated clientId without parsing or charging again', async () => {
+    const prisma = fakePrisma();
+    const parse = vi.fn(parser);
+    const quota = vi.fn(async () => {});
+    const deps = { prisma: prisma as unknown as PrismaClient, parseMeal: parse, quota };
+    const clientId = '7d3f1a52-51c2-4a39-9a7e-0f6c1f1f8b10';
+    const eatenAt = new Date(Date.now() - 5 * 3600_000);
+
+    const first = await logMeal(deps, 'u1', { text: 'a bagel', clientId, loggedAt: eatenAt });
+    const retry = await logMeal(deps, 'u1', { text: 'a bagel', clientId, loggedAt: eatenAt });
+
+    expect(retry.meal.id).toBe(first.meal.id);
+    expect(prisma.__tables.meals).toHaveLength(1);
+    expect(prisma.__tables.meals[0]).toMatchObject({ loggedAt: eatenAt, clientId });
+    expect(parse).toHaveBeenCalledTimes(1);
+    expect(quota).toHaveBeenCalledTimes(1);
   });
 });
