@@ -26,6 +26,8 @@ final class SettingsViewModel {
     var quietHours = QuietHoursPayload(startMin: 1380, endMin: 420)
     var checkInsPaused = false
     var restrictions: [String] = []
+    var pantryTokens: [String] = []
+    var dislikedFoods: [String] = []
 
     // Read-only
     private(set) var timezone = ""
@@ -140,6 +142,8 @@ final class SettingsViewModel {
             || quietHours != o.quietHours
             || checkInsPaused != o.checkInsPaused
             || Set(restrictions) != Set(o.restrictions.map(\.label))
+            || pantryTokens != (o.pantryTokens ?? [])
+            || dislikedFoods != (o.dislikedFoods ?? [])
     }
 
     var goalDirty: Bool {
@@ -157,6 +161,8 @@ final class SettingsViewModel {
     var restrictionsDirty: Bool {
         guard let o = original else { return false }
         return Set(restrictions) != Set(o.restrictions.map(\.label))
+            || pantryTokens != (o.pantryTokens ?? [])
+            || dislikedFoods != (o.dislikedFoods ?? [])
     }
 
     var kcalEdited: Bool {
@@ -277,7 +283,9 @@ final class SettingsViewModel {
             mealTimes: mealTimes,
             quietHours: quietHours,
             checkInsPaused: checkInsPaused,
-            restrictions: restrictions.map { .init(label: $0, source: nil) }
+            restrictions: restrictions.map { .init(label: $0, source: nil) },
+            pantryTokens: pantryTokens,
+            dislikedFoods: dislikedFoods
         )
         if goal.hasWeightTarget {
             patch.targetWeightKg = targetWeightKg
@@ -337,6 +345,8 @@ final class SettingsViewModel {
         quietHours = s.quietHours
         checkInsPaused = s.checkInsPaused
         restrictions = s.restrictions.map(\.label)
+        pantryTokens = s.pantryTokens ?? []
+        dislikedFoods = s.dislikedFoods ?? []
         mode = s.mode
         timezone = s.timezone
         enforcementEnabled = s.enforcementEnabled

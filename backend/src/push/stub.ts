@@ -4,8 +4,8 @@ import type { PushSender } from './types.js';
 export const stubPushSender: PushSender = {
   async send(deviceTokens, payload) {
     console.info(
-      `[push:stub] tier ${payload.tier} → ${deviceTokens.length} device(s) · ` +
-        `checkIn=${payload.checkInId} · "${payload.body}"`,
+      `[push:stub] tier ${payload.tier} → ${deviceTokens.length} alert(s) · checkIn=${payload.checkInId} · "${payload.body}"`,
     );
+    return { attempted: deviceTokens.length, sent: deviceTokens.length, failed: 0, invalidTokens: [] };
   },
 };

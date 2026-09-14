@@ -50,6 +50,11 @@ const schema = z.object({
   APNS_TEAM_ID: z.string().default(''),
   APNS_BUNDLE_ID: z.string().default('com.setpoint.app'),
   APNS_PRIVATE_KEY: z.string().default(''),
+
+  // Wearable modifier kill switch + cohort. Off until beta proves incremental value.
+  WEARABLE_MODIFIER_ENABLED: z.string().default(''),
+  WEARABLE_MODIFIER_COHORT_PERCENT: z.coerce.number().int().min(0).max(100).catch(0),
+  SCORE_BATCH_SIZE: z.coerce.number().int().positive().catch(50),
 });
 
 const parsed = schema.safeParse(process.env);

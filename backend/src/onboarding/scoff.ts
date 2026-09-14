@@ -36,8 +36,9 @@ export type EnforcementDecision =
 export function deriveEnforcement(
   medicalSupervisionRequired: boolean,
   scoffIsFlagged: boolean,
+  medicalConditionAffectsEating = false,
 ): EnforcementDecision {
-  if (medicalSupervisionRequired) {
+  if (medicalSupervisionRequired || medicalConditionAffectsEating) {
     return { enforcementEnabled: false, enforcementDisabledReason: 'MEDICAL_SUPERVISION' };
   }
   if (scoffIsFlagged) {

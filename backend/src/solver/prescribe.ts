@@ -42,11 +42,19 @@ export function selectCandidates(
 
     const lowFriction = food.tags.includes('no_cook') || food.tags.includes('portable');
     const frictionScore = lowFriction ? 1 : 0;
+    const pantryHit =
+      (constraints.pantryTokens ?? []).some(
+        (t) => food.slug.includes(t) || food.name.toLowerCase().includes(t.replace(/_/g, ' ')),
+      ) ? 1 : 0;
+    const prepCap = constraints.prepTimeMaxMin;
+    const prepScore = prepCap != null && prepCap <= 15 ? frictionScore : 0;
 
     const relevance =
       fitScore +
       proteinScore * (wantsProtein ? 2 : 1) +
-      frictionScore * (constraints.preferLowFriction ? 1 : 0.3);
+      frictionScore * (constraints.preferLowFriction ? 1 : 0.3) +
+      pantryHit * 1.2 +
+      prepScore;
 
     return { food, relevance };
   });
@@ -120,6 +128,7 @@ function toResult(
       name: p.food.name,
       servingDesc: p.food.servingDesc,
       quantity: p.qty,
+      unit: 'serving',
       kcal: Math.round(p.kcal),
       proteinG: round1(p.proteinG),
       carbsG: round1(p.carbsG),
@@ -196,9 +205,13 @@ export function prescribe(
   return toResult(state.best.combo, target, constraints.targetProteinG);
 }
 
-/** A short "eat this" line, e.g. "2× 2 large eggs + Whole wheat bread". */
+/** A short "eat this" line with edible quantities, e.g. "2 × 1 cup cooked white rice". */
 export function prescriptionSummary(result: PrescriptionResult): string {
-  return result.items
-    .map((i) => (i.quantity > 1 ? `${i.quantity}× ${i.name}` : i.name))
-    .join(' + ');
+  return result.items.map(formatPrescriptionItem).join(' + ');
+}
+
+export function formatPrescriptionItem(i: { name: string; servingDesc: string; quantity: number }): string {
+  const serving = i.servingDesc.trim() || i.name;
+  if (i.quantity <= 1) return serving;
+  return `${i.quantity} × ${serving}`;
 }

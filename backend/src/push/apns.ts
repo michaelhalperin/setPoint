@@ -1,6 +1,6 @@
 import http2 from 'node:http2';
 import jwt from 'jsonwebtoken';
-import type { PushPayload, PushSender } from './types.js';
+import type { PushPayload, PushSendResult, PushSender } from './types.js';
 
 export type ApnsConfig = {
   keyId: string;
@@ -178,16 +178,18 @@ export class ApnsPushSender implements PushSender {
     this.client = new ApnsClient(config);
   }
 
-  async send(deviceTokens: string[], payload: PushPayload): Promise<void> {
-    if (deviceTokens.length === 0) return;
-
-    const apnsPayload = buildCheckInAlertPayload(payload);
+  async send(deviceTokens: string[], payload: PushPayload): Promise<PushSendResult> {
     const expiration = Math.floor(Date.now() / 1000) + 3600;
+    const invalidTokens: string[] = [];
+    let sent = 0;
+    let failed = 0;
+    let lastError: string | undefined;
 
-    const results = await Promise.allSettled(
+    const alertPayload = buildCheckInAlertPayload(payload);
+    const alertResults = await Promise.allSettled(
       deviceTokens.map((token) =>
         this.client.send(token, {
-          payload: apnsPayload,
+          payload: alertPayload,
           pushType: 'alert',
           topic: this.config.bundleId,
           priority: 10,
@@ -197,15 +199,31 @@ export class ApnsPushSender implements PushSender {
       ),
     );
 
-    for (const result of results) {
+    for (const result of alertResults) {
       if (result.status === 'rejected') {
+        failed += 1;
+        lastError = String(result.reason);
         console.error('[apns] request failed', result.reason);
-      } else if (!result.value.ok) {
-        // 410 = the device token is no longer valid; the caller should prune it.
-        console.warn(
-          `[apns] ${result.value.status} ${result.value.reason ?? ''} for ${result.value.deviceToken.slice(0, 8)}…`,
-        );
+        continue;
       }
+      if (result.value.ok) {
+        sent += 1;
+        continue;
+      }
+      failed += 1;
+      lastError = result.value.reason ?? String(result.value.status);
+      if (result.value.status === 410) invalidTokens.push(result.value.deviceToken);
+      console.warn(
+        `[apns] ${result.value.status} ${result.value.reason ?? ''} for ${result.value.deviceToken.slice(0, 8)}…`,
+      );
     }
+
+    return {
+      attempted: deviceTokens.length,
+      sent,
+      failed,
+      invalidTokens,
+      error: lastError,
+    };
   }
 }

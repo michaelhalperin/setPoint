@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { getAnthropic } from '../ai/client.js';
@@ -9,6 +10,8 @@ import {
 import { consumeAiQuota } from '../ai/quota.js';
 import { requireAuth, type AuthedRequest } from '../auth/index.js';
 import { getPrisma } from '../db/client.js';
+import { applyPlanProposal, ProposalNotApplicableError } from '../checkins/applyProposal.js';
+import { proposalFromOutcome } from '../checkins/proposals.js';
 import { ENGINE_CONFIG, type Goal } from '../engine/index.js';
 
 const params = z.object({ id: z.string().min(1) });
@@ -146,7 +149,11 @@ export async function checkInRoutes(app: FastifyInstance): Promise<void> {
 
     let messages = readTranscript(convo.transcript);
     if (messages.length === 0) {
-      const opener = conversant().opener({ goal: 'BULK', recentMisses: ENGINE_CONFIG.missesBeforeTier3 });
+      const opener = conversant().opener({
+        goal: ((await getPrisma().onboardingProfile.findUnique({ where: { userId }, select: { goal: true } }))
+          ?.goal as Goal) ?? 'MAINTAIN',
+        recentMisses: ENGINE_CONFIG.missesBeforeTier3,
+      });
       messages = [{ role: 'assistant', content: opener, at: new Date().toISOString() }];
       convo = await prisma.escalationConversation.update({
         where: { id: convo.id },
@@ -154,7 +161,12 @@ export async function checkInRoutes(app: FastifyInstance): Promise<void> {
       });
     }
 
-    return { messages, outcome: convo.outcome, resolved: convo.resolvedAt !== null };
+    return {
+      messages,
+      outcome: convo.outcome,
+      resolved: convo.resolvedAt !== null,
+      pendingProposal: convo.pendingProposal ?? null,
+    };
   });
 
   app.post('/:id/conversation', async (req) => {
@@ -179,41 +191,94 @@ export async function checkInRoutes(app: FastifyInstance): Promise<void> {
 
     const result = await conversant().respond(
       history.map((t) => ({ role: t.role, content: t.content })),
-      { goal: (profile?.goal as Goal) ?? 'BULK', recentMisses: ENGINE_CONFIG.missesBeforeTier3 },
+      { goal: (profile?.goal as Goal) ?? 'MAINTAIN', recentMisses: ENGINE_CONFIG.missesBeforeTier3 },
     );
     history.push({ role: 'assistant', content: result.reply, at: new Date().toISOString() });
 
-    const closing = result.done || result.outcome !== 'NONE';
+    const proposal = proposalFromOutcome(result.outcome);
+    // Pointing to professional support closes the talk and pauses check-ins
+    // for safety. Everything else waits for an explicit confirm so model prose
+    // never claims an unapplied action.
+    const closeNow = result.outcome === 'SUGGEST_PROFESSIONAL' && result.done;
+    if (closeNow && !/paus/i.test(result.reply)) {
+      // Say what just changed — the model's line may not.
+      history.push({
+        role: 'assistant',
+        content: 'I’ve paused check-ins. Resume them in Settings whenever you want.',
+        at: new Date().toISOString(),
+      });
+    }
 
     await prisma.$transaction(async (tx) => {
       await tx.escalationConversation.update({
         where: { id: convo.id },
         data: {
           transcript: history,
-          outcome: closing ? result.outcome : convo.outcome,
-          resolvedAt: closing ? now : null,
+          outcome: result.outcome === 'NONE' ? convo.outcome : result.outcome,
+          pendingProposal: proposal ?? Prisma.DbNull,
+          resolvedAt: closeNow ? now : null,
         },
       });
 
-      if (closing) {
+      if (closeNow) {
         await tx.checkIn.updateMany({
           where: { id, userId, status: 'PENDING' },
           data: { status: 'ESCALATED', resolvedAt: now },
         });
-        if (result.outcome === 'PAUSE_CHECKINS') {
-          await tx.escalationState.upsert({
-            where: { userId },
-            create: { userId, checkInsPaused: true },
-            update: { checkInsPaused: true },
-          });
-        }
+        await tx.escalationState.upsert({
+          where: { userId },
+          create: { userId, checkInsPaused: true },
+          update: { checkInsPaused: true },
+        });
       }
     });
 
     return {
       messages: history,
-      outcome: closing ? result.outcome : convo.outcome,
-      resolved: closing,
+      outcome: result.outcome === 'NONE' ? convo.outcome : result.outcome,
+      resolved: closeNow,
+      pendingProposal: proposal,
     };
+  });
+
+  app.post('/:id/conversation/confirm', async (req) => {
+    const { id } = params.parse(req.params);
+    const { kind } = z
+      .object({ kind: z.enum(['DELAY_CHECKINS', 'EASE_TARGET', 'PAUSE_CHECKINS']) })
+      .parse(req.body);
+    const userId = (req as AuthedRequest).userId;
+    const prisma = getPrisma();
+    const convo = await prisma.escalationConversation.findFirst({ where: { checkInId: id, userId } });
+    if (!convo) throw app.httpErrors.notFound('no conversation for that check-in');
+    if (convo.resolvedAt) throw app.httpErrors.conflict('this conversation is closed');
+    // Only the change that was actually offered can be confirmed.
+    const offered = (convo.pendingProposal as { kind?: string } | null)?.kind;
+    if (offered !== kind) throw app.httpErrors.conflict('that change was not offered');
+
+    const now = new Date();
+    let applied;
+    try {
+      applied = await prisma.$transaction(async (tx) => {
+        const result = await applyPlanProposal(tx, userId, kind);
+        await tx.escalationConversation.update({
+          where: { id: convo.id },
+          data: {
+            outcome: kind,
+            pendingProposal: Prisma.DbNull,
+            appliedProposal: result,
+            resolvedAt: now,
+          },
+        });
+        await tx.checkIn.updateMany({
+          where: { id, userId, status: { in: ['PENDING', 'DEFERRED'] } },
+          data: { status: 'ESCALATED', resolvedAt: now, deliveryStatus: 'ANSWERED' },
+        });
+        return result;
+      });
+    } catch (err) {
+      if (err instanceof ProposalNotApplicableError) throw app.httpErrors.conflict(err.message);
+      throw err;
+    }
+    return { applied, outcome: kind, resolved: true };
   });
 }

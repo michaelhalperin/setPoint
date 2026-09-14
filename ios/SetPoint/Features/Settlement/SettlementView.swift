@@ -99,6 +99,20 @@ struct SettlementView: View {
                         showingWeighIn = true
                     }
                     .appearIn(3)
+                    if let err = model.weighInError {
+                        Text(err)
+                            .font(Typography.data(13, weight: .semibold))
+                            .foregroundStyle(Palette.accentDeep)
+                    }
+                }
+
+                if let review = s.targetReview {
+                    TargetReviewCard(review: review, busy: model.applyingTargetReview) {
+                        Task { await model.acceptTargetReview(review) }
+                    } onLater: {
+                        Task { await model.dismissTargetReview() }
+                    }
+                    .appearIn(4)
                 }
 
                 IntakeStrip(stations: stations)
@@ -122,7 +136,7 @@ struct SettlementView: View {
         .alert("Target reached", isPresented: reachedBinding(model)) {
             Button("OK") { model.reachedGoalTarget = nil }
         } message: {
-            Text("\(oneDp(model.reachedGoalTarget ?? 0)) kg reached. Maintenance is now active.")
+            Text("\(MassUnit.current.formatKg(model.reachedGoalTarget ?? 0)) reached. Maintenance is now active.")
         }
     }
 

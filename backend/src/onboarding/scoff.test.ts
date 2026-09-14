@@ -32,6 +32,13 @@ describe('deriveEnforcement', () => {
     });
   });
 
+  it('disables it when a medical condition may affect eating, even without current supervision', () => {
+    expect(deriveEnforcement(false, false, true)).toEqual({
+      enforcementEnabled: false,
+      enforcementDisabledReason: 'MEDICAL_SUPERVISION',
+    });
+  });
+
   it('disables it for a medical supervision need — that reason wins', () => {
     expect(deriveEnforcement(true, true)).toEqual({
       enforcementEnabled: false,

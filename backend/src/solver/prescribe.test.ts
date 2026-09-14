@@ -90,7 +90,7 @@ describe('prescribe', () => {
     const rx = prescribe(STAPLE_FOODS, constraints({ targetKcal: 500 }));
     if (!rx) return;
     const summary = prescriptionSummary(rx);
-    expect(summary).toContain(rx.items[0]!.name);
     expect(summary.length).toBeGreaterThan(0);
+    expect(summary).toContain(rx.items[0]!.servingDesc || rx.items[0]!.name);
   });
 });

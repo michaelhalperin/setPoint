@@ -1,22 +1,21 @@
 # SetPoint
 
-An iOS app that actively helps people eat enough — for both mass-gain and diet
-goals. It intervenes when someone is falling behind instead of passively logging.
-Tone: a manager, not a punisher.
+An iOS app that helps people who unintentionally under-eat keep a minimum
+fueling rhythm. Meal behavior decides whether a check-in is due. Fresh HRV/RHR,
+when enabled, may adjust confidence on an already-due check-in — it never
+independently diagnoses under-fueling.
 
-See [`app-plan-animation.md`](./app-plan-animation.md) for the full product plan.
+See [`BETA.md`](./BETA.md) for release gates and [`backend/COMPLIANCE.md`](./backend/COMPLIANCE.md)
+for privacy and App Store notes.
 
 ## Repo layout
 
 ```
 setPoint/
-├── app-plan-animation.md   Product plan (source of truth)
-├── backend/                Node + Fastify + Prisma API and confidence engine
+├── BETA.md                 Closed-beta gates and stop conditions
+├── backend/                Node + Fastify + Prisma API and scoring engine
 └── ios/                    Swift/SwiftUI app (XcodeGen project)
 ```
-
-The backend is a pnpm workspace; the iOS app is a separate XcodeGen project — see
-[`ios/README.md`](./ios/README.md).
 
 This is a pnpm workspace. Node 22+, pnpm 11+.
 
@@ -27,26 +26,11 @@ pnpm dev          # runs the backend
 
 ## Backend
 
-Deployed as Vercel serverless functions + Vercel Cron, with Neon Postgres.
-Details and environment setup: [`backend/README.md`](./backend/README.md).
+Deployed as Vercel serverless functions + a production scheduler hitting
+`POST /api/cron/score`, with GitHub Actions as a monitored fallback.
+Postgres schema changes go through `prisma migrate deploy` (not `db push`).
+Details: [`backend/README.md`](./backend/README.md).
 
-## Build order
+## iOS
 
-1. **Backend scaffold** ← done (milestone 1)
-2. **Data model + staple-food seed** ← done (milestone 2)
-3. **Confidence engine** — deterministic formula, quiet hours, escalation state
-   machine, server-driven cron job ← done (milestone 3)
-4. **Prescription solver** over the staple foods + real APNs (Time Sensitive)
-   delivery ← done (milestone 4)
-5. **AI meal logging** (text/photo → macros) + AI manager's voice + Sign in with
-   Apple auth ← done (milestone 5)
-6. **Home dashboard + settlement** read APIs + daily `DayOutcome` job ← done
-   (milestone 6)
-7. **Onboarding + settings APIs, account deletion, compliance checklist** ← done
-   (milestone 7)
-8. **iOS app** — Home (M8), onboarding (M9), check-in morph (M10), settings +
-   settlement (M11), tab nav (M12), push + Live Activity (M13), HealthKit (M14),
-   photo meal logging + app icon + tier-3 "let's talk" conversation (M15),
-   weight goals — target weight, pace, auto-maintenance (M16)
-   ← feature-complete
-9. Closed TestFlight beta → tune weights → public launch
+XcodeGen project. See [`ios/README.md`](./ios/README.md).

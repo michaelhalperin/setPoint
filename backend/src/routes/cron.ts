@@ -1,6 +1,10 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { pruneAiUsage } from '../ai/quota.js';
 import { getPrisma } from '../db/client.js';
+import { pruneRateLimitBuckets } from '../http/rateLimit.js';
+import { recordHeartbeat } from '../jobs/heartbeat.js';
+import { retryPhotoDeletions, type PhotoCleanupSummary } from '../photos/cleanup.js';
+import { getPhotoStore } from '../photos/store.js';
 import { runScoreConfidenceJob } from '../jobs/scoreConfidence.js';
 import { runSettleDayJob } from '../jobs/settleDay.js';
 import { createManagerVoice } from '../managerVoice/factory.js';
@@ -34,14 +38,21 @@ export async function cronRoutes(app: FastifyInstance): Promise<void> {
     method: ['GET', 'POST'],
     url: '/score',
     handler: async (req) => {
-      const summary = await runScoreConfidenceJob({
-        prisma: getPrisma(),
-        push: createPushSender(),
-        voice: createManagerVoice(),
-      });
-      req.log.info(summary, 'cron:score complete');
-      await flushSentry();
-      return summary;
+      const started = new Date();
+      try {
+        const summary = await runScoreConfidenceJob({
+          prisma: getPrisma(),
+          push: createPushSender(),
+          voice: createManagerVoice(),
+        });
+        req.log.info(summary, 'cron:score complete');
+        await recordHeartbeat(getPrisma(), 'score', started, true, summary);
+        await flushSentry();
+        return summary;
+      } catch (err) {
+        await recordHeartbeat(getPrisma(), 'score', started, false, { error: String(err) }).catch(() => {});
+        throw err;
+      }
     },
   });
 
@@ -61,9 +72,46 @@ export async function cronRoutes(app: FastifyInstance): Promise<void> {
         captureError(err, { tags: { job: 'prune-ai-usage' } });
       }
 
-      req.log.info({ ...summary, aiUsagePruned }, 'cron:settle complete');
+      let rateLimitPruned = 0;
+      try {
+        rateLimitPruned = await pruneRateLimitBuckets(getPrisma());
+      } catch (err) {
+        req.log.warn({ err }, 'cron:settle rate-limit prune failed');
+      }
+
+      // Vercel Hobby allows only daily crons, so photo cleanup rides along here.
+      let photoCleanup: PhotoCleanupSummary | null = null;
+      const photos = getPhotoStore();
+      if (photos) {
+        try {
+          photoCleanup = await retryPhotoDeletions(getPrisma(), photos);
+          if (photoCleanup.givenUp > 0) {
+            captureError(new Error(`${photoCleanup.givenUp} photo deletes need manual cleanup`), {
+              tags: { job: 'photo-cleanup' },
+            });
+          }
+        } catch (err) {
+          req.log.warn({ err }, 'cron:settle photo cleanup failed');
+          captureError(err, { tags: { job: 'photo-cleanup' } });
+        }
+      }
+
+      req.log.info({ ...summary, aiUsagePruned, rateLimitPruned, photoCleanup }, 'cron:settle complete');
       await flushSentry();
-      return { ...summary, aiUsagePruned };
+      return { ...summary, aiUsagePruned, rateLimitPruned, photoCleanup };
+    },
+  });
+
+  // Retry failed photo deletes now (the daily settle run does this too).
+  app.route({
+    method: ['GET', 'POST'],
+    url: '/cleanup-photos',
+    handler: async (req) => {
+      const photos = getPhotoStore();
+      if (!photos) return { attempted: 0, deleted: 0, failed: 0, givenUp: 0, note: 'photo store unconfigured' };
+      const summary = await retryPhotoDeletions(getPrisma(), photos);
+      req.log.info(summary, 'cron:cleanup-photos complete');
+      return summary;
     },
   });
 }

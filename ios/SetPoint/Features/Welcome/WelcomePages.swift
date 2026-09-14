@@ -101,7 +101,7 @@ struct WelcomeNoticePage: View {
             .accessibilityLabel("Breakfast logged at 8. Lunch time passes with nothing logged, and a check-in arrives at 13:45.")
             Spacer(minLength: Space.md)
             WelcomeHeadline(first: "Lunch slips.", second: "I notice.")
-            WelcomeSubline(text: "Even when the app is closed.")
+            WelcomeSubline(text: "When a meal isn’t logged on your rhythm — even if the app is closed.")
                 .padding(.bottom, WelcomeLayout.controlsClearance)
         }
         .padding(.horizontal, 24)

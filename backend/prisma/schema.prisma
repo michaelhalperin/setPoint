@@ -102,9 +102,29 @@ enum DayOutcomeKind {
 enum EscalationOutcome {
   NONE
   ADJUST_PLAN
+  DELAY_CHECKINS
+  EASE_TARGET
   PAUSE_CHECKINS
   SUGGEST_PROFESSIONAL
   RESUMED
+}
+
+/// Whether a check-in notification actually left the server. Misses and
+/// escalation only count after SENT / DELIVERED_UNKNOWN / OPENED / ANSWERED.
+enum DeliveryStatus {
+  CREATED
+  SENT
+  DELIVERED_UNKNOWN
+  FAILED
+  OPENED
+  ANSWERED
+}
+
+enum TargetReviewStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  UNDONE
 }
 
 // ---------------------------------------------------------------------------
@@ -120,6 +140,10 @@ model User {
   /// Sign in with Apple refresh token — stored so account deletion can call
   /// Apple's /auth/revoke (§4). Populated once the auth-code exchange ships.
   appleRefreshToken String?
+
+  /// Closed-beta cohort: fresh HRV/RHR may adjust an already-due check-in.
+  /// The kill switch in env still wins — this never independently fires one.
+  wearableModifierEnabled Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -140,6 +164,7 @@ model User {
   escalationConversations EscalationConversation[]
   dayOutcomes             DayOutcome[]
   aiUsages                AiUsage[]
+  targetReviews           WeightTargetReview[]
 }
 
 model PushToken {
@@ -203,6 +228,12 @@ model OnboardingProfile {
   quietHoursStartMin Int @default(1380)
   quietHoursEndMin   Int @default(420)
 
+  /// Foods the user currently has / will eat — solver prefers these.
+  pantryTokens  String[] @default([])
+  /// Soft dislikes (still not served if listed). Distinct from hard exclusions.
+  dislikedFoods String[] @default([])
+  prepTimeMaxMin Int?
+
   completedAt DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -219,6 +250,10 @@ model SafetyScreening {
 
   // Conditions requiring supervised nutrition (diabetes, kidney disease, ...).
   medicalSupervisionRequired Boolean @default(false)
+  /// Broader medical gate: a condition that affects how they should eat, even
+  /// if they are not currently under a clinician. Uncertain answers are stored
+  /// as true so enforcement stays off.
+  medicalConditionAffectsEating Boolean @default(false)
 
   // SCOFF — 5 validated yes/no questions.
   scoffMakeSelfSick  Boolean?
@@ -298,6 +333,8 @@ model Meal {
   notes           String?
   /// Parsed line items: [{ name, quantity, kcal, proteinG, carbsG, fatG }]
   items           Json?
+  /// Honest estimate-quality label: "high" | "estimate" | "review".
+  parseQuality    String?
 
   kcal     Int
   proteinG Float @default(0)
@@ -310,9 +347,14 @@ model Meal {
   checkInId String?
   checkIn   CheckIn? @relation(fields: [checkInId], references: [id], onDelete: SetNull)
 
+  /// Set by the app for each log attempt; a retried request (offline queue,
+  /// flaky network) returns the meal already stored instead of a duplicate.
+  clientId String?
+
   createdAt DateTime @default(now())
 
   @@index([userId, loggedAt])
+  @@unique([userId, clientId])
 }
 
 // ---------------------------------------------------------------------------
@@ -358,19 +400,32 @@ model ConfidenceScore {
   mode       AppMode
 
   score Float
+  scoringVersion String @default("behavior.v2")
+  behaviorScore  Float?
+  wearableModifier Float?
+  wearableUsed     Boolean @default(false)
 
   // Component inputs retained for auditability + beta tuning (§8).
   biosignalDeviation Float?
   hoursSinceMeal     Float?
   expectedGapHours   Float?
   loggingSilence     Float?
+  overdueMin         Float?
+  loggingReliability Float?
+  deferRate          Float?
+  dismissRate        Float?
+  targetCoverage     Float?
+  components         Json?
 
-  threshold    Float   @default(0.7)
+  threshold    Float   @default(0.5)
   firedCheckIn Boolean @default(false)
+  /// "<local date>:<slot>" — one row per meal episode, updated while it's held.
+  episodeKey   String?
 
   checkIn CheckIn?
 
   @@index([userId, computedAt])
+  @@unique([userId, episodeKey])
 }
 
 // ---------------------------------------------------------------------------
@@ -387,10 +442,16 @@ model CheckIn {
 
   tier   Int           @default(1) // 1 gentle nudge · 2 firm check-in · 3 conversation
   status CheckInStatus @default(PENDING)
+  deliveryStatus DeliveryStatus @default(CREATED)
 
-  message String? // manager's-voice copy, AI-generated (§7)
+  message String? // manager's-voice copy — deterministic on the critical path
+  slot    String? // "breakfast" | "lunch" | "dinner"; null for tier-3
+
+  /// user + local date + slot (+ episode). Prevents duplicate check-ins.
+  episodeKey String?
 
   deliveredAt    DateTime?
+  lastPushError  String?
   liveActivityId String?
 
   deferUntil DateTime?
@@ -409,8 +470,10 @@ model CheckIn {
   meals        Meal[]
   conversation EscalationConversation?
 
+  @@unique([userId, episodeKey])
   @@index([userId, status])
   @@index([status, deferUntil])
+  @@index([deliveryStatus, status])
 }
 
 model EscalationState {
@@ -436,6 +499,10 @@ model EscalationConversation {
 
   transcript Json              @default("[]") // [{ role, content, at }]
   outcome    EscalationOutcome @default(NONE)
+  /// Bounded proposal waiting for explicit user confirmation. Never applied
+  /// from model prose alone.
+  pendingProposal Json?
+  appliedProposal Json?
 
   createdAt  DateTime  @default(now())
   resolvedAt DateTime?
@@ -556,4 +623,67 @@ model AiUsage {
 
   @@index([userId, kind, createdAt])
   @@index([createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Adaptive target review (Phase 3) — never auto-applied
+// ---------------------------------------------------------------------------
+
+model WeightTargetReview {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  status          TargetReviewStatus @default(PENDING)
+  formulaVersion  String             @default("adapt.v1")
+  previousKcal    Int
+  proposedKcal    Int
+  reason          String
+  windowStart     DateTime
+  windowEnd       DateTime
+  weighInCount    Int
+  trendKgPerWeek  Float
+  createdAt       DateTime  @default(now())
+  decidedAt       DateTime?
+
+  @@index([userId, status, createdAt])
+}
+
+model SchedulerHeartbeat {
+  job        String   @id
+  lastRunAt  DateTime
+  lastOk     Boolean
+  durationMs Int?
+  summary    Json?
+}
+
+// ---------------------------------------------------------------------------
+// Object-storage cleanup
+// ---------------------------------------------------------------------------
+
+/// A photo delete that failed (storage hiccup), retried by the daily cron.
+/// No user relation on purpose: account deletion must leave these behind.
+model PendingPhotoDeletion {
+  id          String    @id @default(cuid())
+  /// "object" — a single photo key; "user" — every photo under a deleted user's prefix.
+  kind        String
+  /// The object key, or the user id for kind "user".
+  target      String
+  attempts    Int       @default(0)
+  lastError   String?
+  createdAt   DateTime  @default(now())
+  lastTriedAt DateTime?
+
+  @@unique([kind, target])
+  @@index([attempts, createdAt])
+}
+
+/// Shared fixed-window request counter (auth endpoints), pruned daily.
+model RateLimitBucket {
+  /// "<scope>:<client>:<window start ms>"
+  key       String   @id
+  count     Int      @default(0)
+  windowEnd DateTime
+
+  @@index([windowEnd])
 }

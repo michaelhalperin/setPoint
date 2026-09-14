@@ -33,7 +33,7 @@ final class LiveActivityController {
             current = try? Activity.request(
                 attributes: CheckInActivityAttributes(checkInId: checkIn.id),
                 content: ActivityContent(state: state, staleDate: nil),
-                pushType: nil
+                pushType: .token
             )
         }
     }

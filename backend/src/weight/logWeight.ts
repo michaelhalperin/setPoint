@@ -63,12 +63,33 @@ export async function logWeight(
     now,
   });
 
+  const recent = await prisma.weightEntry.findMany({
+    where: { userId },
+    orderBy: { measuredAt: 'desc' },
+    take: 4,
+  });
+
   let finalGoal = goal;
   let dailyKcalTarget = profile.dailyKcalTarget;
   let dailyProteinTargetG = profile.dailyProteinTargetG;
   let goalReached = false;
 
-  if (progress?.reached && (goal === 'BULK' || goal === 'DIET')) {
+  const confirmedReached =
+    progress?.reached === true &&
+    recent.filter((e) => {
+      const p = computeWeightProgress({
+        goal,
+        startWeightKg: profile.startWeightKg,
+        targetWeightKg: profile.targetWeightKg,
+        currentWeightKg: e.weightKg,
+        paceKgPerWeek: profile.paceKgPerWeek,
+        goalStartedAt: profile.goalStartedAt,
+        now,
+      });
+      return p?.reached === true;
+    }).length >= 2;
+
+  if (confirmedReached && (goal === 'BULK' || goal === 'DIET')) {
     goalReached = true;
     finalGoal = 'MAINTAIN';
     const derived = deriveTargets(

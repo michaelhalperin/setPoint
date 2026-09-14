@@ -4,6 +4,7 @@ import SwiftUI
 struct SettingsView: View {
     @Environment(AppEnvironment.self) private var env
     @State private var model: SettingsViewModel?
+    @AppStorage(MassUnit.storageKey) private var massUnit = MassUnit.localeDefault
     #if DEBUG
     @State private var showingDevOnboarding = false
     @State private var showingDevMealConfirm = false
@@ -41,7 +42,15 @@ struct SettingsView: View {
         case .loading:
             SettingsSkeletonView()
         case let .failed(message):
-            ContentUnavailableView("Load failed", systemImage: "person", description: Text(message))
+            VStack(spacing: 14) {
+                Text(message)
+                    .font(Typography.data(15))
+                    .foregroundStyle(Palette.inkSoft)
+                    .multilineTextAlignment(.center)
+                ActionButton(title: "Try again", kind: .secondary) { Task { await model.load() } }
+                    .frame(maxWidth: 200)
+            }
+            .padding(28)
         case .loaded:
             profile(model)
         }
@@ -78,6 +87,12 @@ struct SettingsView: View {
                     rowDivider
                     NavigationLink { AccountSettingsView(model: model) } label: {
                         YouRow(symbol: "person", title: "Account", value: nil)
+                    }
+                    rowDivider
+                    Button {
+                        massUnit = massUnit == .kg ? .lb : .kg
+                    } label: {
+                        YouRow(symbol: "scalemass", title: "Units", value: massUnit.title)
                     }
                 }
                 .buttonStyle(.plain)
@@ -207,7 +222,7 @@ struct SettingsView: View {
                         planMetric("\(protein) g", label: "protein")
                     }
                     if let current = model.currentWeightKg, model.goal.hasWeightTarget {
-                        planMetric(current.formatted(.number.precision(.fractionLength(1))), label: "kg now")
+                        planMetric(massUnit.number(current, digits: 1 ... 1), label: "\(massUnit.abbreviation) now")
                     }
                     Spacer(minLength: 0)
                 }
@@ -315,7 +330,7 @@ struct SettingsView: View {
         guard model.goal.hasWeightTarget, let target = model.targetWeightKg else {
             return "Hold steady"
         }
-        return "\(model.goal.directionVerb) \(Int(target.rounded())) kg"
+        return "\(model.goal.directionVerb) \(massUnit.formatKg(target, digits: 0))"
     }
 
     private func planProgress(_ model: SettingsViewModel) -> Double? {

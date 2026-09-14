@@ -23,6 +23,9 @@ export type SettingsView = {
   quietHours: { startMin: number; endMin: number };
   checkInsPaused: boolean;
   restrictions: { label: string; token: string; source: string }[];
+  pantryTokens: string[];
+  dislikedFoods: string[];
+  prepTimeMaxMin: number | null;
   enforcementEnabled: boolean;
   enforcementDisabledReason: string | null;
 };
@@ -41,6 +44,9 @@ export type SettingsPatch = {
   timezone?: string;
   /** Full replace of the restriction set when present. */
   restrictions?: { label: string; source?: string }[];
+  pantryTokens?: string[];
+  dislikedFoods?: string[];
+  prepTimeMaxMin?: number | null;
 };
 
 export async function getSettings(
@@ -158,6 +164,9 @@ export async function updateSettings(
       profileData.quietHoursEndMin = patch.quietHours.endMin;
     }
     if (patch.mode) profileData.mode = patch.mode;
+    if (patch.pantryTokens) profileData.pantryTokens = patch.pantryTokens.map((t) => t.trim()).filter(Boolean);
+    if (patch.dislikedFoods) profileData.dislikedFoods = patch.dislikedFoods.map((t) => t.trim()).filter(Boolean);
+    if (patch.prepTimeMaxMin !== undefined) profileData.prepTimeMaxMin = patch.prepTimeMaxMin;
     if (Object.keys(profileData).length > 0) {
       await tx.onboardingProfile.update({ where: { userId }, data: profileData });
     }
@@ -217,6 +226,9 @@ function toView(user: UserWithSettings): SettingsView {
     quietHours: { startMin: p.quietHoursStartMin, endMin: p.quietHoursEndMin },
     checkInsPaused: user.escalationState?.checkInsPaused ?? false,
     restrictions: user.restrictions.map((r) => ({ label: r.label, token: r.token, source: r.source })),
+    pantryTokens: p.pantryTokens ?? [],
+    dislikedFoods: p.dislikedFoods ?? [],
+    prepTimeMaxMin: p.prepTimeMaxMin ?? null,
     enforcementEnabled: user.safetyScreening?.enforcementEnabled ?? false,
     enforcementDisabledReason: user.safetyScreening?.enforcementDisabledReason ?? null,
   };

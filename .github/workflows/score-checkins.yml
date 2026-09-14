@@ -9,8 +9,9 @@ name: Score check-ins
 #   secret    CRON_SECRET        same value as CRON_SECRET in Vercel
 #   variable  SETPOINT_API_URL   optional; defaults to the production URL
 #
-# Notes: GitHub may run scheduled jobs a few minutes late under load, and it
-# pauses schedules in repos with no commits for 60 days.
+# GitHub Actions every 15 minutes remains a monitored fallback, not the sole
+# control plane. Prefer a production scheduler hitting the same route with
+# heartbeat alerting via GET /api/admin/metrics (scheduler.stale).
 
 on:
   schedule:

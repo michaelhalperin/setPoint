@@ -1,6 +1,6 @@
 import type Anthropic from '@anthropic-ai/sdk';
 import { describe, expect, it, vi } from 'vitest';
-import { MealParseError, createMealParser } from './parseMeal.js';
+import { MealParseError, createMealParser, reconcileMealTotals } from './parseMeal.js';
 
 function fakeClient(content: unknown[]): Anthropic {
   return { messages: { create: vi.fn(async () => ({ content })) } } as unknown as Anthropic;
@@ -32,6 +32,8 @@ describe('createMealParser', () => {
     expect(meal.kcal).toBe(453);
     expect(meal.proteinG).toBe(50.8);
     expect(meal.confidence).toBe(0.72);
+    expect(meal.quality).toBe('high');
+    expect(meal.needsReview).toBe(false);
     expect(meal.summary).toBe('Chicken and rice');
     expect(meal.items).toHaveLength(2);
   });
@@ -78,5 +80,17 @@ describe('createMealParser', () => {
     const client = fakeClient([goodToolUse]);
     await expect(createMealParser(client)({})).rejects.toBeInstanceOf(MealParseError);
     expect(client.messages.create).not.toHaveBeenCalled();
+  });
+
+  it('uses item sums when they disagree with the model total', () => {
+    const r = reconcileMealTotals(
+      [
+        { name: 'a', quantity: '1', kcal: 300, proteinG: 10, carbsG: 20, fatG: 5 },
+        { name: 'b', quantity: '1', kcal: 200, proteinG: 5, carbsG: 10, fatG: 2 },
+      ],
+      { kcal: 900, proteinG: 99, carbsG: 99, fatG: 99 },
+    );
+    expect(r.usedItemSum).toBe(true);
+    expect(r.totals.kcal).toBe(500);
   });
 });

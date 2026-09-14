@@ -35,10 +35,30 @@ Then:
 
 ```bash
 pnpm --filter @setpoint/backend prisma:generate
-pnpm --filter @setpoint/backend db:push     # creates tables from schema.prisma
-pnpm --filter @setpoint/backend db:seed     # loads the curated staple-food list
+pnpm --filter @setpoint/backend prisma:deploy   # apply migrations to the database in DATABASE_URL
+pnpm --filter @setpoint/backend db:seed         # loads the curated staple-food list
 pnpm dev
 ```
+
+### Schema changes
+
+Every change to `prisma/schema.prisma` ships as a migration folder — never
+`db push` against Neon.
+
+1. Edit the schema, then against a **local or throwaway** database run
+   `pnpm --filter @setpoint/backend prisma:migrate --name <what-changed>` and
+   commit the new `prisma/migrations/<timestamp>_<name>/` folder.
+2. CI applies all migrations to an empty Postgres and fails if they don't
+   match the schema.
+3. Production deploys run `scripts/migrate-deploy.mjs` during the Vercel
+   build: pending migrations are applied over a direct (non-pooled) Neon
+   connection (`DIRECT_URL`, or the pooled host minus `-pooler`). Preview
+   deploys skip it, since they share the production database. A failed
+   migration fails the build.
+
+The first migration (`20260914120000_product_rebuild`) is a baseline of the
+whole schema. Production was built with `db push` and baselined by marking it
+applied, so it only runs on fresh databases.
 
 ## Data model
 

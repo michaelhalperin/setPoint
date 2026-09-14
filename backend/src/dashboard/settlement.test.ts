@@ -17,6 +17,7 @@ function fakePrisma(over: { onboarding?: AnyRow; weightEntries?: AnyRow[]; meals
     dayOutcome: { findMany: async () => [] },
     meal: { findMany: async () => over.meals ?? [] },
     checkIn: { findMany: async () => [] },
+    weightTargetReview: { findFirst: async () => null },
   } as unknown as PrismaClient;
 }
 

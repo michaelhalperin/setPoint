@@ -55,7 +55,7 @@ private struct LockScreenPreview: View {
         ZStack(alignment: .top) {
             RoundedRectangle(cornerRadius: 48, style: .continuous)
                 .fill(RadialGradient(
-                    colors: [Color(hex: 0xB5532F), Color(hex: 0x5A3A2C), Palette.ink],
+                    colors: [Color(hex: 0xB5532F), Color(hex: 0x5A3A2C), Palette.lockScreenInk],
                     center: UnitPoint(x: 0.2, y: 0), startRadius: 0, endRadius: 440
                 ))
                 .elevation(.lifted)
@@ -63,12 +63,12 @@ private struct LockScreenPreview: View {
             VStack(spacing: 0) {
                 Text(dateLine)
                     .font(Typography.data(15, weight: .semibold))
-                    .foregroundStyle(Palette.background.opacity(0.75))
+                    .foregroundStyle(Palette.lockScreenText.opacity(0.75))
                     .padding(.top, 40)
                 Text(String(format: "%d:%02d", minute / 60, minute % 60))
                     .font(Typography.data(80, weight: .bold))
                     .monospacedDigit()
-                    .foregroundStyle(Palette.background)
+                    .foregroundStyle(Palette.lockScreenText)
                     .minimumScaleFactor(0.6)
                     .lineLimit(1)
 

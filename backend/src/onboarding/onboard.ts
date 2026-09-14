@@ -11,6 +11,8 @@ import {
   type ActivityLevel,
   type Sex,
 } from './targets.js';
+import { assertMinimumAge } from './age.js';
+import { mergeRestrictions } from './restrictions.js';
 import { deriveEnforcement, scoffFlagged, scoffScore, type ScoffAnswers } from './scoff.js';
 
 export class AlreadyOnboardedError extends Error {}
@@ -44,6 +46,8 @@ export type OnboardingInput = {
 
   safety: {
     medicalSupervisionRequired: boolean;
+    /** Uncertain or yes — both disable active check-ins. */
+    medicalConditionAffectsEating?: boolean;
     scoff: ScoffAnswers;
     restrictions?: OnboardingRestriction[];
     restrictionsFreeText?: string;
@@ -100,16 +104,19 @@ export async function runOnboarding(
   let dailyProteinTargetG: number | null;
 
   if (hasStats) {
+    const ageYears = ageFromBirthDate(new Date(input.birthDate!), now);
+    assertMinimumAge(ageYears);
     const stats = {
       sex: input.sex ?? 'UNSPECIFIED',
       weightKg: input.weightKg!,
       heightCm: input.heightCm!,
-      ageYears: ageFromBirthDate(new Date(input.birthDate!), now),
+      ageYears,
       activityLevel: input.activityLevel!,
     };
     dailyKcalTarget = input.dailyKcalTarget ?? computeCalorieTarget(stats, input.goal, { paceKgPerWeek });
     dailyProteinTargetG = input.dailyProteinTargetG ?? computeProteinTarget(input.weightKg!, input.goal);
   } else if (input.dailyKcalTarget != null) {
+    if (input.birthDate) assertMinimumAge(ageFromBirthDate(new Date(input.birthDate), now));
     dailyKcalTarget = input.dailyKcalTarget;
     dailyProteinTargetG = input.dailyProteinTargetG ?? null;
   } else {
@@ -118,12 +125,21 @@ export async function runOnboarding(
 
   const score = scoffScore(input.safety.scoff);
   const flagged = scoffFlagged(input.safety.scoff);
-  const enforcement = deriveEnforcement(input.safety.medicalSupervisionRequired, flagged);
+  const medicalAffects = Boolean(
+    input.safety.medicalSupervisionRequired || input.safety.medicalConditionAffectsEating,
+  );
+  const enforcement = deriveEnforcement(
+    input.safety.medicalSupervisionRequired,
+    flagged,
+    input.safety.medicalConditionAffectsEating,
+  );
 
   const mealTimes = input.mealTimes ?? { breakfastMin: 480, lunchMin: 780, dinnerMin: 1140 };
   const quietHours = input.quietHours ?? { startMin: 1380, endMin: 420 };
 
-  const restrictions = dedupeRestrictions(input.safety.restrictions ?? []);
+  const restrictions = dedupeRestrictions(
+    mergeRestrictions(input.safety.restrictions ?? [], input.safety.restrictionsFreeText),
+  );
 
   await prisma.$transaction(async (tx) => {
     if (input.timezone) {
@@ -188,6 +204,7 @@ export async function runOnboarding(
       create: {
         userId,
         medicalSupervisionRequired: input.safety.medicalSupervisionRequired,
+        medicalConditionAffectsEating: medicalAffects,
         scoffMakeSelfSick: input.safety.scoff.makeSelfSick,
         scoffLostControl: input.safety.scoff.lostControl,
         scoffLostOneStone: input.safety.scoff.lostOneStone,
@@ -201,6 +218,7 @@ export async function runOnboarding(
       },
       update: {
         medicalSupervisionRequired: input.safety.medicalSupervisionRequired,
+        medicalConditionAffectsEating: medicalAffects,
         scoffScore: score,
         scoffFlagged: flagged,
         restrictionsFreeText: input.safety.restrictionsFreeText ?? null,

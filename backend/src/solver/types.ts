@@ -19,6 +19,10 @@ export type PrescriptionConstraints = {
   excludedTokens: string[];
   /** Weight no-cook / portable options more heavily (busy user, firm tier). */
   preferLowFriction?: boolean;
+  /** Foods the user currently has — prefer these names/slugs. */
+  pantryTokens?: string[];
+  /** Soft cap on prep; foods tagged no_cook win when set low. */
+  prepTimeMaxMin?: number | null;
 };
 
 export type PrescriptionLineItem = {
@@ -26,6 +30,7 @@ export type PrescriptionLineItem = {
   name: string;
   servingDesc: string;
   quantity: number;
+  unit: string;
   kcal: number;
   proteinG: number;
   carbsG: number;

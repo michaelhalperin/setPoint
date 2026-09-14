@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Plan §6: a distinct, slightly editorial voice for anything the manager "says"
 /// (check-ins, prescriptions, notes), visually separated from the cold data
@@ -29,9 +30,25 @@ enum Typography {
         .custom(voiceItalic, size: size, relativeTo: .body)
     }
 
-    /// Cold data — ledger, macros, counts.
+    /// Cold data — ledger, macros, counts. Scales with Dynamic Type.
     static func data(_ size: CGFloat, weight: Font.Weight = .medium) -> Font {
-        .system(size: size, weight: weight, design: .rounded)
+        let uiWeight: UIFont.Weight = {
+            switch weight {
+            case .ultraLight: return .ultraLight
+            case .thin: return .thin
+            case .light: return .light
+            case .regular: return .regular
+            case .medium: return .medium
+            case .semibold: return .semibold
+            case .bold: return .bold
+            case .heavy: return .heavy
+            case .black: return .black
+            default: return .medium
+            }
+        }()
+        let base = UIFont.systemFont(ofSize: size, weight: uiWeight)
+        let rounded = base.fontDescriptor.withDesign(.rounded).flatMap { UIFont(descriptor: $0, size: size) } ?? base
+        return Font(UIFontMetrics(forTextStyle: .body).scaledFont(for: rounded))
     }
 
     /// The hero ledger number — big, confident, rounded (Fraunces figures read

@@ -2,6 +2,7 @@ import type { PrismaClient } from '@prisma/client';
 import type { MealImage, MealParser, ParsedMeal } from '../ai/parseMeal.js';
 import type { AiUsageKind } from '../ai/quota.js';
 import { captureError } from '../observability/sentry.js';
+import { queuePhotoDeletion } from '../photos/cleanup.js';
 import type { PhotoStore } from '../photos/store.js';
 
 export class MealParsingUnavailableError extends Error {}
@@ -14,6 +15,8 @@ export type LogMealInput = {
   /** Provide when the client already has macros (e.g. accepting a prescription). */
   macros?: { kcal: number; proteinG?: number; carbsG?: number; fatG?: number };
   prescriptionId?: string;
+  /** The app's id for this log attempt. A repeat returns the stored meal, unchanged. */
+  clientId?: string;
 };
 
 export type LogMealDeps = {
@@ -49,6 +52,16 @@ export async function logMeal(
   input: LogMealInput,
 ): Promise<LogMealResult> {
   const loggedAt = input.loggedAt ?? new Date();
+  if (loggedAt.getTime() > Date.now() + 5 * 60_000) {
+    throw new EmptyMealError('loggedAt cannot be in the future');
+  }
+
+  // A retry of a log that already landed (offline queue, dropped response):
+  // return it before parsing again, so it's neither duplicated nor re-charged.
+  if (input.clientId) {
+    const existing = await findByClientId(deps.prisma, userId, input.clientId);
+    if (existing) return existing;
+  }
 
   let parsed: ParsedMeal | null = null;
   let source: string;
@@ -93,28 +106,42 @@ export async function logMeal(
   // The photo goes to object storage — never inline in Postgres.
   const photoKey = input.image ? await storePhoto(deps.photos ?? null, userId, input.image) : null;
 
-  const meal = await deps.prisma.meal.create({
-    data: {
-      userId,
-      loggedAt,
-      source: source as never,
-      rawInput,
-      parsedByAI,
-      parseConfidence,
-      kcal: macros.kcal,
-      proteinG: macros.proteinG,
-      carbsG: macros.carbsG,
-      fatG: macros.fatG,
-      photoKey,
-      notes: parsed?.notes ?? null,
-      items: parsed?.items ?? [],
-      prescriptionId: input.prescriptionId ?? null,
-    },
-  });
+  let meal;
+  try {
+    meal = await deps.prisma.meal.create({
+      data: {
+        userId,
+        clientId: input.clientId ?? null,
+        loggedAt,
+        source: source as never,
+        rawInput,
+        parsedByAI,
+        parseConfidence,
+        kcal: macros.kcal,
+        proteinG: macros.proteinG,
+        carbsG: macros.carbsG,
+        fatG: macros.fatG,
+        photoKey,
+        notes: parsed?.notes ?? null,
+        items: parsed?.items ?? [],
+        parseQuality: parsed?.quality ?? null,
+        prescriptionId: input.prescriptionId ?? null,
+      },
+    });
+  } catch (err) {
+    // The meal wasn't stored here, so neither should its photo be.
+    if (photoKey) await queuePhotoDeletion(deps.prisma, { kind: 'object', key: photoKey }, err);
+    // Two copies of the same attempt raced; the other one won.
+    const existing =
+      input.clientId && isUniqueViolation(err) ? await findByClientId(deps.prisma, userId, input.clientId) : null;
+    if (existing) return existing;
+    throw err;
+  }
 
-  // Resolve any open check-in — logging a meal *is* the response to it.
+  // Resolve open check-ins except an active tier-3 conversation — logging a
+  // meal must not silently close that talk.
   const open = await deps.prisma.checkIn.findMany({
-    where: { userId, status: { in: ['PENDING', 'DEFERRED'] } },
+    where: { userId, status: { in: ['PENDING', 'DEFERRED'] }, tier: { lt: 3 } },
     orderBy: { createdAt: 'desc' },
   });
 
@@ -156,6 +183,28 @@ export async function logMeal(
     parsed,
     resolvedCheckInId,
   };
+}
+
+async function findByClientId(prisma: PrismaClient, userId: string, clientId: string): Promise<LogMealResult | null> {
+  const meal = await prisma.meal.findUnique({ where: { userId_clientId: { userId, clientId } } });
+  if (!meal) return null;
+  return {
+    meal: {
+      id: meal.id,
+      loggedAt: meal.loggedAt,
+      source: meal.source,
+      kcal: meal.kcal,
+      proteinG: meal.proteinG,
+      carbsG: meal.carbsG,
+      fatG: meal.fatG,
+    },
+    parsed: null,
+    resolvedCheckInId: meal.checkInId,
+  };
+}
+
+function isUniqueViolation(err: unknown): boolean {
+  return typeof err === 'object' && err !== null && (err as { code?: unknown }).code === 'P2002';
 }
 
 async function storePhoto(photos: PhotoStore | null, userId: string, image: MealImage): Promise<string | null> {

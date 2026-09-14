@@ -17,10 +17,10 @@ struct SafetyStep: View {
 
             ZStack {
                 if remainingBehind >= 2 {
-                    backCard(color: Color(hex: 0xE9DFD1), rotation: -4, y: 22, scale: 0.9)
+                    backCard(color: Palette.stackedCardFar, rotation: -4, y: 22, scale: 0.9)
                 }
                 if remainingBehind >= 1 {
-                    backCard(color: Color(hex: 0xF1E8DC), rotation: 3, y: 11, scale: 0.95)
+                    backCard(color: Palette.stackedCardNear, rotation: 3, y: 11, scale: 0.95)
                 }
                 frontCard
                     .id(model.safetyIndex)
@@ -73,6 +73,12 @@ struct SafetyStep: View {
                         .foregroundStyle(Palette.inkSoft)
                 }
                 .frame(maxWidth: .infinity, minHeight: 58)
+            } else if question == .medical {
+                HStack(spacing: 8) {
+                    answerButton("No", value: false)
+                    answerButton("Not sure", value: true)
+                    answerButton("Yes", value: true)
+                }
             } else {
                 HStack(spacing: 10) {
                     answerButton("No", value: false)
@@ -109,12 +115,12 @@ struct SafetyStep: View {
             model.answerSafety(value)
         } label: {
             Text(title)
-                .font(Typography.data(18, weight: .bold))
+                .font(Typography.data(title == "Not sure" ? 14 : 18, weight: .bold))
                 .foregroundStyle(Palette.ink)
                 .frame(maxWidth: .infinity, minHeight: 58)
                 .background(Palette.surfaceSunk, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
                 .overlay {
-                    if chosen {
+                    if chosen && title != "Not sure" {
                         RoundedRectangle(cornerRadius: 18, style: .continuous)
                             .strokeBorder(Palette.accent, lineWidth: 2)
                     }

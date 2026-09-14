@@ -379,7 +379,7 @@ struct DayDial<Center: View>: View {
     }
 
     private var quietColor: Color {
-        theme == .terra ? Palette.ink.opacity(0.28) : Color(hex: 0xCDBFAE)
+        theme == .terra ? Palette.ink.opacity(0.28) : Palette.quietArc
     }
 
     private var faceColor: Color {
@@ -491,7 +491,7 @@ enum DialClock {
     }
 }
 
-/// Snap, clamp, and angle math shared by the dial drag and the meal-time sheet.
+/// Snap, clamp, and angle math shared by the dial drag and the meal-time picker.
 enum MealTimeEditing {
     static let snapMinutes = 15
     static let breakfastEarliest = 240

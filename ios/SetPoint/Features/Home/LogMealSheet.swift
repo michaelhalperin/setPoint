@@ -6,6 +6,9 @@ import SwiftUI
 /// skeleton of the breakdown slides in beneath it; the real numbers then resolve
 /// into the same card (count-up, staggered items), with a one-tap undo if the
 /// parse is wrong.
+/// Preview / development meal sheet. Production logging lives in the Today dock
+/// (`LogMealViewModel` on Home). Keep this file in sync with that path rather than
+/// introducing a second production composer.
 struct LogMealSheet: View {
     /// Called once the user is done (logged & kept, or cancelled) — reload Home.
     let onFinished: () -> Void
@@ -50,7 +53,7 @@ private struct LogMealBody: View {
                 switch model.phase {
                 case .compose:
                     compose
-                case let .failed(message):
+                case let .failed(message), let .queued(message):
                     failed(message)
                 default:
                     reveal

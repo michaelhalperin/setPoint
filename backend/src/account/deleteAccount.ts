@@ -1,6 +1,7 @@
 import type { PrismaClient } from '@prisma/client';
 import { revokeAppleToken } from '../auth/appleRevoke.js';
 import { captureError } from '../observability/sentry.js';
+import { queuePhotoDeletion } from '../photos/cleanup.js';
 import type { PhotoStore } from '../photos/store.js';
 
 export class AccountNotFoundError extends Error {}
@@ -46,9 +47,10 @@ export async function deleteAccount(
     try {
       await deps.photos.deleteAllForUser(userId);
     } catch (err) {
-      // Orphaned photos after a deletion must be cleaned up by hand — make it loud.
-      console.error(`[account] photo deletion failed for ${userId}`, err);
+      // The account is gone; its photos must not outlive it. The daily cron retries.
+      console.error(`[account] photo deletion failed for ${userId} — queued for retry`, err);
       captureError(err, { userId, tags: { area: 'account-delete-photos' } });
+      await queuePhotoDeletion(deps.prisma, { kind: 'user', userId }, err);
     }
   }
 

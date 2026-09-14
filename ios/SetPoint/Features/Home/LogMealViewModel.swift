@@ -11,6 +11,8 @@ final class LogMealViewModel {
         case compose
         case parsing
         case logged(Logged)
+        /// No connection: kept on the phone, sent on the next load. Not a meal yet.
+        case queued(String)
         case failed(String)
     }
 
@@ -85,10 +87,15 @@ final class LogMealViewModel {
         let prompt = trimmedText
         let snapshotPhoto = photo
         let snapshotBackdate = backdate
+        // One id per attempt: if the request lands but the response is lost,
+        // the queued retry returns this meal instead of adding it again.
+        let clientId = UUID().uuidString
+        let eatenAt = snapshotBackdate?.at ?? Date()
         let body = LogMealRequest(
             text: prompt.isEmpty ? nil : prompt,
             image: snapshotPhoto.map { .init(data: $0.base64, mediaType: $0.mediaType) },
-            loggedAt: snapshotBackdate.map { ISO8601DateFormatter().string(from: $0.at) }
+            loggedAt: snapshotBackdate.map { ISO8601DateFormatter().string(from: $0.at) },
+            clientId: clientId
         )
         let fromPhoto = snapshotPhoto != nil
         heldText = text
@@ -117,6 +124,12 @@ final class LogMealViewModel {
                 )
             )
             onMealChanged()
+        } catch let error where snapshotPhoto == nil && !prompt.isEmpty && OfflineMealQueue.isOffline(error) {
+            OfflineMealQueue.enqueue(.init(id: clientId, text: prompt, loggedAt: eatenAt))
+            heldText = ""
+            submittedSlot = nil
+            submittedLoggedAt = nil
+            phase = .queued("No connection. Saved on this phone — it sends when you’re back online.")
         } catch {
             text = heldText
             photo = submittedPhoto

@@ -2,11 +2,13 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { getPrisma } from '../db/client.js';
 import { env } from '../env.js';
+import { evaluateStopConditions } from '../engine/stopConditions.js';
 import {
   buildBetaMetrics,
   type CheckInMetricRecord,
   type CheckInStatusName,
 } from '../metrics/betaMetrics.js';
+import { gatherStopSignals } from '../metrics/stopSignals.js';
 
 /** A meal logged this many minutes before a check-in fired ⇒ likely false positive. */
 const FALSE_POSITIVE_WINDOW_MIN = 90;
@@ -104,6 +106,22 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     });
 
     req.log.info({ total: metrics.checkIns.total }, 'admin:metrics');
-    return metrics;
+    const now = new Date();
+    const signals = await gatherStopSignals(prisma, now);
+    const evaluation = evaluateStopConditions(signals, now);
+    return {
+      ...metrics,
+      scheduler: {
+        lastRunAt: signals.schedulerLastRunAt?.toISOString() ?? null,
+        lastOk: signals.schedulerLastOk,
+        stale: evaluation.alerts.includes('scheduler_stale'),
+      },
+      wearableModifier: {
+        killSwitch: env.WEARABLE_MODIFIER_ENABLED === 'true',
+        cohortPercent: env.WEARABLE_MODIFIER_COHORT_PERCENT,
+        haltedByStopConditions: evaluation.haltWearable,
+      },
+      stopConditions: { signals, evaluation },
+    };
   });
 }

@@ -3,8 +3,11 @@ import sensible from '@fastify/sensible';
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import { ZodError } from 'zod';
 import { AiQuotaExceededError } from './ai/quota.js';
+import { getPrisma } from './db/client.js';
 import { env } from './env.js';
+import { postgresRateLimiter, type RateLimiter } from './http/rateLimit.js';
 import { captureError, flushSentry, initSentry } from './observability/sentry.js';
+import { UnderageError } from './onboarding/age.js';
 import { UnhealthyTargetError } from './onboarding/targets.js';
 import { accountRoutes } from './routes/account.js';
 import { adminRoutes } from './routes/admin.js';
@@ -19,7 +22,20 @@ import { mealRoutes } from './routes/meals.js';
 import { pushTokenRoutes } from './routes/pushTokens.js';
 import { weightRoutes } from './routes/weight.js';
 
-export async function buildApp(): Promise<FastifyInstance> {
+const AUTH_LIMIT_PER_MINUTE = 40;
+
+export type BuildAppOptions = {
+  /** Defaults to the shared Postgres limiter; off in tests so they never touch a real database. */
+  authRateLimiter?: RateLimiter | null;
+};
+
+export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyInstance> {
+  const authRateLimiter =
+    options.authRateLimiter !== undefined
+      ? options.authRateLimiter
+      : env.NODE_ENV === 'test'
+        ? null
+        : postgresRateLimiter(getPrisma);
   initSentry();
 
   // pino-pretty (a devDependency, loaded in a worker thread) is opt-in via
@@ -27,6 +43,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   const prettyLogs = process.env.LOG_PRETTY === 'true';
   const app = Fastify({
     trustProxy: true,
+    bodyLimit: 1_000_000,
     logger:
       env.NODE_ENV === 'test'
         ? { level: 'silent' }
@@ -37,6 +54,26 @@ export async function buildApp(): Promise<FastifyInstance> {
 
   await app.register(sensible);
   await app.register(cors, { origin: true });
+
+  // Sign-in endpoints: 40 attempts a minute per client IP, counted in Postgres
+  // so the limit holds across serverless instances. Fails open — a database
+  // hiccup must not lock everyone out of signing in.
+  if (authRateLimiter) {
+    app.addHook('onRequest', async (req, reply) => {
+      if (!req.url.startsWith('/api/auth')) return;
+      try {
+        const decision = await authRateLimiter(`auth:${req.ip}`, AUTH_LIMIT_PER_MINUTE, 60);
+        if (!decision.allowed) {
+          return reply
+            .status(429)
+            .header('retry-after', String(decision.retryAfterSeconds))
+            .send({ error: 'Too Many Requests', message: 'Too many sign-in attempts. Try again in a minute.' });
+        }
+      } catch (err) {
+        req.log.warn({ err }, 'auth rate limit unavailable — allowing request');
+      }
+    });
+  }
 
   app.setErrorHandler(async (err: unknown, req, reply) => {
     if (err instanceof ZodError) {
@@ -52,6 +89,9 @@ export async function buildApp(): Promise<FastifyInstance> {
       return reply
         .status(400)
         .send({ error: 'Bad Request', message: err.message, minWeightKg: err.minWeightKg });
+    }
+    if (err instanceof UnderageError) {
+      return reply.status(403).send({ error: 'Forbidden', message: err.message });
     }
     // Deliberate errors from `app.httpErrors.*` carry a statusCode; honour it and
     // expose their message. Everything else is an unexpected 500.

@@ -4,6 +4,7 @@ import UIKit
 // MARK: - Goal and pace
 
 struct GoalSettingsView: View {
+    @AppStorage(MassUnit.storageKey) private var massUnit = MassUnit.localeDefault
     @Bindable var model: SettingsViewModel
     @State private var editingTarget: DailyTargetField?
 
@@ -100,7 +101,7 @@ struct GoalSettingsView: View {
                     Text("Target weight").sectionLabelStyle()
                     Spacer()
                     if let current = model.currentWeightKg {
-                        Text("\(current.formatted(.number.precision(.fractionLength(1)))) kg now")
+                        Text("\(massUnit.formatKg(current)) now")
                             .font(Typography.data(13, weight: .bold))
                             .foregroundStyle(Palette.inkSoft)
                             .monospacedDigit()
@@ -128,18 +129,18 @@ struct GoalSettingsView: View {
             stepperButton("minus", delta: -1)
             Spacer()
             HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text(targetKg.formatted(.number.precision(.fractionLength(0))))
+                Text(massUnit.number(targetKg, digits: 0 ... 0))
                     .font(Typography.data(60, weight: .heavy))
                     .tracking(-2)
                     .monospacedDigit()
                     .foregroundStyle(Palette.ink)
                     .contentTransition(.numericText(value: targetKg))
-                Text("kg")
+                Text(massUnit.abbreviation)
                     .font(Typography.data(20, weight: .bold))
                     .foregroundStyle(Palette.inkFaint)
             }
             .accessibilityElement(children: .combine)
-            .accessibilityLabel("Target \(Int(targetKg.rounded())) kilograms")
+            .accessibilityLabel("Target \(massUnit.number(targetKg, digits: 0 ... 0)) \(massUnit.spokenName)")
             .accessibilityAdjustableAction { direction in
                 switch direction {
                 case .increment: nudge(1)
@@ -284,7 +285,7 @@ struct GoalSettingsView: View {
 
     private var curveStartLabel: String {
         if let current = model.currentWeightKg {
-            return "\(current.formatted(.number.precision(.fractionLength(0 ... 1)))) kg · now"
+            return "\(massUnit.number(current)) \(massUnit.abbreviation) · now"
         }
         return "Now"
     }
@@ -308,7 +309,7 @@ struct GoalSettingsView: View {
     private func nudge(_ delta: Double) {
         UISelectionFeedbackGenerator().selectionChanged()
         withAnimation(Motion.settle) {
-            model.targetWeightKg = min(350, max(25, (targetKg + delta).rounded()))
+            model.targetWeightKg = min(350, max(25, massUnit.nudge(kg: targetKg, by: delta)))
         }
     }
 
@@ -358,15 +359,13 @@ private struct DailyTargetSheet: View {
 
 struct RhythmSettingsView: View {
     @Bindable var model: SettingsViewModel
-    @State private var editingMeal: MealSlot?
-    @State private var editingQuiet = false
 
     var body: some View {
-        SettingsScreen(title: "Meal times", subtitle: "Drag a meal around the dial.") {
+        SettingsScreen(title: "Meal times", subtitle: "Drag a meal around the dial, or tap a time.") {
             VStack(alignment: .leading, spacing: 20) {
                 dial.appearIn(2)
                 mealRows.appearIn(3)
-                bottomPair.appearIn(4)
+                quietCard.appearIn(4)
                 if let error = model.error {
                     SettingsErrorBanner(message: error)
                 }
@@ -383,8 +382,6 @@ struct RhythmSettingsView: View {
                 if model.error == nil { Haptics.landed() }
             }
         }
-        .sheet(item: $editingMeal, content: mealSheet)
-        .sheet(isPresented: $editingQuiet) { quietSheet }
         .onDisappear { model.revertToOriginal() }
         .animation(Motion.settle, value: model.checkInsPaused)
     }
@@ -430,188 +427,163 @@ struct RhythmSettingsView: View {
     private func mealRow(_ slot: MealSlot) -> some View {
         let t = model.mealTimes[slot]
         let checkIn = CheckInSchedule.minute(afterMeal: t)
-        return Button { editingMeal = slot } label: {
-            HStack(spacing: 14) {
-                Image(systemName: slot.symbol)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(Palette.accent)
-                    .frame(width: 38, height: 38)
-                    .background(Palette.accentTint, in: Circle())
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(slot.title)
-                        .font(Typography.data(16, weight: .heavy))
-                        .foregroundStyle(Palette.ink)
-                    HStack(spacing: 4) {
-                        Image(systemName: "bell.fill")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(Palette.accent)
-                        Text("check-in \(formatMinutes(checkIn))")
-                            .font(Typography.data(12, weight: .semibold))
-                            .foregroundStyle(Palette.inkSoft)
-                    }
-                }
-                Spacer(minLength: 8)
-                Text(formatMinutes(t))
-                    .font(Typography.data(17, weight: .heavy))
-                    .monospacedDigit()
+        return HStack(spacing: 14) {
+            Image(systemName: slot.symbol)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(Palette.accent)
+                .frame(width: 38, height: 38)
+                .background(Palette.accentTint, in: Circle())
+            VStack(alignment: .leading, spacing: 2) {
+                Text(slot.title)
+                    .font(Typography.data(16, weight: .heavy))
                     .foregroundStyle(Palette.ink)
-                    .padding(.vertical, 8)
-                    .padding(.horizontal, 12)
-                    .background(Palette.surfaceSunk, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                HStack(spacing: 4) {
+                    Image(systemName: "bell.fill")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(Palette.accent)
+                    Text("check-in \(formatMinutes(checkIn))")
+                        .font(Typography.data(12, weight: .semibold))
+                        .foregroundStyle(Palette.inkSoft)
+                }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .contentShape(Rectangle())
+            Spacer(minLength: 8)
+            MinutesChip(minutes: mealBinding(slot), name: slot.title)
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel("\(slot.title) \(formatMinutes(t))")
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
     }
 
-    private var bottomPair: some View {
-        HStack(spacing: 10) {
-            Button { editingQuiet = true } label: {
-                VStack(alignment: .leading, spacing: 8) {
+    private func mealBinding(_ slot: MealSlot) -> Binding<Int> {
+        Binding(
+            get: { model.mealTimes[slot] },
+            set: { minute in
+                let clamped = MealTimeEditing.clamp(
+                    minute, slot: slot,
+                    breakfast: model.mealTimes.breakfastMin,
+                    lunch: model.mealTimes.lunchMin,
+                    dinner: model.mealTimes.dinnerMin
+                )
+                withAnimation(Motion.settle) { model.mealTimes[slot] = clamped }
+            }
+        )
+    }
+
+    private var quietSpanMinutes: Int {
+        (model.quietHours.endMin - model.quietHours.startMin + 1440) % 1440
+    }
+
+    private var quietSpanLabel: String {
+        let hours = quietSpanMinutes / 60
+        let mins = quietSpanMinutes % 60
+        if hours == 0 { return "\(mins) min overnight" }
+        if mins == 0 { return hours == 1 ? "1 hour overnight" : "\(hours) hours overnight" }
+        return "\(hours) hr \(mins) min overnight"
+    }
+
+    private var quietCard: some View {
+        SettingsCard(padding: 16) {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(spacing: 14) {
                     Image(systemName: "moon.fill")
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(Palette.inkSoft)
-                        .frame(width: 34, height: 34)
+                        .frame(width: 38, height: 38)
                         .background(Palette.surfaceSunk, in: Circle())
-                    Text("Quiet")
-                        .font(Typography.data(14, weight: .heavy))
-                        .foregroundStyle(Palette.ink)
-                    Text("\(formatMinutes(model.quietHours.startMin)) – \(formatMinutes(model.quietHours.endMin))")
-                        .font(Typography.data(13))
-                        .foregroundStyle(Palette.inkSoft)
-                        .monospacedDigit()
-                }
-                .padding(.vertical, 14)
-                .padding(.horizontal, 16)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-                .background {
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .fill(Palette.surface)
-                        .elevation(.resting)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                .strokeBorder(Palette.hairline)
-                        )
-                }
-            }
-            .buttonStyle(PressableCard())
-            .accessibilityLabel(
-                "Quiet \(formatMinutes(model.quietHours.startMin)) to \(formatMinutes(model.quietHours.endMin))"
-            )
-
-            checkInsCard
-        }
-        .fixedSize(horizontal: false, vertical: true)
-    }
-
-    @ViewBuilder
-    private var checkInsCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if model.enforcementEnabled {
-                HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Check-ins")
-                            .font(Typography.data(14, weight: .heavy))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Quiet hours")
+                            .font(Typography.data(16, weight: .heavy))
                             .foregroundStyle(Palette.ink)
-                        Text(model.checkInsPaused ? "Paused" : "On")
+                        Text("No check-ins while you sleep.")
                             .font(Typography.data(13))
                             .foregroundStyle(Palette.inkSoft)
                     }
-                    Spacer()
-                    Toggle("Check-ins", isOn: Binding(
-                        get: { !model.checkInsPaused },
-                        set: { on in Task { await model.setCheckInsPaused(!on) } }
-                    ))
-                    .labelsHidden()
-                    .tint(Palette.accent)
-                    .disabled(model.saving)
                 }
-            } else {
-                Text(enforcementNote(model.enforcementDisabledReason))
-                    .font(Typography.data(13))
-                    .foregroundStyle(Palette.inkSoft)
-                    .fixedSize(horizontal: false, vertical: true)
+
+                HStack(alignment: .center, spacing: 10) {
+                    quietWell("Starts", $model.quietHours.startMin)
+                    quietBridge
+                    quietWell("Until", $model.quietHours.endMin)
+                }
+
+                Text(quietSpanLabel)
+                    .font(Typography.data(12, weight: .bold))
+                    .foregroundStyle(Palette.inkFaint)
+                    .frame(maxWidth: .infinity)
+                    .accessibilityHidden(true)
             }
         }
-        .padding(.vertical, 14)
-        .padding(.horizontal, 16)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-        .background {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Palette.surface)
-                .elevation(.resting)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .strokeBorder(Palette.hairline)
-                )
+    }
+
+    private var quietBridge: some View {
+        VStack(spacing: 6) {
+            Capsule()
+                .fill(Palette.hairline)
+                .frame(width: 1, height: 10)
+            Image(systemName: "moon.zzz.fill")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(Palette.inkFaint)
+            Capsule()
+                .fill(Palette.hairline)
+                .frame(width: 1, height: 10)
         }
+        .frame(width: 22)
+        .accessibilityHidden(true)
     }
 
-    private func mealSheet(_ slot: MealSlot) -> some View {
-        MealTimeSheet(slot: slot, times: $model.mealTimes)
-            .presentationDetents([.height(260)])
-            .presentationDragIndicator(.visible)
-            .presentationBackground(Palette.background)
-            .presentationCornerRadius(28)
-    }
-
-    private var quietSheet: some View {
-        QuietHoursSheet(quietHours: $model.quietHours)
-            .presentationDetents([.height(320)])
-            .presentationDragIndicator(.visible)
-            .presentationBackground(Palette.background)
-            .presentationCornerRadius(28)
+    private func quietWell(_ title: String, _ minutes: Binding<Int>) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title).sectionLabelStyle()
+            MinutesChip(
+                minutes: Binding(
+                    get: { minutes.wrappedValue },
+                    set: { value in
+                        withAnimation(Motion.settle) { minutes.wrappedValue = value }
+                    }
+                ),
+                name: title
+            )
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Palette.surfaceSunk, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }
 
-private struct MealTimeSheet: View {
-    let slot: MealSlot
-    @Binding var times: MealTimesPayload
-    @Environment(\.dismiss) private var dismiss
-    @State private var minutes = 0
+/// Tap the time to change it — compact picker, no extra sheet.
+private struct MinutesChip: View {
+    @Binding var minutes: Int
+    var name: String = ""
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Space.md) {
-            Text(slot.title).sectionLabelStyle()
-            MinutesField(label: slot.title, minutes: $minutes)
-            ActionButton(title: "Done") {
-                times[slot] = MealTimeEditing.clamp(
-                    minutes, slot: slot,
-                    breakfast: times.breakfastMin, lunch: times.lunchMin, dinner: times.dinnerMin
-                )
-                dismiss()
-            }
-        }
-        .padding(Space.gutter)
-        .onAppear { minutes = times[slot] }
+        DatePicker("", selection: dateBinding, displayedComponents: .hourAndMinute)
+            .labelsHidden()
+            .tint(Palette.ink)
+            .fixedSize()
+            .accessibilityLabel(name.isEmpty ? formatMinutes(minutes) : "\(name) \(formatMinutes(minutes))")
     }
-}
 
-private struct QuietHoursSheet: View {
-    @Binding var quietHours: QuietHoursPayload
-    @Environment(\.dismiss) private var dismiss
-    @State private var start = 0
-    @State private var end = 0
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: Space.md) {
-            Text("Quiet hours").sectionLabelStyle()
-            MinutesField(label: "Starts", minutes: $start)
-            MinutesField(label: "Ends", minutes: $end)
-            ActionButton(title: "Done") {
-                quietHours.startMin = start
-                quietHours.endMin = end
-                dismiss()
+    private var dateBinding: Binding<Date> {
+        Binding(
+            get: { Self.date(from: minutes) },
+            set: { date in
+                let next = MealTimeEditing.snap(Self.minutes(from: date))
+                guard next != minutes else { return }
+                UISelectionFeedbackGenerator().selectionChanged()
+                minutes = next
             }
-        }
-        .padding(Space.gutter)
-        .onAppear {
-            start = quietHours.startMin
-            end = quietHours.endMin
-        }
+        )
+    }
+
+    private static func date(from minutes: Int) -> Date {
+        var comps = DateComponents()
+        comps.hour = minutes / 60
+        comps.minute = minutes % 60
+        return Calendar.current.date(from: comps) ?? .now
+    }
+
+    private static func minutes(from date: Date) -> Int {
+        let c = Calendar.current.dateComponents([.hour, .minute], from: date)
+        return (c.hour ?? 0) * 60 + (c.minute ?? 0)
     }
 }
 
@@ -620,6 +592,8 @@ private struct QuietHoursSheet: View {
 struct FoodsSettingsView: View {
     @Bindable var model: SettingsViewModel
     @State private var customText = ""
+    @State private var pantryDraft = ""
+    @State private var dislikeDraft = ""
 
     private static let allergies = ["Peanuts", "Tree nuts", "Shellfish", "Fish", "Sesame", "Eggs", "Soy"]
     private static let intolerances = ["Dairy", "Gluten"]
@@ -642,7 +616,9 @@ struct FoodsSettingsView: View {
                     chipGroup("Yours", customRestrictions).appearIn(5)
                 }
                 addYourOwn.appearIn(6)
-                reassurance.appearIn(7)
+                tokenField("What I have around", text: $pantryDraft, tokens: $model.pantryTokens).appearIn(7)
+                tokenField("I don’t like", text: $dislikeDraft, tokens: $model.dislikedFoods).appearIn(8)
+                reassurance.appearIn(9)
             }
         }
         .settingsSaveBar(
@@ -713,6 +689,43 @@ struct FoodsSettingsView: View {
         model.addCustomRestriction(customText)
         customText = ""
     }
+
+    private func tokenField(_ title: String, text: Binding<String>, tokens: Binding<[String]>) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title).sectionLabelStyle()
+            if !tokens.wrappedValue.isEmpty {
+                FlowChips(options: tokens.wrappedValue, selected: tokens)
+            }
+            HStack(spacing: 8) {
+                TextField("Add…", text: text)
+                    .font(Typography.data(15))
+                    .foregroundStyle(Palette.ink)
+                    .submitLabel(.done)
+                    .onSubmit { addToken(text, into: tokens) }
+                Button { addToken(text, into: tokens) } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(Palette.ink)
+                        .frame(width: 38, height: 38)
+                        .background(Palette.surface, in: Circle())
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.leading, 18)
+            .padding(.trailing, 6)
+            .padding(.vertical, 6)
+            .background(Palette.surfaceSunk, in: Capsule())
+        }
+    }
+
+    private func addToken(_ text: Binding<String>, into tokens: Binding<[String]>) {
+        let value = text.wrappedValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !value.isEmpty else { return }
+        if !tokens.wrappedValue.contains(where: { $0.caseInsensitiveCompare(value) == .orderedSame }) {
+            tokens.wrappedValue.append(value)
+        }
+        text.wrappedValue = ""
+    }
 }
 
 // MARK: - Apple Health
@@ -774,7 +787,7 @@ struct HealthSettingsView: View {
             LoopingPhase(period: 1.6, still: 0) { t in
                 Image(systemName: "heart.fill")
                     .font(.system(size: 26, weight: .semibold))
-                    .foregroundStyle(Color(hex: 0xFF8A73))
+                    .foregroundStyle(Palette.onInkHeart)
                     .frame(width: 56, height: 56)
                     .background(Palette.background.opacity(0.1), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                     .scaleEffect(1 + 0.08 * 0.5 * (1 - cos(t * 2 * .pi)))
@@ -792,7 +805,7 @@ struct HealthSettingsView: View {
             if env.health.connected {
                 Text(env.health.statusLine)
                     .font(Typography.data(12, weight: .bold))
-                    .foregroundStyle(Color(hex: 0xB9D3B1))
+                    .foregroundStyle(Palette.onInkPositive)
                     .padding(.horizontal, 11)
                     .padding(.vertical, 6)
                     .background(Palette.dayOnTrack.opacity(0.25), in: Capsule())
@@ -827,7 +840,7 @@ struct HealthSettingsView: View {
                 if let message = env.health.lastError {
                     Text(message)
                         .font(Typography.data(13))
-                        .foregroundStyle(Color(hex: 0xFF8A73))
+                        .foregroundStyle(Palette.onInkHeart)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }

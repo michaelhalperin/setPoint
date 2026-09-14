@@ -75,7 +75,7 @@ struct MiniDayDial: View {
             let c = CGPoint(x: size.width / 2, y: size.height / 2)
             let r = min(size.width, size.height) / 2 - 5
             let ring = Path(ellipseIn: CGRect(x: c.x - r, y: c.y - r, width: r * 2, height: r * 2))
-            context.stroke(ring, with: .color(today ? Palette.accentSoft : Color(hex: 0xE4D9CA)), lineWidth: 3.5)
+            context.stroke(ring, with: .color(today ? Palette.accentSoft : Palette.idleRing), lineWidth: 3.5)
 
             for (index, minute) in [480, 780, 1140].enumerated() {
                 let angle = Double(minute) / 1440 * 2 * .pi
@@ -109,12 +109,12 @@ struct RecordCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Space.md) {
             VStack(alignment: .leading, spacing: 0) {
-                Text(record.checkIns == 0 ? "No check-ins needed." : "I stepped in \(record.checkIns) \(record.checkIns == 1 ? "time" : "times").")
+                Text(record.checkIns == 0 ? "No check-ins this week." : "Check-ins: \(record.checkIns).")
                     .font(Typography.display(28))
                     .foregroundStyle(Palette.background)
-                Text(record.checkIns == 0 ? "You kept your own rhythm." : "You ate \(record.afterCheckIn) of them.")
+                Text(record.checkIns == 0 ? "You kept your own rhythm." : "You logged after \(record.afterCheckIn) of them.")
                     .font(Typography.voiceItalic(28))
-                    .foregroundStyle(Color(hex: 0xFFE3D3))
+                    .foregroundStyle(Palette.onAccentVoice)
             }
             .fixedSize(horizontal: false, vertical: true)
 
@@ -217,18 +217,19 @@ struct WeightTrendCard: View {
     let onWeighIn: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @AppStorage(MassUnit.storageKey) private var massUnit = MassUnit.localeDefault
     @State private var drawn: CGFloat = 0
 
     var body: some View {
         VStack(alignment: .leading, spacing: Space.sm) {
             HStack(alignment: .firstTextBaseline) {
                 HStack(alignment: .firstTextBaseline, spacing: 5) {
-                    Text(goal.currentWeightKg.map(oneDecimal) ?? "—")
+                    Text(goal.currentWeightKg.map { massUnit.number($0, digits: 1 ... 1) } ?? "—")
                         .font(Typography.data(36, weight: .heavy))
                         .foregroundStyle(Palette.ink)
                         .monospacedDigit()
                         .contentTransition(.numericText())
-                    Text("kg")
+                    Text(massUnit.abbreviation)
                         .font(Typography.data(15, weight: .semibold))
                         .foregroundStyle(Palette.inkFaint)
                 }
@@ -267,11 +268,11 @@ struct WeightTrendCard: View {
             }
 
             HStack {
-                Text(goal.startWeightKg.map { "\(oneDecimal($0)) start" } ?? "Start")
+                Text(goal.startWeightKg.map { massUnit.formatKg($0) } ?? "Start")
                     .foregroundStyle(Palette.inkFaint)
                 Spacer()
                 if let remaining = goal.remainingKg, let target = goal.targetWeightKg, goal.status != "reached" {
-                    Text("\(oneDecimal(remaining)) kg to \(oneDecimal(target))")
+                    Text("\(massUnit.formatKg(remaining)) to \(massUnit.formatKg(target))")
                         .foregroundStyle(Palette.ink)
                 }
             }
@@ -387,6 +388,50 @@ struct IntakeStrip: View {
     }
 }
 
+struct TargetReviewCard: View {
+    let review: SettlementResponse.TargetReview
+    var busy = false
+    let onAccept: () -> Void
+    let onLater: () -> Void
+
+    @AppStorage(MassUnit.storageKey) private var massUnit = MassUnit.localeDefault
+
+    /// "gaining 0.1 lb a week" — the server sends kg, shown in the user's unit.
+    private var trendLine: String {
+        let rate = massUnit.fromKg(abs(review.trendKgPerWeek))
+        let digits = massUnit == .lb ? 1 : 2
+        let amount = "\(rate.formatted(.number.precision(.fractionLength(digits)))) \(massUnit.abbreviation) a week"
+        if rate < 0.005 { return "weight holding steady" }
+        return review.trendKgPerWeek > 0 ? "gaining \(amount)" : "losing \(amount)"
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Target review").sectionLabelStyle()
+            Text("\(review.previousKcal) → \(review.proposedKcal) kcal")
+                .font(Typography.data(20, weight: .heavy))
+                .foregroundStyle(Palette.ink)
+            Text(review.reason)
+                .font(Typography.data(14))
+                .foregroundStyle(Palette.inkSoft)
+                .fixedSize(horizontal: false, vertical: true)
+            Text("Based on \(review.weighInCount) weigh-ins · \(trendLine)")
+                .font(Typography.data(13))
+                .foregroundStyle(Palette.inkFaint)
+            HStack(spacing: 8) {
+                ActionButton(title: "Use this target", busy: busy) { onAccept() }
+                ActionButton(title: "Not now", kind: .secondary, action: onLater)
+            }
+        }
+        .padding(16)
+        .background {
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Palette.surface)
+                .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Palette.hairline))
+        }
+    }
+}
+
 // MARK: - Weigh-in
 
 struct WeighInSheet: View {
@@ -406,12 +451,15 @@ struct WeighInSheet: View {
     init(lastKg: Double?, onSubmit: @escaping (Double) async -> Bool) {
         self.lastKg = lastKg
         self.onSubmit = onSubmit
-        _value = State(initialValue: ((lastKg ?? 70) * 10).rounded() / 10)
+        let unit = MassUnit.current
+        _value = State(initialValue: ((unit.fromKg(lastKg ?? 70) * 10).rounded() / 10))
     }
 
     private var range: ClosedRange<Double> {
-        let base = (lastKg ?? 70).rounded()
-        return max(25, base - 20) ... min(400, base + 20)
+        let unit = MassUnit.current
+        let base = unit.fromKg(lastKg ?? 70).rounded()
+        let span = unit.fromKg(20)
+        return max(unit.fromKg(25), base - span) ... min(unit.fromKg(400), base + span)
     }
 
     var body: some View {
@@ -419,11 +467,12 @@ struct WeighInSheet: View {
             Text("Weigh-in · \(Date.now.formatted(.dateTime.weekday(.wide)))")
                 .sectionLabelStyle()
 
-            RulerPicker(value: $value, range: range, step: 0.1, unit: "kg", majorStep: 1, fractionDigits: 1)
+            RulerPicker(value: $value, range: range, step: 0.1, unit: MassUnit.current.abbreviation, majorStep: 1, fractionDigits: 1)
 
             if let lastKg {
-                let delta = value - lastKg
-                Text(abs(delta) < 0.05 ? "Same as last time" : "\(delta > 0 ? "+" : "−")\(oneDecimal(abs(delta))) kg since last time")
+                let lastDisplay = MassUnit.current.fromKg(lastKg)
+                let delta = value - lastDisplay
+                Text(abs(delta) < 0.05 ? "Same as last time" : "\(delta > 0 ? "+" : "−")\(oneDecimal(abs(delta))) \(MassUnit.current.abbreviation) since last time")
                     .font(Typography.data(14, weight: .bold))
                     .foregroundStyle(Palette.inkSoft)
                     .padding(.horizontal, 14)
@@ -454,7 +503,7 @@ struct WeighInSheet: View {
         guard phase == .idle else { return }
         Task {
             phase = .saving
-            let ok = await onSubmit((value * 10).rounded() / 10)
+            let ok = await onSubmit(MassUnit.current.toKg((value * 10).rounded() / 10))
             guard ok else { phase = .idle; return }
             phase = .saved
             Haptics.landed()

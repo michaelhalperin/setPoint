@@ -326,6 +326,8 @@ struct HomeContent: View {
             composerFocused = false
         case .failed:
             composerFocused = true
+        case .queued:
+            composerFocused = false
         case let .logged(logged):
             composerFocused = false
             Haptics.landed()

@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: setpoint
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.1.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+        working-directory: .
+      - run: pnpm exec prisma validate
+      # Migrations must build the schema from an empty database, and must match
+      # schema.prisma exactly — a schema edit without a migration fails here.
+      - name: Apply migrations to an empty database
+        run: pnpm exec prisma migrate deploy
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/setpoint
+      - name: Check schema.prisma matches migrations
+        run: >-
+          pnpm exec prisma migrate diff
+          --from-url postgresql://postgres:postgres@localhost:5432/setpoint
+          --to-schema-datamodel prisma/schema.prisma
+          --exit-code
+      - run: pnpm typecheck
+      - run: pnpm test
+        env:
+          CRON_SECRET: test-cron
+          JWT_SECRET: test-jwt-secret-test-jwt-secret
+          NODE_ENV: test
+
+  ios:
+    runs-on: macos-15
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate Xcode project
+        working-directory: ios
+        run: |
+          if command -v xcodegen >/dev/null; then
+            xcodegen generate
+          else
+            brew install xcodegen
+            xcodegen generate
+          fi
+      - name: Build and test
+        working-directory: ios
+        run: |
+          xcodebuild test \
+            -project SetPoint.xcodeproj \
+            -scheme SetPoint \
+            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            -skipPackagePluginValidation \
+            CODE_SIGNING_ALLOWED=NO

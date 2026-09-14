@@ -24,8 +24,11 @@ export type ParsedMeal = {
   proteinG: number;
   carbsG: number;
   fatG: number;
-  /** 0–1 — how confident the estimate is. */
+  /** 0–1 — model self-score, not a diagnosis. */
   confidence: number;
+  /** Honest label: high | estimate | review. */
+  quality: 'high' | 'estimate' | 'review';
+  needsReview: boolean;
   summary: string;
   notes?: string;
 };
@@ -73,7 +76,8 @@ const RECORD_MEAL_TOOL: Anthropic.Tool = {
 const SYSTEM = [
   'You estimate the macronutrient content of a meal from a short text description or a photo.',
   'Use realistic common portion sizes. If the input is ambiguous, choose the most typical interpretation and record the assumption in `notes`.',
-  'Always call the record_meal tool. Never refuse — if you genuinely cannot tell, return your best guess with a low confidence value.',
+  'Item calories must sum to the totals. If you are unsure, lower confidence rather than inventing certainty.',
+  'Always call the record_meal tool.',
 ].join(' ');
 
 const recordMealSchema = z.object({
@@ -139,22 +143,58 @@ export function createMealParser(client: Anthropic): MealParser {
     }
 
     const d = parsed.data;
-    return {
-      items: d.items.map((i) => ({
-        name: i.name,
-        quantity: i.quantity,
-        kcal: Math.round(i.kcal),
-        proteinG: round1(i.proteinG),
-        carbsG: round1(i.carbsG),
-        fatG: round1(i.fatG),
-      })),
+    const items = d.items.map((i) => ({
+      name: i.name,
+      quantity: i.quantity,
+      kcal: Math.round(i.kcal),
+      proteinG: round1(i.proteinG),
+      carbsG: round1(i.carbsG),
+      fatG: round1(i.fatG),
+    }));
+    const reconciled = reconcileMealTotals(items, {
       kcal: Math.round(d.totalKcal),
       proteinG: round1(d.totalProteinG),
       carbsG: round1(d.totalCarbsG),
       fatG: round1(d.totalFatG),
-      confidence: Math.min(1, Math.max(0, d.confidence)),
+    });
+    const confidence = Math.min(1, Math.max(0, d.confidence));
+    const quality = estimateQuality(confidence, Boolean(input.image), reconciled.usedItemSum);
+    return {
+      items,
+      ...reconciled.totals,
+      confidence,
+      quality,
+      needsReview: quality === 'review',
       summary: d.summary,
       notes: d.notes,
     };
   };
+}
+
+export function reconcileMealTotals(
+  items: ParsedMealItem[],
+  totals: { kcal: number; proteinG: number; carbsG: number; fatG: number },
+): { totals: typeof totals; usedItemSum: boolean } {
+  if (items.length === 0) return { totals, usedItemSum: false };
+  const sum = {
+    kcal: items.reduce((a, i) => a + i.kcal, 0),
+    proteinG: round1(items.reduce((a, i) => a + i.proteinG, 0)),
+    carbsG: round1(items.reduce((a, i) => a + i.carbsG, 0)),
+    fatG: round1(items.reduce((a, i) => a + i.fatG, 0)),
+  };
+  const denom = Math.max(totals.kcal, sum.kcal, 1);
+  if (Math.abs(sum.kcal - totals.kcal) / denom > 0.15) {
+    return { totals: { ...sum, kcal: Math.round(sum.kcal) }, usedItemSum: true };
+  }
+  return { totals, usedItemSum: false };
+}
+
+export function estimateQuality(
+  confidence: number,
+  fromPhoto: boolean,
+  usedItemSum: boolean,
+): 'high' | 'estimate' | 'review' {
+  if (fromPhoto && confidence < 0.45) return 'review';
+  if (usedItemSum || confidence < 0.6) return 'estimate';
+  return 'high';
 }

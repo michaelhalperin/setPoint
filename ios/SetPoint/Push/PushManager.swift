@@ -16,8 +16,10 @@ final class PushManager {
     var api: APIClient?
 
     private var deviceTokenHex: String?
+    private var liveActivityStartTokenHex: String?
 
-    private init() {}
+    /// Use `shared` in the app; internal so tests can build an isolated one.
+    init() {}
 
     /// The check-in notification's buttons. Both need the phone unlocked — they
     /// call the API with the signed-in session.
@@ -82,6 +84,7 @@ final class PushManager {
     }
 
     func setLiveActivityStartToken(_ hex: String) {
+        liveActivityStartTokenHex = hex
         Task { await uploadToken(hex, kind: "live_activity_start") }
     }
 
@@ -89,10 +92,20 @@ final class PushManager {
         pendingCheckInID = id
     }
 
-    func unregisterOnSignOut() async {
-        guard let hex = deviceTokenHex else { return }
-        try? await api?.delete("/api/push-tokens/\(hex)")
+    /// Detaches this device from the account being signed out of, so its
+    /// check-ins stop arriving here. Authenticates with that account's token
+    /// explicitly — the stored session is already gone — and never reports a
+    /// 401, so a stale session can't set off another sign-out.
+    func unregister(sessionToken: String, baseURL: URL = APIConfig.baseURL, session: URLSession = .shared) async {
+        let tokens = [deviceTokenHex, liveActivityStartTokenHex].compactMap { $0 }
+        // Forget them so the next sign-in uploads them for the new account.
         deviceTokenHex = nil
+        liveActivityStartTokenHex = nil
+        guard !tokens.isEmpty else { return }
+        let client = APIClient(baseURL: baseURL, session: session, tokenProvider: { sessionToken })
+        for token in tokens {
+            try? await client.delete("/api/push-tokens/\(token)")
+        }
     }
 
     private func uploadToken(_ token: String, kind: String) async {

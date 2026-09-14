@@ -9,6 +9,7 @@ import { EmptyMealError, MealParsingUnavailableError, logMeal } from '../meals/l
 import { listMealsForDate } from '../meals/listMeals.js';
 import { MealNotFoundError, updateMeal } from '../meals/updateMeal.js';
 import { captureError } from '../observability/sentry.js';
+import { queuePhotoDeletion } from '../photos/cleanup.js';
 import { getPhotoStore } from '../photos/store.js';
 
 const body = z
@@ -30,6 +31,7 @@ const body = z
       })
       .optional(),
     prescriptionId: z.string().optional(),
+    clientId: z.string().uuid().optional(),
   })
   .refine((b) => b.text || b.image || b.macros || b.prescriptionId, {
     message: 'provide text, image, macros, or a prescriptionId',
@@ -96,6 +98,7 @@ export async function mealRoutes(app: FastifyInstance): Promise<void> {
           loggedAt: input.loggedAt ? new Date(input.loggedAt) : undefined,
           macros: input.macros,
           prescriptionId: input.prescriptionId,
+          clientId: input.clientId,
         },
       );
     } catch (err) {
@@ -139,9 +142,10 @@ export async function mealRoutes(app: FastifyInstance): Promise<void> {
       try {
         await photos.delete(meal.photoKey);
       } catch (err) {
-        // The meal is gone either way; an orphaned object is cleaned up with the account.
-        req.log.warn({ err, mealId: id }, 'photo delete failed');
+        // The meal is gone either way; the daily cron retries the photo.
+        req.log.warn({ err, mealId: id }, 'photo delete failed — queued for retry');
         captureError(err, { userId, tags: { area: 'photos' } });
+        await queuePhotoDeletion(prisma, { kind: 'object', key: meal.photoKey }, err);
       }
     }
     return { deleted: true };

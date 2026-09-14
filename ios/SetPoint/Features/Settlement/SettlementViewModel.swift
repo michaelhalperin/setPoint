@@ -12,6 +12,8 @@ final class SettlementViewModel {
 
     var phase: Phase = .loading
     var loggingWeight = false
+    var weighInError: String?
+    var applyingTargetReview = false
     /// Recent weigh-ins, oldest first — the trend line.
     private(set) var weights: [WeightHistoryResponse.Entry] = []
     private(set) var applyingPattern = false
@@ -87,6 +89,7 @@ final class SettlementViewModel {
 
     func logWeight(kg: Double) async -> Bool {
         loggingWeight = true
+        weighInError = nil
         defer { loggingWeight = false }
         do {
             let res: WeightLogResponse = try await api.post("/api/weight", WeightLogRequest(weightKg: kg))
@@ -97,8 +100,36 @@ final class SettlementViewModel {
             onUnauthorized()
             return false
         } catch {
-            phase = .failed(UserFacingError.message(for: error, fallback: "Couldn't save. Try again."))
+            weighInError = UserFacingError.message(for: error, fallback: "Couldn't save. Try again.")
             return false
+        }
+    }
+
+    /// The server recomputes the suggestion; we only send the target the user saw.
+    func acceptTargetReview(_ review: SettlementResponse.TargetReview) async {
+        await decideTargetReview(TargetReviewDecision(action: "accept", proposedKcal: review.proposedKcal))
+    }
+
+    /// "Not now" — the server records it, and the card stays away for a week.
+    func dismissTargetReview() async {
+        await decideTargetReview(TargetReviewDecision(action: "dismiss", proposedKcal: nil))
+    }
+
+    private func decideTargetReview(_ decision: TargetReviewDecision) async {
+        guard !applyingTargetReview else { return }
+        applyingTargetReview = true
+        weighInError = nil
+        defer { applyingTargetReview = false }
+        do {
+            try await api.post("/api/settings/target-review", decision)
+            await load()
+        } catch APIError.unauthorized {
+            onUnauthorized()
+        } catch let APIError.http(status, _) where status == 409 {
+            // The suggestion moved or no longer applies — show what's true now.
+            await load()
+        } catch {
+            weighInError = UserFacingError.message(for: error, fallback: "Couldn't update the target.")
         }
     }
 

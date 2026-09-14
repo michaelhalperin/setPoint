@@ -67,7 +67,11 @@ struct MainTabView: View {
                 onUnauthorized: { env.auth.handleUnauthorized() },
                 onMealChanged: { env.changes.mealsChanged() }
             )
-            onboarding = OnboardingViewModel(api: env.api, onComplete: { Task { await h.load() } })
+            onboarding = OnboardingViewModel(
+                api: env.api,
+                progressStore: .standard,
+                onComplete: { Task { await h.load() } }
+            )
             home = h
             await h.load()
         }
