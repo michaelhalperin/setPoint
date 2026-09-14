@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// The full-screen tier-3 conversation (§2). A short, bounded exchange in the
-/// manager's voice — never open-ended chat. Drag down to dismiss; once the
+/// The full-screen tier-3 conversation (§2). "Rough few days." — the manager's
+/// opener, then three concrete fixes to tap (or a reply in your own words). A
+/// short, bounded exchange, never open-ended chat. Drag down to dismiss; once the
 /// backend lands on an outcome the composer closes and "Done" reloads Home.
 struct ConversationView: View {
     let checkInID: String
@@ -86,12 +87,54 @@ struct ConversationView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
-                    Text("Let's talk")
-                        .sectionLabelStyle()
-                        .foregroundStyle(Palette.accent)
-                        .padding(.bottom, 2)
+                    HStack {
+                        Text("Let’s talk")
+                            .sectionLabelStyle(Palette.accent)
+                        Spacer()
+                        Button(action: onDismiss) {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundStyle(Palette.inkSoft)
+                                .frame(width: 34, height: 34)
+                                .background(Palette.surfaceSunk, in: Circle())
+                        }
+                        .accessibilityLabel("Close")
+                    }
 
-                    ForEach(Array(model.messages.enumerated()), id: \.element.id) { index, message in
+                    Text("Rough few days.")
+                        .font(Typography.display(40))
+                        .foregroundStyle(Palette.ink)
+                        .accessibilityAddTraits(.isHeader)
+                        .appearIn(0)
+
+                    if let opener = model.messages.first, opener.role == "assistant" {
+                        Text(opener.content)
+                            .font(Typography.voice(19))
+                            .foregroundStyle(Palette.inkSoft)
+                            .lineSpacing(2)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .id(opener.id)
+                            .appearIn(1)
+                    }
+
+                    if model.messages.count == 1, !model.resolved, !model.sending {
+                        VStack(spacing: 10) {
+                            ForEach(Array(QuickFix.all.enumerated()), id: \.element.title) { index, fix in
+                                Button {
+                                    model.draft = fix.message
+                                    Task { await model.send() }
+                                } label: {
+                                    QuickFixCard(fix: fix)
+                                }
+                                .buttonStyle(PressableCard())
+                                .appearIn(2 + index)
+                            }
+                        }
+                        .padding(.top, 4)
+                        .transition(.opacity)
+                    }
+
+                    ForEach(Array(model.messages.dropFirst().enumerated()), id: \.element.id) { index, message in
                         MessageBubble(message: message)
                             .id(message.id)
                             .appearIn(index, rise: 10)
@@ -110,8 +153,7 @@ struct ConversationView: View {
                                 .foregroundStyle(Palette.accent)
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(model.outcomeTitle)
-                                    .sectionLabelStyle()
-                                    .foregroundStyle(Palette.accent)
+                                    .sectionLabelStyle(Palette.accent)
                                 Text(summary)
                                     .font(Typography.data(14))
                                     .foregroundStyle(Palette.ink)
@@ -154,7 +196,7 @@ struct ConversationView: View {
     @ViewBuilder
     private func composer(_ model: ConversationViewModel) -> some View {
         HStack(spacing: 10) {
-            TextField("Reply…", text: Binding(get: { model.draft }, set: { model.draft = $0 }), axis: .vertical)
+            TextField(model.messages.count == 1 ? "Or tell me what’s going on…" : "Reply…", text: Binding(get: { model.draft }, set: { model.draft = $0 }), axis: .vertical)
                 .font(Typography.data(15))
                 .lineLimit(1 ... 4)
                 .padding(12)
@@ -236,6 +278,56 @@ private struct ConversationSkeletonView: View {
             tint: tint
         )
         .frame(maxWidth: .infinity, alignment: alignment)
+    }
+}
+
+/// One tap on a concrete change, sent to the manager as the user's reply.
+private struct QuickFix {
+    let symbol: String
+    let title: String
+    let detail: String
+    let message: String
+
+    static let all = [
+        QuickFix(symbol: "clock", title: "Check in later", detail: "More time before a meal counts as slipped",
+                 message: "Can you check in later? I need more time around my meals."),
+        QuickFix(symbol: "slider.horizontal.3", title: "Ease the target", detail: "A lower number for a while",
+                 message: "Can we ease my target for a while?"),
+        QuickFix(symbol: "pause", title: "Pause for a few days", detail: "I’ll pick it back up",
+                 message: "Can we pause check-ins for a few days?"),
+    ]
+}
+
+private struct QuickFixCard: View {
+    let fix: QuickFix
+
+    var body: some View {
+        HStack(spacing: 14) {
+            Image(systemName: fix.symbol)
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(Palette.accent)
+                .frame(width: 44, height: 44)
+                .background(Palette.accentTint, in: Circle())
+            VStack(alignment: .leading, spacing: 2) {
+                Text(fix.title)
+                    .font(Typography.data(16, weight: .bold))
+                    .foregroundStyle(Palette.ink)
+                Text(fix.detail)
+                    .font(Typography.data(13))
+                    .foregroundStyle(Palette.inkSoft)
+            }
+            Spacer(minLength: 0)
+            Image(systemName: "arrow.right")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(Palette.inkFaint)
+        }
+        .padding(16)
+        .background {
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(Palette.surface)
+                .elevation(.resting)
+                .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Palette.hairline))
+        }
     }
 }
 

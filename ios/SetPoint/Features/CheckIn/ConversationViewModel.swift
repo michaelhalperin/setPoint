@@ -97,10 +97,10 @@ final class ConversationViewModel {
     static func previewed(resolved: Bool) -> ConversationViewModel {
         let vm = ConversationViewModel(checkInID: "ci_preview", api: AppEnvironment.preview().api)
         vm.messages = [
-            ConversationMessage(role: "assistant", content: "The last few days haven't gone to plan. Want to lower the target, shift your check-ins, or pause them for a bit?", at: nil),
-            ConversationMessage(role: "user", content: "work has been nuts, I keep missing lunch", at: nil),
+            ConversationMessage(role: "assistant", content: "A few check-ins in a row didn’t land. What would help?", at: nil),
         ]
         if resolved {
+            vm.messages.append(ConversationMessage(role: "user", content: "work has been nuts, I keep missing lunch", at: nil))
             vm.messages.append(ConversationMessage(role: "assistant", content: "Let's push your check-ins later and ease the target for this week. You can fine-tune it in Settings.", at: nil))
             vm.outcome = "ADJUST_PLAN"
             vm.resolved = true
