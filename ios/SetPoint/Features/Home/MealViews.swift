@@ -201,19 +201,9 @@ struct MealDetailSheet: View {
                         plate
                         notesBlock
                         meta
-                        if onSaveAsMeal != nil {
-                            Button {
-                                onSaveAsMeal?()
-                            } label: {
-                                Label("Save as my meal", systemImage: "star")
-                                    .font(Typography.data(14, weight: .semibold))
-                                    .foregroundStyle(Palette.ink)
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 13)
-                                    .background(Palette.surfaceSunk, in: RoundedRectangle(cornerRadius: Radius.md, style: .continuous))
-                            }
-                            .buttonStyle(.plain)
-                            .staggerReveal(expanded, index: 4, rise: 8)
+                        if expanded {
+                            saveAsMealButton
+                                .staggerReveal(expanded, index: 4, rise: 8)
                         }
                         removeControl
                     }
@@ -270,6 +260,27 @@ struct MealDetailSheet: View {
                 macroStat("Carbs", meal.carbsG)
                 macroStat("Fat", meal.fatG)
             }
+
+            if !expanded {
+                saveAsMealButton
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var saveAsMealButton: some View {
+        if onSaveAsMeal != nil {
+            Button {
+                onSaveAsMeal?()
+            } label: {
+                Label("Save as my meal", systemImage: "star")
+                    .font(Typography.data(14, weight: .semibold))
+                    .foregroundStyle(Palette.ink)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 13)
+                    .background(Palette.surfaceSunk, in: RoundedRectangle(cornerRadius: Radius.md, style: .continuous))
+            }
+            .buttonStyle(.plain)
         }
     }
 

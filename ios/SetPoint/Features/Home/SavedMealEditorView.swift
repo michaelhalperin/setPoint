@@ -146,12 +146,24 @@ extension SavedMealDraft.Item {
 }
 
 struct SavedMealEditorView: View {
-    @Binding var draft: SavedMealDraft
+    @State private var draft: SavedMealDraft
     var saving = false
     var error: String?
-    let onSave: () async -> Bool
+    let onSave: (SavedMealDraft) async -> Bool
 
     @Environment(\.dismiss) private var dismiss
+
+    init(
+        draft: SavedMealDraft,
+        saving: Bool = false,
+        error: String? = nil,
+        onSave: @escaping (SavedMealDraft) async -> Bool
+    ) {
+        _draft = State(initialValue: draft)
+        self.saving = saving
+        self.error = error
+        self.onSave = onSave
+    }
 
     private var canSave: Bool { draft.write != nil }
 
@@ -238,7 +250,7 @@ struct SavedMealEditorView: View {
                 disabled: !canSave
             ) {
                 Task {
-                    if await onSave() { dismiss() }
+                    if await onSave(draft) { dismiss() }
                 }
             }
         }
@@ -356,8 +368,8 @@ extension BarcodeFood {
 
 #Preview("Saved meal") {
     SavedMealEditorView(
-        draft: .constant(SavedMealDraft(from: SavedMeal.samples[0])),
-        onSave: { true }
+        draft: SavedMealDraft(from: SavedMeal.samples[0]),
+        onSave: { _ in true }
     )
     .environment(AppEnvironment.preview())
 }

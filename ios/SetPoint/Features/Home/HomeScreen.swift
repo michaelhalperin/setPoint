@@ -156,15 +156,13 @@ struct HomeContent: View {
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
         }
-        .sheet(item: editorBinding) { _ in
-            if let draft = Binding(editorBinding) {
-                SavedMealEditorView(
-                    draft: draft,
-                    saving: logger?.editorSaving ?? false,
-                    error: logger?.editorError,
-                    onSave: { await logger?.saveEditor() ?? false }
-                )
-            }
+        .sheet(item: editorBinding) { draft in
+            SavedMealEditorView(
+                draft: draft,
+                saving: logger?.editorSaving ?? false,
+                error: logger?.editorError,
+                onSave: { await logger?.saveEditor($0) ?? false }
+            )
         }
         .confirmationDialog("Snooze this check-in", isPresented: $choosingSnooze, titleVisibility: .visible) {
             ForEach(CheckInActions.snoozeChoices(nextMealMinutes: minutesUntilNextMeal())) { choice in

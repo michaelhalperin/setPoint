@@ -92,8 +92,8 @@ enum DebugPreviewStub {
             LogMealStubHost(state: state)
         case .savedMeal:
             SavedMealEditorView(
-                draft: .constant(SavedMealDraft(from: SavedMeal.samples[0])),
-                onSave: { true }
+                draft: SavedMealDraft(from: SavedMeal.samples[0]),
+                onSave: { _ in true }
             )
         case .settings:
             NavigationStack { SettingsView(previewModel: .previewed()) }

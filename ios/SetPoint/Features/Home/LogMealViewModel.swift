@@ -386,8 +386,8 @@ final class LogMealViewModel {
     var editorSaving = false
     var editorError: String?
 
-    func saveEditor() async -> Bool {
-        guard let draft = editor, let write = draft.write, !editorSaving else { return false }
+    func saveEditor(_ draft: SavedMealDraft) async -> Bool {
+        guard let write = draft.write, !editorSaving else { return false }
         editorSaving = true
         editorError = nil
         defer { editorSaving = false }
@@ -397,7 +397,6 @@ final class LogMealViewModel {
             } else {
                 let _: SavedMealResponse = try await api.post("/api/saved-meals", write)
             }
-            editor = nil
             await loadSavedMeals()
             return true
         } catch {

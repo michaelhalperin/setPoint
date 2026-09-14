@@ -332,13 +332,16 @@ extension HomeResponse {
 }
 
 #Preview("Meal detail") {
-    MealDetailSheet(meal: .sample(
-        id: "meal_1",
-        kcal: 820,
-        protein: 50,
-        source: "PHOTO",
-        summary: "Chicken burrito bowl, large"
-    ))
+    MealDetailSheet(
+        meal: .sample(
+            id: "meal_1",
+            kcal: 820,
+            protein: 50,
+            source: "PHOTO",
+            summary: "Chicken burrito bowl, large"
+        ),
+        onSaveAsMeal: {}
+    )
 }
 
 extension HomeResponse {
