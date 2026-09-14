@@ -29,6 +29,7 @@ struct HomeResponse: Decodable {
     var needsWeighIn: Bool? = nil
     var busyBlocks: [BusyBlock]? = nil
     var movedSlots: [MovedSlot]? = nil
+    var training: Training? = nil
 
     struct BusyBlock: Decodable, Equatable {
         let startMin: Int
@@ -39,6 +40,22 @@ struct HomeResponse: Decodable {
         let slot: String
         let fromMin: Int
         let toMin: Int
+    }
+
+    struct Training: Decodable, Equatable {
+        var bumpKcal: Int
+        var addCalories: Bool
+        var workouts: [Workout]
+        var refuelUntilMin: Int? = nil
+
+        struct Workout: Decodable, Equatable, Identifiable {
+            let id: String
+            let kind: String
+            let source: String
+            let startMin: Int
+            let durationMin: Int
+            var activeKcal: Int? = nil
+        }
     }
 
     struct NextCheckIn: Decodable, Equatable {
@@ -119,6 +136,7 @@ struct HomeResponse: Decodable {
         let prescription: Prescription?
         /// The meal it's about; nil for a tier-3 conversation.
         var slot: String? = nil
+        var kind: String? = nil
 
         struct Prescription: Decodable {
             let id: String
@@ -559,6 +577,72 @@ enum WeekendDays {
     }
 }
 
+struct TrainingSettingsPayload: Codable, Equatable {
+    var addCalories: Bool?
+    var preWorkoutNudgeMin: Int?
+}
+
+struct WorkoutSyncPayload: Encodable {
+    let workouts: [Item]
+
+    struct Item: Encodable {
+        let source: String
+        let kind: String
+        let start: Date
+        let durationMin: Int
+        var activeKcal: Int? = nil
+        var clientId: String? = nil
+    }
+}
+
+struct TrainingWeekResponse: Decodable {
+    let addCalories: Bool
+    var preWorkoutNudgeMin: Int? = nil
+    let fueledWell: Fueled
+    let days: [Day]
+    let today: Today
+
+    struct Fueled: Decodable {
+        let good: Int
+        let total: Int
+    }
+
+    struct Day: Decodable, Identifiable {
+        var id: String { date }
+        let date: String
+        let bumpKcal: Int
+        let rest: Bool
+        let workouts: [Session]
+    }
+
+    struct Session: Decodable, Identifiable {
+        let id: String
+        let kind: String
+        let source: String
+        let start: String
+        let startMin: Int
+        let durationMin: Int
+        var activeKcal: Int? = nil
+    }
+
+    struct Today: Decodable {
+        let baseKcal: Int
+        let bumpKcal: Int
+        let targetKcal: Int
+        let workouts: [Session]
+        let dinnerMin: Int
+        let timeline: [TimelineEvent]
+    }
+
+    struct TimelineEvent: Decodable, Identifiable {
+        var id: String { "\(kind)-\(atMin)" }
+        let kind: String
+        let atMin: Int
+        let label: String
+        var nudge: Bool? = nil
+    }
+}
+
 struct CalendarSettingsPayload: Codable, Equatable {
     var enabled: Bool?
     var leadMin: Int?
@@ -616,6 +700,7 @@ struct SettingsResponse: Decodable {
     var prepTimeMaxMin: Int? = nil
     var healthWrite: HealthWritePayload? = nil
     var calendar: CalendarSettingsPayload? = nil
+    var training: TrainingSettingsPayload? = nil
 
     struct Restriction: Decodable, Identifiable {
         var id: String { token }
@@ -644,6 +729,7 @@ struct SettingsPatch: Encodable {
     var prepTimeMaxMin: Int?
     var healthWrite: HealthWritePayload?
     var calendar: CalendarSettingsPayload?
+    var training: TrainingSettingsPayload?
 
     struct RestrictionInput: Encodable {
         let label: String

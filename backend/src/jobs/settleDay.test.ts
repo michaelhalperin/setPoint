@@ -28,6 +28,7 @@ function fakePrisma(users: AnyRow[], mealsByUser: Record<string, AnyRow[]>) {
         );
       },
     },
+    workout: { findMany: async () => [] },
     dayOutcome: {
       upsert: async ({ where, create, update }: { where: AnyRow; create: AnyRow; update: AnyRow }) => {
         const key = where.userId_date as { userId: string; date: Date };

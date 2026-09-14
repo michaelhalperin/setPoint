@@ -1,6 +1,14 @@
 import Foundation
 import HealthKit
 
+struct HealthWorkoutSample: Sendable, Equatable {
+    let id: String
+    let start: Date
+    let durationMin: Int
+    let activeKcal: Int?
+    let kind: String
+}
+
 /// Completion for an `HKObserverQuery`. Always call it (use `defer`).
 typealias HealthObserverHandler = (@escaping () -> Void) -> Void
 
@@ -34,6 +42,10 @@ protocol HealthDataSource: Sendable {
     func saveFood(_ write: DietaryWrite, types: HealthWritePreferences) async throws
     func deleteFood(mealId: String) async throws
     func saveBodyMass(kg: Double, at date: Date, mealId: String) async throws
+
+    func workouts(from: Date, to: Date) async throws -> [HealthWorkoutSample]
+    func enableBackgroundDelivery(sampleType: HKSampleType, frequency: HKUpdateFrequency) async throws
+    func startObserver(sampleType: HKSampleType, handler: @escaping HealthObserverHandler)
 }
 
 /// Real HealthKit. Completion handlers run off the main thread; the manager
@@ -194,6 +206,47 @@ final class HKHealthStoreSource: HealthDataSource, @unchecked Sendable {
         try await store.save(sample)
     }
 
+    func workouts(from: Date, to: Date) async throws -> [HealthWorkoutSample] {
+        let predicate = HKQuery.predicateForSamples(withStart: from, end: to)
+        let sort = NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: true)
+        return try await withCheckedThrowingContinuation { continuation in
+            let query = HKSampleQuery(
+                sampleType: .workoutType(),
+                predicate: predicate,
+                limit: HKObjectQueryNoLimit,
+                sortDescriptors: [sort]
+            ) { _, results, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                let mapped = (results as? [HKWorkout] ?? []).map { workout -> HealthWorkoutSample in
+                    let kcal = workout.totalEnergyBurned?.doubleValue(for: .kilocalorie())
+                    return HealthWorkoutSample(
+                        id: workout.uuid.uuidString,
+                        start: workout.startDate,
+                        durationMin: max(1, Int((workout.duration / 60).rounded())),
+                        activeKcal: kcal.map { Int($0.rounded()) },
+                        kind: HealthWorkoutKind.map(workout.workoutActivityType)
+                    )
+                }
+                continuation.resume(returning: mapped)
+            }
+            store.execute(query)
+        }
+    }
+
+    func enableBackgroundDelivery(sampleType: HKSampleType, frequency: HKUpdateFrequency) async throws {
+        try await store.enableBackgroundDelivery(for: sampleType, frequency: frequency)
+    }
+
+    func startObserver(sampleType: HKSampleType, handler: @escaping HealthObserverHandler) {
+        let query = HKObserverQuery(sampleType: sampleType, predicate: nil) { _, completionHandler, _ in
+            handler(completionHandler)
+        }
+        store.execute(query)
+    }
+
     private func quantitySample(
         _ id: HKQuantityTypeIdentifier,
         value: Double,
@@ -222,5 +275,18 @@ final class HKHealthStoreSource: HealthDataSource, @unchecked Sendable {
         var versions = UserDefaults.standard.dictionary(forKey: HealthWritePreferences.versionsKey) as? [String: Int] ?? [:]
         versions.removeValue(forKey: mealId)
         UserDefaults.standard.set(versions, forKey: HealthWritePreferences.versionsKey)
+    }
+}
+
+enum HealthWorkoutKind {
+    static func map(_ type: HKWorkoutActivityType) -> String {
+        switch type {
+        case .traditionalStrengthTraining, .functionalStrengthTraining, .coreTraining:
+            return "STRENGTH"
+        case .running, .cycling, .swimming, .hiking, .rowing, .elliptical, .walking, .stairClimbing:
+            return "CARDIO"
+        default:
+            return "MIXED"
+        }
     }
 }

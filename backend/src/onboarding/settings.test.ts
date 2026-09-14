@@ -181,6 +181,14 @@ describe('settings', () => {
       bodyMass: true,
     });
   });
+
+  it('stores training toggles', async () => {
+    const prisma = fakePrisma(onboardedUser());
+    const view = await updateSettings({ prisma }, 'u1', {
+      training: { addCalories: false, preWorkoutNudgeMin: null },
+    });
+    expect(view.training).toEqual({ addCalories: false, preWorkoutNudgeMin: null });
+  });
 });
 
 const dietUser = (): AnyRow => ({

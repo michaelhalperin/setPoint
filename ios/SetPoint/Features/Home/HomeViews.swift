@@ -33,6 +33,10 @@ enum CheckInActions {
         try await api.post("/api/checkins/\(checkInID)/dismiss")
     }
 
+    static func cover(checkInID: String, api: APIClient) async throws {
+        try await api.post("/api/checkins/\(checkInID)/cover")
+    }
+
     static func snooze(checkInID: String, minutes: Int?, api: APIClient) async throws {
         if let minutes {
             try await api.post("/api/checkins/\(checkInID)/defer", SnoozeBody(minutes: min(max(minutes, 15), 360)))

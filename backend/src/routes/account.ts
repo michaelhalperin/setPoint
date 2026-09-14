@@ -95,6 +95,12 @@ const settingsPatch = z
         includeAllDay: z.boolean().optional(),
       })
       .optional(),
+    training: z
+      .object({
+        addCalories: z.boolean().optional(),
+        preWorkoutNudgeMin: z.union([z.literal(0), z.literal(60), z.literal(90), z.literal(120), z.null()]).optional(),
+      })
+      .optional(),
   })
   .refine((p) => Object.keys(p).length > 0, { message: 'no changes provided' });
 

@@ -127,6 +127,17 @@ extension HomeResponse {
         return home
     }
 
+    static var sampleTraining: HomeResponse {
+        var home = lateLunch(note: "Session this afternoon.", checkIn: nil)
+        home.training = .init(
+            bumpKcal: 350,
+            addCalories: true,
+            workouts: [.init(id: "w1", kind: "STRENGTH", source: "PLANNED", startMin: 1020, durationMin: 60, activeKcal: 350)],
+            refuelUntilMin: 1125
+        )
+        return home
+    }
+
     /// The same check-in, snoozed.
     static let sampleSnoozed = lateLunch(
         note: "There's a check-in waiting just below.",

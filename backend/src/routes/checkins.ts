@@ -154,6 +154,29 @@ export async function checkInRoutes(app: FastifyInstance): Promise<void> {
     return { dismissed: true };
   });
 
+  // Refuel: "Dinner at hh:mm covers it" — close without counting as a miss.
+  app.post('/:id/cover', async (req) => {
+    const { id } = params.parse(req.params);
+    const now = new Date();
+    const result = await getPrisma().checkIn.updateMany({
+      where: {
+        id,
+        userId: (req as AuthedRequest).userId,
+        status: { in: ['PENDING', 'DEFERRED'] },
+        kind: { in: ['REFUEL', 'PRE_WORKOUT'] },
+      },
+      data: {
+        status: 'EXPIRED',
+        resolvedAt: now,
+        coveredByDinner: true,
+        feedbackPositive: true,
+        feedbackAt: now,
+      },
+    });
+    if (result.count === 0) throw app.httpErrors.notFound('no refuel check-in with that id');
+    return { covered: true };
+  });
+
   // Tier-3 "this isn't working right now" conversation (§2).
   app.get('/:id/conversation', async (req) => {
     const { id } = params.parse(req.params);

@@ -100,7 +100,8 @@ final class HealthKitManager {
 
     private var readTypes: Set<HKObjectType> {
         [hrvType, rhrType, bodyMassType, heightType,
-         HKCharacteristicType(.dateOfBirth), HKCharacteristicType(.biologicalSex)]
+         HKCharacteristicType(.dateOfBirth), HKCharacteristicType(.biologicalSex),
+         HKObjectType.workoutType()]
     }
 
     private var shareTypes: Set<HKSampleType> {
@@ -319,6 +320,7 @@ final class HealthKitManager {
             }
 
             try await syncWeight(now: now)
+            await uploadWorkouts(now: now)
 
             lastSyncAt = now
             defaults.set(lastSyncAt, forKey: Self.lastSyncKey)
@@ -342,6 +344,7 @@ final class HealthKitManager {
         try? await source.enableBackgroundDelivery(type: hrvType, frequency: .hourly)
         try? await source.enableBackgroundDelivery(type: rhrType, frequency: .hourly)
         try? await source.enableBackgroundDelivery(type: bodyMassType, frequency: .immediate)
+        try? await source.enableBackgroundDelivery(sampleType: .workoutType(), frequency: .hourly)
 
         let handle: HealthObserverHandler = { [weak self] completion in
             var task = UIBackgroundTaskIdentifier.invalid
@@ -363,6 +366,7 @@ final class HealthKitManager {
         source.startObserver(type: hrvType, handler: handle)
         source.startObserver(type: rhrType, handler: handle)
         source.startObserver(type: bodyMassType, handler: handle)
+        source.startObserver(sampleType: .workoutType(), handler: handle)
     }
 
     /// Sign-out: HealthKit permission is user-level (don't stop observers), but
@@ -371,6 +375,29 @@ final class HealthKitManager {
         lastSyncAt = nil
         defaults.removeObject(forKey: Self.lastSyncKey)
         defaults.removeObject(forKey: Self.bodyMassAnchorKey)
+    }
+
+    func uploadWorkouts(now: Date = Date()) async {
+        guard let api, tokenStore.read() != nil else { return }
+        let from = Calendar.current.date(byAdding: .day, value: -2, to: now) ?? now
+        do {
+            let samples = try await source.workouts(from: from, to: now)
+            let payload = WorkoutSyncPayload(
+                workouts: samples.map {
+                    .init(
+                        source: "HEALTHKIT",
+                        kind: $0.kind,
+                        start: $0.start,
+                        durationMin: $0.durationMin,
+                        activeKcal: $0.activeKcal,
+                        clientId: $0.id
+                    )
+                }
+            )
+            try await api.put("/api/workouts", payload)
+        } catch {
+            if isLockedDevice(error) { return }
+        }
     }
 
     /// `PATCH /api/settings { mode }`. Fire-and-forget; cached so we don't repeat.

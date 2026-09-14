@@ -67,6 +67,8 @@ enum DebugPreviewStub {
     case settingsHealthWrite
     case calendarSettings
     case calendarConnect
+    case training
+    case refuel
     case settingsAccount
     case settingsDelete
 
@@ -115,6 +117,26 @@ enum DebugPreviewStub {
             NavigationStack { CalendarSettingsView() }
         case .calendarConnect:
             NavigationStack { CalendarConnectView() }
+        case .training:
+            NavigationStack { TrainingScreen(preview: .sample) }
+        case .refuel:
+            RefuelSheet(
+                checkIn: .init(
+                    id: "ci_refuel",
+                    tier: 1,
+                    status: "PENDING",
+                    message: "You trained. Eat something now.",
+                    deferUntil: nil,
+                    prescription: HomeResponse.sampleUnder.activeCheckIn?.prescription,
+                    slot: "refuel",
+                    kind: "REFUEL"
+                ),
+                dinnerMin: 1170,
+                remainingSeconds: 18 * 60,
+                onHadThis: {},
+                onCoveredByDinner: {},
+                onDismiss: {}
+            )
         case .settingsAccount:
             NavigationStack { AccountSettingsView(model: .previewed()) }
         case .settingsDelete:
@@ -169,6 +191,9 @@ enum DebugPreviewStub {
         case "calendar-settings": return .calendarSettings
         case "calendar-connect": return .calendarConnect
         case "home-busy": return .home(.sampleBusy)
+        case "home-training": return .home(.sampleTraining)
+        case "training": return .training
+        case "refuel": return .refuel
         case "settings-goal": return .settingsGoal
         case "settings-meal-times": return .settingsMealTimes
         case "settings-meal-times-weekends": return .settingsMealTimesWeekends

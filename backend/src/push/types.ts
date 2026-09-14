@@ -6,7 +6,7 @@ export type PushPayload = {
   body: string;
   /** The suggested meal, so "I ate this" works straight from the notification. */
   prescriptionId?: string | null;
-  category?: 'CHECK_IN' | 'HEADS_UP';
+  category?: 'CHECK_IN' | 'HEADS_UP' | 'REFUEL';
 };
 
 export type PushSendResult = {

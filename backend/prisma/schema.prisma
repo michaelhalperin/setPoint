@@ -169,6 +169,7 @@ model User {
   aiUsages                AiUsage[]
   targetReviews           WeightTargetReview[]
   calendarBusyBlocks      CalendarBusyBlock[]
+  workouts                Workout[]
 }
 
 model PushToken {
@@ -258,6 +259,9 @@ model OnboardingProfile {
   calendarMinBlockMin    Int     @default(60)
   calendarWorkdaysOnly   Boolean @default(true)
   calendarIncludeAllDay  Boolean @default(false)
+
+  trainingAddCalories    Boolean @default(true)
+  preWorkoutNudgeMin     Int?    @default(90)
 
   completedAt DateTime?
   createdAt   DateTime  @default(now())
@@ -519,6 +523,37 @@ model CalendarBusyBlock {
   @@index([userId, start])
 }
 
+enum WorkoutSource {
+  HEALTHKIT
+  PLANNED
+}
+
+enum WorkoutKind {
+  STRENGTH
+  CARDIO
+  MIXED
+}
+
+model Workout {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  source      WorkoutSource
+  kind        WorkoutKind
+  start       DateTime
+  durationMin Int
+  activeKcal  Int?
+  /// HealthKit UUID or a client-generated planned-session id — upsert key.
+  clientId    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, clientId])
+  @@index([userId, start])
+}
+
 // ---------------------------------------------------------------------------
 // Check-ins + escalation (§2)
 // ---------------------------------------------------------------------------
@@ -547,6 +582,10 @@ model CheckIn {
   movedFromMin Int?
   /// End of the busy block — "After 15:00" snoozes until then.
   busyUntil DateTime?
+  /// Workout this refuel / pre-workout check-in is about.
+  workoutId String?
+  /// "Dinner at hh:mm covers it" — closed without counting as a miss.
+  coveredByDinner Boolean @default(false)
 
   deliveredAt    DateTime?
   lastPushError  String?

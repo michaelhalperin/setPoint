@@ -6,6 +6,7 @@ struct SettingsView: View {
     @State private var model: SettingsViewModel?
     @AppStorage(MassUnit.storageKey) private var massUnit = MassUnit.localeDefault
     @AppStorage("you.seen.calendar") private var seenCalendar = false
+    @AppStorage("you.seen.training") private var seenTraining = false
     #if DEBUG
     @State private var showingDevOnboarding = false
     @State private var showingDevMealConfirm = false
@@ -82,6 +83,18 @@ struct SettingsView: View {
                             title: "Calendar",
                             value: env.calendar.connected ? "Connected" : "Off",
                             isNew: !seenCalendar
+                        )
+                    }
+                    rowDivider
+                    NavigationLink {
+                        TrainingScreen()
+                            .onAppear { seenTraining = true }
+                    } label: {
+                        YouRow(
+                            symbol: "dumbbell.fill",
+                            title: "Training",
+                            value: nil,
+                            isNew: !seenTraining
                         )
                     }
                 }

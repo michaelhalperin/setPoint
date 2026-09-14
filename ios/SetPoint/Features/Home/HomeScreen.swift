@@ -76,6 +76,16 @@ struct HomeContent: View {
                             }
                         )
                         .transition(.opacity)
+                    } else if let home = loadedHome, checkIn.kind == "REFUEL" {
+                        RefuelSheet(
+                            checkIn: checkIn,
+                            dinnerMin: home.resolvedMealTimes.dinnerMin,
+                            remainingSeconds: refuelSecondsLeft(home: home),
+                            onHadThis: ateThis,
+                            onCoveredByDinner: coverRefuel,
+                            onDismiss: closeCheckIn
+                        )
+                        .transition(.move(edge: .bottom))
                     } else if let home = loadedHome {
                         PrescriptionView(
                             checkIn: checkIn,
@@ -205,7 +215,13 @@ struct HomeContent: View {
             Task {
                 await env.push.syncAuthorizationStatus()
                 await env.calendar.uploadBusy()
+                await env.health.uploadWorkouts()
                 await model.load(showSpinner: false)
+            }
+        }
+        .onChange(of: activeCheckIn?.id) { _, id in
+            if activeCheckIn?.kind == "REFUEL" {
+                showingCheckIn = true
             }
         }
     }
@@ -230,7 +246,7 @@ struct HomeContent: View {
         let moment = TodayMoment.resolve(home)
         return ScrollView {
             VStack(alignment: .leading, spacing: Space.lg) {
-                if moment.takesOver, let checkIn = home.activeCheckIn {
+                if moment.takesOver, let checkIn = home.activeCheckIn, checkIn.kind != "REFUEL" {
                     CheckInTakeover(
                         home: home,
                         checkIn: checkIn,
@@ -307,6 +323,28 @@ struct HomeContent: View {
 
     private func closeCheckIn() {
         withAnimation(springForCheckIn) { showingCheckIn = false }
+    }
+
+    private func refuelSecondsLeft(home: HomeResponse) -> Int {
+        guard let until = home.training?.refuelUntilMin else { return 45 * 60 }
+        let left = until - (home.day?.nowMin ?? 0)
+        return max(0, left * 60)
+    }
+
+    private func coverRefuel() {
+        guard let checkIn = activeCheckIn, !checkInBusy else { return }
+        checkInBusy = true
+        checkInError = nil
+        Task {
+            do {
+                try await CheckInActions.cover(checkInID: checkIn.id, api: env.api)
+                closeCheckIn()
+                await model.load(showSpinner: false)
+            } catch {
+                checkInError = UserFacingError.message(for: error, fallback: "Couldn't close that. Try again.")
+            }
+            checkInBusy = false
+        }
     }
 
     /// After "I already ate": open the dock at the meal's time so logging it is one step.

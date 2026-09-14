@@ -23,6 +23,7 @@ function makeFakePrisma(users: AnyRow[], opts: { seedFoods?: boolean } = {}) {
   const foodItems: AnyRow[] = [];
   const dietaryRestrictions: AnyRow[] = [];
   const prescriptions: AnyRow[] = [];
+  const workouts: AnyRow[] = [];
   let seq = 0;
   const id = (p: string) => `${p}_${(seq += 1)}`;
 
@@ -123,6 +124,7 @@ function makeFakePrisma(users: AnyRow[], opts: { seedFoods?: boolean } = {}) {
     dietaryRestriction: collection(dietaryRestrictions, 'dr'),
     prescription: collection(prescriptions, 'rx'),
     calendarBusyBlock: { findMany: async () => [] },
+    workout: collection(workouts, 'wo'),
   };
 }
 
@@ -191,6 +193,34 @@ describe('runScoreConfidenceJob', () => {
     expect(fake.__tables.checkIns[0]).toMatchObject({ status: 'PENDING', tier: 1 });
     expect(fake.__tables.prescriptions[0]).toMatchObject({ checkInId: fake.__tables.checkIns[0]?.id, status: 'OFFERED' });
     expect(sentPushes).toHaveLength(1);
+  });
+
+  it('fires a refuel check-in after a workout with nothing logged', async () => {
+    const fake = makeFakePrisma([baseUser()], { seedFoods: true });
+    const now = new Date('2026-07-01T16:00:00Z');
+    await fake.workout.create({
+      data: {
+        userId: 'u1',
+        source: 'HEALTHKIT',
+        kind: 'STRENGTH',
+        start: new Date(now.getTime() - 110 * 60_000),
+        durationMin: 60,
+      },
+    });
+    fake.meal.create({
+      data: { userId: 'u1', kcal: 500, proteinG: 30, loggedAt: new Date('2026-07-01T12:00:00Z') },
+    });
+
+    const summary = await runScoreConfidenceJob({
+      prisma: fake as unknown as PrismaClient,
+      push,
+      voice,
+      now,
+    });
+
+    expect(summary.checkInsCreated).toBe(1);
+    expect(fake.__tables.checkIns[0]).toMatchObject({ kind: 'REFUEL', slot: 'refuel' });
+    expect(sentPushes[0]?.category).toBe('REFUEL');
   });
 
   it('still fires (without a prescription) when the food list is empty', async () => {

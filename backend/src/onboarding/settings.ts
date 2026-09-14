@@ -48,6 +48,10 @@ export type SettingsView = {
     workdaysOnly: boolean;
     includeAllDay: boolean;
   };
+  training: {
+    addCalories: boolean;
+    preWorkoutNudgeMin: number | null;
+  };
 };
 
 export type SettingsPatch = {
@@ -82,6 +86,10 @@ export type SettingsPatch = {
     minBlockMin?: number;
     workdaysOnly?: boolean;
     includeAllDay?: boolean;
+  };
+  training?: {
+    addCalories?: boolean;
+    preWorkoutNudgeMin?: number | null;
   };
 };
 
@@ -226,6 +234,13 @@ export async function updateSettings(
       if (patch.calendar.workdaysOnly != null) profileData.calendarWorkdaysOnly = patch.calendar.workdaysOnly;
       if (patch.calendar.includeAllDay != null) profileData.calendarIncludeAllDay = patch.calendar.includeAllDay;
     }
+    if (patch.training) {
+      if (patch.training.addCalories != null) profileData.trainingAddCalories = patch.training.addCalories;
+      if (patch.training.preWorkoutNudgeMin !== undefined) {
+        profileData.preWorkoutNudgeMin =
+          patch.training.preWorkoutNudgeMin === 0 ? null : patch.training.preWorkoutNudgeMin;
+      }
+    }
     if (Object.keys(profileData).length > 0) {
       await tx.onboardingProfile.update({ where: { userId }, data: profileData });
     }
@@ -336,6 +351,10 @@ function toView(user: UserWithSettings, weekendSuggestion: WeekendBreakfastSugge
       minBlockMin: p.calendarMinBlockMin ?? 60,
       workdaysOnly: p.calendarWorkdaysOnly ?? true,
       includeAllDay: p.calendarIncludeAllDay ?? false,
+    },
+    training: {
+      addCalories: p.trainingAddCalories ?? true,
+      preWorkoutNudgeMin: p.preWorkoutNudgeMin ?? null,
     },
   };
 }

@@ -27,6 +27,8 @@ struct TodayHero: View {
                     firedSlot: firedSlot
                 ),
                 busyArcs: (home.busyBlocks ?? []).map { $0.startMin ... $0.endMin },
+                workoutArcs: workoutArcs,
+                refuelArcs: refuelArcs,
                 ghostKnobs: ghosts
             ) {
                 center
@@ -77,6 +79,19 @@ struct TodayHero: View {
         return times
     }
 
+    private var workoutArcs: [ClosedRange<Int>] {
+        (home.training?.workouts ?? []).map { w in
+            w.startMin ... (w.startMin + max(w.durationMin, 15))
+        }
+    }
+
+    private var refuelArcs: [ClosedRange<Int>] {
+        guard let until = home.training?.refuelUntilMin, let w = home.training?.workouts.first else { return [] }
+        let start = w.startMin + w.durationMin
+        guard until > start else { return [] }
+        return [start ... until]
+    }
+
     private var ghosts: [DialGhost] {
         (home.movedSlots ?? []).compactMap { moved in
             guard let slot = MealSlot(rawValue: moved.slot) else { return nil }
@@ -98,6 +113,19 @@ struct TodayHero: View {
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
                     .background(Palette.surfaceSunk, in: Capsule())
+            }
+            if let training = home.training, !training.workouts.isEmpty {
+                NavigationLink {
+                    TrainingScreen()
+                } label: {
+                    Text(training.bumpKcal > 0 ? "Training · +\(training.bumpKcal) ›" : "Training ›")
+                        .font(Typography.data(12, weight: .bold))
+                        .foregroundStyle(Palette.ink)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Palette.surfaceSunk, in: Capsule())
+                }
+                .buttonStyle(.plain)
             }
             Spacer(minLength: 0)
         }

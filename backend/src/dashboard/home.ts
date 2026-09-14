@@ -21,6 +21,8 @@ import {
   type SlotName,
 } from '../engine/index.js';
 import { SCHEDULE_CONFIG } from '../engine/mealSchedule.js';
+import { REFUEL_WINDOW_MIN } from '../engine/training.js';
+import { trainingForLocalDay, workoutHomeRows } from '../training/day.js';
 import type { ManagerVoice } from '../managerVoice/types.js';
 import { toMealSummaries, type MealSummary } from '../meals/summary.js';
 import type { PhotoStore } from '../photos/store.js';
@@ -70,11 +72,25 @@ export type HomeView = {
   needsWeighIn: boolean;
   busyBlocks: { startMin: number; endMin: number }[];
   movedSlots: { slot: SlotName; fromMin: number; toMin: number }[];
+  training: {
+    bumpKcal: number;
+    addCalories: boolean;
+    workouts: {
+      id: string;
+      kind: string;
+      source: string;
+      startMin: number;
+      durationMin: number;
+      activeKcal: number | null;
+    }[];
+    refuelUntilMin: number | null;
+  };
   activeCheckIn: null | {
     id: string;
     tier: number;
-    /** The meal it's about; null for a tier-3 conversation. */
+        /** The meal it's about; null for a tier-3 conversation. */
     slot: SlotName | null;
+    kind: string;
     status: string;
     message: string | null;
     deferUntil: string | null;
@@ -97,7 +113,7 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    include: { onboarding: true, safetyScreening: true, escalationState: true },
+    include: { onboarding: true, safetyScreening: true, escalationState: true, weightEntries: { orderBy: { measuredAt: 'desc' }, take: 1 } },
   });
   if (!user?.onboarding) throw new OnboardingIncompleteError('onboarding not complete');
 
@@ -133,7 +149,7 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
     }),
     prisma.checkIn.findMany({
       where: { userId, createdAt: { gte: dayStart } },
-      select: { createdAt: true, tier: true, slot: true },
+      select: { createdAt: true, tier: true, slot: true, kind: true },
     }),
     prisma.weightEntry.findFirst({
       where: { userId },
@@ -148,7 +164,17 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
 
   const consumedKcal = todayMeals.reduce((acc, m) => acc + m.kcal, 0);
   const consumedProteinG = round1(todayMeals.reduce((acc, m) => acc + m.proteinG, 0));
-  const targetKcal = profile.dailyKcalTarget;
+  const addCalories = profile.trainingAddCalories ?? true;
+  const weightKg = user.weightEntries[0]?.weightKg ?? profile.weightKg ?? 80;
+  const trainingDay = await trainingForLocalDay(prisma, {
+    userId,
+    now,
+    timezone: user.timezone,
+    weightKg,
+    baseKcal: profile.dailyKcalTarget,
+    addCalories,
+  });
+  const targetKcal = trainingDay.targetKcal;
   const targetProteinG = profile.dailyProteinTargetG;
   const goal = profile.goal as Goal;
 
@@ -191,7 +217,7 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
         times,
         mealMinutesToday: todayMeals.map((m) => localMinute(m.loggedAt)),
         checkedSlotsToday: todayCheckIns
-          .filter((c) => c.tier < TIER.CONVERSATION)
+          .filter((c) => c.tier < TIER.CONVERSATION && c.kind !== 'REFUEL' && c.kind !== 'PRE_WORKOUT')
           .map((c) => slotNameOf(c.slot) ?? checkInSlotAt(localMinute(c.createdAt), times))
           .filter((slot): slot is SlotName => slot !== null),
         consumedKcal,
@@ -212,6 +238,13 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
       }))
     : [];
   const movedSlots = movedSlotsToday(times, SCHEDULE_CONFIG.graceMin, todayBusy, calendarPrefs, weekday);
+  const trainingRows = workoutHomeRows(trainingDay.workouts, user.timezone, dayStart);
+  const firstSession = trainingDay.workouts[0];
+  const refuelUntilMin = firstSession
+    ? Math.floor(msSinceLocalMidnight(firstSession.start, user.timezone) / 60_000) +
+      firstSession.durationMin +
+      REFUEL_WINDOW_MIN
+    : null;
 
   const managerNote = await deps.voice.homeNote({
     goal,
@@ -257,6 +290,12 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
     nextCheckIn,
     busyBlocks,
     movedSlots,
+    training: {
+      bumpKcal: addCalories ? trainingDay.bump : 0,
+      addCalories,
+      workouts: trainingRows,
+      refuelUntilMin,
+    },
     needsWeighIn:
       goal !== 'MAINTAIN' &&
       (!lastWeighIn || now.getTime() - lastWeighIn.measuredAt.getTime() > 7 * 24 * 3_600_000),
@@ -269,6 +308,7 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
               ? slotNameOf(activeCheckIn.slot) ??
                 checkInSlotAt(localMinute(activeCheckIn.createdAt), times)
               : null,
+          kind: activeCheckIn.kind,
           status: activeCheckIn.status,
           message: activeCheckIn.message,
           deferUntil: activeCheckIn.deferUntil?.toISOString() ?? null,

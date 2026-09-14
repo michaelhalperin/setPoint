@@ -425,4 +425,14 @@ final class FakeHealthDataSource: HealthDataSource, @unchecked Sendable {
         let newId = weights.last?.id ?? afterId
         return (result, Data("\(newId)".utf8))
     }
+
+    var workouts: [HealthWorkoutSample] = []
+
+    func workouts(from: Date, to: Date) async throws -> [HealthWorkoutSample] {
+        workouts.filter { $0.start >= from && $0.start <= to }
+    }
+
+    func enableBackgroundDelivery(sampleType: HKSampleType, frequency: HKUpdateFrequency) async throws {}
+
+    func startObserver(sampleType: HKSampleType, handler: @escaping HealthObserverHandler) {}
 }

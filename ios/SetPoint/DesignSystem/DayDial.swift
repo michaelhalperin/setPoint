@@ -45,6 +45,10 @@ struct DayDial<Center: View>: View {
     var today: DialToday?
     /// Hatched arcs just outside the ring — busy blocks for today.
     var busyArcs: [ClosedRange<Int>] = []
+    /// Dark rim marks for today's workouts.
+    var workoutArcs: [ClosedRange<Int>] = []
+    /// Green rim marks for the post-workout refuel window.
+    var refuelArcs: [ClosedRange<Int>] = []
     /// Dashed knobs at a meal's usual time after calendar moved the live knob.
     var ghostKnobs: [DialGhost] = []
     /// When set, knobs can be dragged around the ring. Onboarding leaves this nil.
@@ -145,6 +149,39 @@ struct DayDial<Center: View>: View {
                         radius: r + ringWidth * 0.72,
                         cap: .butt,
                         dashes: [3, 3]
+                    )
+                    .position(c)
+                    .allowsHitTesting(false)
+                }
+
+                ForEach(Array(workoutArcs.enumerated()), id: \.offset) { _, range in
+                    arc(
+                        from: range.lowerBound,
+                        to: range.upperBound,
+                        color: Palette.ink.opacity(0.72),
+                        width: max(5, ringWidth * 0.42),
+                        radius: r + ringWidth * 0.72,
+                        cap: .round
+                    )
+                    .position(c)
+                    .allowsHitTesting(false)
+                    Image(systemName: "dumbbell.fill")
+                        .font(.system(size: max(9, ringWidth * 0.55), weight: .bold))
+                        .foregroundStyle(Palette.background)
+                        .frame(width: max(18, ringWidth * 1.15), height: max(18, ringWidth * 1.15))
+                        .background(Palette.ink, in: Circle())
+                        .position(point(range.lowerBound, radius: r + ringWidth * 0.72, center: c))
+                        .allowsHitTesting(false)
+                }
+
+                ForEach(Array(refuelArcs.enumerated()), id: \.offset) { _, range in
+                    arc(
+                        from: range.lowerBound,
+                        to: range.upperBound,
+                        color: Palette.dayOnTrack.opacity(0.9),
+                        width: max(4, ringWidth * 0.38),
+                        radius: r + ringWidth * 0.72,
+                        cap: .round
                     )
                     .position(c)
                     .allowsHitTesting(false)
