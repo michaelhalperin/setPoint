@@ -34,6 +34,8 @@ final class HomeViewModel {
             let home: HomeResponse = try await api.get("/api/home")
             phase = .loaded(home)
             LiveActivityController.shared.sync(activeCheckIn: home.activeCheckIn)
+            TodaySnapshotSync.write(home: home)
+            await HealthKitManager.shared.reconcileToday(home.meals)
         } catch APIError.unauthorized {
             onUnauthorized()
         } catch let APIError.http(status, _) where status == 409 {
@@ -48,6 +50,7 @@ final class HomeViewModel {
             try await api.delete("/api/meals/\(id)")
             onMealChanged()
             await load(showSpinner: false)
+            await HealthKitManager.shared.deleteMealFromHealth(id: id)
         } catch APIError.unauthorized {
             onUnauthorized()
             throw APIError.unauthorized
@@ -56,7 +59,9 @@ final class HomeViewModel {
 
     func applyLoggedMeal(_ meal: MealSummary, slot: MealSlot) {
         guard case let .loaded(home) = phase else { return }
-        phase = .loaded(home.inserting(meal, into: slot))
+        let updated = home.inserting(meal, into: slot)
+        phase = .loaded(updated)
+        TodaySnapshotSync.write(home: updated)
     }
 
     private func message(for error: Error) -> String {

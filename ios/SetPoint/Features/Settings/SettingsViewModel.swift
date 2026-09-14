@@ -23,6 +23,8 @@ final class SettingsViewModel {
     var kcalTarget = 2500
     var proteinTarget: Int?
     var mealTimes = MealTimesPayload(breakfastMin: 480, lunchMin: 780, dinnerMin: 1140)
+    var weekendMealTimes = WeekendMealTimesPayload.empty
+    var weekendDays = WeekendDays.default
     var quietHours = QuietHoursPayload(startMin: 1380, endMin: 420)
     var checkInsPaused = false
     var restrictions: [String] = []
@@ -35,6 +37,7 @@ final class SettingsViewModel {
     private(set) var startWeightKg: Double?
     private(set) var currentWeightKg: Double?
     private(set) var minHealthyWeightKg: Double?
+    private(set) var weekendSuggestion: WeekendSuggestion?
     private(set) var enforcementEnabled = true
     private(set) var enforcementDisabledReason: String?
 
@@ -139,6 +142,8 @@ final class SettingsViewModel {
             || kcalTarget != o.dailyKcalTarget
             || proteinTarget != o.dailyProteinTargetG
             || mealTimes != o.mealTimes
+            || weekendMealTimes != (o.weekendMealTimes ?? .empty)
+            || weekendDays != (o.weekendDays ?? WeekendDays.default)
             || quietHours != o.quietHours
             || checkInsPaused != o.checkInsPaused
             || Set(restrictions) != Set(o.restrictions.map(\.label))
@@ -155,7 +160,10 @@ final class SettingsViewModel {
 
     var mealTimesDirty: Bool {
         guard let o = original else { return false }
-        return mealTimes != o.mealTimes || quietHours != o.quietHours
+        return mealTimes != o.mealTimes
+            || weekendMealTimes != (o.weekendMealTimes ?? .empty)
+            || weekendDays != (o.weekendDays ?? WeekendDays.default)
+            || quietHours != o.quietHours
     }
 
     var restrictionsDirty: Bool {
@@ -206,6 +214,19 @@ final class SettingsViewModel {
         }
         if mealTimes.dinnerMin != o.mealTimes.dinnerMin {
             parts.append("Dinner \(formatMinutes(o.mealTimes.dinnerMin)) → \(formatMinutes(mealTimes.dinnerMin))")
+        }
+        let oldWeekend = o.weekendMealTimes ?? .empty
+        if weekendMealTimes.breakfastMin != oldWeekend.breakfastMin {
+            parts.append("Weekends breakfast \(formatMinutes(oldWeekend.breakfastMin ?? o.mealTimes.breakfastMin)) → \(formatMinutes(weekendMealTimes.breakfastMin ?? mealTimes.breakfastMin))")
+        }
+        if weekendMealTimes.lunchMin != oldWeekend.lunchMin {
+            parts.append("Weekends lunch \(formatMinutes(oldWeekend.lunchMin ?? o.mealTimes.lunchMin)) → \(formatMinutes(weekendMealTimes.lunchMin ?? mealTimes.lunchMin))")
+        }
+        if weekendMealTimes.dinnerMin != oldWeekend.dinnerMin {
+            parts.append("Weekends dinner \(formatMinutes(oldWeekend.dinnerMin ?? o.mealTimes.dinnerMin)) → \(formatMinutes(weekendMealTimes.dinnerMin ?? mealTimes.dinnerMin))")
+        }
+        if weekendDays != (o.weekendDays ?? WeekendDays.default) {
+            parts.append(WeekendDays.summary(weekendDays))
         }
         if quietHours != o.quietHours {
             parts.append(
@@ -281,6 +302,8 @@ final class SettingsViewModel {
         var patch = SettingsPatch(
             goal: goal.rawValue,
             mealTimes: mealTimes,
+            weekendMealTimes: weekendMealTimes,
+            weekendDays: weekendDays,
             quietHours: quietHours,
             checkInsPaused: checkInsPaused,
             restrictions: restrictions.map { .init(label: $0, source: nil) },
@@ -342,6 +365,9 @@ final class SettingsViewModel {
         kcalTarget = s.dailyKcalTarget
         proteinTarget = s.dailyProteinTargetG
         mealTimes = s.mealTimes
+        weekendMealTimes = s.weekendMealTimes ?? .empty
+        weekendDays = s.weekendDays ?? WeekendDays.default
+        weekendSuggestion = s.weekendSuggestion
         quietHours = s.quietHours
         checkInsPaused = s.checkInsPaused
         restrictions = s.restrictions.map(\.label)
@@ -351,6 +377,26 @@ final class SettingsViewModel {
         timezone = s.timezone
         enforcementEnabled = s.enforcementEnabled
         enforcementDisabledReason = s.enforcementDisabledReason
+    }
+
+    var resolvedWeekendTimes: MealTimesPayload {
+        weekendMealTimes.resolved(from: mealTimes)
+    }
+
+    func applyWeekendSuggestion() {
+        guard let suggestion = weekendSuggestion else { return }
+        weekendMealTimes.breakfastMin = suggestion.breakfastMin
+    }
+
+    func setWeekendTime(_ minute: Int, slot: MealSlot) {
+        let resolved = resolvedWeekendTimes
+        let clamped = MealTimeEditing.clamp(
+            minute, slot: slot,
+            breakfast: resolved.breakfastMin,
+            lunch: resolved.lunchMin,
+            dinner: resolved.dinnerMin
+        )
+        weekendMealTimes[slot] = clamped
     }
 
     private func formatKg(_ kg: Double) -> String {
@@ -374,6 +420,13 @@ final class SettingsViewModel {
             heightCm: 182, minHealthyWeightKg: 61.3
         ))
         vm.phase = .loaded
+        return vm
+    }
+
+    static func previewedWeekends() -> SettingsViewModel {
+        let vm = previewed()
+        vm.weekendMealTimes = .init(breakfastMin: 600, lunchMin: 840, dinnerMin: 1260)
+        vm.weekendSuggestion = WeekendSuggestion(breakfastMin: 615, lateByMin: 135)
         return vm
     }
     #endif

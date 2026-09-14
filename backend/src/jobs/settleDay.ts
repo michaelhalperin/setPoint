@@ -3,6 +3,7 @@ import type { PrismaClient } from '@prisma/client';
 import { dateOnly, localDateISO, shiftDateISO, startOfLocalDay, type Goal } from '../engine/index.js';
 import { classifyDay } from '../dashboard/classify.js';
 import type { ManagerVoice } from '../managerVoice/types.js';
+import { trainingForLocalDay } from '../training/day.js';
 
 export type SettleDayDeps = {
   prisma: PrismaClient;
@@ -52,7 +53,15 @@ export async function runSettleDayJob(deps: SettleDayDeps): Promise<SettleDaySum
       });
 
       const kcalConsumed = meals.reduce((acc, m) => acc + m.kcal, 0);
-      const kcalTarget = user.onboarding.dailyKcalTarget;
+      const training = await trainingForLocalDay(deps.prisma, {
+        userId: user.id,
+        now: yesterdayStart,
+        timezone: user.timezone,
+        weightKg: user.onboarding.weightKg ?? 80,
+        baseKcal: user.onboarding.dailyKcalTarget,
+        addCalories: user.onboarding.trainingAddCalories ?? true,
+      });
+      const kcalTarget = training.targetKcal;
       const kind = classifyDay(kcalConsumed, kcalTarget);
 
       const summaryLine = await deps.voice.daySummary({

@@ -23,6 +23,8 @@ final class SettingsTests: XCTestCase {
         XCTAssertNil(s.preferredDurationWeeks)
         XCTAssertTrue(s.checkInsPaused)
         XCTAssertEqual(s.mealTimes, MealTimesPayload(breakfastMin: 480, lunchMin: 780, dinnerMin: 1140))
+        XCTAssertEqual(s.weekendDays ?? WeekendDays.default, WeekendDays.default)
+        XCTAssertNil(s.weekendSuggestion)
         XCTAssertEqual(s.restrictions.first?.label, "Peanuts")
         XCTAssertFalse(s.enforcementEnabled)
     }
@@ -35,6 +37,15 @@ final class SettingsTests: XCTestCase {
         XCTAssertEqual(json["checkInsPaused"] as? Bool, true)
         XCTAssertNil(json["goal"])
         XCTAssertNil(json["mealTimes"])
+    }
+
+    func testWeekendMealTimesEncodeExplicitNulls() throws {
+        let json = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: JSONEncoder().encode(WeekendMealTimesPayload.empty)) as? [String: Any]
+        )
+        XCTAssertEqual(json["breakfastMin"] as? NSNull, NSNull())
+        XCTAssertEqual(json["lunchMin"] as? NSNull, NSNull())
+        XCTAssertEqual(json["dinnerMin"] as? NSNull, NSNull())
     }
 
     func testDeleteAccountRequestCarriesTheConfirmationPhrase() throws {
@@ -93,5 +104,35 @@ final class SettingsTests: XCTestCase {
         vm.revertToOriginal()
         XCTAssertEqual(vm.goal, originalGoal)
         XCTAssertFalse(vm.dirty)
+    }
+
+    func testBurnInsightDecodesReadyAndEmpty() throws {
+        let ready = try JSONDecoder().decode(BurnInsightResponse.self, from: Data("""
+        {
+          "version": "expenditure.v1", "ready": true,
+          "burnKcal": 2870, "rangeLow": 2790, "rangeHigh": 2950,
+          "avgIntakeKcal": 2910, "slopeKgPerDay": 0.005,
+          "loggedDays": 52, "windowDays": 56, "weighIns": 9, "planKcal": 3120,
+          "weeks": [{ "weekStart": "2026-07-20", "intakeKcal": 2680, "burnKcal": 2870, "burnLow": 2790, "burnHigh": 2950 }]
+        }
+        """.utf8))
+        XCTAssertEqual(ready.burnKcal, 2870)
+        XCTAssertEqual(ready.weeks.count, 1)
+
+        let empty = try JSONDecoder().decode(BurnInsightResponse.self, from: Data("""
+        { "version": "expenditure.v1", "ready": false, "reason": "not_enough_days",
+          "loggedDays": 11, "windowDays": 56, "weighIns": 2, "planKcal": 3120, "weeks": [] }
+        """.utf8))
+        XCTAssertFalse(empty.ready)
+        XCTAssertEqual(empty.reason, "not_enough_days")
+    }
+
+    func testSubscriptionStatusDecodes() throws {
+        let status = try JSONDecoder().decode(SubscriptionStatusPayload.self, from: Data("""
+        { "entitled": true, "status": "TRIALING", "productId": "setpoint.yearly", "expiresAt": "2026-09-21T12:00:00Z" }
+        """.utf8))
+        XCTAssertTrue(status.entitled)
+        XCTAssertEqual(status.productId, SubscriptionProductID.yearly)
+        XCTAssertEqual(SubscriptionProductID.monthly, "setpoint.monthly")
     }
 }

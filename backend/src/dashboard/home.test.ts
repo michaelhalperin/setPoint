@@ -26,8 +26,11 @@ function fakePrisma(over: { user?: AnyRow | null; meals?: AnyRow[]; checkIn?: An
       findFirst: async () =>
         [...meals].sort((a, b) => (b.loggedAt as Date).getTime() - (a.loggedAt as Date).getTime())[0] ?? null,
     },
-    checkIn: { findFirst: async () => over.checkIn ?? null, findMany: async () => [] },
+    checkIn: { findFirst: async () => over.checkIn ?? null, findMany: async () => [], count: async () => 0 },
     weightEntry: { findFirst: async () => null },
+    calendarBusyBlock: { findMany: async () => [] },
+    workout: { findMany: async () => [] },
+    dayAppetite: { findUnique: async () => null },
   } as unknown as PrismaClient;
 }
 
@@ -44,6 +47,7 @@ const defaultUser: AnyRow = {
     dinnerMin: 1140,
   },
   safetyScreening: { enforcementEnabled: true },
+  weightEntries: [],
 };
 
 describe('buildHome', () => {
@@ -93,6 +97,7 @@ describe('buildHome', () => {
     expect(view.framing).toMatchObject({ state: 'under', accent: true, primaryCta: 'log_meal', heroKcal: 1700 });
     expect(view.managerNote).toBe('MANAGER NOTE');
     expect(view.needsWeighIn).toBe(true);
+    expect(view.training).toMatchObject({ bumpKcal: 0, workouts: [], addCalories: true });
   });
 
   it('feeds the note quiet mode and pace so it does not repeat the number or push in quiet mode', async () => {

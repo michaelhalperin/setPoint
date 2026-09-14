@@ -66,7 +66,7 @@ enum TodayMoment: Equatable {
     case quiet
 
     static func resolve(_ home: HomeResponse) -> TodayMoment {
-        if let checkIn = home.activeCheckIn {
+        if let checkIn = home.activeCheckIn, checkIn.kind != "REFUEL" {
             if checkIn.tier >= 3 { return .conversation }
             if checkIn.status == "DEFERRED" {
                 return .snoozed(until: checkIn.deferUntil.flatMap(MealFormat.parse))

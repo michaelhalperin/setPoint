@@ -60,6 +60,10 @@ struct MainTabView: View {
             deepLinkCheckInID = id
             env.push.pendingCheckInID = nil
         }
+        .onChange(of: env.changes.pendingLogPhoto) { _, pending in
+            guard pending else { return }
+            selection = .today
+        }
         .task {
             guard home == nil else { return }
             let h = HomeViewModel(
@@ -74,6 +78,7 @@ struct MainTabView: View {
             )
             home = h
             await h.load()
+            await env.subscription.refresh(using: env.api)
         }
     }
 

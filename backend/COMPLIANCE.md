@@ -17,9 +17,17 @@ Apple requires in-app account deletion for any app with account creation.
 - [x] `NSHealthShareUsageDescription` — reads height/weight/age/sex for targets;
       HRV/RHR may adjust an already-due check-in and never independently diagnose
       under-fueling.
-- [x] Do **not** request HealthKit write access — the app only reads.
+- [x] `NSHealthUpdateUsageDescription` — writes logged meals (calories, protein,
+      carbs, fat) as a food correlation, and optionally in-app weigh-ins as body
+      mass. Per-type toggles live in Settings → Apple Health.
 - [x] Backend never receives raw HRV/RHR — only a derived deviation.
 - [x] Health data is not used for advertising.
+
+## Calendar
+
+- [x] Event titles, locations and attendees never leave the device. Only busy
+      intervals (start/end) are uploaded, and only when the user connects a calendar.
+- [x] `NSCalendarsFullAccessUsageDescription` states that only busy times are used.
 
 ## Notifications
 
@@ -32,7 +40,8 @@ Apple requires in-app account deletion for any app with account creation.
 
 - [x] `/privacy` and `/terms` describe observed meal behavior, not physiological
       certainty. Minimum age is 16. Medical eligibility includes uncertain
-      answers (passive tracking, no check-ins).
+      answers (passive tracking, no check-ins). Barcode lookups go to Open Food
+      Facts (barcode only); saved meals stay on the account.
 - [ ] App Store Connect privacy labels still need to be filed at submission.
 
 ## Safety screening

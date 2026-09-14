@@ -18,10 +18,12 @@ function makeFakePrisma(users: AnyRow[], opts: { seedFoods?: boolean } = {}) {
   const escalationStates: AnyRow[] = [];
   const escalationConversations: AnyRow[] = [];
   const meals: AnyRow[] = [];
+  const savedMeals: AnyRow[] = [];
   const pushTokens: AnyRow[] = [];
   const foodItems: AnyRow[] = [];
   const dietaryRestrictions: AnyRow[] = [];
   const prescriptions: AnyRow[] = [];
+  const workouts: AnyRow[] = [];
   let seq = 0;
   const id = (p: string) => `${p}_${(seq += 1)}`;
 
@@ -101,6 +103,8 @@ function makeFakePrisma(users: AnyRow[], opts: { seedFoods?: boolean } = {}) {
       escalationConversations,
       prescriptions,
       pushTokens,
+      savedMeals,
+      dietaryRestrictions,
     },
     user: {
       findMany: async ({ where, take }: { where?: AnyRow; take?: number } = {}) => {
@@ -115,10 +119,14 @@ function makeFakePrisma(users: AnyRow[], opts: { seedFoods?: boolean } = {}) {
     escalationState: collection(escalationStates, 'es'),
     escalationConversation: collection(escalationConversations, 'ec'),
     meal: collection(meals, 'm'),
+    savedMeal: collection(savedMeals, 'sm'),
     pushToken: collection(pushTokens, 'pt'),
     foodItem: collection(foodItems, 'fi'),
     dietaryRestriction: collection(dietaryRestrictions, 'dr'),
     prescription: collection(prescriptions, 'rx'),
+    calendarBusyBlock: { findMany: async () => [] },
+    workout: collection(workouts, 'wo'),
+    dayAppetite: { findUnique: async () => null },
   };
 }
 
@@ -189,6 +197,65 @@ describe('runScoreConfidenceJob', () => {
     expect(sentPushes).toHaveLength(1);
   });
 
+  it('fires a refuel check-in after a workout with nothing logged', async () => {
+    const fake = makeFakePrisma([baseUser()], { seedFoods: true });
+    const now = new Date('2026-07-01T16:00:00Z');
+    await fake.workout.create({
+      data: {
+        userId: 'u1',
+        source: 'HEALTHKIT',
+        kind: 'STRENGTH',
+        start: new Date(now.getTime() - 110 * 60_000),
+        durationMin: 60,
+      },
+    });
+    fake.meal.create({
+      data: { userId: 'u1', kcal: 500, proteinG: 30, loggedAt: new Date('2026-07-01T12:00:00Z') },
+    });
+
+    const summary = await runScoreConfidenceJob({
+      prisma: fake as unknown as PrismaClient,
+      push,
+      voice,
+      now,
+    });
+
+    expect(summary.checkInsCreated).toBe(1);
+    expect(fake.__tables.checkIns[0]).toMatchObject({ kind: 'REFUEL', slot: 'refuel' });
+    expect(sentPushes[0]?.category).toBe('REFUEL');
+  });
+
+  it('never suggests a restricted food after a workout', async () => {
+    const fake = makeFakePrisma([baseUser()], { seedFoods: true });
+    const now = new Date('2026-07-01T16:00:00Z');
+    fake.__tables.dietaryRestrictions.push({ id: 'dr1', userId: 'u1', token: 'dairy', isHardExclusion: true });
+    await fake.workout.create({
+      data: { userId: 'u1', source: 'HEALTHKIT', kind: 'STRENGTH', start: new Date(now.getTime() - 110 * 60_000), durationMin: 60 },
+    });
+    fake.meal.create({ data: { userId: 'u1', kcal: 500, proteinG: 30, loggedAt: new Date('2026-07-01T12:00:00Z') } });
+
+    await runScoreConfidenceJob({ prisma: fake as unknown as PrismaClient, push, voice, now });
+
+    const rx = fake.__tables.prescriptions[0] as { items: { create: { name: string }[] } } | undefined;
+    const names = (rx?.items.create ?? []).map((i) => i.name);
+    expect(names.length).toBeGreaterThan(0);
+    const dairy = STAPLE_FOODS.filter((f) => f.allergens.includes('dairy')).map((f) => f.name);
+    expect(names.some((n) => dairy.includes(n))).toBe(false);
+  });
+
+  it('does not send a refuel check-in for a planned session nobody recorded', async () => {
+    const fake = makeFakePrisma([baseUser()], { seedFoods: true });
+    const now = new Date('2026-07-01T16:00:00Z');
+    await fake.workout.create({
+      data: { userId: 'u1', source: 'PLANNED', kind: 'STRENGTH', start: new Date(now.getTime() - 110 * 60_000), durationMin: 60 },
+    });
+    fake.meal.create({ data: { userId: 'u1', kcal: 500, proteinG: 30, loggedAt: new Date('2026-07-01T12:00:00Z') } });
+
+    await runScoreConfidenceJob({ prisma: fake as unknown as PrismaClient, push, voice, now });
+
+    expect(fake.__tables.checkIns.some((c) => c.kind === 'REFUEL')).toBe(false);
+  });
+
   it('still fires (without a prescription) when the food list is empty', async () => {
     const fake = makeFakePrisma([baseUser()]);
     const summary = await runScoreConfidenceJob({
@@ -200,6 +267,33 @@ describe('runScoreConfidenceJob', () => {
 
     expect(summary.checkInsCreated).toBe(1);
     expect(summary.prescriptionsCreated).toBe(0);
+  });
+
+  it('uses a matching saved meal as the check-in suggestion', async () => {
+    const fake = makeFakePrisma([baseUser()]);
+    fake.__tables.savedMeals.push({
+      id: 'sm_oats',
+      userId: 'u1',
+      name: 'Usual oats',
+      suggestSlot: 'breakfast',
+      useInCheckIns: true,
+      items: [{ name: 'Oats', quantity: '1 bowl', kcal: 420, proteinG: 18, carbsG: 60, fatG: 10 }],
+      kcal: 420,
+      proteinG: 18,
+      carbsG: 60,
+      fatG: 10,
+      lastUsedAt: null,
+      useCount: 4,
+    });
+    const summary = await runScoreConfidenceJob({
+      prisma: fake as unknown as PrismaClient,
+      push,
+      voice,
+      now: NOW,
+    });
+    expect(summary.checkInsCreated).toBe(1);
+    expect(summary.prescriptionsCreated).toBe(1);
+    expect(fake.__tables.prescriptions[0]).toMatchObject({ totalKcal: 420, totalProteinG: 18 });
   });
 
   it('skips a user inside quiet hours without scoring', async () => {

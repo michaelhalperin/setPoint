@@ -17,6 +17,7 @@ struct PrescriptionView: View {
     let onResolved: () -> Void
     /// "I already ate": closed without a log — offer a quick one.
     let onAlreadyAte: () -> Void
+    var suggestSmallerDefault = false
 
     @Environment(AppEnvironment.self) private var env
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -25,6 +26,8 @@ struct PrescriptionView: View {
     @State private var error: String?
     @State private var rated: Bool?
     @State private var drag: CGFloat = 0
+    @State private var variant = "full"
+    @State private var shownPrescription: HomeResponse.ActiveCheckIn.Prescription?
 
     var body: some View {
         VStack(alignment: .leading, spacing: Space.md) {
@@ -62,7 +65,22 @@ struct PrescriptionView: View {
             }
 
             if let rx = checkIn.prescription {
-                PrescriptionCard(prescription: rx, roomy: true)
+                if checkIn.tier < 3 {
+                    Picker("Size", selection: $variant) {
+                        Text("Full meal · \(fullKcal)").tag("full")
+                        Text("Smaller · \(smallerKcal) in 3 bites").tag("smaller")
+                    }
+                    .pickerStyle(.segmented)
+                    .onChange(of: variant) { _, next in
+                        Task { await swapVariant(next) }
+                    }
+                }
+                if suggestSmallerDefault, variant == "full" {
+                    Text("Make smaller your default?")
+                        .font(Typography.data(13, weight: .semibold))
+                        .foregroundStyle(Palette.accentDeep)
+                }
+                PrescriptionCard(prescription: shownPrescription ?? rx, roomy: true)
             } else if let message = checkIn.message {
                 Text(message)
                     .font(Typography.voice(20))
@@ -159,10 +177,28 @@ struct PrescriptionView: View {
     }
 
     private func eatThis() async throws {
-        guard let rx = checkIn.prescription else { return }
+        guard let rx = shownPrescription ?? checkIn.prescription else { return }
         try await CheckInActions.eat(prescriptionID: rx.id, api: env.api)
         Haptics.landed()
         env.changes.mealsChanged()
+    }
+
+    private var fullKcal: Int { checkIn.prescription?.totalKcal ?? 0 }
+    private var smallerKcal: Int { max(150, Int((Double(fullKcal) / 3.0).rounded() * 3)) }
+
+    private func swapVariant(_ next: String) async {
+        struct Body: Encodable { let variant: String }
+        struct Reply: Decodable {
+            let variant: String
+            let prescription: HomeResponse.ActiveCheckIn.Prescription
+        }
+        do {
+            let reply: Reply = try await env.api.post("/api/checkins/\(checkIn.id)/variant", Body(variant: next))
+            shownPrescription = reply.prescription
+            variant = reply.variant
+        } catch {
+            self.error = UserFacingError.message(for: error)
+        }
     }
 
     private func alreadyAte() async throws {

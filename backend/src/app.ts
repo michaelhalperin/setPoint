@@ -13,14 +13,21 @@ import { accountRoutes } from './routes/account.js';
 import { adminRoutes } from './routes/admin.js';
 import { authRoutes } from './routes/auth.js';
 import { biosignalRoutes } from './routes/biosignals.js';
+import { calendarRoutes } from './routes/calendar.js';
 import { checkInRoutes } from './routes/checkins.js';
 import { cronRoutes } from './routes/cron.js';
 import { dashboardRoutes } from './routes/dashboard.js';
 import { healthRoutes } from './routes/health.js';
 import { legalRoutes } from './routes/legal.js';
 import { mealRoutes } from './routes/meals.js';
+import { foodRoutes } from './routes/foods.js';
 import { pushTokenRoutes } from './routes/pushTokens.js';
+import { savedMealRoutes } from './routes/savedMeals.js';
 import { weightRoutes } from './routes/weight.js';
+import { workoutRoutes } from './routes/workouts.js';
+import { appetiteRoutes } from './routes/appetite.js';
+import { insightRoutes } from './routes/insights.js';
+import { subscriptionRoutes } from './routes/subscription.js';
 
 const AUTH_LIMIT_PER_MINUTE = 40;
 
@@ -112,6 +119,13 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   await app.register(legalRoutes);
   await app.register(authRoutes, { prefix: '/api/auth' });
   await app.register(mealRoutes, { prefix: '/api/meals' });
+  await app.register(savedMealRoutes, { prefix: '/api/saved-meals' });
+  await app.register(foodRoutes, { prefix: '/api/foods' });
+  await app.register(calendarRoutes, { prefix: '/api/calendar' });
+  await app.register(workoutRoutes, { prefix: '/api/workouts' });
+  await app.register(appetiteRoutes, { prefix: '/api/appetite' });
+  await app.register(insightRoutes, { prefix: '/api/insights' });
+  await app.register(subscriptionRoutes, { prefix: '/api/subscription' });
   await app.register(checkInRoutes, { prefix: '/api/checkins' });
   await app.register(biosignalRoutes, { prefix: '/api/biosignals' });
   await app.register(pushTokenRoutes, { prefix: '/api/push-tokens' });

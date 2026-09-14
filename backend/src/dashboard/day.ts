@@ -1,4 +1,4 @@
-import type { SlotName } from '../engine/mealSchedule.js';
+import type { CoreSlot } from '../engine/mealSchedule.js';
 import type { FramingState } from './classify.js';
 
 /**
@@ -9,11 +9,11 @@ import type { FramingState } from './classify.js';
  * Pure. Presentation math only — when check-ins fire is decided by
  * `engine/mealSchedule.ts`.
  */
-export type { SlotName };
+export type { CoreSlot, SlotName } from '../engine/mealSchedule.js';
 export type SlotState = 'logged' | 'now' | 'missed' | 'upcoming';
 
 export type DaySlotView = {
-  slot: SlotName;
+  slot: CoreSlot;
   /** The usual meal time, minutes from local midnight. */
   atMin: number;
   state: SlotState;
@@ -29,7 +29,7 @@ export type PaceView = {
   behindKcal: number;
   status: 'behind' | 'on_pace' | 'ahead';
   /** The next meal worth eating and a suggested size; null once nothing is still due. */
-  next: { slot: SlotName; atMin: number; suggestedKcal: number } | null;
+  next: { slot: CoreSlot; atMin: number; suggestedKcal: number } | null;
 };
 
 export type DayView = {
@@ -47,7 +47,7 @@ export const DAY_CONFIG = {
   rampStartOffsetMin: -30,
   rampEndOffsetMin: 60,
   /** Share of the day's target each meal carries. Equal thirds for v1 — tune in beta. */
-  shares: { breakfast: 1 / 3, lunch: 1 / 3, dinner: 1 / 3 } as Record<SlotName, number>,
+  shares: { breakfast: 1 / 3, lunch: 1 / 3, dinner: 1 / 3 } as Record<CoreSlot, number>,
   /** A gap this large between eaten and expected reads as behind / ahead. */
   paceToleranceKcal: 300,
   /** Never suggest a next meal smaller than this. */
@@ -67,7 +67,7 @@ export type DayInput = {
   enforcementEnabled: boolean;
 };
 
-const SLOTS: SlotName[] = ['breakfast', 'lunch', 'dinner'];
+const SLOTS: CoreSlot[] = ['breakfast', 'lunch', 'dinner'];
 const MINUTES_PER_DAY = 1440;
 
 const round10 = (n: number): number => Math.round(n / 10) * 10;
@@ -76,7 +76,7 @@ const clamp01 = (n: number): number => Math.min(1, Math.max(0, n));
 
 export function buildDay(input: DayInput, config: DayConfig = DAY_CONFIG): DayView {
   const { breakfastMin, lunchMin, dinnerMin } = input.mealTimes;
-  const at: Record<SlotName, number> = { breakfast: breakfastMin, lunch: lunchMin, dinner: dinnerMin };
+  const at: Record<CoreSlot, number> = { breakfast: breakfastMin, lunch: lunchMin, dinner: dinnerMin };
 
   // A meal belongs to the slot whose usual time it's closest to: the boundaries
   // sit halfway between meal times (a 12:50 meal is lunch, not a late breakfast).
@@ -85,7 +85,7 @@ export function buildDay(input: DayInput, config: DayConfig = DAY_CONFIG): DayVi
     Math.floor((lunchMin + dinnerMin) / 2),
     MINUTES_PER_DAY,
   ];
-  const slotOf = (minute: number): SlotName =>
+  const slotOf = (minute: number): CoreSlot =>
     minute < slotEnds[0]! ? 'breakfast' : minute < slotEnds[1]! ? 'lunch' : 'dinner';
 
   const slots: DaySlotView[] = SLOTS.map((slot, i) => {

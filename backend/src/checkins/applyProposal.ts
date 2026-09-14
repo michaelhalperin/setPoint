@@ -27,7 +27,7 @@ export async function applyPlanProposal(
 
   if (kind === 'DELAY_CHECKINS') {
     const shift = proposal.delayMin ?? 30;
-    if (profile.dinnerMin + shift > 1439) {
+    if (profile.dinnerMin + shift > 1439 || (profile.weekendDinnerMin ?? 0) + shift > 1439) {
       throw new ProposalNotApplicableError('dinner is already as late as it can go');
     }
     await tx.onboardingProfile.update({
@@ -36,6 +36,10 @@ export async function applyPlanProposal(
         breakfastMin: profile.breakfastMin + shift,
         lunchMin: profile.lunchMin + shift,
         dinnerMin: profile.dinnerMin + shift,
+        weekendBreakfastMin:
+          profile.weekendBreakfastMin != null ? profile.weekendBreakfastMin + shift : null,
+        weekendLunchMin: profile.weekendLunchMin != null ? profile.weekendLunchMin + shift : null,
+        weekendDinnerMin: profile.weekendDinnerMin != null ? profile.weekendDinnerMin + shift : null,
       },
     });
     return proposal;

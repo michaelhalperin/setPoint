@@ -77,6 +77,8 @@ enum MealSource {
   PHOTO
   PRESCRIPTION
   MANUAL
+  SAVED
+  BARCODE
 }
 
 enum PrescriptionStatus {
@@ -145,6 +147,13 @@ model User {
   /// The kill switch in env still wins — this never independently fires one.
   wearableModifierEnabled Boolean @default(false)
 
+  subscriptionStatus    String?
+  subscriptionExpiresAt DateTime?
+  subscriptionProductId String?
+  /// The App Store subscription this account owns — one account per subscription.
+  subscriptionOriginalTransactionId String? @unique
+  subscriptionEnvironment           String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -156,6 +165,7 @@ model User {
   pushTokens              PushToken[]
   restrictions            DietaryRestriction[]
   meals                   Meal[]
+  savedMeals              SavedMeal[]
   weightEntries           WeightEntry[]
   biosignalReadings       BiosignalReading[]
   confidenceScores        ConfidenceScore[]
@@ -165,6 +175,9 @@ model User {
   dayOutcomes             DayOutcome[]
   aiUsages                AiUsage[]
   targetReviews           WeightTargetReview[]
+  calendarBusyBlocks      CalendarBusyBlock[]
+  workouts                Workout[]
+  dayAppetites            DayAppetite[]
 }
 
 model PushToken {
@@ -224,6 +237,13 @@ model OnboardingProfile {
   lunchMin     Int @default(780)
   dinnerMin    Int @default(1140)
 
+  // Weekend set. Null minutes mean "same as weekdays". weekendDays is a JS-getDay
+  // bitmask (bit 0 = Sunday … bit 6 = Saturday); default Sat+Sun = 65.
+  weekendBreakfastMin Int?
+  weekendLunchMin     Int?
+  weekendDinnerMin    Int?
+  weekendDays         Int @default(65)
+
   // Quiet hours — minutes from local midnight (default 23:00–07:00, §2).
   quietHoursStartMin Int @default(1380)
   quietHoursEndMin   Int @default(420)
@@ -233,6 +253,26 @@ model OnboardingProfile {
   /// Soft dislikes (still not served if listed). Distinct from hard exclusions.
   dislikedFoods String[] @default([])
   prepTimeMaxMin Int?
+
+  /// Which Health types SetPoint may write. Local toggles stay source of truth on device;
+  /// these keep the preference if they reinstall.
+  writeHealthEnergy   Boolean @default(true)
+  writeHealthProtein  Boolean @default(true)
+  writeHealthCarbs    Boolean @default(true)
+  writeHealthFat      Boolean @default(true)
+  writeHealthBodyMass Boolean @default(false)
+
+  calendarEnabled        Boolean @default(false)
+  calendarLeadMin        Int     @default(45)
+  calendarMinBlockMin    Int     @default(60)
+  calendarWorkdaysOnly   Boolean @default(true)
+  calendarIncludeAllDay  Boolean @default(false)
+
+  trainingAddCalories    Boolean @default(true)
+  preWorkoutNudgeMin     Int?    @default(90)
+
+  appetiteMode           String  @default("NORMAL")
+  drinkableOk            Boolean @default(true)
 
   completedAt DateTime?
   createdAt   DateTime  @default(now())
@@ -357,6 +397,55 @@ model Meal {
   @@unique([userId, clientId])
 }
 
+/// A named plate the user logs in one tap. Items are a snapshot; totals are
+/// derived from them on write so a client cannot send a mismatched target.
+model SavedMeal {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name  String
+  /// [{ name, quantity, kcal, proteinG, carbsG, fatG }]
+  items Json
+
+  kcal     Int
+  proteinG Float @default(0)
+  carbsG   Float @default(0)
+  fatG     Float @default(0)
+
+  /// "breakfast" | "lunch" | "dinner". Null = no time suggestion.
+  suggestSlot   String?
+  useInCheckIns Boolean @default(false)
+
+  lastUsedAt DateTime?
+  useCount   Int       @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, lastUsedAt])
+  @@index([userId, suggestSlot])
+}
+
+/// Cached Open Food Facts lookup. Shared across users; the barcode is not a secret.
+model BarcodeFood {
+  id   String @id @default(cuid())
+  code String @unique
+
+  name     String
+  brand    String?
+  servingG Float?
+
+  kcal100g     Float
+  proteinG100g Float
+  carbsG100g   Float
+  fatG100g     Float
+
+  fetchedAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 // ---------------------------------------------------------------------------
 // Biosignals (§2, §4) — only derived deviation, never raw HRV/RHR
 // ---------------------------------------------------------------------------
@@ -429,6 +518,67 @@ model ConfidenceScore {
 }
 
 // ---------------------------------------------------------------------------
+// Calendar busy blocks — start/end only; titles never leave the phone.
+// ---------------------------------------------------------------------------
+
+model CalendarBusyBlock {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  start  DateTime
+  end    DateTime
+  /// An all-day event. Only counts as busy when the user opts in.
+  allDay Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, start])
+}
+
+enum WorkoutSource {
+  HEALTHKIT
+  PLANNED
+}
+
+enum WorkoutKind {
+  STRENGTH
+  CARDIO
+  MIXED
+}
+
+model Workout {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  source      WorkoutSource
+  kind        WorkoutKind
+  start       DateTime
+  durationMin Int
+  activeKcal  Int?
+  /// HealthKit UUID or a client-generated planned-session id — upsert key.
+  clientId    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, clientId])
+  @@index([userId, start])
+}
+
+model DayAppetite {
+  userId    String
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  localDate String
+  level     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@id([userId, localDate])
+}
+
+// ---------------------------------------------------------------------------
 // Check-ins + escalation (§2)
 // ---------------------------------------------------------------------------
 
@@ -449,6 +599,19 @@ model CheckIn {
 
   /// user + local date + slot (+ episode). Prevents duplicate check-ins.
   episodeKey String?
+
+  /// MEAL (default), HEADS_UP (calendar), REFUEL (training).
+  kind String @default("MEAL")
+  /// Original due minute when a calendar heads-up moved the check-in earlier.
+  movedFromMin Int?
+  /// End of the busy block — "After 15:00" snoozes until then.
+  busyUntil DateTime?
+  /// Workout this refuel / pre-workout check-in is about.
+  workoutId String?
+  /// "Dinner at hh:mm covers it" — closed without counting as a miss.
+  coveredByDinner Boolean @default(false)
+  /// full (default) or smaller — the check-in prescription currently showing.
+  variant String @default("full")
 
   deliveredAt    DateTime?
   lastPushError  String?

@@ -18,6 +18,8 @@ struct HomeContent: View {
     @State private var showingCheckIn = false
     @State private var selectedMeal: MealSummary?
     @State private var choosingSnooze = false
+    @State private var showingAppetite = false
+    @State private var showingPaywall = false
     @State private var checkInBusy = false
     @State private var checkInError: String?
     @FocusState private var composerFocused: Bool
@@ -76,6 +78,16 @@ struct HomeContent: View {
                             }
                         )
                         .transition(.opacity)
+                    } else if let home = loadedHome, checkIn.kind == "REFUEL" {
+                        RefuelSheet(
+                            checkIn: checkIn,
+                            dinnerMin: home.resolvedMealTimes.dinnerMin,
+                            remainingSeconds: refuelSecondsLeft(home: home),
+                            onHadThis: ateThis,
+                            onCoveredByDinner: coverRefuel,
+                            onDismiss: closeCheckIn
+                        )
+                        .transition(.move(edge: .bottom))
                     } else if let home = loadedHome {
                         PrescriptionView(
                             checkIn: checkIn,
@@ -90,7 +102,8 @@ struct HomeContent: View {
                             onAlreadyAte: {
                                 closeCheckIn()
                                 offerQuickLog(for: checkIn)
-                            }
+                            },
+                            suggestSmallerDefault: home.appetite?.suggestSmallerDefault == true
                         )
                         .transition(.move(edge: .bottom))
                     }
@@ -113,15 +126,73 @@ struct HomeContent: View {
         }
         .animation(Motion.adaptive(Motion.morph, reduceMotion: reduceMotion), value: logger?.confirmingPhoto == true)
         .sheet(item: $selectedMeal) { meal in
-            MealDetailSheet(meal: meal) {
-                try await model.removeMeal(id: meal.id)
-            }
+            MealDetailSheet(
+                meal: meal,
+                onRemove: {
+                    try await model.removeMeal(id: meal.id)
+                },
+                onSaveAsMeal: {
+                    logger?.openEditor(from: meal)
+                    selectedMeal = nil
+                }
+            )
+        }
+        .fullScreenCover(isPresented: scannerPresented) {
+            BarcodeScannerView(
+                onCode: { code in
+                    Task { await logger?.handleScannedCode(code) }
+                },
+                onCancel: {
+                    logger?.showScanner = false
+                    logger?.mode = .type
+                }
+            )
+        }
+        .sheet(item: productBinding) { product in
+            BarcodeProductSheet(
+                product: Binding(
+                    get: { logger?.product ?? product },
+                    set: { logger?.product = $0 }
+                ),
+                slotTitle: logSlotTitle,
+                logging: {
+                    if case .parsing = logger?.phase { return true }
+                    return false
+                }(),
+                onLog: { Task { await logger?.logBarcode() } },
+                onSave: { logger?.openEditorToSaveProduct() },
+                onClose: {
+                    logger?.product = nil
+                    logger?.mode = .type
+                }
+            )
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+        }
+        .sheet(item: editorBinding) { draft in
+            SavedMealEditorView(
+                draft: draft,
+                saving: logger?.editorSaving ?? false,
+                error: logger?.editorError,
+                onSave: { await logger?.saveEditor($0) ?? false }
+            )
         }
         .confirmationDialog("Snooze this check-in", isPresented: $choosingSnooze, titleVisibility: .visible) {
             ForEach(CheckInActions.snoozeChoices(nextMealMinutes: minutesUntilNextMeal())) { choice in
                 Button(choice.title) { snooze(minutes: choice.minutes) }
             }
             Button("Cancel", role: .cancel) {}
+        }
+        .sheet(isPresented: $showingPaywall) {
+            PaywallView()
+                .presentationDetents([.large])
+        }
+        .sheet(isPresented: $showingAppetite) {
+            AppetitePickerSheet(
+                previewTarget: loadedHome?.ledger.targetKcal ?? 2500,
+                onPicked: { Task { await model.load(showSpinner: false) } }
+            )
+            .presentationDetents([.large])
         }
         .toolbar(showingCheckIn || logger?.confirmingPhoto == true ? .hidden : .visible, for: .tabBar)
         .task {
@@ -139,7 +210,12 @@ struct HomeContent: View {
         }
         .onChange(of: composerFocused) { _, isFocused in
             guard isFocused, let meals = loadedHome?.meals else { return }
-            Task { await logger?.loadRecents(today: meals) }
+            Task {
+                await logger?.loadRecents(today: meals)
+                if previewLogger == nil {
+                    await logger?.loadSavedMeals()
+                }
+            }
         }
         .onChange(of: logger?.phase) { _, phase in
             if let phase { handleLoggerPhase(phase) }
@@ -148,11 +224,25 @@ struct HomeContent: View {
             guard id != nil else { return }
             Task { await openDeepLinkedCheckIn() }
         }
+        .onChange(of: env.changes.pendingLogPhoto) { _, pending in
+            guard pending else { return }
+            env.changes.pendingLogPhoto = false
+            logger?.mode = .photo
+            logger?.showPhotoPicker = true
+            composerFocused = true
+        }
         .onChange(of: scenePhase) { _, phase in
             guard phase == .active, isLoaded else { return }
             Task {
                 await env.push.syncAuthorizationStatus()
+                await env.calendar.uploadBusy()
+                await env.health.uploadWorkouts()
                 await model.load(showSpinner: false)
+            }
+        }
+        .onChange(of: activeCheckIn?.id) { _, id in
+            if activeCheckIn?.kind == "REFUEL" {
+                showingCheckIn = true
             }
         }
     }
@@ -177,7 +267,7 @@ struct HomeContent: View {
         let moment = TodayMoment.resolve(home)
         return ScrollView {
             VStack(alignment: .leading, spacing: Space.lg) {
-                if moment.takesOver, let checkIn = home.activeCheckIn {
+                if moment.takesOver, let checkIn = home.activeCheckIn, checkIn.kind != "REFUEL" {
                     CheckInTakeover(
                         home: home,
                         checkIn: checkIn,
@@ -195,7 +285,13 @@ struct HomeContent: View {
                         if home.enforcementEnabled, env.push.authorizationStatus == .denied {
                             NotificationsOffBanner()
                         }
-                        TodayHero(home: home, moment: moment, date: now)
+                        TodayHero(home: home, moment: moment, date: now, onAppetite: {
+                            if env.subscription.entitled {
+                                showingAppetite = true
+                            } else {
+                                showingPaywall = true
+                            }
+                        })
                     }
                     .padding(.horizontal, Space.gutter)
                     .padding(.top, Space.sm)
@@ -254,6 +350,28 @@ struct HomeContent: View {
 
     private func closeCheckIn() {
         withAnimation(springForCheckIn) { showingCheckIn = false }
+    }
+
+    private func refuelSecondsLeft(home: HomeResponse) -> Int {
+        guard let until = home.training?.refuelUntilMin else { return 45 * 60 }
+        let left = until - (home.day?.nowMin ?? 0)
+        return max(0, left * 60)
+    }
+
+    private func coverRefuel() {
+        guard let checkIn = activeCheckIn, !checkInBusy else { return }
+        checkInBusy = true
+        checkInError = nil
+        Task {
+            do {
+                try await CheckInActions.cover(checkInID: checkIn.id, api: env.api)
+                closeCheckIn()
+                await model.load(showSpinner: false)
+            } catch {
+                checkInError = UserFacingError.message(for: error, fallback: "Couldn't close that. Try again.")
+            }
+            checkInBusy = false
+        }
     }
 
     /// After "I already ate": open the dock at the meal's time so logging it is one step.
@@ -369,6 +487,29 @@ struct HomeContent: View {
     // MARK: Derived
 
     private var isLoaded: Bool { loadedHome != nil }
+
+    private var scannerPresented: Binding<Bool> {
+        Binding(
+            get: { logger?.showScanner == true },
+            set: { on in
+                logger?.showScanner = on
+                if !on { logger?.mode = .type }
+            }
+        )
+    }
+
+    private var productBinding: Binding<LogMealViewModel.BarcodeProduct?> {
+        Binding(get: { logger?.product }, set: { logger?.product = $0 })
+    }
+
+    private var editorBinding: Binding<SavedMealDraft?> {
+        Binding(get: { logger?.editor }, set: { logger?.editor = $0 })
+    }
+
+    private var logSlotTitle: String {
+        if let backdate = logger?.backdate { return backdate.slot.title }
+        return loadedHome?.day?.slots.first { $0.slotState == .now }?.meal.title ?? "Now"
+    }
 
     private var springForCheckIn: Animation {
         Motion.adaptive(Motion.morph, reduceMotion: reduceMotion)

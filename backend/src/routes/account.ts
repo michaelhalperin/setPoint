@@ -18,6 +18,11 @@ import {
 
 const minutes = z.number().int().min(0).max(1439);
 const mealTimes = z.object({ breakfastMin: minutes, lunchMin: minutes, dinnerMin: minutes });
+const weekendMealTimes = z.object({
+  breakfastMin: minutes.nullable(),
+  lunchMin: minutes.nullable(),
+  dinnerMin: minutes.nullable(),
+});
 const quietHours = z.object({ startMin: minutes, endMin: minutes });
 const scoff = z.object({
   makeSelfSick: z.boolean(),
@@ -63,6 +68,8 @@ const settingsPatch = z
     dailyKcalTarget: z.number().int().min(800).max(8000).optional(),
     dailyProteinTargetG: z.number().int().min(0).max(400).nullable().optional(),
     mealTimes: mealTimes.optional(),
+    weekendMealTimes: weekendMealTimes.optional(),
+    weekendDays: z.number().int().min(1).max(127).optional(),
     quietHours: quietHours.optional(),
     checkInsPaused: z.boolean().optional(),
     timezone: z.string().optional(),
@@ -70,6 +77,36 @@ const settingsPatch = z
     pantryTokens: z.array(z.string().min(1).max(80)).max(40).optional(),
     dislikedFoods: z.array(z.string().min(1).max(80)).max(40).optional(),
     prepTimeMaxMin: z.number().int().min(0).max(240).nullable().optional(),
+    healthWrite: z
+      .object({
+        energy: z.boolean(),
+        protein: z.boolean(),
+        carbs: z.boolean(),
+        fat: z.boolean(),
+        bodyMass: z.boolean(),
+      })
+      .optional(),
+    calendar: z
+      .object({
+        enabled: z.boolean().optional(),
+        leadMin: z.union([z.literal(30), z.literal(45), z.literal(60)]).optional(),
+        minBlockMin: z.number().int().min(15).max(240).optional(),
+        workdaysOnly: z.boolean().optional(),
+        includeAllDay: z.boolean().optional(),
+      })
+      .optional(),
+    training: z
+      .object({
+        addCalories: z.boolean().optional(),
+        preWorkoutNudgeMin: z.union([z.literal(0), z.literal(60), z.literal(90), z.literal(120), z.null()]).optional(),
+      })
+      .optional(),
+    appetite: z
+      .object({
+        mode: z.enum(['NORMAL', 'SMALL_FREQUENT']).optional(),
+        drinkableOk: z.boolean().optional(),
+      })
+      .optional(),
   })
   .refine((p) => Object.keys(p).length > 0, { message: 'no changes provided' });
 

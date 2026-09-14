@@ -12,7 +12,13 @@ import { requireAuth, type AuthedRequest } from '../auth/index.js';
 import { getPrisma } from '../db/client.js';
 import { applyPlanProposal, ProposalNotApplicableError } from '../checkins/applyProposal.js';
 import { proposalFromOutcome } from '../checkins/proposals.js';
+import { startTalk } from '../checkins/startTalk.js';
+import { excludedTokensFor, loadStapleFoods, prescribe } from '../solver/index.js';
 import { ENGINE_CONFIG, type Goal } from '../engine/index.js';
+import { env, isProd } from '../env.js';
+
+/** Same gate as POST /api/auth/dev — off in production unless ENABLE_DEV_LOGIN=true. */
+const devToolsEnabled = !isProd || env.ENABLE_DEV_LOGIN === 'true';
 
 const params = z.object({ id: z.string().min(1) });
 
@@ -74,6 +80,13 @@ function conversant() {
 export async function checkInRoutes(app: FastifyInstance): Promise<void> {
   app.addHook('preHandler', requireAuth(app));
 
+  // Debug: open a real tier-3 conversation without waiting for three misses.
+  if (devToolsEnabled) {
+    app.post('/start-talk', async (req) => {
+      return startTalk(getPrisma(), (req as AuthedRequest).userId);
+    });
+  }
+
   // Fetch one check-in (e.g. the landing target of a notification deep-link).
   app.get('/:id', async (req) => {
     const { id } = params.parse(req.params);
@@ -91,11 +104,24 @@ export async function checkInRoutes(app: FastifyInstance): Promise<void> {
   // band and falls back to the engine default.
   app.post('/:id/defer', async (req) => {
     const { id } = params.parse(req.params);
-    const { minutes } = z
-      .object({ minutes: z.number().int().min(15).max(360).optional() })
+    const { minutes, until } = z
+      .object({
+        minutes: z.number().int().min(15).max(360).optional(),
+        until: z.string().datetime({ offset: true }).optional(),
+      })
       .parse(req.body ?? {});
-    const snoozeMs = (minutes ?? ENGINE_CONFIG.snoozeHours * 60) * 60_000;
-    const deferUntil = new Date(Date.now() + snoozeMs);
+    const now = Date.now();
+    let deferUntil: Date;
+    if (until) {
+      // Same band as `minutes`: an explicit time can't snooze for less than 15 minutes or more than 6 hours.
+      deferUntil = new Date(until);
+      const aheadMin = (deferUntil.getTime() - now) / 60_000;
+      if (!(aheadMin >= 15 && aheadMin <= 360)) {
+        throw app.httpErrors.badRequest('until must be between 15 minutes and 6 hours from now');
+      }
+    } else {
+      deferUntil = new Date(now + (minutes ?? ENGINE_CONFIG.snoozeHours * 60) * 60_000);
+    }
     const result = await getPrisma().checkIn.updateMany({
       where: {
         id,
@@ -136,6 +162,105 @@ export async function checkInRoutes(app: FastifyInstance): Promise<void> {
     });
     if (result.count === 0) throw app.httpErrors.notFound('no active check-in with that id');
     return { dismissed: true };
+  });
+
+  // Refuel: "Dinner at hh:mm covers it" — close without counting as a miss.
+  app.post('/:id/cover', async (req) => {
+    const { id } = params.parse(req.params);
+    const now = new Date();
+    const result = await getPrisma().checkIn.updateMany({
+      where: {
+        id,
+        userId: (req as AuthedRequest).userId,
+        status: { in: ['PENDING', 'DEFERRED'] },
+        kind: { in: ['REFUEL', 'PRE_WORKOUT'] },
+      },
+      data: {
+        status: 'EXPIRED',
+        resolvedAt: now,
+        coveredByDinner: true,
+        feedbackPositive: true,
+        feedbackAt: now,
+      },
+    });
+    if (result.count === 0) throw app.httpErrors.notFound('no refuel check-in with that id');
+    return { covered: true };
+  });
+
+  app.post('/:id/variant', async (req) => {
+    const { id } = params.parse(req.params);
+    const { variant } = z.object({ variant: z.enum(['full', 'smaller']) }).parse(req.body);
+    const userId = (req as AuthedRequest).userId;
+    const prisma = getPrisma();
+    const checkIn = await prisma.checkIn.findFirst({
+      where: { id, userId, status: { in: ['PENDING', 'DEFERRED'] } },
+      include: { prescription: { include: { items: true } } },
+    });
+    if (!checkIn?.prescription) throw app.httpErrors.notFound('no active check-in with that id');
+    const targetKcal = checkIn.prescription.targetKcal;
+    const profile = await prisma.onboardingProfile.findUnique({
+      where: { userId },
+      select: { dislikedFoods: true, pantryTokens: true, prepTimeMaxMin: true, drinkableOk: true },
+    });
+    const [{ solverFoods, foodIdBySlug }, excludedTokens] = await Promise.all([
+      loadStapleFoods(prisma),
+      excludedTokensFor(prisma, userId, profile?.dislikedFoods),
+    ]);
+
+    // Both sizes come from the solver, so allergens, diets and dislikes are always honoured.
+    // "Smaller" keeps the calories but favours dense, drinkable, no-prep foods.
+    const smaller = variant === 'smaller';
+    const rx = prescribe(solverFoods, {
+      targetKcal,
+      targetProteinG: checkIn.prescription.targetProteinG,
+      excludedTokens,
+      pantryTokens: profile?.pantryTokens ?? [],
+      prepTimeMaxMin: profile?.prepTimeMaxMin ?? null,
+      preferLowFriction: smaller,
+      preferCalorieDense: smaller,
+      preferDrinkable: smaller && (profile?.drinkableOk ?? true),
+    });
+    if (!rx) throw app.httpErrors.conflict('no option fits your food restrictions');
+    const items = rx.items.map((i) => ({
+      foodItemId: foodIdBySlug.get(i.slug) ?? null,
+      name: i.name,
+      quantity: i.quantity,
+      kcal: i.kcal,
+      proteinG: i.proteinG,
+      carbsG: i.carbsG,
+      fatG: i.fatG,
+    }));
+    const totals = {
+      kcal: rx.totalKcal,
+      proteinG: rx.totalProteinG,
+      carbsG: rx.totalCarbsG,
+      fatG: rx.totalFatG,
+    };
+
+    await prisma.$transaction([
+      prisma.checkIn.update({ where: { id: checkIn.id }, data: { variant } }),
+      prisma.prescriptionItem.deleteMany({ where: { prescriptionId: checkIn.prescription.id } }),
+      prisma.prescription.update({
+        where: { id: checkIn.prescription.id },
+        data: {
+          totalKcal: totals.kcal,
+          totalProteinG: totals.proteinG,
+          totalCarbsG: totals.carbsG,
+          totalFatG: totals.fatG,
+          items: { create: items.map((i) => ({ ...i, unit: 'serving' })) },
+        },
+      }),
+    ]);
+
+    return {
+      variant,
+      prescription: {
+        id: checkIn.prescription.id,
+        totalKcal: totals.kcal,
+        totalProteinG: totals.proteinG,
+        items: items.map((i) => ({ name: i.name, quantity: i.quantity, kcal: i.kcal, proteinG: i.proteinG })),
+      },
+    };
   });
 
   // Tier-3 "this isn't working right now" conversation (§2).

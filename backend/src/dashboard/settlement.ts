@@ -5,6 +5,7 @@ import { computeWeightProgress, type PaceStatus } from '../weight/progress.js';
 import { classifyDay, type DayKind } from './classify.js';
 import { buildWeekRecord, type WeekRecord } from './record.js';
 import { OnboardingIncompleteError } from './home.js';
+import { trainingForLocalDay } from '../training/day.js';
 
 export type SettlementDeps = {
   prisma: PrismaClient;
@@ -79,7 +80,16 @@ export async function buildSettlement(deps: SettlementDeps, userId: string): Pro
 
   const profile = user.onboarding;
   const goal = profile.goal as Goal;
-  const targetKcal = profile.dailyKcalTarget;
+  const weightKg = user.weightEntries[0]?.weightKg ?? profile.weightKg ?? 80;
+  const training = await trainingForLocalDay(prisma, {
+    userId,
+    now,
+    timezone: user.timezone,
+    weightKg,
+    baseKcal: profile.dailyKcalTarget,
+    addCalories: profile.trainingAddCalories ?? true,
+  });
+  const targetKcal = training.targetKcal;
 
   const todayISO = localDateISO(now, user.timezone);
   const windowStartISO = shiftDateISO(todayISO, -(WINDOW_DAYS - 1));
@@ -121,6 +131,12 @@ export async function buildSettlement(deps: SettlementDeps, userId: string): Pro
     dates: Array.from({ length: WINDOW_DAYS }, (_, i) => shiftDateISO(windowStartISO, i)),
     nowMin: local(now).minute,
     times: profile,
+    weekendTimes: {
+      breakfastMin: profile.weekendBreakfastMin ?? null,
+      lunchMin: profile.weekendLunchMin ?? null,
+      dinnerMin: profile.weekendDinnerMin ?? null,
+    },
+    weekendDays: profile.weekendDays ?? undefined,
     meals: windowMeals.map((m) => local(m.loggedAt)),
     checkIns: windowCheckIns.map((c) => ({ ...local(c.createdAt), status: c.status, tier: c.tier })),
     planStartDate: profile.completedAt ? localDateISO(profile.completedAt, user.timezone) : undefined,

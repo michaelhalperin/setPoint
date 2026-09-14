@@ -122,12 +122,18 @@ struct CoveredStep: View {
     @State private var ring: Double = 0
     @State private var markers = false
     @State private var shownKcal = 0
+    @State private var showingPaywall = false
 
     var body: some View {
-        if model.enforcementEnabled {
-            covered
-        } else {
-            quiet
+        Group {
+            if model.enforcementEnabled {
+                covered
+            } else {
+                quiet
+            }
+        }
+        .sheet(isPresented: $showingPaywall) {
+            PaywallView(onFinished: { model.advance() }, onSkip: { model.advance() })
         }
     }
 
@@ -191,7 +197,7 @@ struct CoveredStep: View {
 
             Spacer(minLength: Space.md)
 
-            Button { model.advance() } label: {
+            Button { showingPaywall = true } label: {
                 Text("Start")
                     .font(Typography.data(17, weight: .bold))
                     .foregroundStyle(Palette.accentDeep)
@@ -216,7 +222,7 @@ struct CoveredStep: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .appearIn(1)
             Spacer()
-            ActionButton(title: "Start") { model.advance() }
+            ActionButton(title: "Start") { showingPaywall = true }
         }
     }
 

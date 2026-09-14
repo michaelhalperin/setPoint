@@ -1,7 +1,10 @@
 import type { PrismaClient } from '@prisma/client';
+import { weekendBreakfastSuggestion, type WeekendBreakfastSuggestion } from '../dashboard/record.js';
+import { OnboardingIncompleteError } from '../dashboard/home.js';
+import { DEFAULT_WEEKEND_DAYS, type WeekendMealTimes } from '../engine/mealSchedule.js';
+import { localDateISO, msSinceLocalMidnight, shiftDateISO } from '../engine/time.js';
 import type { Goal } from '../engine/types.js';
 import { normalizeToken } from '../solver/exclusions.js';
-import { OnboardingIncompleteError } from '../dashboard/home.js';
 import { deriveTargets } from './recompute.js';
 import { assertHealthyTarget, minHealthyWeightKg, remainingKg, resolveGoalPace } from './targets.js';
 
@@ -20,6 +23,9 @@ export type SettingsView = {
   /** Lowest DIET target accepted for this height (BMI 18.5); null without a height. */
   minHealthyWeightKg: number | null;
   mealTimes: { breakfastMin: number; lunchMin: number; dinnerMin: number };
+  weekendMealTimes: WeekendMealTimes;
+  weekendDays: number;
+  weekendSuggestion: WeekendBreakfastSuggestion | null;
   quietHours: { startMin: number; endMin: number };
   checkInsPaused: boolean;
   restrictions: { label: string; token: string; source: string }[];
@@ -28,6 +34,28 @@ export type SettingsView = {
   prepTimeMaxMin: number | null;
   enforcementEnabled: boolean;
   enforcementDisabledReason: string | null;
+  healthWrite: {
+    energy: boolean;
+    protein: boolean;
+    carbs: boolean;
+    fat: boolean;
+    bodyMass: boolean;
+  };
+  calendar: {
+    enabled: boolean;
+    leadMin: number;
+    minBlockMin: number;
+    workdaysOnly: boolean;
+    includeAllDay: boolean;
+  };
+  training: {
+    addCalories: boolean;
+    preWorkoutNudgeMin: number | null;
+  };
+  appetite: {
+    mode: 'NORMAL' | 'SMALL_FREQUENT';
+    drinkableOk: boolean;
+  };
 };
 
 export type SettingsPatch = {
@@ -39,6 +67,8 @@ export type SettingsPatch = {
   dailyKcalTarget?: number;
   dailyProteinTargetG?: number | null;
   mealTimes?: { breakfastMin: number; lunchMin: number; dinnerMin: number };
+  weekendMealTimes?: WeekendMealTimes;
+  weekendDays?: number;
   quietHours?: { startMin: number; endMin: number };
   checkInsPaused?: boolean;
   timezone?: string;
@@ -47,15 +77,38 @@ export type SettingsPatch = {
   pantryTokens?: string[];
   dislikedFoods?: string[];
   prepTimeMaxMin?: number | null;
+  healthWrite?: {
+    energy: boolean;
+    protein: boolean;
+    carbs: boolean;
+    fat: boolean;
+    bodyMass: boolean;
+  };
+  calendar?: {
+    enabled?: boolean;
+    leadMin?: number;
+    minBlockMin?: number;
+    workdaysOnly?: boolean;
+    includeAllDay?: boolean;
+  };
+  training?: {
+    addCalories?: boolean;
+    preWorkoutNudgeMin?: number | null;
+  };
+  appetite?: {
+    mode?: 'NORMAL' | 'SMALL_FREQUENT';
+    drinkableOk?: boolean;
+  };
 };
 
 export async function getSettings(
-  deps: { prisma: PrismaClient },
+  deps: { prisma: PrismaClient; now?: Date },
   userId: string,
 ): Promise<SettingsView> {
   const user = await loadForView(deps.prisma, userId);
   if (!user?.onboarding) throw new OnboardingIncompleteError('onboarding not complete');
-  return toView(user);
+  const suggestion = await loadWeekendSuggestion(deps.prisma, user, deps.now ?? new Date());
+  return toView(user, suggestion);
 }
 
 export async function updateSettings(
@@ -159,6 +212,14 @@ export async function updateSettings(
       profileData.lunchMin = patch.mealTimes.lunchMin;
       profileData.dinnerMin = patch.mealTimes.dinnerMin;
     }
+    if (patch.weekendMealTimes) {
+      profileData.weekendBreakfastMin = patch.weekendMealTimes.breakfastMin;
+      profileData.weekendLunchMin = patch.weekendMealTimes.lunchMin;
+      profileData.weekendDinnerMin = patch.weekendMealTimes.dinnerMin;
+    }
+    if (patch.weekendDays != null) {
+      profileData.weekendDays = patch.weekendDays;
+    }
     if (patch.quietHours) {
       profileData.quietHoursStartMin = patch.quietHours.startMin;
       profileData.quietHoursEndMin = patch.quietHours.endMin;
@@ -167,6 +228,31 @@ export async function updateSettings(
     if (patch.pantryTokens) profileData.pantryTokens = patch.pantryTokens.map((t) => t.trim()).filter(Boolean);
     if (patch.dislikedFoods) profileData.dislikedFoods = patch.dislikedFoods.map((t) => t.trim()).filter(Boolean);
     if (patch.prepTimeMaxMin !== undefined) profileData.prepTimeMaxMin = patch.prepTimeMaxMin;
+    if (patch.healthWrite) {
+      profileData.writeHealthEnergy = patch.healthWrite.energy;
+      profileData.writeHealthProtein = patch.healthWrite.protein;
+      profileData.writeHealthCarbs = patch.healthWrite.carbs;
+      profileData.writeHealthFat = patch.healthWrite.fat;
+      profileData.writeHealthBodyMass = patch.healthWrite.bodyMass;
+    }
+    if (patch.calendar) {
+      if (patch.calendar.enabled != null) profileData.calendarEnabled = patch.calendar.enabled;
+      if (patch.calendar.leadMin != null) profileData.calendarLeadMin = patch.calendar.leadMin;
+      if (patch.calendar.minBlockMin != null) profileData.calendarMinBlockMin = patch.calendar.minBlockMin;
+      if (patch.calendar.workdaysOnly != null) profileData.calendarWorkdaysOnly = patch.calendar.workdaysOnly;
+      if (patch.calendar.includeAllDay != null) profileData.calendarIncludeAllDay = patch.calendar.includeAllDay;
+    }
+    if (patch.training) {
+      if (patch.training.addCalories != null) profileData.trainingAddCalories = patch.training.addCalories;
+      if (patch.training.preWorkoutNudgeMin !== undefined) {
+        profileData.preWorkoutNudgeMin =
+          patch.training.preWorkoutNudgeMin === 0 ? null : patch.training.preWorkoutNudgeMin;
+      }
+    }
+    if (patch.appetite) {
+      if (patch.appetite.mode != null) profileData.appetiteMode = patch.appetite.mode;
+      if (patch.appetite.drinkableOk != null) profileData.drinkableOk = patch.appetite.drinkableOk;
+    }
     if (Object.keys(profileData).length > 0) {
       await tx.onboardingProfile.update({ where: { userId }, data: profileData });
     }
@@ -207,7 +293,33 @@ function loadForView(prisma: PrismaClient, userId: string) {
   });
 }
 
-function toView(user: UserWithSettings): SettingsView {
+async function loadWeekendSuggestion(
+  prisma: PrismaClient,
+  user: UserWithSettings,
+  now: Date,
+): Promise<WeekendBreakfastSuggestion | null> {
+  const p = user.onboarding!;
+  const today = localDateISO(now, user.timezone);
+  const from = new Date(now.getTime() - 22 * 86_400_000);
+  const meals = await prisma.meal.findMany({
+    where: { userId: user.id, loggedAt: { gte: from } },
+    select: { loggedAt: true },
+  });
+  const dates: string[] = [];
+  for (let i = 21; i >= 0; i -= 1) dates.push(shiftDateISO(today, -i));
+  return weekendBreakfastSuggestion({
+    datesOldestFirst: dates,
+    today,
+    meals: meals.map((m) => ({
+      date: localDateISO(m.loggedAt, user.timezone),
+      minute: Math.floor(msSinceLocalMidnight(m.loggedAt, user.timezone) / 60_000),
+    })),
+    weekdayBreakfastMin: p.breakfastMin,
+    weekendDays: p.weekendDays ?? DEFAULT_WEEKEND_DAYS,
+  });
+}
+
+function toView(user: UserWithSettings, weekendSuggestion: WeekendBreakfastSuggestion | null): SettingsView {
   const p = user.onboarding!;
   return {
     goal: p.goal as Goal,
@@ -223,6 +335,13 @@ function toView(user: UserWithSettings): SettingsView {
     heightCm: p.heightCm,
     minHealthyWeightKg: p.heightCm != null ? minHealthyWeightKg(p.heightCm) : null,
     mealTimes: { breakfastMin: p.breakfastMin, lunchMin: p.lunchMin, dinnerMin: p.dinnerMin },
+    weekendMealTimes: {
+      breakfastMin: p.weekendBreakfastMin ?? null,
+      lunchMin: p.weekendLunchMin ?? null,
+      dinnerMin: p.weekendDinnerMin ?? null,
+    },
+    weekendDays: p.weekendDays ?? DEFAULT_WEEKEND_DAYS,
+    weekendSuggestion,
     quietHours: { startMin: p.quietHoursStartMin, endMin: p.quietHoursEndMin },
     checkInsPaused: user.escalationState?.checkInsPaused ?? false,
     restrictions: user.restrictions.map((r) => ({ label: r.label, token: r.token, source: r.source })),
@@ -231,6 +350,28 @@ function toView(user: UserWithSettings): SettingsView {
     prepTimeMaxMin: p.prepTimeMaxMin ?? null,
     enforcementEnabled: user.safetyScreening?.enforcementEnabled ?? false,
     enforcementDisabledReason: user.safetyScreening?.enforcementDisabledReason ?? null,
+    healthWrite: {
+      energy: p.writeHealthEnergy ?? true,
+      protein: p.writeHealthProtein ?? true,
+      carbs: p.writeHealthCarbs ?? true,
+      fat: p.writeHealthFat ?? true,
+      bodyMass: p.writeHealthBodyMass ?? false,
+    },
+    calendar: {
+      enabled: p.calendarEnabled ?? false,
+      leadMin: p.calendarLeadMin ?? 45,
+      minBlockMin: p.calendarMinBlockMin ?? 60,
+      workdaysOnly: p.calendarWorkdaysOnly ?? true,
+      includeAllDay: p.calendarIncludeAllDay ?? false,
+    },
+    training: {
+      addCalories: p.trainingAddCalories ?? true,
+      preWorkoutNudgeMin: p.preWorkoutNudgeMin ?? null,
+    },
+    appetite: {
+      mode: (p.appetiteMode as 'NORMAL' | 'SMALL_FREQUENT') ?? 'NORMAL',
+      drinkableOk: p.drinkableOk ?? true,
+    },
   };
 }
 

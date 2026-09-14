@@ -27,6 +27,50 @@ struct HomeResponse: Decodable {
     var nextCheckIn: NextCheckIn? = nil
     /// Surface a weigh-in near the plan card when the last one is stale.
     var needsWeighIn: Bool? = nil
+    var busyBlocks: [BusyBlock]? = nil
+    var movedSlots: [MovedSlot]? = nil
+    var training: Training? = nil
+    var appetite: Appetite? = nil
+
+    struct BusyBlock: Decodable, Equatable {
+        let startMin: Int
+        let endMin: Int
+    }
+
+    struct MovedSlot: Decodable, Equatable {
+        let slot: String
+        let fromMin: Int
+        let toMin: Int
+    }
+
+    struct Training: Decodable, Equatable {
+        var bumpKcal: Int
+        var addCalories: Bool
+        var workouts: [Workout]
+        var refuelUntilMin: Int? = nil
+
+        struct Workout: Decodable, Equatable, Identifiable {
+            let id: String
+            let kind: String
+            let source: String
+            let startMin: Int
+            let durationMin: Int
+            var activeKcal: Int? = nil
+        }
+    }
+
+    struct Appetite: Decodable, Equatable {
+        var mode: String
+        var level: String
+        var drinkableOk: Bool
+        var suggestSmallerDefault: Bool
+        var extraSlots: [ExtraSlot]
+
+        struct ExtraSlot: Decodable, Equatable {
+            let slot: String
+            let atMin: Int
+        }
+    }
 
     struct NextCheckIn: Decodable, Equatable {
         let slot: String      // "breakfast" | "lunch" | "dinner"
@@ -106,6 +150,8 @@ struct HomeResponse: Decodable {
         let prescription: Prescription?
         /// The meal it's about; nil for a tier-3 conversation.
         var slot: String? = nil
+        var kind: String? = nil
+        var variant: String? = nil
 
         struct Prescription: Decodable {
             let id: String
@@ -172,9 +218,13 @@ struct MealSummary: Decodable, Identifiable, Hashable {
         case "PHOTO": return "Photo"
         case "TEXT": return "Text"
         case "PRESCRIPTION": return "Check-in"
+        case "SAVED": return "My meal"
+        case "BARCODE": return "Scanned"
         default: return "Logged"
         }
     }
+
+    var isScanned: Bool { source == "BARCODE" }
 
     /// A stored photo's signed URL — load it through `MealPhotoCache`.
     var remotePhotoURL: URL? {
@@ -282,11 +332,76 @@ struct SettlementResponse: Decodable {
     }
 }
 
+struct BurnInsightResponse: Decodable {
+    let version: String
+    let ready: Bool
+    var reason: String? = nil
+    var burnKcal: Int? = nil
+    var rangeLow: Int? = nil
+    var rangeHigh: Int? = nil
+    var avgIntakeKcal: Int? = nil
+    var slopeKgPerDay: Double? = nil
+    let loggedDays: Int
+    let windowDays: Int
+    let weighIns: Int
+    let planKcal: Int
+    let weeks: [Week]
+
+    struct Week: Decodable, Identifiable {
+        var id: String { weekStart }
+        let weekStart: String
+        let intakeKcal: Int
+        var burnKcal: Int? = nil
+        var burnLow: Int? = nil
+        var burnHigh: Int? = nil
+    }
+
+    static let sample = BurnInsightResponse(
+        version: "expenditure.v1",
+        ready: true,
+        reason: nil,
+        burnKcal: 2870,
+        rangeLow: 2790,
+        rangeHigh: 2950,
+        avgIntakeKcal: 2910,
+        slopeKgPerDay: 0.005,
+        loggedDays: 52,
+        windowDays: 56,
+        weighIns: 9,
+        planKcal: 3120,
+        weeks: (0..<8).map { i in
+            Week(
+                weekStart: "2026-07-\(String(format: "%02d", 20 + i * 7))",
+                intakeKcal: [2680, 2740, 3010, 2890, 2950, 2820, 3100, 2880][i],
+                burnKcal: 2870,
+                burnLow: 2790,
+                burnHigh: 2950
+            )
+        }
+    )
+
+    static let sampleEmpty = BurnInsightResponse(
+        version: "expenditure.v1",
+        ready: false,
+        reason: "not_enough_days",
+        loggedDays: 11,
+        windowDays: 56,
+        weighIns: 2,
+        planKcal: 3120,
+        weeks: []
+    )
+}
+
 struct LogMealRequest: Encodable {
     var text: String?
     var image: ImagePayload?
     var macros: Macros?
     var prescriptionId: String?
+    /// Log a named plate as-is — never AI-parsed.
+    var savedMealId: String? = nil
+    /// Cached / Open Food Facts barcode. Pair with `servings`.
+    var barcode: String? = nil
+    var servings: Double? = nil
     /// ISO timestamp for a meal eaten earlier (a missed meal time). Omitted = now.
     var loggedAt: String?
     /// Idempotency key for this log attempt (the offline queue retries with it).
@@ -361,6 +476,10 @@ struct MealCorrectionResponse: Decodable {
 
 struct ConversationRequest: Encodable {
     let message: String
+}
+
+struct StartTalkResponse: Decodable {
+    let checkInId: String
 }
 
 struct ConversationConfirmResponse: Decodable {
@@ -472,6 +591,170 @@ struct MealTimesPayload: Codable, Equatable {
     static let standard = MealTimesPayload(breakfastMin: 480, lunchMin: 780, dinnerMin: 1140)
 }
 
+struct WeekendMealTimesPayload: Codable, Equatable {
+    var breakfastMin: Int?
+    var lunchMin: Int?
+    var dinnerMin: Int?
+
+    static let empty = WeekendMealTimesPayload(breakfastMin: nil, lunchMin: nil, dinnerMin: nil)
+
+    /// JSONEncoder omits nils by default, which the API rejects (`breakfastMin` etc. are required, null ok).
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(breakfastMin, forKey: .breakfastMin)
+        try c.encode(lunchMin, forKey: .lunchMin)
+        try c.encode(dinnerMin, forKey: .dinnerMin)
+    }
+
+    func resolved(from weekdays: MealTimesPayload) -> MealTimesPayload {
+        MealTimesPayload(
+            breakfastMin: breakfastMin ?? weekdays.breakfastMin,
+            lunchMin: lunchMin ?? weekdays.lunchMin,
+            dinnerMin: dinnerMin ?? weekdays.dinnerMin
+        )
+    }
+
+    subscript(slot: MealSlot) -> Int? {
+        get {
+            switch slot {
+            case .breakfast: return breakfastMin
+            case .lunch: return lunchMin
+            case .dinner: return dinnerMin
+            }
+        }
+        set {
+            switch slot {
+            case .breakfast: breakfastMin = newValue
+            case .lunch: lunchMin = newValue
+            case .dinner: dinnerMin = newValue
+            }
+        }
+    }
+}
+
+struct WeekendSuggestion: Decodable, Equatable {
+    let breakfastMin: Int
+    let lateByMin: Int
+}
+
+/// JS `getDay` bitmask: bit 0 = Sunday … bit 6 = Saturday. Default Sat+Sun.
+enum WeekendDays {
+    static let `default` = 0b1000001
+    static let bitsInDisplayOrder = [1, 2, 3, 4, 5, 6, 0]
+    static let labels = ["M", "T", "W", "T", "F", "S", "S"]
+    static let names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+
+    static func contains(_ mask: Int, weekday: Int) -> Bool {
+        ((mask >> (weekday % 7)) & 1) == 1
+    }
+
+    static func toggling(_ mask: Int, weekday: Int) -> Int {
+        let next = mask ^ (1 << (weekday % 7))
+        return next == 0 ? mask : next
+    }
+
+    static func summary(_ mask: Int) -> String {
+        let picked = zip(bitsInDisplayOrder, names).compactMap { contains(mask, weekday: $0.0) ? $0.1 : nil }
+        if picked.isEmpty { return "No days" }
+        return picked.joined(separator: ", ")
+    }
+}
+
+struct TrainingSettingsPayload: Codable, Equatable {
+    var addCalories: Bool?
+    var preWorkoutNudgeMin: Int?
+}
+
+struct AppetiteSettingsPayload: Codable, Equatable {
+    var mode: String?
+    var drinkableOk: Bool?
+}
+
+struct WorkoutSyncPayload: Encodable {
+    let workouts: [Item]
+
+    struct Item: Encodable {
+        let source: String
+        let kind: String
+        let start: Date
+        let durationMin: Int
+        var activeKcal: Int? = nil
+        var clientId: String? = nil
+    }
+}
+
+struct TrainingWeekResponse: Decodable {
+    let addCalories: Bool
+    var preWorkoutNudgeMin: Int? = nil
+    let fueledWell: Fueled
+    let days: [Day]
+    let today: Today
+
+    struct Fueled: Decodable {
+        let good: Int
+        let total: Int
+    }
+
+    struct Day: Decodable, Identifiable {
+        var id: String { date }
+        let date: String
+        let bumpKcal: Int
+        let rest: Bool
+        let workouts: [Session]
+    }
+
+    struct Session: Decodable, Identifiable {
+        let id: String
+        let kind: String
+        let source: String
+        let start: String
+        let startMin: Int
+        let durationMin: Int
+        var activeKcal: Int? = nil
+    }
+
+    struct Today: Decodable {
+        let baseKcal: Int
+        let bumpKcal: Int
+        let targetKcal: Int
+        let workouts: [Session]
+        let dinnerMin: Int
+        let timeline: [TimelineEvent]
+    }
+
+    struct TimelineEvent: Decodable, Identifiable {
+        var id: String { "\(kind)-\(atMin)" }
+        let kind: String
+        let atMin: Int
+        let label: String
+        var nudge: Bool? = nil
+    }
+}
+
+struct CalendarSettingsPayload: Codable, Equatable {
+    var enabled: Bool?
+    var leadMin: Int?
+    var minBlockMin: Int?
+    var workdaysOnly: Bool?
+    var includeAllDay: Bool?
+}
+
+struct HealthWritePayload: Codable, Equatable {
+    var energy: Bool
+    var protein: Bool
+    var carbs: Bool
+    var fat: Bool
+    var bodyMass: Bool
+
+    static let `default` = HealthWritePayload(
+        energy: true,
+        protein: true,
+        carbs: true,
+        fat: true,
+        bodyMass: false
+    )
+}
+
 struct QuietHoursPayload: Codable, Equatable {
     var startMin: Int
     var endMin: Int
@@ -489,6 +772,9 @@ struct SettingsResponse: Decodable {
     let startWeightKg: Double?
     let currentWeightKg: Double?
     let mealTimes: MealTimesPayload
+    var weekendMealTimes: WeekendMealTimesPayload? = nil
+    var weekendDays: Int? = nil
+    var weekendSuggestion: WeekendSuggestion? = nil
     let quietHours: QuietHoursPayload
     let checkInsPaused: Bool
     let restrictions: [Restriction]
@@ -500,6 +786,10 @@ struct SettingsResponse: Decodable {
     var pantryTokens: [String]? = nil
     var dislikedFoods: [String]? = nil
     var prepTimeMaxMin: Int? = nil
+    var healthWrite: HealthWritePayload? = nil
+    var calendar: CalendarSettingsPayload? = nil
+    var training: TrainingSettingsPayload? = nil
+    var appetite: AppetiteSettingsPayload? = nil
 
     struct Restriction: Decodable, Identifiable {
         var id: String { token }
@@ -518,17 +808,84 @@ struct SettingsPatch: Encodable {
     var dailyKcalTarget: Int?
     var dailyProteinTargetG: Int?
     var mealTimes: MealTimesPayload?
+    var weekendMealTimes: WeekendMealTimesPayload?
+    var weekendDays: Int?
     var quietHours: QuietHoursPayload?
     var checkInsPaused: Bool?
     var restrictions: [RestrictionInput]?
     var pantryTokens: [String]?
     var dislikedFoods: [String]?
     var prepTimeMaxMin: Int?
+    var healthWrite: HealthWritePayload?
+    var calendar: CalendarSettingsPayload?
+    var training: TrainingSettingsPayload?
+    var appetite: AppetiteSettingsPayload?
 
     struct RestrictionInput: Encodable {
         let label: String
         var source: String?
     }
+}
+
+struct SavedMealsResponse: Decodable {
+    let meals: [SavedMeal]
+    var slot: String? = nil
+}
+
+struct SavedMeal: Decodable, Identifiable, Hashable {
+    let id: String
+    let name: String
+    let items: [MealSummary.Item]
+    let kcal: Int
+    let proteinG: Double
+    let carbsG: Double
+    let fatG: Double
+    let suggestSlot: String?
+    let useInCheckIns: Bool
+    let lastUsedAt: String?
+    let useCount: Int
+    let suggested: Bool
+}
+
+struct SavedMealWrite: Encodable {
+    let name: String
+    let items: [MealCorrectionRequest.Item]
+    let suggestSlot: String?
+    let useInCheckIns: Bool
+}
+
+struct SavedMealResponse: Decodable {
+    let meal: SavedMeal
+}
+
+struct BarcodeFood: Decodable, Identifiable, Hashable {
+    var id: String { code }
+    let code: String
+    let name: String
+    let brand: String?
+    let servingG: Double?
+    let kcal100g: Double
+    let proteinG100g: Double
+    let carbsG100g: Double
+    let fatG100g: Double
+    let fetchedAt: String
+
+    func portion(servings: Double) -> (grams: Double, kcal: Int, proteinG: Double, carbsG: Double, fatG: Double) {
+        let serving = (servingG ?? 0) > 0 ? (servingG ?? 100) : 100
+        let grams = serving * servings
+        let factor = grams / 100
+        return (
+            grams,
+            Int((kcal100g * factor).rounded()),
+            (proteinG100g * factor * 10).rounded() / 10,
+            (carbsG100g * factor * 10).rounded() / 10,
+            (fatG100g * factor * 10).rounded() / 10
+        )
+    }
+}
+
+struct BarcodeFoodResponse: Decodable {
+    let food: BarcodeFood
 }
 
 struct DeleteAccountRequest: Encodable {

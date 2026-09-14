@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import WidgetKit
 
 /// Lightweight DI container handed down through the SwiftUI environment.
 @MainActor
@@ -9,7 +10,9 @@ final class AppEnvironment {
     let api: APIClient
     let push = PushManager.shared
     let health = HealthKitManager.shared
+    let calendar = CalendarManager.shared
     let changes = AppDataChanges()
+    let subscription = SubscriptionStore()
 
     init(tokenStore: TokenStore = SessionTokenStore()) {
         let auth = AuthStore(tokenStore: tokenStore)
@@ -26,6 +29,7 @@ final class AppEnvironment {
         )
         push.api = api
         health.api = api
+        calendar.api = api
     }
 
     static func preview() -> AppEnvironment {
@@ -41,7 +45,14 @@ final class AppEnvironment {
 final class AppDataChanges {
     private(set) var mealRevision = 0
 
+    var pendingLogPhoto = false
+
     func mealsChanged() {
         mealRevision &+= 1
+        WidgetCenter.shared.reloadAllTimelines()
+    }
+
+    func openLogPhoto() {
+        pendingLogPhoto = true
     }
 }

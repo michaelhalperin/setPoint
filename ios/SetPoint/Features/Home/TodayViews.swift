@@ -253,8 +253,8 @@ struct LogDock: View {
         VStack(alignment: .leading, spacing: Space.xs) {
             status
 
-            if showsRecents {
-                recentsRow
+            if showsQuickLog {
+                quickLog
                     .transition(.opacity.combined(with: .move(edge: .bottom)))
             }
 
@@ -280,19 +280,68 @@ struct LogDock: View {
         }
         .animation(Motion.adaptive(Motion.snappy, reduceMotion: reduceMotion), value: logger.phase)
         .animation(Motion.adaptive(Motion.snappy, reduceMotion: reduceMotion), value: logger.backdate)
-        .animation(Motion.adaptive(Motion.snappy, reduceMotion: reduceMotion), value: showsRecents)
+        .animation(Motion.adaptive(Motion.snappy, reduceMotion: reduceMotion), value: showsQuickLog)
     }
 
-    /// "Again?" — recent meals as one-tap chips while the field is open and empty.
-    private var showsRecents: Bool {
+    /// Modes + my meals + recents while the field is open and empty.
+    private var showsQuickLog: Bool {
         focused.wrappedValue && logger.phase == .compose && logger.text.isEmpty
-            && logger.photo == nil && !logger.recents.isEmpty
+            && logger.photo == nil
+    }
+
+    private var quickLog: some View {
+        VStack(alignment: .leading, spacing: Space.sm) {
+            SegmentedPills(
+                options: LogMealViewModel.Mode.allCases,
+                selection: modeBinding,
+                title: { $0.title }
+            )
+
+            if !logger.savedMeals.isEmpty {
+                VStack(alignment: .leading, spacing: Space.xs) {
+                    Text("My meals").sectionLabelStyle()
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 10) {
+                            ForEach(logger.savedMeals) { meal in
+                                SavedMealCard(meal: meal) {
+                                    focused.wrappedValue = false
+                                    Task { await logger.logSaved(meal) }
+                                }
+                            }
+                        }
+                    }
+                    .scrollClipDisabled()
+                }
+            }
+
+            if !logger.recents.isEmpty {
+                recentsRow
+            }
+        }
+    }
+
+    private var modeBinding: Binding<LogMealViewModel.Mode> {
+        Binding(
+            get: { logger.mode },
+            set: { next in
+                logger.mode = next
+                switch next {
+                case .type:
+                    break
+                case .scan:
+                    focused.wrappedValue = false
+                    logger.openScanner()
+                case .photo:
+                    logger.showPhotoPicker = true
+                }
+            }
+        )
     }
 
     private var recentsRow: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                Text("Again?")
+                Text("Recent")
                     .sectionLabelStyle()
                 ForEach(logger.recents) { meal in
                     Button {
@@ -300,6 +349,11 @@ struct LogDock: View {
                         Task { await logger.logAgain(meal) }
                     } label: {
                         HStack(spacing: 6) {
+                            if meal.isScanned {
+                                Image(systemName: "barcode")
+                                    .font(.system(size: 11, weight: .bold))
+                                    .foregroundStyle(Palette.inkFaint)
+                            }
                             Text(meal.summary ?? "")
                                 .lineLimit(1)
                             Text("\(meal.kcal)")
@@ -386,5 +440,51 @@ struct LogDock: View {
         }
         .padding(.leading, 6)
         .transition(.opacity)
+    }
+}
+
+private struct SavedMealCard: View {
+    let meal: SavedMeal
+    let onLog: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                if meal.suggested {
+                    Text("NOW")
+                        .font(Typography.data(10, weight: .bold))
+                        .foregroundStyle(Palette.background)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 3)
+                        .background(Palette.accent, in: Capsule())
+                }
+                Spacer(minLength: 0)
+                Button(action: onLog) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(Palette.ink)
+                        .frame(width: 28, height: 28)
+                        .background(Palette.surfaceSunk, in: Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Log \(meal.name)")
+            }
+            Text(meal.name)
+                .font(Typography.data(15, weight: .bold))
+                .foregroundStyle(Palette.ink)
+                .lineLimit(2)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Text("\(meal.kcal) kcal")
+                .font(Typography.data(12, weight: .semibold))
+                .foregroundStyle(Palette.inkFaint)
+                .monospacedDigit()
+        }
+        .padding(12)
+        .frame(width: 148, alignment: .leading)
+        .background(Palette.surface, in: RoundedRectangle(cornerRadius: Radius.md, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
+                .strokeBorder(meal.suggested ? Palette.accent : Palette.hairline, lineWidth: meal.suggested ? 2 : 1)
+        )
     }
 }

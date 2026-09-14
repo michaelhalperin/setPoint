@@ -6,11 +6,13 @@ final class PushTests: XCTestCase {
     func testDeepLinkParsesCheckIn() {
         XCTAssertEqual(DeepLink(url: URL(string: "setpoint://check-in/ci_42")!), .checkIn(id: "ci_42"))
         XCTAssertEqual(DeepLink(url: URL(string: "setpoint://check-in/ci_42/")!), .checkIn(id: "ci_42"))
+        XCTAssertEqual(DeepLink(url: URL(string: "setpoint://log/photo")!), .logPhoto)
     }
 
     func testDeepLinkRejectsOtherURLs() {
         XCTAssertNil(DeepLink(url: URL(string: "setpoint://check-in/")!))
         XCTAssertNil(DeepLink(url: URL(string: "setpoint://home")!))
+        XCTAssertNil(DeepLink(url: URL(string: "setpoint://log/scan")!))
         XCTAssertNil(DeepLink(url: URL(string: "https://set-point-backend.vercel.app/check-in/x")!))
     }
 

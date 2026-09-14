@@ -1,3 +1,17 @@
+const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
+
+/** JS `Date#getDay` weekday (0 = Sunday … 6 = Saturday) in `timeZone`. */
+export function localWeekday(date: Date, timeZone: string): number {
+  const short = new Intl.DateTimeFormat('en-US', { timeZone, weekday: 'short' }).format(date);
+  const index = WEEKDAY_SHORT.indexOf(short as (typeof WEEKDAY_SHORT)[number]);
+  return index >= 0 ? index : date.getUTCDay();
+}
+
+/** Weekday of a local `YYYY-MM-DD` (noon UTC, DST-immune). */
+export function weekdayOfLocalDate(iso: string): number {
+  return new Date(`${iso}T12:00:00.000Z`).getUTCDay();
+}
+
 /** Milliseconds elapsed since local midnight in the given IANA timezone. */
 export function msSinceLocalMidnight(date: Date, timeZone: string): number {
   const parts = new Intl.DateTimeFormat('en-US', {

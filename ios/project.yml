@@ -48,8 +48,11 @@ targets:
           - Fraunces-Medium.ttf
           - Fraunces-Italic.ttf
         NSHealthShareUsageDescription: "SetPoint reads your height, weight, age and sex to set daily targets, and your body weight to track progress. Heart-rate variability and resting heart rate are optional: they may slightly adjust a check-in that is already due from a missed meal. They never diagnose under-fueling on their own."
+        NSHealthUpdateUsageDescription: "SetPoint writes meals you log (calories, protein, carbs and fat) into Apple Health so they stay in one place. Weight you log in SetPoint can be written too if you turn that on."
+        NSCalendarsFullAccessUsageDescription: "SetPoint reads only when you are busy. Event titles, locations and who is invited never leave this phone."
+        NSCalendarsUsageDescription: "SetPoint reads only when you are busy. Event titles, locations and who is invited never leave this phone."
         LSApplicationQueriesSchemes: ["x-apple-health"]
-        NSCameraUsageDescription: "Take a photo of a meal to log it."
+        NSCameraUsageDescription: "Take a photo of a meal or scan a barcode to log it."
         NSPhotoLibraryUsageDescription: "Attach a photo of a meal to log it."
         SentryDSN: $(SENTRY_DSN)
         CFBundleURLTypes:
@@ -73,11 +76,20 @@ targets:
         com.apple.developer.healthkit: true
         com.apple.developer.healthkit.access: []
         com.apple.developer.healthkit.background-delivery: true
+        com.apple.security.application-groups:
+          - group.com.setpoint.app
+        keychain-access-groups:
+          - $(AppIdentifierPrefix)group.com.setpoint.app
     dependencies:
       - target: SetPointWidgets
         embed: true
       - sdk: ActivityKit.framework
+      - sdk: WidgetKit.framework
+      - sdk: AppIntents.framework
       - sdk: HealthKit.framework
+      - sdk: EventKit.framework
+      - sdk: VisionKit.framework
+      - sdk: StoreKit.framework
       - package: Sentry
 
   SetPointWidgets:
@@ -94,9 +106,17 @@ targets:
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: SetPointWidgets/Info.plist
         SKIP_INSTALL: YES
+    entitlements:
+      path: SetPointWidgets/SetPointWidgets.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.setpoint.app
+        keychain-access-groups:
+          - $(AppIdentifierPrefix)group.com.setpoint.app
     dependencies:
       - sdk: ActivityKit.framework
       - sdk: WidgetKit.framework
+      - sdk: AppIntents.framework
       - sdk: SwiftUI.framework
 
   SetPointTests:
@@ -119,6 +139,7 @@ schemes:
         SetPointWidgets: all
     run:
       config: Debug
+      storeKitConfiguration: Config/SetPoint.storekit
     test:
       config: Debug
       targets:

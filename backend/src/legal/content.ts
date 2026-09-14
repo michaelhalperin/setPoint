@@ -10,7 +10,7 @@
 import { env } from '../env.js';
 
 /** Bump when the substance changes; the app can compare it to what a user accepted. */
-export const LEGAL_VERSION = '2026-09-14';
+export const LEGAL_VERSION = '2026-09-14-subscription';
 export const LEGAL_EFFECTIVE_DATE = 'September 14, 2026';
 
 const SUPPORT = env.SUPPORT_EMAIL;
@@ -69,7 +69,8 @@ never sell your data or use health data for advertising.</p>
 <ul>
   <li><strong>Account</strong> — your Apple ID identifier and, if you share it during Sign in with Apple, your email address. Used to sign you in and to contact you about the service.</li>
   <li><strong>Your profile</strong> — height, weight, date of birth, sex, activity level, goal, target weight and pace, preferred meal times, quiet hours, and time zone. Used to calculate your calorie and protein targets and to decide when a check-in is due.</li>
-  <li><strong>Meals you log</strong> — the text or photo you enter, and the resulting calorie and macronutrient estimate. Photos and text you submit for automatic parsing are sent to our AI provider (see "Service providers"). Meal photos are kept in private storage that is only readable through short-lived links the app requests.</li>
+  <li><strong>Meals you log</strong> — the text, photo, barcode, or saved meal you enter, and the resulting calorie and macronutrient estimate. Photos and text you submit for automatic parsing are sent to our AI provider (see "Service providers"). Barcodes you scan are looked up through Open Food Facts so we can fill in the product's nutrition; we store the barcode and the cached nutrition facts, not a photo of the package. Meal photos are kept in private storage that is only readable through short-lived links the app requests.</li>
+  <li><strong>Saved meals</strong> — named plates you choose to keep (foods, portions, and whether to suggest them at breakfast, lunch, or dinner, including during a check-in). Used only to let you re-log them in one tap.</li>
   <li><strong>Dietary restrictions</strong> — allergies and restrictions you enter, used as hard exclusions when suggesting food.</li>
   <li><strong>Safety screening answers</strong> — medical-eligibility questions and a validated eating-concern questionnaire, used once to decide whether active check-ins should be enabled. Uncertain answers keep check-ins off. Stored so you don't have to answer again; never used for any other purpose.</li>
   <li><strong>Weight entries</strong> — weigh-ins you record or that are read from Apple Health.</li>
@@ -88,19 +89,34 @@ never sell your data or use health data for advertising.</p>
 </ul>
 <p>We do not use your information for advertising or profiling, and we do not sell it.</p>
 
+<h2>Calendar</h2>
+<p>If you connect a calendar, SetPoint reads event times on your device and uploads
+only busy intervals (start and end). Event titles, locations, attendees and notes
+never leave your phone. Busy times may move a check-in earlier so you can eat
+before a block of meetings. You can disconnect the calendar at any time.</p>
+
 <h2>Apple Health (HealthKit)</h2>
-<p>Health data access is optional and used only for the features described above:
-reading heart-rate variability and resting heart rate as a <em>bounded modifier</em>
-on check-ins that are already due from missed or late meals, and reading body
-weight to track progress. Wearable signals never independently trigger a
-check-in. Data read from Health is processed on your device; only derived
-values (a biosignal deviation score, a weight number) are sent to our server.
-Health data is never used for advertising and is never shared with third
-parties. You can revoke access at any time in the Health app or in iOS Settings.</p>
+<p>Health data access is optional. With your permission, SetPoint:</p>
+<ul>
+  <li>Reads heart-rate variability and resting heart rate on your device as a
+  <em>bounded modifier</em> on check-ins that are already due from missed or late
+  meals. Wearable signals never independently trigger a check-in.</li>
+  <li>Reads body weight, height, age and sex to set targets and track progress.</li>
+  <li>Writes meals you log (calories, protein, carbohydrates and fat) into Health
+  as one food entry per meal, using the meal identifier so an edit or delete in
+  SetPoint updates the same samples. You can turn each nutrient off in Settings.
+  Weight you log in SetPoint is written only if you enable that toggle.</li>
+</ul>
+<p>Data read from Health is processed on your device; only derived values (a
+biosignal deviation score, a weight number) are sent to our server. Nutrition
+written to Health stays on your device. Health data is never used for advertising
+and is never shared with third parties. You can revoke access at any time in the
+Health app or in iOS Settings.</p>
 
 <h2>Service providers</h2>
 <ul>
-  <li><strong>Anthropic</strong> — processes the meal text or photo you submit to return a nutrition estimate, and generates the wording of check-in messages. Input is sent over an encrypted connection for that purpose.</li>
+  <li><strong>Anthropic</strong> — processes the meal text or photo you submit to return a nutrition estimate, and generates the wording of check-in messages. Input is sent over an encrypted connection for that purpose. Meals you log from a saved plate or a barcode are not sent to the model.</li>
+  <li><strong>Open Food Facts</strong> — a public food database we query when you scan a barcode, to look up the product name and per-100g nutrition. We send only the barcode.</li>
   <li><strong>Vercel</strong> — hosts the backend service.</li>
   <li><strong>Neon</strong> — hosts the database.</li>
   <li><strong>Cloudflare</strong> — stores the meal photos you log, in private storage.</li>
@@ -182,7 +198,17 @@ the app or in iOS Settings.</p>
 
 <h2>Accounts</h2>
 <p>You sign in with Apple. You may delete your account at any time in Settings,
-which permanently erases your data.</p>
+which permanently erases your data. Account deletion is never blocked by a
+lapsed subscription.</p>
+
+<h2>Subscriptions</h2>
+<p>Optional paid plans (<code>setpoint.yearly</code> with a 7-day free trial, and
+<code>setpoint.monthly</code>) are billed through Apple. Payment is charged to your
+Apple ID. The yearly trial converts to a paid year unless you cancel at least
+24 hours before the trial ends. Subscriptions renew automatically until you
+cancel in Apple ID settings. Check-ins, calendar, training and appetite require
+an active subscription (with a short grace period after expiry). Meal logging,
+safety screening, weight tracking and account deletion stay available.</p>
 
 <h2>Availability and changes</h2>
 <p>The service is provided "as is" and may change, be interrupted, or be

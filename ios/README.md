@@ -85,7 +85,11 @@ Screenshot a specific screen with sample data:
 ./ios/scripts/run.sh -uiStub onboarding-health # SCOFF / safety step
 ./ios/scripts/run.sh -uiStub onboarding-review # review + submit step
 ./ios/scripts/run.sh -uiStub prescription      # the full-screen check-in
+./ios/scripts/run.sh -uiStub log-quick         # log sheet with My meals + Recent
+./ios/scripts/run.sh -uiStub log-scan          # barcode product sheet
+./ios/scripts/run.sh -uiStub saved-meal        # saved-meal editor
 ./ios/scripts/run.sh -uiStub settings          # settings screen
+./ios/scripts/run.sh -uiStub settings-meal-times-weekends # weekday vs weekend meal times
 ./ios/scripts/run.sh -uiStub settlement        # 7-day settlement view
 ```
 
@@ -129,6 +133,7 @@ breakdown shows; the real numbers replace it, with "That's not what I ate —
 remove it" calling `DELETE /api/meals/:id`.
 
 Debug launch args for screenshots: `-uiStub log-meal`, `log-meal-result`,
+`log-quick`, `log-scan`, `saved-meal`,
 `conversation`, `conversation-resolved` (plus the earlier `home`, `prescription`,
 `settings`, `settlement`, `onboarding*`).
 
@@ -202,8 +207,9 @@ Test a notification locally: `xcrun simctl push <device> com.setpoint.app payloa
   `HKObserverQuery` + hourly (heart) / immediate (weight) background delivery.
   Computes on-device and posts only the z-scores to `/api/biosignals` (§4 — raw
   samples never leave the device). Anchored body-mass samples → `/api/weight`
-  (M16). Nothing is written to Health (`NSHealthUpdateUsageDescription` is omitted
-  on purpose).
+  (M16). Logged meals write back as `HKCorrelation(.food)` with a sync identifier
+  (calories / protein / carbs / fat, per Settings toggles). Optional write of
+  in-app weigh-ins. `NSHealthUpdateUsageDescription` is required for those writes.
 - Prompted from onboarding About you ("Fill from Apple Health") and Settings →
   Apple Health; `refreshState()` + `sync()` on launch and `scenePhase == .active`;
   observers re-registered in `AppDelegate` so background delivery survives relaunch

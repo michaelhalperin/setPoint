@@ -37,6 +37,11 @@ describe('buildCheckInAlertPayload', () => {
     const talk = buildCheckInAlertPayload({ ...payload, tier: 3 }) as { aps: Record<string, unknown> };
     expect(talk.aps).not.toHaveProperty('category');
   });
+
+  it('uses HEADS_UP actions for a calendar check-in', () => {
+    const p = buildCheckInAlertPayload({ ...payload, category: 'HEADS_UP' }) as { aps: Record<string, unknown> };
+    expect(p.aps.category).toBe('HEADS_UP');
+  });
 });
 
 describe('buildLiveActivityPayload', () => {

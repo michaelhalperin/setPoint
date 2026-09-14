@@ -109,6 +109,50 @@ extension HomeResponse {
         )
     )
 
+    /// Lunch moved earlier for a 12–3 meeting block.
+    static var sampleBusy: HomeResponse {
+        var home = lateLunch(note: "Eat before the afternoon is locked.", checkIn: nil)
+        home.nextCheckIn = .init(slot: "lunch", mealMin: 780, dueMin: 675, overdue: false)
+        home.busyBlocks = [.init(startMin: 720, endMin: 900)]
+        home.movedSlots = [.init(slot: "lunch", fromMin: 780, toMin: 675)]
+        home.day = Day(
+            nowMin: 640,
+            slots: [
+                .init(slot: "breakfast", atMin: 480, state: "logged", mealIds: ["meal_oats", "meal_banana"], kcal: 600),
+                .init(slot: "lunch", atMin: 780, state: "upcoming", mealIds: [], kcal: 0),
+                .init(slot: "dinner", atMin: 1140, state: "upcoming", mealIds: [], kcal: 0),
+            ],
+            pace: lateLunchDay.pace
+        )
+        return home
+    }
+
+    static var sampleTraining: HomeResponse {
+        var home = lateLunch(note: "Session this afternoon.", checkIn: nil)
+        home.training = .init(
+            bumpKcal: 350,
+            addCalories: true,
+            workouts: [.init(id: "w1", kind: "STRENGTH", source: "PLANNED", startMin: 1020, durationMin: 60, activeKcal: 350)],
+            refuelUntilMin: 1125
+        )
+        return home
+    }
+
+    static var sampleAppetite: HomeResponse {
+        var home = lateLunch(note: "Five lighter meals today.", checkIn: nil)
+        home.appetite = .init(
+            mode: "SMALL_FREQUENT",
+            level: "LOW",
+            drinkableOk: true,
+            suggestSmallerDefault: true,
+            extraSlots: [
+                .init(slot: "snack_am", atMin: 630),
+                .init(slot: "snack_pm", atMin: 960),
+            ]
+        )
+        return home
+    }
+
     /// The same check-in, snoozed.
     static let sampleSnoozed = lateLunch(
         note: "There's a check-in waiting just below.",
@@ -332,13 +376,16 @@ extension HomeResponse {
 }
 
 #Preview("Meal detail") {
-    MealDetailSheet(meal: .sample(
-        id: "meal_1",
-        kcal: 820,
-        protein: 50,
-        source: "PHOTO",
-        summary: "Chicken burrito bowl, large"
-    ))
+    MealDetailSheet(
+        meal: .sample(
+            id: "meal_1",
+            kcal: 820,
+            protein: 50,
+            source: "PHOTO",
+            summary: "Chicken burrito bowl, large"
+        ),
+        onSaveAsMeal: {}
+    )
 }
 
 extension HomeResponse {

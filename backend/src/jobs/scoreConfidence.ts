@@ -8,16 +8,31 @@ import {
   SCORE_CONFIG,
   decideEscalation,
   deriveHoursSinceMeal,
-  dueCheckIn,
   expectedGapHours,
   freshCheckInTier,
+  headsUpCopy,
   isBiosignalFresh,
   localDateISO,
+  localWeekday,
+  mealTimesOn,
   msSinceLocalMidnight,
+  prefsFromProfile,
+  slotNameOf,
   startOfLocalDay,
   TIER,
+  toMinuteBlocks,
+  upcomingCheckIn,
+  applyCalendarShift,
+  withOverdue,
   userInWearableCohort,
   wearableModifierKillSwitchOn,
+  appetiteShape,
+  extraAppetiteSlots,
+  remainingSlotCount,
+  appetiteMealTarget,
+  needsRefuel,
+  needsPreWorkoutNudge,
+  effectiveWorkouts,
   type EscalationDecision,
   type Goal,
   type SlotName,
@@ -31,10 +46,17 @@ import { deliverCheckIn } from '../push/deliver.js';
 import type { PushSender } from '../push/types.js';
 import {
   computePrescriptionTarget,
+  excludedTokensFrom,
+  loadStapleFoods,
   prescribe,
   prescriptionSummary,
+  refuelPrescription,
+  type PrescriptionResult,
   type SolverFood,
 } from '../solver/index.js';
+import { prescriptionFromSavedMeal } from '../savedMeals/index.js';
+import { trainingForLocalDay } from '../training/day.js';
+import { isEntitled } from '../subscription/entitlement.js';
 
 export type ScoreConfidenceDeps = {
   prisma: PrismaClient;
@@ -101,20 +123,8 @@ export async function runScoreConfidenceJob(
     skipped: {},
   };
 
-  const foodRows = await deps.prisma.foodItem.findMany({ where: { isStaple: true } });
   const context: JobContext = {
-    solverFoods: foodRows.map((f) => ({
-      slug: f.slug,
-      name: f.name,
-      servingDesc: f.servingDesc,
-      kcal: f.kcal,
-      proteinG: f.proteinG,
-      carbsG: f.carbsG,
-      fatG: f.fatG,
-      tags: f.tags,
-      allergens: f.allergens,
-    })),
-    foodIdBySlug: new Map(foodRows.map((f) => [f.slug, f.id])),
+    ...(await loadStapleFoods(deps.prisma)),
     wearableHalted: await wearableHaltedByStopConditions(deps.prisma, now),
   };
   summary.wearableHalted = context.wearableHalted;
@@ -173,7 +183,7 @@ async function processUser(
   const { prisma } = deps;
   const dayStart = startOfLocalDay(now, user.timezone);
 
-  const [activeCheckIns, lastMeal, todayMeals, todayCheckIns, restrictions] = await Promise.all([
+  const [activeCheckIns, lastMeal, todayMeals, todayCheckIns, restrictions, usualForSlot, busyRows, workouts] = await Promise.all([
     prisma.checkIn.findMany({
       where: { userId: user.id, status: { in: ['PENDING', 'DEFERRED'] } },
       orderBy: { createdAt: 'desc' },
@@ -185,13 +195,41 @@ async function processUser(
     }),
     prisma.checkIn.findMany({
       where: { userId: user.id, createdAt: { gte: dayStart } },
-      select: { createdAt: true, tier: true, episodeKey: true },
+      select: { createdAt: true, tier: true, episodeKey: true, slot: true, kind: true },
     }),
     prisma.dietaryRestriction.findMany({ where: { userId: user.id, isHardExclusion: true } }),
+    prisma.savedMeal.findMany({
+      where: { userId: user.id, useInCheckIns: true },
+      orderBy: [{ lastUsedAt: 'desc' }, { useCount: 'desc' }],
+    }),
+    prisma.calendarBusyBlock.findMany({
+      where: {
+        userId: user.id,
+        end: { gt: dayStart },
+        start: { lt: new Date(dayStart.getTime() + 86_400_000) },
+      },
+      select: { start: true, end: true, allDay: true },
+    }),
+    prisma.workout.findMany({
+      where: {
+        userId: user.id,
+        start: { gte: new Date(dayStart.getTime() - 86_400_000) },
+      },
+      orderBy: { start: 'asc' },
+    }),
   ]);
 
   const consumedKcal = todayMeals.reduce((acc, m) => acc + m.kcal, 0);
-  const underTarget = consumedKcal < profile.dailyKcalTarget;
+  const training = await trainingForLocalDay(prisma, {
+    userId: user.id,
+    now,
+    timezone: user.timezone,
+    weightKg: profile.weightKg ?? 80,
+    baseKcal: profile.dailyKcalTarget,
+    addCalories: profile.trainingAddCalories ?? true,
+  });
+  const targetKcal = training.targetKcal;
+  const underTarget = consumedKcal < targetKcal;
 
   let blocked = false;
   for (const ci of activeCheckIns) {
@@ -233,17 +271,61 @@ async function processUser(
     return;
   }
 
-  const due = dueCheckIn({
-    nowMin: localMinute(now, user.timezone),
-    times: profile,
-    mealMinutesToday: todayMeals.map((m) => localMinute(m.loggedAt, user.timezone)),
-    checkedSlotsToday: todayCheckIns
-      .filter((c) => c.tier < TIER.CONVERSATION)
-      .map((c) => checkInSlotAt(localMinute(c.createdAt, user.timezone), profile))
-      .filter((slot): slot is SlotName => slot !== null),
-    consumedKcal,
-    targetKcal: profile.dailyKcalTarget,
+  if (!isEntitled(user, now)) {
+    bump(summary, 'not_subscribed');
+    return;
+  }
+
+  if (
+    await maybeFireTrainingCheckIn(deps, user, {
+      now,
+      dayStart,
+      todayMeals,
+      todayCheckIns,
+      workouts,
+      dinnerMin: mealTimesOn(profile, localWeekday(now, user.timezone)).dinnerMin,
+      restrictions,
+      usualForSlot,
+      solverFoods: ctx.solverFoods,
+      foodIdBySlug: ctx.foodIdBySlug,
+      summary,
+    })
+  ) {
+    return;
+  }
+
+  const times = mealTimesOn(profile, localWeekday(now, user.timezone));
+  const nowMin = localMinute(now, user.timezone);
+  const dayAppetite = await prisma.dayAppetite.findUnique({
+    where: { userId_localDate: { userId: user.id, localDate: localDateISO(now, user.timezone) } },
   });
+  const shape = appetiteShape(
+    (profile.appetiteMode as 'NORMAL' | 'SMALL_FREQUENT') ?? 'NORMAL',
+    (dayAppetite?.level as 'HUNGRY' | 'NORMAL' | 'LOW') ?? null,
+  );
+  const extraSlots = shape === 'SMALL';
+  const checkedSlotsToday = todayCheckIns
+    .filter((c) => c.tier < TIER.CONVERSATION && c.kind !== 'REFUEL' && c.kind !== 'PRE_WORKOUT')
+    .map((c) => slotNameOf(c.slot) ?? checkInSlotAt(localMinute(c.createdAt, user.timezone), times))
+    .filter((slot): slot is SlotName => slot !== null);
+  const upcoming = upcomingCheckIn({
+    nowMin,
+    times,
+    mealMinutesToday: todayMeals.map((m) => localMinute(m.loggedAt, user.timezone)),
+    checkedSlotsToday,
+    consumedKcal,
+    targetKcal,
+    extraSlots,
+  });
+  const calendarPrefs = prefsFromProfile(profile);
+  const todayBusy = toMinuteBlocks(busyRows, dayStart, user.timezone);
+  const shifted = upcoming
+    ? withOverdue(
+        applyCalendarShift(upcoming, times, todayBusy, calendarPrefs, localWeekday(now, user.timezone))!,
+        nowMin,
+      )
+    : null;
+  const due = shifted?.overdue ? shifted : null;
   summary.scored += 1;
   if (!due) {
     bump(summary, 'not_due');
@@ -277,9 +359,9 @@ async function processUser(
     slot: due.slot,
     overdueMin,
     hoursSinceMeal,
-    expectedGapHours: expectedGapHours(due.slot, profile),
+    expectedGapHours: expectedGapHours(due.slot, times),
     consumedKcal,
-    targetKcal: profile.dailyKcalTarget,
+    targetKcal,
     slotCheckIns,
     wearable: wearableFresh
       ? { hrvDeviation: wearableFresh.hrvDeviation, rhrDeviation: wearableFresh.rhrDeviation }
@@ -299,7 +381,7 @@ async function processUser(
     wearableUsed: scored.wearableUsed,
     biosignalDeviation: wearableFresh?.hrvDeviation ?? null,
     hoursSinceMeal,
-    expectedGapHours: expectedGapHours(due.slot, profile),
+    expectedGapHours: expectedGapHours(due.slot, times),
     loggingSilence: null,
     overdueMin,
     dismissRate: scored.components.slotDismissRate,
@@ -319,38 +401,68 @@ async function processUser(
     return;
   }
 
-  const excludedTokens = [...restrictions.map((r) => r.token), ...(profile.dislikedFoods ?? [])];
+  const excludedTokens = excludedTokensFrom(restrictions, profile.dislikedFoods);
   const pantry = profile.pantryTokens ?? [];
 
   const tier = freshCheckInTier(escStateOf(user));
-  const target = computePrescriptionTarget({
-    dailyKcalTarget: profile.dailyKcalTarget,
+  const remainingSlots = remainingSlotCount({
+    nowMin,
+    times,
+    extra: extraSlots,
+    checked: checkedSlotsToday,
+    mealMinutesToday: todayMeals.map((m) => localMinute(m.loggedAt, user.timezone)),
+  });
+  const computed = computePrescriptionTarget({
+    dailyKcalTarget: targetKcal,
     consumedKcal,
     dailyProteinTargetG: profile.dailyProteinTargetG,
     consumedProteinG: todayMeals.reduce((acc, m) => acc + m.proteinG, 0),
   });
+  const shapedKcal =
+    shape === 'NORMAL'
+      ? computed.targetKcal
+      : appetiteMealTarget({
+          remainingKcal: Math.max(0, targetKcal - consumedKcal),
+          remainingSlots,
+          shape,
+        });
+  const target = { targetKcal: shapedKcal, targetProteinG: computed.targetProteinG };
 
-  const rx =
-    ctx.solverFoods.length > 0
+  const usual =
+    due.slot === 'snack_am' || due.slot === 'snack_pm'
+      ? null
+      : (usualForSlot.find((m) => m.suggestSlot === due.slot) ?? null);
+  const rx = usual
+    ? prescriptionFromSavedMeal(usual, target)
+    : ctx.solverFoods.length > 0
       ? prescribe(ctx.solverFoods, {
           targetKcal: target.targetKcal,
           targetProteinG: target.targetProteinG,
           excludedTokens,
-          preferLowFriction: tier >= 2,
+          preferLowFriction: tier >= 2 || shape === 'SMALL',
           pantryTokens: pantry,
           prepTimeMaxMin: profile.prepTimeMaxMin,
+          preferCalorieDense: shape === 'SMALL',
+          preferDrinkable: shape === 'SMALL' && (profile.drinkableOk ?? true),
         })
       : null;
   const summaryLine = rx ? prescriptionSummary(rx) : null;
+  const isHeadsUp = due.movedFromMin != null && due.busy != null;
+  const message = isHeadsUp && due.busy
+    ? headsUpCopy(due.busy, due.slot)
+    : await checkInCopy(deps.voice, {
+        tier,
+        goal: profile.goal as Goal,
+        hoursSinceMeal,
+        kcalGap: target.targetKcal,
+        prescriptionSummary: summaryLine,
+        slot: due.slot,
+      });
 
-  const message = await checkInCopy(deps.voice, {
-    tier,
-    goal: profile.goal as Goal,
-    hoursSinceMeal,
-    kcalGap: target.targetKcal,
-    prescriptionSummary: summaryLine,
-    slot: due.slot,
-  });
+  const busyUntil =
+    isHeadsUp && due.busy
+      ? new Date(dayStart.getTime() + due.busy.endMin * 60_000)
+      : null;
 
   const checkIn = await prisma.checkIn.create({
     data: {
@@ -362,6 +474,9 @@ async function processUser(
       message,
       slot: due.slot,
       episodeKey,
+      kind: isHeadsUp ? 'HEADS_UP' : 'MEAL',
+      movedFromMin: due.movedFromMin,
+      busyUntil,
     },
   });
 
@@ -396,13 +511,180 @@ async function processUser(
     summary.prescriptionsCreated += 1;
   }
 
-  await markDelivered(deps, user.id, checkIn.id, tier, message, prescriptionId, now);
+  await markDelivered(deps, user.id, checkIn.id, tier, message, prescriptionId, now, isHeadsUp ? 'HEADS_UP' : 'CHECK_IN');
   await prisma.escalationState.upsert({
     where: { userId: user.id },
     create: { userId: user.id, lastCheckInAt: now, currentTier: tier },
     update: { lastCheckInAt: now },
   });
   summary.checkInsCreated += 1;
+}
+
+type TrainingCtx = {
+  now: Date;
+  dayStart: Date;
+  todayMeals: { kcal: number; proteinG: number; loggedAt: Date }[];
+  todayCheckIns: { episodeKey: string | null; kind: string; slot: string | null; tier: number; createdAt: Date }[];
+  workouts: { id: string; source: string; start: Date; durationMin: number }[];
+  dinnerMin: number;
+  restrictions: { token: string }[];
+  usualForSlot: { suggestSlot: string | null }[];
+  solverFoods: SolverFood[];
+  foodIdBySlug: Map<string, string>;
+  summary: ScoreConfidenceSummary;
+};
+
+async function maybeFireTrainingCheckIn(
+  deps: ScoreConfidenceDeps,
+  user: UserWithRelations,
+  ctx: TrainingCtx,
+): Promise<boolean> {
+  const profile = user.onboarding;
+  if (!profile) return false;
+  const enforcement = user.safetyScreening?.enforcementEnabled ?? false;
+  const meals = ctx.todayMeals.map((m) => ({ at: m.loggedAt, kcal: m.kcal }));
+  const excludedTokens = excludedTokensFrom(ctx.restrictions, profile.dislikedFoods);
+
+  // Only a session Apple Health recorded proves the user trained — a planned one may have been skipped.
+  for (const workout of ctx.workouts.filter((w) => w.source === 'HEALTHKIT')) {
+    const ended = new Date(workout.start.getTime() + workout.durationMin * 60_000);
+    if (
+      !needsRefuel({
+        workoutEndedAt: ended,
+        now: ctx.now,
+        meals,
+        enforcementEnabled: enforcement,
+      })
+    ) {
+      continue;
+    }
+    const episodeKey = `${localDateISO(ctx.now, user.timezone)}:refuel:${workout.id}`;
+    if (ctx.todayCheckIns.some((c) => c.episodeKey === episodeKey)) continue;
+    const dinner = formatClock(ctx.dinnerMin);
+    await createTrainingCheckIn(deps, user, {
+      now: ctx.now,
+      episodeKey,
+      kind: 'REFUEL',
+      slot: 'refuel',
+      workoutId: workout.id,
+      message: `You trained. Eat something now — dinner at ${dinner} can cover it.`,
+      category: 'REFUEL',
+      rx: refuelPrescription(ctx.solverFoods, excludedTokens),
+      foodIdBySlug: ctx.foodIdBySlug,
+      summary: ctx.summary,
+    });
+    return true;
+  }
+
+  const nudgeMin = profile.preWorkoutNudgeMin ?? null;
+  for (const workout of effectiveWorkouts(ctx.workouts).filter((w) => w.source === 'PLANNED')) {
+    if (
+      !needsPreWorkoutNudge({
+        plannedStart: workout.start,
+        now: ctx.now,
+        meals: meals.map((m) => ({ at: m.at })),
+        nudgeMin,
+        enforcementEnabled: enforcement,
+      })
+    ) {
+      continue;
+    }
+    const episodeKey = `${localDateISO(ctx.now, user.timezone)}:preworkout:${workout.id}`;
+    if (ctx.todayCheckIns.some((c) => c.episodeKey === episodeKey)) continue;
+    await createTrainingCheckIn(deps, user, {
+      now: ctx.now,
+      episodeKey,
+      kind: 'PRE_WORKOUT',
+      slot: 'preworkout',
+      workoutId: workout.id,
+      message: 'Training soon. Eat something first.',
+      category: 'CHECK_IN',
+      rx: refuelPrescription(ctx.solverFoods, excludedTokens),
+      foodIdBySlug: ctx.foodIdBySlug,
+      summary: ctx.summary,
+    });
+    return true;
+  }
+
+  return false;
+}
+
+function formatClock(minute: number): string {
+  const h = Math.floor(minute / 60);
+  const m = minute % 60;
+  const h12 = h % 12 || 12;
+  const pad = String(m).padStart(2, '0');
+  const suffix = h >= 12 ? 'pm' : 'am';
+  return m === 0 ? `${h12} ${suffix}` : `${h12}:${pad} ${suffix}`;
+}
+
+async function createTrainingCheckIn(
+  deps: ScoreConfidenceDeps,
+  user: UserWithRelations,
+  input: {
+    now: Date;
+    episodeKey: string;
+    kind: string;
+    slot: string;
+    workoutId: string;
+    message: string;
+    category: 'CHECK_IN' | 'HEADS_UP' | 'REFUEL';
+    rx: PrescriptionResult | null;
+    foodIdBySlug: Map<string, string>;
+    summary: ScoreConfidenceSummary;
+  },
+): Promise<void> {
+  const { prisma } = deps;
+  const checkIn = await prisma.checkIn.create({
+    data: {
+      userId: user.id,
+      tier: 1,
+      status: 'PENDING',
+      deliveryStatus: 'CREATED',
+      message: input.message,
+      slot: input.slot,
+      episodeKey: input.episodeKey,
+      kind: input.kind,
+      workoutId: input.workoutId,
+    },
+  });
+  // No food fits the user's restrictions → the nudge still goes out, without a suggestion.
+  const rx = input.rx;
+  const created = rx
+    ? await prisma.prescription.create({
+        data: {
+          userId: user.id,
+          checkInId: checkIn.id,
+          targetKcal: rx.targetKcal,
+          targetProteinG: rx.targetProteinG,
+          totalKcal: rx.totalKcal,
+          totalProteinG: rx.totalProteinG,
+          totalCarbsG: rx.totalCarbsG,
+          totalFatG: rx.totalFatG,
+          status: 'OFFERED',
+          items: {
+            create: rx.items.map((i) => ({
+              foodItemId: input.foodIdBySlug.get(i.slug) ?? null,
+              name: i.name,
+              quantity: i.quantity,
+              unit: 'serving',
+              kcal: i.kcal,
+              proteinG: i.proteinG,
+              carbsG: i.carbsG,
+              fatG: i.fatG,
+            })),
+          },
+        },
+      })
+    : null;
+  if (created) input.summary.prescriptionsCreated += 1;
+  await markDelivered(deps, user.id, checkIn.id, 1, input.message, created?.id ?? null, input.now, input.category);
+  await prisma.escalationState.upsert({
+    where: { userId: user.id },
+    create: { userId: user.id, lastCheckInAt: input.now, currentTier: 1 },
+    update: { lastCheckInAt: input.now },
+  });
+  input.summary.checkInsCreated += 1;
 }
 
 async function applyDecision(
@@ -529,12 +811,13 @@ async function markDelivered(
   body: string,
   prescriptionId: string | null,
   now: Date,
+  category: 'CHECK_IN' | 'HEADS_UP' | 'REFUEL' = 'CHECK_IN',
 ): Promise<void> {
   const outcome = await deliverCheckIn({
     prisma: deps.prisma,
     push: deps.push,
     userId,
-    payload: { userId, checkInId, tier, title: 'SetPoint', body, prescriptionId },
+    payload: { userId, checkInId, tier, title: 'SetPoint', body, prescriptionId, category },
   });
   await deps.prisma.checkIn.update({
     where: { id: checkInId },

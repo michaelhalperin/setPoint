@@ -1,11 +1,16 @@
 import {
   checkInSlotAt,
+  DEFAULT_WEEKEND_DAYS,
+  isWeekendDay,
+  mealTimesOn,
   SCHEDULE_CONFIG,
   SLOT_ORDER,
   slotWindowStart,
   type MealTimes,
   type SlotName,
+  type WeekendMealTimes,
 } from '../engine/mealSchedule.js';
+import { weekdayOfLocalDate } from '../engine/time.js';
 
 /**
  * The manager's record for the Week screen: per day and meal, whether the user
@@ -30,6 +35,11 @@ export type LatePattern = {
   suggestedMin: number;
 };
 
+export type WeekendBreakfastSuggestion = {
+  breakfastMin: number;
+  lateByMin: number;
+};
+
 export type WeekRecord = {
   days: RecordDay[];
   onTime: number;
@@ -46,6 +56,8 @@ export type RecordInput = {
   /** Now, minutes from local midnight (for today's still-open meals). */
   nowMin: number;
   times: MealTimes;
+  weekendTimes?: WeekendMealTimes | null;
+  weekendDays?: number;
   meals: { date: string; minute: number }[];
   checkIns: { date: string; minute: number; status: string; tier: number }[];
   /** Local YYYY-MM-DD the plan started. Days before this are not missed. */
@@ -62,6 +74,7 @@ export const RECORD_CONFIG = {
 } as const;
 
 const DINNER_CLOSE = 1440;
+const WEEKEND_LATE_MIN = 45;
 
 function atOf(times: MealTimes, slot: SlotName): number {
   return slot === 'breakfast' ? times.breakfastMin : slot === 'lunch' ? times.lunchMin : times.dinnerMin;
@@ -77,9 +90,21 @@ function nextMealMin(slot: SlotName, times: MealTimes): number {
   return slot === 'breakfast' ? times.lunchMin : slot === 'lunch' ? times.dinnerMin : DINNER_CLOSE;
 }
 
-function isWeekday(iso: string): boolean {
-  const day = new Date(`${iso}T12:00:00Z`).getUTCDay();
-  return day !== 0 && day !== 6;
+function timesOnDate(input: RecordInput, date: string): MealTimes {
+  return mealTimesOn(
+    {
+      ...input.times,
+      weekendBreakfastMin: input.weekendTimes?.breakfastMin,
+      weekendLunchMin: input.weekendTimes?.lunchMin,
+      weekendDinnerMin: input.weekendTimes?.dinnerMin,
+      weekendDays: input.weekendDays ?? DEFAULT_WEEKEND_DAYS,
+    },
+    weekdayOfLocalDate(date),
+  );
+}
+
+function isWeekday(iso: string, weekendDays: number = DEFAULT_WEEKEND_DAYS): boolean {
+  return !isWeekendDay(weekdayOfLocalDate(iso), weekendDays);
 }
 
 export function buildWeekRecord(input: RecordInput, config = RECORD_CONFIG): WeekRecord {
@@ -92,11 +117,12 @@ export function buildWeekRecord(input: RecordInput, config = RECORD_CONFIG): Wee
   const days: RecordDay[] = input.dates.map((date) => {
     const meals = input.meals.filter((m) => m.date === date);
     const checkIns = input.checkIns.filter((c) => c.date === date && c.tier < 3);
+    const times = timesOnDate(input, date);
     const slots = SLOT_ORDER.map((slot): SlotMark => {
-      const start = slotWindowStart(slot, input.times);
-      const end = windowEnd(slot, input.times);
+      const start = slotWindowStart(slot, times);
+      const end = windowEnd(slot, times);
       const ate = meals.some((m) => m.minute >= start && m.minute < end);
-      const checkIn = checkIns.find((c) => checkInSlotAt(c.minute, input.times, grace) === slot);
+      const checkIn = checkIns.find((c) => checkInSlotAt(c.minute, times, grace) === slot);
 
       let mark: SlotMark;
       if (checkIn) {
@@ -109,7 +135,7 @@ export function buildWeekRecord(input: RecordInput, config = RECORD_CONFIG): Wee
         mark = 'on_time';
       } else if (
         (input.planStartDate != null && date < input.planStartDate) ||
-        (date === today && input.nowMin < nextMealMin(slot, input.times))
+        (date === today && input.nowMin < nextMealMin(slot, times))
       ) {
         // Before the plan existed, or this meal hasn't come yet today.
         mark = 'open';
@@ -138,7 +164,7 @@ export function buildWeekRecord(input: RecordInput, config = RECORD_CONFIG): Wee
 /** The meal that most often runs late on past weekdays, with a better time for it. */
 function latePattern(input: RecordInput, config: typeof RECORD_CONFIG): LatePattern | null {
   const today = input.dates[input.dates.length - 1];
-  const weekdays = input.dates.filter((d) => d !== today && isWeekday(d));
+  const weekdays = input.dates.filter((d) => d !== today && isWeekday(d, input.weekendDays));
   let best: LatePattern | null = null;
 
   for (const slot of SLOT_ORDER) {
@@ -169,4 +195,36 @@ function latePattern(input: RecordInput, config: typeof RECORD_CONFIG): LatePatt
     }
   }
   return best;
+}
+
+/**
+ * When the last 3 weekend days each started ≥ 45 min after weekday breakfast,
+ * suggest a later weekend breakfast (median of those first meals, 15-min snap).
+ */
+export function weekendBreakfastSuggestion(input: {
+  datesOldestFirst: string[];
+  today: string;
+  meals: { date: string; minute: number }[];
+  weekdayBreakfastMin: number;
+  weekendDays?: number;
+}): WeekendBreakfastSuggestion | null {
+  const weekendDays = input.weekendDays ?? DEFAULT_WEEKEND_DAYS;
+  const firstMeals: number[] = [];
+  for (const date of [...input.datesOldestFirst].reverse()) {
+    if (date >= input.today) continue;
+    if (isWeekday(date, weekendDays)) continue;
+    const first = input.meals
+      .filter((m) => m.date === date)
+      .map((m) => m.minute)
+      .sort((a, b) => a - b)[0];
+    if (first === undefined) continue;
+    firstMeals.push(first);
+    if (firstMeals.length === 3) break;
+  }
+  if (firstMeals.length < 3) return null;
+  if (firstMeals.some((m) => m < input.weekdayBreakfastMin + WEEKEND_LATE_MIN)) return null;
+  const sorted = [...firstMeals].sort((a, b) => a - b);
+  const median = sorted[1]!;
+  const breakfastMin = Math.min(1439, Math.round(median / 15) * 15);
+  return { breakfastMin, lateByMin: breakfastMin - input.weekdayBreakfastMin };
 }

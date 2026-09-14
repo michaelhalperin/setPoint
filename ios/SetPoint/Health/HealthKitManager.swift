@@ -34,6 +34,7 @@ final class HealthKitManager {
     static let lastSyncKey = "com.setpoint.app.health.lastSyncAt"
     static let bodyMassAnchorKey = "com.setpoint.app.health.anchor.bodyMass"
     static let lastModeKey = "com.setpoint.app.health.lastMode"
+    static let writePrefsKey = HealthWritePreferences.defaultsKey
 
     var api: APIClient?
     private(set) var state: HealthState
@@ -41,6 +42,10 @@ final class HealthKitManager {
     private(set) var lastSyncAt: Date?
     private(set) var connecting = false
     private(set) var lastError: String?
+    var writePreferences = HealthWritePreferences()
+    private(set) var todayWrittenKcal = 0
+    /// Connected, but not yet asked for the newer permissions (writing meals, reading workouts).
+    private(set) var needsMorePermissions = false
     var connected: Bool { state == .connected }
 
     private let source: HealthDataSource
@@ -71,7 +76,12 @@ final class HealthKitManager {
         self.clock = now
         self.lastSyncAt = defaults.object(forKey: Self.lastSyncKey) as? Date
         self.lastKnownMode = defaults.string(forKey: Self.lastModeKey)
+        if let data = defaults.data(forKey: Self.writePrefsKey),
+           let prefs = try? JSONDecoder().decode(HealthWritePreferences.self, from: data) {
+            self.writePreferences = prefs
+        }
         self.state = source.isAvailable ? .notConnected : .unavailable
+        refreshTodayWritten()
     }
 
     var isAvailable: Bool { source.isAvailable }
@@ -90,9 +100,165 @@ final class HealthKitManager {
         }
     }
 
-    private var readTypes: Set<HKObjectType> {
+    /// The permissions "connected" has always meant. Adding a type here would make every
+    /// existing user look disconnected after an update — new types go in `readTypes`/`shareTypes`.
+    private var coreReadTypes: Set<HKObjectType> {
         [hrvType, rhrType, bodyMassType, heightType,
          HKCharacteristicType(.dateOfBirth), HKCharacteristicType(.biologicalSex)]
+    }
+
+    private var readTypes: Set<HKObjectType> {
+        coreReadTypes.union([HKObjectType.workoutType()])
+    }
+
+    private var shareTypes: Set<HKSampleType> {
+        [
+            HKQuantityType(.dietaryEnergyConsumed),
+            HKQuantityType(.dietaryProtein),
+            HKQuantityType(.dietaryCarbohydrates),
+            HKQuantityType(.dietaryFatTotal),
+            bodyMassType,
+        ]
+    }
+
+    func persistWritePreferences() {
+        if let data = try? JSONEncoder().encode(writePreferences) {
+            defaults.set(data, forKey: Self.writePrefsKey)
+        }
+        Task { await pushWritePreferences() }
+    }
+
+    func applyServerWritePreferences(_ prefs: HealthWritePreferences) {
+        writePreferences = prefs
+        if let data = try? JSONEncoder().encode(prefs) {
+            defaults.set(data, forKey: Self.writePrefsKey)
+        }
+    }
+
+    /// Writes any of today's meals Health doesn't have yet (or has an older version of) —
+    /// meals logged from a check-in, Siri, the offline queue or another device, and edits.
+    func reconcileToday(_ meals: [MealSummary]) async {
+        guard isAvailable, state == .connected, writePreferences.writesNutrition else { return }
+        let written = loadWritten()
+        for meal in meals where written[meal.id]?.matches(meal) != true {
+            await writeMeal(meal, reportErrors: false)
+        }
+    }
+
+    func writeMeal(_ meal: MealSummary, reportErrors: Bool = true) async {
+        guard isAvailable, state == .connected, writePreferences.writesNutrition else { return }
+        let date = MealFormat.parse(meal.loggedAt) ?? clock()
+        do {
+            try await source.saveFood(
+                DietaryWrite(
+                    mealId: meal.id,
+                    kcal: Double(meal.kcal),
+                    proteinG: meal.proteinG,
+                    carbsG: meal.carbsG,
+                    fatG: meal.fatG,
+                    date: date
+                ),
+                types: writePreferences
+            )
+            rememberWritten(meal, at: date)
+        } catch {
+            if reportErrors {
+                lastError = UserFacingError.message(for: error, fallback: "Couldn't write this meal to Health.")
+            }
+        }
+    }
+
+    func deleteMealFromHealth(id: String) async {
+        guard isAvailable, state == .connected else { return }
+        try? await source.deleteFood(mealId: id)
+        forgetWritten(mealId: id)
+    }
+
+    func writeWeighIn(kg: Double) async {
+        guard isAvailable, state == .connected, writePreferences.bodyMass else { return }
+        try? await source.saveBodyMass(kg: kg, at: clock(), mealId: "weight-\(UUID().uuidString)")
+    }
+
+    private static let writtenMealsKey = "com.setpoint.app.health.writtenMeals"
+
+    private struct WrittenMealRecord: Codable {
+        var kcal: Int
+        var at: TimeInterval
+        // Optional: records written before edits were tracked don't have them.
+        var proteinG: Double?
+        var carbsG: Double?
+        var fatG: Double?
+
+        func matches(_ meal: MealSummary) -> Bool {
+            kcal == meal.kcal && proteinG == meal.proteinG && carbsG == meal.carbsG && fatG == meal.fatG
+        }
+    }
+
+    private func loadWritten() -> [String: WrittenMealRecord] {
+        guard let data = defaults.data(forKey: Self.writtenMealsKey),
+              let map = try? JSONDecoder().decode([String: WrittenMealRecord].self, from: data)
+        else { return [:] }
+        return map
+    }
+
+    private func saveWritten(_ map: [String: WrittenMealRecord]) {
+        if let data = try? JSONEncoder().encode(map) {
+            defaults.set(data, forKey: Self.writtenMealsKey)
+        }
+    }
+
+    private func rememberWritten(_ meal: MealSummary, at date: Date) {
+        var map = loadWritten()
+        map[meal.id] = WrittenMealRecord(
+            kcal: meal.kcal,
+            at: date.timeIntervalSince1970,
+            proteinG: meal.proteinG,
+            carbsG: meal.carbsG,
+            fatG: meal.fatG
+        )
+        saveWritten(map)
+        refreshTodayWritten()
+    }
+
+    private func forgetWritten(mealId: String) {
+        var map = loadWritten()
+        map.removeValue(forKey: mealId)
+        saveWritten(map)
+        refreshTodayWritten()
+    }
+
+    func refreshTodayWritten() {
+        let start = Calendar.current.startOfDay(for: clock())
+        let end = Calendar.current.date(byAdding: .day, value: 1, to: start) ?? start.addingTimeInterval(86_400)
+        let lo = start.timeIntervalSince1970
+        let hi = end.timeIntervalSince1970
+        todayWrittenKcal = loadWritten().values
+            .filter { $0.at >= lo && $0.at < hi }
+            .reduce(0) { $0 + $1.kcal }
+    }
+
+    private func pushWritePreferences() async {
+        guard let api else { return }
+        try? await api.patch(
+            "/api/settings",
+            SettingsPatch(healthWrite: writePreferences.settingsPayload)
+        )
+    }
+
+    /// For users who connected before meal write-back and workouts: shows the Health sheet
+    /// for just the new permissions.
+    func grantMorePermissions() async {
+        guard isAvailable else { return }
+        lastError = nil
+        do {
+            try await source.requestAuthorization(toShare: shareTypes, read: readTypes)
+        } catch {
+            lastError = Self.message(forConnect: error)
+            return
+        }
+        await refreshState()
+        await startBackgroundObservers()
+        await sync(force: true)
     }
 
     /// Prompts for read access, then refreshes honest state, starts observers,
@@ -104,7 +270,7 @@ final class HealthKitManager {
         lastError = nil
         defer { connecting = false }
         do {
-            try await source.requestAuthorization(read: readTypes)
+            try await source.requestAuthorization(toShare: shareTypes, read: readTypes)
         } catch {
             lastError = Self.message(forConnect: error)
             return state
@@ -123,8 +289,13 @@ final class HealthKitManager {
             state = .unavailable
             return
         }
-        let status = await source.requestStatus(read: readTypes)
+        let status = await source.requestStatus(toShare: [], read: coreReadTypes)
         state = status == .unnecessary ? .connected : .notConnected
+        if state == .connected {
+            needsMorePermissions = await source.requestStatus(toShare: shareTypes, read: readTypes) == .shouldRequest
+        } else {
+            needsMorePermissions = false
+        }
         do {
             let to = clock()
             let from = Calendar.current.date(byAdding: .day, value: -21, to: to) ?? to
@@ -203,6 +374,7 @@ final class HealthKitManager {
             }
 
             try await syncWeight(now: now)
+            await uploadWorkouts(now: now)
 
             lastSyncAt = now
             defaults.set(lastSyncAt, forKey: Self.lastSyncKey)
@@ -226,6 +398,7 @@ final class HealthKitManager {
         try? await source.enableBackgroundDelivery(type: hrvType, frequency: .hourly)
         try? await source.enableBackgroundDelivery(type: rhrType, frequency: .hourly)
         try? await source.enableBackgroundDelivery(type: bodyMassType, frequency: .immediate)
+        try? await source.enableBackgroundDelivery(sampleType: .workoutType(), frequency: .hourly)
 
         let handle: HealthObserverHandler = { [weak self] completion in
             var task = UIBackgroundTaskIdentifier.invalid
@@ -247,6 +420,7 @@ final class HealthKitManager {
         source.startObserver(type: hrvType, handler: handle)
         source.startObserver(type: rhrType, handler: handle)
         source.startObserver(type: bodyMassType, handler: handle)
+        source.startObserver(sampleType: .workoutType(), handler: handle)
     }
 
     /// Sign-out: HealthKit permission is user-level (don't stop observers), but
@@ -255,6 +429,29 @@ final class HealthKitManager {
         lastSyncAt = nil
         defaults.removeObject(forKey: Self.lastSyncKey)
         defaults.removeObject(forKey: Self.bodyMassAnchorKey)
+    }
+
+    func uploadWorkouts(now: Date = Date()) async {
+        guard let api, tokenStore.read() != nil else { return }
+        let from = Calendar.current.date(byAdding: .day, value: -2, to: now) ?? now
+        do {
+            let samples = try await source.workouts(from: from, to: now)
+            let payload = WorkoutSyncPayload(
+                workouts: samples.map {
+                    .init(
+                        source: "HEALTHKIT",
+                        kind: $0.kind,
+                        start: $0.start,
+                        durationMin: $0.durationMin,
+                        activeKcal: $0.activeKcal,
+                        clientId: $0.id
+                    )
+                }
+            )
+            try await api.put("/api/workouts", payload)
+        } catch {
+            if isLockedDevice(error) { return }
+        }
     }
 
     /// `PATCH /api/settings { mode }`. Fire-and-forget; cached so we don't repeat.

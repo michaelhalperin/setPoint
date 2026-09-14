@@ -5,10 +5,14 @@ struct SettingsView: View {
     @Environment(AppEnvironment.self) private var env
     @State private var model: SettingsViewModel?
     @AppStorage(MassUnit.storageKey) private var massUnit = MassUnit.localeDefault
+    @AppStorage("you.seen.calendar") private var seenCalendar = false
+    @AppStorage("you.seen.training") private var seenTraining = false
+    @AppStorage("you.seen.appetite") private var seenAppetite = false
     #if DEBUG
     @State private var showingDevOnboarding = false
     @State private var showingDevMealConfirm = false
     @State private var showingDevCheckIn = false
+    @State private var showingDevConversation = false
     #endif
 
     init(previewModel: SettingsViewModel? = nil) {
@@ -66,25 +70,79 @@ struct SettingsView: View {
                 checkInsCard(model)
                     .appearIn(1)
 
-                VStack(spacing: 0) {
-                    NavigationLink { GoalSettingsView(model: model) } label: {
-                        YouRow(symbol: "scope", title: "Goal and pace", value: goalSubtitle(model))
-                    }
-                    rowDivider
+                youSection("Your day") {
                     NavigationLink { RhythmSettingsView(model: model) } label: {
                         YouRow(symbol: "clock", title: "Meal times", value: mealTimesSubtitle(model))
+                    }
+                    rowDivider
+                    NavigationLink {
+                        if env.subscription.entitled {
+                            CalendarSettingsView()
+                                .onAppear { seenCalendar = true }
+                        } else {
+                            PaywallView()
+                        }
+                    } label: {
+                        YouRow(
+                            symbol: "calendar",
+                            title: "Calendar",
+                            value: env.calendar.connected ? "Connected" : "Off",
+                            isNew: !seenCalendar
+                        )
+                    }
+                    rowDivider
+                    NavigationLink {
+                        if env.subscription.entitled {
+                            TrainingScreen()
+                                .onAppear { seenTraining = true }
+                        } else {
+                            PaywallView()
+                        }
+                    } label: {
+                        YouRow(
+                            symbol: "dumbbell.fill",
+                            title: "Training",
+                            value: nil,
+                            isNew: !seenTraining
+                        )
+                    }
+                    rowDivider
+                    NavigationLink {
+                        if env.subscription.entitled {
+                            AppetiteSettingsView()
+                                .onAppear { seenAppetite = true }
+                        } else {
+                            PaywallView()
+                        }
+                    } label: {
+                        YouRow(
+                            symbol: "fork.knife",
+                            title: "Appetite",
+                            value: nil,
+                            isNew: !seenAppetite
+                        )
+                    }
+                }
+                .appearIn(2)
+
+                youSection("Food") {
+                    NavigationLink { GoalSettingsView(model: model) } label: {
+                        YouRow(symbol: "scope", title: "Goal and pace", value: goalSubtitle(model))
                     }
                     rowDivider
                     NavigationLink { FoodsSettingsView(model: model) } label: {
                         YouRow(symbol: "nosign", title: "Foods I avoid", value: restrictionsSubtitle(model))
                     }
+                }
+                .appearIn(3)
+
+                youSection("Connected") {
                     if env.health.isAvailable {
-                        rowDivider
                         NavigationLink { HealthSettingsView() } label: {
                             YouRow(symbol: "heart", title: "Apple Health", value: healthRowValue)
                         }
+                        rowDivider
                     }
-                    rowDivider
                     NavigationLink { AccountSettingsView(model: model) } label: {
                         YouRow(symbol: "person", title: "Account", value: nil)
                     }
@@ -95,14 +153,7 @@ struct SettingsView: View {
                         YouRow(symbol: "scalemass", title: "Units", value: massUnit.title)
                     }
                 }
-                .buttonStyle(.plain)
-                .background {
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .fill(Palette.surface)
-                        .elevation(.resting)
-                        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(Palette.hairline))
-                }
-                .appearIn(2)
+                .appearIn(4)
 
                 if let error = model.error {
                     Text(error)
@@ -130,6 +181,9 @@ struct SettingsView: View {
         }
         .fullScreenCover(isPresented: $showingDevCheckIn) {
             DevCheckInPreview()
+        }
+        .fullScreenCover(isPresented: $showingDevConversation) {
+            DevConversationPreview()
         }
         #endif
     }
@@ -165,9 +219,31 @@ struct SettingsView: View {
             }
             .buttonStyle(PressableCard())
             .appearIn(8)
+
+            Button {
+                showingDevConversation = true
+            } label: {
+                DestinationRow(title: "Let’s talk", subtitle: "Starts a real conversation")
+            }
+            .buttonStyle(PressableCard())
+            .appearIn(9)
         }
     }
     #endif
+
+    private func youSection<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title).sectionLabelStyle()
+            VStack(spacing: 0) { content() }
+                .buttonStyle(.plain)
+                .background {
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .fill(Palette.surface)
+                        .elevation(.resting)
+                        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(Palette.hairline))
+                }
+        }
+    }
 
     private var rowDivider: some View {
         Divider().overlay(Palette.hairline).padding(.leading, 66)
@@ -347,6 +423,7 @@ private struct YouRow: View {
     let symbol: String
     let title: String
     let value: String?
+    var isNew = false
 
     var body: some View {
         HStack(spacing: 14) {
@@ -358,6 +435,14 @@ private struct YouRow: View {
             Text(title)
                 .font(Typography.data(16, weight: .bold))
                 .foregroundStyle(Palette.ink)
+            if isNew {
+                Text("NEW")
+                    .font(Typography.data(10, weight: .heavy))
+                    .foregroundStyle(Palette.accentDeep)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Palette.accentTint, in: Capsule())
+            }
             Spacer(minLength: 8)
             if let value {
                 Text(value)
@@ -408,6 +493,19 @@ struct DestinationRow: View {
                 )
         }
     }
+}
+
+func formatBusyRange(_ startMin: Int, _ endMin: Int) -> String {
+    "\(clock12(startMin))–\(clock12(endMin))"
+}
+
+private func clock12(_ minutes: Int) -> String {
+    let wrapped = ((minutes % 1440) + 1440) % 1440
+    let h = wrapped / 60
+    let m = wrapped % 60
+    let hour12 = h % 12 == 0 ? 12 : h % 12
+    if m == 0 { return "\(hour12)" }
+    return "\(hour12):\(String(format: "%02d", m))"
 }
 
 func formatMinutes(_ minutes: Int) -> String {
@@ -631,6 +729,59 @@ private struct DevCheckInPreview: View {
                     onAlreadyAte: { dismiss() }
                 )
             }
+        }
+    }
+}
+
+/// Opens a real tier-3 conversation against the signed-in account — reachable
+/// from Settings so it doesn't need three consecutive misses.
+private struct DevConversationPreview: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(AppEnvironment.self) private var env
+    @State private var checkInID: String?
+    @State private var error: String?
+
+    var body: some View {
+        Group {
+            if let checkInID {
+                ConversationView(
+                    checkInID: checkInID,
+                    onDismiss: { dismiss() },
+                    onResolved: { dismiss() }
+                )
+            } else if let error {
+                VStack(spacing: 14) {
+                    Text(error)
+                        .font(Typography.data(15))
+                        .foregroundStyle(Palette.inkSoft)
+                        .multilineTextAlignment(.center)
+                    ActionButton(title: "Try again", kind: .secondary) {
+                        Task { await start() }
+                    }
+                    .frame(maxWidth: 200)
+                    ActionButton(title: "Close", kind: .secondary) { dismiss() }
+                        .frame(maxWidth: 200)
+                }
+                .padding(28)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Palette.background.ignoresSafeArea())
+            } else {
+                ProgressView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Palette.background.ignoresSafeArea())
+            }
+        }
+        .task { await start() }
+    }
+
+    private func start() async {
+        guard checkInID == nil else { return }
+        error = nil
+        do {
+            let res: StartTalkResponse = try await env.api.post("/api/checkins/start-talk")
+            checkInID = res.checkInId
+        } catch {
+            self.error = UserFacingError.message(for: error, fallback: "Couldn't start the conversation.")
         }
     }
 }

@@ -26,6 +26,7 @@ final class LogMealViewModel {
         let items: [LogMealResponse.Parsed.Item]
         let fromPhoto: Bool
         let resolvedCheckIn: Bool
+        var source: String = "TEXT"
     }
 
     private(set) var phase: Phase = .compose
@@ -55,6 +56,31 @@ final class LogMealViewModel {
 
     /// Recent meals, newest first, one per name — the "Again?" chips.
     private(set) var recents: [MealSummary] = []
+    /// Named plates for the My meals carousel.
+    private(set) var savedMeals: [SavedMeal] = []
+    /// Type · Scan · Photo — Scan presents the camera; Photo opens the picker.
+    enum Mode: String, CaseIterable, Identifiable {
+        case type, scan, photo
+        var id: String { rawValue }
+        var title: String {
+            switch self {
+            case .type: return "Type"
+            case .scan: return "Scan"
+            case .photo: return "Photo"
+            }
+        }
+    }
+    var mode: Mode = .type
+    var showScanner = false
+    var showPhotoPicker = false
+    var product: BarcodeProduct?
+    var editor: SavedMealDraft?
+
+    struct BarcodeProduct: Equatable, Identifiable {
+        var id: String { food.code }
+        let food: BarcodeFood
+        var servings: Double
+    }
 
     private let api: APIClient
     private let onMealChanged: @MainActor () -> Void
@@ -120,10 +146,12 @@ final class LogMealViewModel {
                     confidence: res.parsed?.confidence,
                     items: res.parsed?.items ?? [],
                     fromPhoto: fromPhoto,
-                    resolvedCheckIn: res.resolvedCheckInId != nil
+                    resolvedCheckIn: res.resolvedCheckInId != nil,
+                    source: fromPhoto ? "PHOTO" : "TEXT"
                 )
             )
             onMealChanged()
+            await writeLoggedMealToHealth()
         } catch let error where snapshotPhoto == nil && !prompt.isEmpty && OfflineMealQueue.isOffline(error) {
             OfflineMealQueue.enqueue(.init(id: clientId, text: prompt, loggedAt: eatenAt))
             heldText = ""
@@ -192,15 +220,193 @@ final class LogMealViewModel {
                     confidence: nil,
                     items: [],
                     fromPhoto: false,
-                    resolvedCheckIn: res.resolvedCheckInId != nil
+                    resolvedCheckIn: res.resolvedCheckInId != nil,
+                    source: meal.source
                 )
             )
             onMealChanged()
+            await writeLoggedMealToHealth()
         } catch {
             backdate = snapshotBackdate
             submittedSlot = nil
             submittedLoggedAt = nil
             phase = .failed(UserFacingError.message(for: error, fallback: "Couldn't log. Try again."))
+        }
+    }
+
+    func loadSavedMeals(now: Date = .now) async {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        let res: SavedMealsResponse? = try? await api.get("/api/saved-meals", query: ["now": formatter.string(from: now)])
+        savedMeals = res?.meals ?? []
+        TodaySnapshotSync.writeSaved(savedMeals)
+    }
+
+    /// One-tap log of a named plate — no parse, no AI quota.
+    func logSaved(_ meal: SavedMeal) async {
+        guard phase != .parsing else { return }
+        let snapshotBackdate = backdate
+        submittedPrompt = meal.name
+        submittedSlot = snapshotBackdate?.slot
+        submittedLoggedAt = snapshotBackdate?.at ?? Date()
+        backdate = nil
+        phase = .parsing
+        do {
+            let res: LogMealResponse = try await api.post(
+                "/api/meals",
+                LogMealRequest(
+                    savedMealId: meal.id,
+                    loggedAt: snapshotBackdate.map { ISO8601DateFormatter().string(from: $0.at) },
+                    clientId: UUID().uuidString
+                )
+            )
+            phase = .logged(
+                Logged(
+                    mealId: res.meal.id,
+                    kcal: res.meal.kcal,
+                    proteinG: res.meal.proteinG,
+                    summary: meal.name,
+                    notes: nil,
+                    confidence: nil,
+                    items: meal.items.map {
+                        .init(
+                            name: $0.name,
+                            quantity: $0.quantity,
+                            kcal: $0.kcal,
+                            proteinG: $0.proteinG,
+                            carbsG: $0.carbsG,
+                            fatG: $0.fatG
+                        )
+                    },
+                    fromPhoto: false,
+                    resolvedCheckIn: res.resolvedCheckInId != nil,
+                    source: "SAVED"
+                )
+            )
+            onMealChanged()
+            await writeLoggedMealToHealth()
+            await loadSavedMeals()
+        } catch {
+            backdate = snapshotBackdate
+            submittedSlot = nil
+            submittedLoggedAt = nil
+            phase = .failed(UserFacingError.message(for: error, fallback: "Couldn't log. Try again."))
+        }
+    }
+
+    func openScanner() {
+        mode = .scan
+        showScanner = true
+    }
+
+    func handleScannedCode(_ code: String) async {
+        showScanner = false
+        do {
+            let res: BarcodeFoodResponse = try await api.get("/api/foods/barcode/\(code)")
+            product = BarcodeProduct(food: res.food, servings: 1)
+            actionError = nil
+        } catch let error as APIError {
+            if case let .http(status, _) = error, status == 404 {
+                mode = .type
+                actionError = "Not in the database. Type it instead."
+            } else {
+                actionError = UserFacingError.message(for: error, fallback: "Couldn't look that up. Type it instead.")
+                mode = .type
+            }
+        } catch {
+            actionError = UserFacingError.message(for: error, fallback: "Couldn't look that up. Type it instead.")
+            mode = .type
+        }
+    }
+
+    func logBarcode() async {
+        guard let product, phase != .parsing else { return }
+        let snapshotBackdate = backdate
+        let food = product.food
+        let servings = product.servings
+        let portion = food.portion(servings: servings)
+        submittedPrompt = food.name
+        submittedSlot = snapshotBackdate?.slot
+        submittedLoggedAt = snapshotBackdate?.at ?? Date()
+        backdate = nil
+        self.product = nil
+        phase = .parsing
+        do {
+            let res: LogMealResponse = try await api.post(
+                "/api/meals",
+                LogMealRequest(
+                    barcode: food.code,
+                    servings: servings,
+                    loggedAt: snapshotBackdate.map { ISO8601DateFormatter().string(from: $0.at) },
+                    clientId: UUID().uuidString
+                )
+            )
+            phase = .logged(
+                Logged(
+                    mealId: res.meal.id,
+                    kcal: res.meal.kcal,
+                    proteinG: res.meal.proteinG,
+                    summary: food.name,
+                    notes: food.brand,
+                    confidence: nil,
+                    items: [
+                        .init(
+                            name: food.name,
+                            quantity: servings == 1 ? "1 serving" : "\(servings.formatted()) servings",
+                            kcal: portion.kcal,
+                            proteinG: portion.proteinG,
+                            carbsG: portion.carbsG,
+                            fatG: portion.fatG
+                        )
+                    ],
+                    fromPhoto: false,
+                    resolvedCheckIn: res.resolvedCheckInId != nil,
+                    source: "BARCODE"
+                )
+            )
+            onMealChanged()
+            await writeLoggedMealToHealth()
+        } catch {
+            backdate = snapshotBackdate
+            submittedSlot = nil
+            submittedLoggedAt = nil
+            self.product = BarcodeProduct(food: food, servings: servings)
+            phase = .failed(UserFacingError.message(for: error, fallback: "Couldn't log. Try again."))
+        }
+    }
+
+    func openEditor(from meal: MealSummary) {
+        editor = SavedMealDraft(from: meal)
+    }
+
+    func openEditor(from meal: SavedMeal) {
+        editor = SavedMealDraft(from: meal)
+    }
+
+    func openEditorToSaveProduct() {
+        guard let product else { return }
+        editor = SavedMealDraft(from: product)
+    }
+
+    var editorSaving = false
+    var editorError: String?
+
+    func saveEditor(_ draft: SavedMealDraft) async -> Bool {
+        guard let write = draft.write, !editorSaving else { return false }
+        editorSaving = true
+        editorError = nil
+        defer { editorSaving = false }
+        do {
+            if let id = draft.existingId {
+                let _: SavedMealResponse = try await api.patch("/api/saved-meals/\(id)", write)
+            } else {
+                let _: SavedMealResponse = try await api.post("/api/saved-meals", write)
+            }
+            await loadSavedMeals()
+            return true
+        } catch {
+            editorError = UserFacingError.message(for: error, fallback: "Couldn't save. Try again.")
+            return false
         }
     }
 
@@ -211,6 +417,7 @@ final class LogMealViewModel {
         defer { removing = false }
         do {
             try await api.delete("/api/meals/\(logged.mealId)")
+            await HealthKitManager.shared.deleteMealFromHealth(id: logged.mealId)
             text = heldText
             photo = submittedPhoto
             confirmingPhoto = false
@@ -256,10 +463,12 @@ final class LogMealViewModel {
                         )
                     },
                     fromPhoto: logged.fromPhoto,
-                    resolvedCheckIn: logged.resolvedCheckIn
+                    resolvedCheckIn: logged.resolvedCheckIn,
+                    source: logged.source
                 )
             )
             onMealChanged()
+            await writeLoggedMealToHealth()
             return true
         } catch {
             actionError = UserFacingError.message(for: error, fallback: "Couldn't save. Try again.")
@@ -286,6 +495,12 @@ final class LogMealViewModel {
         submittedLoggedAt = nil
     }
 
+    private func writeLoggedMealToHealth() async {
+        if let meal = pendingMealSummary() {
+            await HealthKitManager.shared.writeMeal(meal)
+        }
+    }
+
     /// Enough of a meal card to drop into Today before Home reloads.
     func pendingMealSummary() -> MealSummary? {
         guard case let .logged(logged) = phase else { return nil }
@@ -299,7 +514,7 @@ final class LogMealViewModel {
             proteinG: logged.proteinG,
             carbsG: logged.items.reduce(0) { $0 + $1.carbsG },
             fatG: logged.items.reduce(0) { $0 + $1.fatG },
-            source: logged.fromPhoto ? "PHOTO" : "TEXT",
+            source: logged.source,
             summary: logged.summary,
             photoUrl: nil,
             notes: logged.notes,
@@ -387,8 +602,26 @@ final class LogMealViewModel {
                 .init(name: "Black beans", quantity: "1 scoop", kcal: 150, proteinG: 5, carbsG: 22, fatG: 2),
             ],
             fromPhoto: true,
-            resolvedCheckIn: true
+            resolvedCheckIn: true,
+            source: "PHOTO"
         )
     )
+
+    static var sampleQuickLog: LogMealViewModel {
+        let vm = previewed(.compose)
+        vm.savedMeals = SavedMeal.samples
+        vm.recents = [
+            .sample(id: "r1", kcal: 420, protein: 18, source: "SAVED", summary: "Usual oats"),
+            .sample(id: "r2", kcal: 150, protein: 14, source: "BARCODE", summary: "Greek yogurt"),
+        ]
+        return vm
+    }
+
+    static var sampleScanProduct: LogMealViewModel {
+        let vm = previewed(.compose)
+        vm.mode = .scan
+        vm.product = BarcodeProduct(food: .sampleYogurt, servings: 1)
+        return vm
+    }
     #endif
 }

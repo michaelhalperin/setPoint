@@ -57,15 +57,28 @@ enum DebugPreviewStub {
     case prescription
     case conversation(resolved: Bool)
     case logMeal(LogMealStubState)
+    case savedMeal
     case settings
     case settingsGoal
     case settingsMealTimes
+    case settingsMealTimesWeekends
     case settingsFoods
     case settingsHealth
+    case settingsHealthWrite
+    case calendarSettings
+    case calendarConnect
+    case training
+    case refuel
+    case appetite
+    case checkinSmaller
+    case settingsAppetite
+    case widgets
+    case burn
+    case paywall
     case settingsAccount
     case settingsDelete
 
-    enum LogMealStubState { case compose, parsing, result }
+    enum LogMealStubState { case compose, parsing, result, quick, scan }
     case settlement(SettlementResponse)
 
     @ViewBuilder
@@ -89,16 +102,69 @@ enum DebugPreviewStub {
             )
         case let .logMeal(state):
             LogMealStubHost(state: state)
+        case .savedMeal:
+            SavedMealEditorView(
+                draft: SavedMealDraft(from: SavedMeal.samples[0]),
+                onSave: { _ in true }
+            )
         case .settings:
             NavigationStack { SettingsView(previewModel: .previewed()) }
         case .settingsGoal:
             NavigationStack { GoalSettingsView(model: Self.goalStubModel) }
         case .settingsMealTimes:
             NavigationStack { RhythmSettingsView(model: .previewed()) }
+        case .settingsMealTimesWeekends:
+            NavigationStack { RhythmSettingsView(model: .previewedWeekends()) }
         case .settingsFoods:
             NavigationStack { FoodsSettingsView(model: .previewed()) }
-        case .settingsHealth:
+        case .settingsHealth, .settingsHealthWrite:
             NavigationStack { HealthSettingsView() }
+        case .calendarSettings:
+            NavigationStack { CalendarSettingsView() }
+        case .calendarConnect:
+            NavigationStack { CalendarConnectView() }
+        case .training:
+            NavigationStack { TrainingScreen(preview: .sample) }
+        case .refuel:
+            RefuelSheet(
+                checkIn: .init(
+                    id: "ci_refuel",
+                    tier: 1,
+                    status: "PENDING",
+                    message: "You trained. Eat something now.",
+                    deferUntil: nil,
+                    prescription: HomeResponse.sampleUnder.activeCheckIn?.prescription,
+                    slot: "refuel",
+                    kind: "REFUEL"
+                ),
+                dinnerMin: 1170,
+                remainingSeconds: 18 * 60,
+                onHadThis: {},
+                onCoveredByDinner: {},
+                onDismiss: {}
+            )
+        case .appetite:
+            AppetitePickerSheet(previewLevel: "LOW", previewTarget: 2500)
+        case .checkinSmaller:
+            if let checkIn = HomeResponse.sampleUnder.activeCheckIn {
+                PrescriptionView(
+                    checkIn: checkIn,
+                    headline: "Lunch slipped.",
+                    whyNow: "Usually 13:00",
+                    onDismiss: {},
+                    onResolved: {},
+                    onAlreadyAte: {},
+                    suggestSmallerDefault: true
+                )
+            }
+        case .settingsAppetite:
+            NavigationStack { AppetiteSettingsView(previewMode: "SMALL_FREQUENT") }
+        case .widgets:
+            WidgetsStubHost()
+        case .burn:
+            NavigationStack { BurnScreen(preview: .sample) }
+        case .paywall:
+            PaywallView()
         case .settingsAccount:
             NavigationStack { AccountSettingsView(model: .previewed()) }
         case .settingsDelete:
@@ -145,18 +211,77 @@ enum DebugPreviewStub {
         case "log-meal": return .logMeal(.compose)
         case "log-meal-parsing": return .logMeal(.parsing)
         case "log-meal-result": return .logMeal(.result)
+        case "log-quick": return .logMeal(.quick)
+        case "log-scan": return .logMeal(.scan)
+        case "saved-meal": return .savedMeal
         case "settings": return .settings
         case "you": return .settings
+        case "calendar-settings": return .calendarSettings
+        case "calendar-connect": return .calendarConnect
+        case "home-busy": return .home(.sampleBusy)
+        case "home-training": return .home(.sampleTraining)
+        case "home-appetite": return .home(.sampleAppetite)
+        case "training": return .training
+        case "refuel": return .refuel
+        case "checkin-smaller": return .checkinSmaller
+        case "settings-appetite": return .settingsAppetite
+        case "widgets": return .widgets
+        case "burn": return .burn
+        case "paywall": return .paywall
         case "settings-goal": return .settingsGoal
         case "settings-meal-times": return .settingsMealTimes
+        case "settings-meal-times-weekends": return .settingsMealTimesWeekends
         case "settings-foods": return .settingsFoods
-        case "settings-health": return .settingsHealth
+        case "settings-health", "settings-health-write": return .settingsHealthWrite
         case "settings-account": return .settingsAccount
         case "settings-delete": return .settingsDelete
         case "settlement": return .settlement(.sample)
         case "settlement-weigh-in": return .settlement(.sampleNeedsWeighIn)
         case "settlement-empty": return .settlement(.sampleEmpty)
         default: return nil
+        }
+    }
+}
+
+private struct WidgetsStubHost: View {
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: Space.md) {
+                Text("Widgets")
+                    .font(Typography.display(28))
+                    .foregroundStyle(Palette.ink)
+                widgetCard(title: "Small") {
+                    TodayWidgetSmallView(snapshot: .preview)
+                        .frame(width: 158, height: 158)
+                        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                }
+                widgetCard(title: "Medium") {
+                    TodayWidgetMediumView(snapshot: .preview)
+                        .frame(width: 338, height: 158)
+                        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                }
+                widgetCard(title: "Lock Screen") {
+                    HStack(spacing: Space.md) {
+                        TodayLockCircularView(snapshot: .preview)
+                            .frame(width: 72, height: 72)
+                        TodayLockRectangularView(snapshot: .preview)
+                            .frame(maxWidth: .infinity, minHeight: 72, alignment: .leading)
+                    }
+                    .padding(14)
+                    .background(Palette.lockScreenInk, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                }
+            }
+            .padding(Space.lg)
+        }
+        .background(Palette.background.ignoresSafeArea())
+    }
+
+    private func widgetCard<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: Space.sm) {
+            Text(title)
+                .font(Typography.data(13, weight: .bold))
+                .foregroundStyle(Palette.inkFaint)
+            content()
         }
     }
 }
@@ -171,6 +296,14 @@ private struct LogMealStubHost: View {
                 model: .previewed(.loaded(.sampleEmpty)),
                 startComposerExpanded: true
             )
+        case .quick:
+            HomeContent(
+                model: .previewed(.loaded(.sampleEmpty)),
+                previewLogger: .sampleQuickLog,
+                startComposerExpanded: true
+            )
+        case .scan:
+            LogScanStubHost()
         case .parsing:
             HomeContent(
                 model: .previewed(.loaded(.sampleEmpty)),
@@ -180,6 +313,31 @@ private struct LogMealStubHost: View {
             HomeContent(
                 model: .previewed(.loaded(.sampleEmpty)),
                 previewLogger: .samplePhotoConfirm
+            )
+        }
+    }
+}
+
+private struct LogScanStubHost: View {
+    @State private var product = LogMealViewModel.BarcodeProduct(food: .sampleYogurt, servings: 1)
+
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            Palette.ink.ignoresSafeArea()
+            VStack(spacing: Space.sm) {
+                Image(systemName: "barcode.viewfinder")
+                    .font(.system(size: 44, weight: .medium))
+                    .foregroundStyle(Palette.lockScreenText)
+                Text("Point the camera at a barcode")
+                    .font(Typography.voice(22))
+                    .foregroundStyle(Palette.lockScreenText)
+            }
+            BarcodeProductSheet(
+                product: $product,
+                slotTitle: "Lunch",
+                onLog: {},
+                onSave: {},
+                onClose: {}
             )
         }
     }

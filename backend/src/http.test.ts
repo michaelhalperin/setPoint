@@ -44,6 +44,28 @@ describe('HTTP contracts', () => {
     });
     expect(res.statusCode).toBe(401);
   });
+
+  it('rejects unauthenticated saved-meal and barcode lookups', async () => {
+    const saved = await app.inject({ method: 'GET', url: '/api/saved-meals' });
+    expect(saved.statusCode).toBe(401);
+    const barcode = await app.inject({ method: 'GET', url: '/api/foods/barcode/3017620422003' });
+    expect(barcode.statusCode).toBe(401);
+  });
+
+  it('rejects unauthenticated start-talk', async () => {
+    const res = await app.inject({ method: 'POST', url: '/api/checkins/start-talk' });
+    expect(res.statusCode).toBe(401);
+  });
+
+  it('rejects unauthenticated burn insights', async () => {
+    const res = await app.inject({ method: 'GET', url: '/api/insights/burn' });
+    expect(res.statusCode).toBe(401);
+  });
+
+  it('rejects unauthenticated subscription status', async () => {
+    const res = await app.inject({ method: 'GET', url: '/api/subscription' });
+    expect(res.statusCode).toBe(401);
+  });
 });
 
 describe('auth rate limiting', () => {

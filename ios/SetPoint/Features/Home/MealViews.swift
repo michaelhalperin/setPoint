@@ -82,11 +82,13 @@ struct SearchComposer: View {
             Task {
                 if let data = try? await item.loadTransferable(type: Data.self) {
                     model.attach(data)
+                    model.mode = .type
                 }
                 pickerItem = nil
                 focused.wrappedValue = true
             }
         }
+        .photosPicker(isPresented: $model.showPhotoPicker, selection: $pickerItem, matching: .images)
     }
 
     private func photoChip(_ photo: MealPhoto) -> some View {
@@ -170,6 +172,7 @@ private struct OptionalMatchedGeometry: ViewModifier {
 struct MealDetailSheet: View {
     let meal: MealSummary
     var onRemove: (() async throws -> Void)?
+    var onSaveAsMeal: (() -> Void)? = nil
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -198,6 +201,10 @@ struct MealDetailSheet: View {
                         plate
                         notesBlock
                         meta
+                        if expanded {
+                            saveAsMealButton
+                                .staggerReveal(expanded, index: 4, rise: 8)
+                        }
                         removeControl
                     }
                     .padding(.top, expanded ? Space.md : 0)
@@ -253,6 +260,27 @@ struct MealDetailSheet: View {
                 macroStat("Carbs", meal.carbsG)
                 macroStat("Fat", meal.fatG)
             }
+
+            if !expanded {
+                saveAsMealButton
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var saveAsMealButton: some View {
+        if onSaveAsMeal != nil {
+            Button {
+                onSaveAsMeal?()
+            } label: {
+                Label("Save as my meal", systemImage: "star")
+                    .font(Typography.data(14, weight: .semibold))
+                    .foregroundStyle(Palette.ink)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 13)
+                    .background(Palette.surfaceSunk, in: RoundedRectangle(cornerRadius: Radius.md, style: .continuous))
+            }
+            .buttonStyle(.plain)
         }
     }
 

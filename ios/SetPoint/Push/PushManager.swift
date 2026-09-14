@@ -24,14 +24,25 @@ final class PushManager {
     /// The check-in notification's buttons. Both need the phone unlocked — they
     /// call the API with the signed-in session.
     static let checkInCategory = "CHECK_IN"
+    static let headsUpCategory = "HEADS_UP"
+    static let refuelCategory = "REFUEL"
     static let ateThisAction = "ATE_THIS"
     static let snoozeHourAction = "SNOOZE_HOUR"
+    static let remindAction = "REMIND_ME"
+    static let afterBlockAction = "AFTER_BLOCK"
+    static let coverDinnerAction = "COVER_DINNER"
 
     func registerCategories() {
         let ate = UNNotificationAction(identifier: Self.ateThisAction, title: "I ate this", options: [.authenticationRequired])
         let snooze = UNNotificationAction(identifier: Self.snoozeHourAction, title: "In 1 hour", options: [.authenticationRequired])
-        let category = UNNotificationCategory(identifier: Self.checkInCategory, actions: [ate, snooze], intentIdentifiers: [])
-        UNUserNotificationCenter.current().setNotificationCategories([category])
+        let remind = UNNotificationAction(identifier: Self.remindAction, title: "Remind me", options: [.authenticationRequired])
+        let after = UNNotificationAction(identifier: Self.afterBlockAction, title: "After this block", options: [.authenticationRequired])
+        let hadThis = UNNotificationAction(identifier: Self.ateThisAction, title: "I had this", options: [.authenticationRequired])
+        let coverDinner = UNNotificationAction(identifier: Self.coverDinnerAction, title: "Dinner covers it", options: [.authenticationRequired])
+        let meal = UNNotificationCategory(identifier: Self.checkInCategory, actions: [ate, snooze], intentIdentifiers: [])
+        let headsUp = UNNotificationCategory(identifier: Self.headsUpCategory, actions: [remind, after], intentIdentifiers: [])
+        let refuel = UNNotificationCategory(identifier: Self.refuelCategory, actions: [hadThis, coverDinner], intentIdentifiers: [])
+        UNUserNotificationCenter.current().setNotificationCategories([meal, headsUp, refuel])
     }
 
     /// Answer a check-in straight from its notification. Falls back to opening it
@@ -45,6 +56,12 @@ final class PushManager {
                 try await CheckInActions.eat(prescriptionID: prescriptionID, api: api)
             case Self.snoozeHourAction:
                 try await CheckInActions.snooze(checkInID: checkInID, minutes: 60, api: api)
+            case Self.remindAction:
+                try await CheckInActions.snooze(checkInID: checkInID, minutes: 45, api: api)
+            case Self.afterBlockAction:
+                try await CheckInActions.snooze(checkInID: checkInID, minutes: 180, api: api)
+            case Self.coverDinnerAction:
+                try await CheckInActions.cover(checkInID: checkInID, api: api)
             default:
                 openCheckIn(checkInID)
             }

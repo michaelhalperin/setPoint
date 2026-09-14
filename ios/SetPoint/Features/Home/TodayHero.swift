@@ -10,13 +10,16 @@ struct TodayHero: View {
     let home: HomeResponse
     let moment: TodayMoment
     let date: Date
+    var onAppetite: () -> Void = {}
+
+    @Environment(AppEnvironment.self) private var env
 
     var body: some View {
-        let times = home.resolvedMealTimes
         let quiet = home.resolvedQuietHours
         VStack(alignment: .leading, spacing: Space.md) {
+            dateLine
             DayDial(
-                breakfastMin: times.breakfastMin, lunchMin: times.lunchMin, dinnerMin: times.dinnerMin,
+                breakfastMin: liveTimes.breakfastMin, lunchMin: liveTimes.lunchMin, dinnerMin: liveTimes.dinnerMin,
                 quietStartMin: quiet.startMin, quietEndMin: quiet.endMin,
                 showsHourLabels: false,
                 today: DialToday(
@@ -25,7 +28,11 @@ struct TodayHero: View {
                     ringColor: ringColor,
                     showsBells: home.enforcementEnabled,
                     firedSlot: firedSlot
-                )
+                ),
+                busyArcs: (home.busyBlocks ?? []).map { $0.startMin ... $0.endMin },
+                workoutArcs: workoutArcs,
+                refuelArcs: refuelArcs,
+                ghostKnobs: ghosts
             ) {
                 center
                     .contentTransition(.numericText())
@@ -61,6 +68,85 @@ struct TodayHero: View {
         }
     }
 
+    private var moved: Bool { !(home.movedSlots ?? []).isEmpty }
+
+    private var liveTimes: MealTimesPayload {
+        var times = home.resolvedMealTimes
+        for moved in home.movedSlots ?? [] {
+            switch moved.slot {
+            case "breakfast": times.breakfastMin = moved.toMin
+            case "lunch": times.lunchMin = moved.toMin
+            default: times.dinnerMin = moved.toMin
+            }
+        }
+        return times
+    }
+
+    private var workoutArcs: [ClosedRange<Int>] {
+        (home.training?.workouts ?? []).map { w in
+            w.startMin ... (w.startMin + max(w.durationMin, 15))
+        }
+    }
+
+    private var refuelArcs: [ClosedRange<Int>] {
+        guard let until = home.training?.refuelUntilMin, let w = home.training?.workouts.first else { return [] }
+        let start = w.startMin + w.durationMin
+        guard until > start else { return [] }
+        return [start ... until]
+    }
+
+    private var ghosts: [DialGhost] {
+        (home.movedSlots ?? []).compactMap { moved in
+            guard let slot = MealSlot(rawValue: moved.slot) else { return nil }
+            let block = home.busyBlocks?.first
+            let label = block.map { formatBusyRange($0.startMin, $0.endMin) }
+            return DialGhost(slot: slot, minute: moved.fromMin, label: label)
+        }
+    }
+
+    private var dateLine: some View {
+        HStack(spacing: 8) {
+            Text(date.formatted(.dateTime.weekday(.wide).month(.abbreviated).day()))
+                .font(Typography.data(13, weight: .bold))
+                .foregroundStyle(Palette.inkSoft)
+            if let block = home.busyBlocks?.first {
+                Text("Busy \(formatBusyRange(block.startMin, block.endMin))")
+                    .font(Typography.data(12, weight: .bold))
+                    .foregroundStyle(Palette.ink)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Palette.surfaceSunk, in: Capsule())
+            }
+            if let training = home.training, !training.workouts.isEmpty {
+                NavigationLink {
+                    if env.subscription.entitled {
+                        TrainingScreen()
+                    } else {
+                        PaywallView()
+                    }
+                } label: {
+                    Text(training.bumpKcal > 0 ? "Training · +\(training.bumpKcal) ›" : "Training ›")
+                        .font(Typography.data(12, weight: .bold))
+                        .foregroundStyle(Palette.ink)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Palette.surfaceSunk, in: Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+            Button(action: onAppetite) {
+                Text("Appetite ›")
+                    .font(Typography.data(12, weight: .bold))
+                    .foregroundStyle(Palette.ink)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Palette.surfaceSunk, in: Capsule())
+            }
+            .buttonStyle(.plain)
+            Spacer(minLength: 0)
+        }
+    }
+
     @ViewBuilder
     private var center: some View {
         switch moment {
@@ -71,7 +157,7 @@ struct TodayHero: View {
                     .font(Typography.data(42, weight: .bold))
                     .monospacedDigit()
                     .foregroundStyle(Palette.ink)
-                Text("if \(slot.title.lowercased()) isn’t logged")
+                Text(moved ? "before you're busy" : "if \(slot.title.lowercased()) isn’t logged")
                     .font(Typography.data(12, weight: .semibold))
                     .foregroundStyle(Palette.inkSoft)
             }
