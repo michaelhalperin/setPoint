@@ -4,7 +4,7 @@ import { requireAuth, type AuthedRequest } from '../auth/index.js';
 import { getPrisma } from '../db/client.js';
 import { requireEntitlement } from '../subscription/requireEntitlement.js';
 import { localDateISO, localDayRange, msSinceLocalMidnight, shiftDateISO, startOfLocalDay } from '../engine/time.js';
-import { applyTrainingTarget, REFUEL_WINDOW_MIN, trainingBump } from '../engine/training.js';
+import { applyTrainingTarget, effectiveWorkouts, REFUEL_WINDOW_MIN, trainingBump } from '../engine/training.js';
 import { asTrainingWorkout } from '../training/day.js';
 import { replaceWorkouts } from '../training/replaceWorkouts.js';
 
@@ -118,13 +118,14 @@ export async function workoutRoutes(app: FastifyInstance): Promise<void> {
     for (let i = 0; i < 14; i += 1) {
       const date = shiftDateISO(windowStartISO, i);
       const range = localDayRange(date, user.timezone);
-      const dayWorkouts = workouts.filter((w) => w.start >= range.start && w.start < range.end);
+      const dayWorkouts = effectiveWorkouts(workouts.filter((w) => w.start >= range.start && w.start < range.end));
       const bump = trainingBump(dayWorkouts.map(asTrainingWorkout), weightKg);
       const past = date <= todayISO;
-      if (past && dayWorkouts.length > 0) {
+      const recorded = dayWorkouts.filter((w) => w.source === 'HEALTHKIT');
+      if (past && recorded.length > 0) {
         fueledTotal += 1;
         if (
-          dayWorkouts.some((w) => {
+          recorded.some((w) => {
             const ended = new Date(w.start.getTime() + w.durationMin * 60_000);
             const until = ended.getTime() + REFUEL_WINDOW_MIN * 60_000;
             return meals.some((m) => m.kcal >= 250 && m.loggedAt >= ended && m.loggedAt.getTime() <= until);

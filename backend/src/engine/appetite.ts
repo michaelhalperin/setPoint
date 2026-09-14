@@ -81,13 +81,3 @@ export function appetiteMealTarget(input: {
 export function dayStaysAboveFloor(dailyTarget: number): number {
   return Math.max(MIN_DAILY_KCAL, dailyTarget);
 }
-
-export function smallerSplit(targetKcal: number): { bites: { name: string; kcal: number; proteinG: number }[]; totalKcal: number } {
-  const each = Math.max(150, Math.round(targetKcal / 3));
-  const bites = [
-    { name: 'Whole milk', kcal: each, proteinG: 8 },
-    { name: 'Peanut butter on toast', kcal: each, proteinG: 10 },
-    { name: 'Dates and cheese', kcal: targetKcal - 2 * each, proteinG: 7 },
-  ];
-  return { bites, totalKcal: bites.reduce((s, b) => s + b.kcal, 0) };
-}

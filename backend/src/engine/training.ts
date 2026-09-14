@@ -32,8 +32,31 @@ export function sessionKcal(workout: TrainingWorkout, weightKg: number): number 
   return Math.max(0, net);
 }
 
+/** A planned session this close to a recorded one is the same session. */
+export const PLANNED_MATCH_MIN = 90;
+
+/**
+ * Drops planned sessions that Apple Health also recorded, so one workout is never
+ * counted twice. Planned sessions with no recorded match are kept.
+ */
+export function effectiveWorkouts<T extends { source: string; start: Date; durationMin: number }>(workouts: T[]): T[] {
+  const recorded = workouts.filter((w) => w.source === 'HEALTHKIT');
+  if (recorded.length === 0) return workouts;
+  const slack = PLANNED_MATCH_MIN * 60_000;
+  return workouts.filter((w) => {
+    if (w.source !== 'PLANNED') return true;
+    const start = w.start.getTime();
+    const end = start + w.durationMin * 60_000;
+    return !recorded.some((r) => {
+      const rStart = r.start.getTime();
+      const rEnd = rStart + r.durationMin * 60_000;
+      return rStart < end + slack && start < rEnd + slack;
+    });
+  });
+}
+
 export function trainingBump(workouts: TrainingWorkout[], weightKg: number): number {
-  const raw = workouts.reduce((sum, w) => sum + sessionKcal(w, weightKg), 0);
+  const raw = effectiveWorkouts(workouts).reduce((sum, w) => sum + sessionKcal(w, weightKg), 0);
   const rounded = Math.round(raw / TRAINING_ROUND) * TRAINING_ROUND;
   return Math.min(TRAINING_BUMP_CAP, Math.max(0, rounded));
 }

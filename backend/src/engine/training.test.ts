@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   applyTrainingTarget,
+  effectiveWorkouts,
   needsPreWorkoutNudge,
   needsRefuel,
   sessionKcal,
@@ -24,6 +25,17 @@ describe('training.v1', () => {
   it('falls back to MET × weight × hours minus resting', () => {
     // (6-1) * 80 * 1h = 400
     expect(sessionKcal(strength, 80)).toBe(400);
+  });
+
+  it('counts a planned session once when Apple Health recorded it too', () => {
+    const recorded = { ...strength, source: 'HEALTHKIT' as const, start: new Date('2026-09-14T15:20:00Z'), activeKcal: 350 };
+    expect(effectiveWorkouts([strength, recorded])).toEqual([recorded]);
+    expect(trainingBump([strength, recorded], 80)).toBe(350);
+  });
+
+  it('keeps a planned session with no recorded match', () => {
+    const later = { ...strength, source: 'HEALTHKIT' as const, start: new Date('2026-09-14T20:00:00Z'), activeKcal: 200 };
+    expect(effectiveWorkouts([strength, later])).toHaveLength(2);
   });
 
   it('rounds to 50 and caps at 800', () => {

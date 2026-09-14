@@ -104,6 +104,7 @@ function makeFakePrisma(users: AnyRow[], opts: { seedFoods?: boolean } = {}) {
       prescriptions,
       pushTokens,
       savedMeals,
+      dietaryRestrictions,
     },
     user: {
       findMany: async ({ where, take }: { where?: AnyRow; take?: number } = {}) => {
@@ -222,6 +223,37 @@ describe('runScoreConfidenceJob', () => {
     expect(summary.checkInsCreated).toBe(1);
     expect(fake.__tables.checkIns[0]).toMatchObject({ kind: 'REFUEL', slot: 'refuel' });
     expect(sentPushes[0]?.category).toBe('REFUEL');
+  });
+
+  it('never suggests a restricted food after a workout', async () => {
+    const fake = makeFakePrisma([baseUser()], { seedFoods: true });
+    const now = new Date('2026-07-01T16:00:00Z');
+    fake.__tables.dietaryRestrictions.push({ id: 'dr1', userId: 'u1', token: 'dairy', isHardExclusion: true });
+    await fake.workout.create({
+      data: { userId: 'u1', source: 'HEALTHKIT', kind: 'STRENGTH', start: new Date(now.getTime() - 110 * 60_000), durationMin: 60 },
+    });
+    fake.meal.create({ data: { userId: 'u1', kcal: 500, proteinG: 30, loggedAt: new Date('2026-07-01T12:00:00Z') } });
+
+    await runScoreConfidenceJob({ prisma: fake as unknown as PrismaClient, push, voice, now });
+
+    const rx = fake.__tables.prescriptions[0] as { items: { create: { name: string }[] } } | undefined;
+    const names = (rx?.items.create ?? []).map((i) => i.name);
+    expect(names.length).toBeGreaterThan(0);
+    const dairy = STAPLE_FOODS.filter((f) => f.allergens.includes('dairy')).map((f) => f.name);
+    expect(names.some((n) => dairy.includes(n))).toBe(false);
+  });
+
+  it('does not send a refuel check-in for a planned session nobody recorded', async () => {
+    const fake = makeFakePrisma([baseUser()], { seedFoods: true });
+    const now = new Date('2026-07-01T16:00:00Z');
+    await fake.workout.create({
+      data: { userId: 'u1', source: 'PLANNED', kind: 'STRENGTH', start: new Date(now.getTime() - 110 * 60_000), durationMin: 60 },
+    });
+    fake.meal.create({ data: { userId: 'u1', kcal: 500, proteinG: 30, loggedAt: new Date('2026-07-01T12:00:00Z') } });
+
+    await runScoreConfidenceJob({ prisma: fake as unknown as PrismaClient, push, voice, now });
+
+    expect(fake.__tables.checkIns.some((c) => c.kind === 'REFUEL')).toBe(false);
   });
 
   it('still fires (without a prescription) when the food list is empty', async () => {

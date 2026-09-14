@@ -4,7 +4,6 @@ import {
   appetiteShape,
   extraAppetiteSlots,
   remainingSlotCount,
-  smallerSplit,
 } from './appetite.js';
 
 const times = { breakfastMin: 480, lunchMin: 780, dinnerMin: 1140 };
@@ -43,11 +42,5 @@ describe('appetite.v1', () => {
         mealMinutesToday: [490],
       }),
     ).toBe(4);
-  });
-
-  it('splits a full meal into three easier bites', () => {
-    const split = smallerSplit(570);
-    expect(split.bites).toHaveLength(3);
-    expect(split.totalKcal).toBe(570);
   });
 });

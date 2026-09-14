@@ -13,6 +13,7 @@ import { getPrisma } from '../db/client.js';
 import { applyPlanProposal, ProposalNotApplicableError } from '../checkins/applyProposal.js';
 import { proposalFromOutcome } from '../checkins/proposals.js';
 import { startTalk } from '../checkins/startTalk.js';
+import { excludedTokensFor, loadStapleFoods, prescribe } from '../solver/index.js';
 import { ENGINE_CONFIG, type Goal } from '../engine/index.js';
 import { env, isProd } from '../env.js';
 
@@ -188,50 +189,44 @@ export async function checkInRoutes(app: FastifyInstance): Promise<void> {
     });
     if (!checkIn?.prescription) throw app.httpErrors.notFound('no active check-in with that id');
     const targetKcal = checkIn.prescription.targetKcal;
-    const { smallerSplit } = await import('../engine/appetite.js');
-    const { prescribe } = await import('../solver/index.js');
-    const { STAPLE_FOODS } = await import('../data/stapleFoods.js');
+    const profile = await prisma.onboardingProfile.findUnique({
+      where: { userId },
+      select: { dislikedFoods: true, pantryTokens: true, prepTimeMaxMin: true, drinkableOk: true },
+    });
+    const [{ solverFoods, foodIdBySlug }, excludedTokens] = await Promise.all([
+      loadStapleFoods(prisma),
+      excludedTokensFor(prisma, userId, profile?.dislikedFoods),
+    ]);
 
-    let items: { name: string; quantity: number; kcal: number; proteinG: number; carbsG: number; fatG: number }[];
-    let totals: { kcal: number; proteinG: number; carbsG: number; fatG: number };
-    if (variant === 'smaller') {
-      const split = smallerSplit(targetKcal);
-      items = split.bites.map((b) => ({
-        name: b.name,
-        quantity: 1,
-        kcal: b.kcal,
-        proteinG: b.proteinG,
-        carbsG: 0,
-        fatG: 0,
-      }));
-      totals = {
-        kcal: split.totalKcal,
-        proteinG: split.bites.reduce((s, b) => s + b.proteinG, 0),
-        carbsG: 0,
-        fatG: 0,
-      };
-    } else {
-      const rx = prescribe(STAPLE_FOODS, {
-        targetKcal,
-        targetProteinG: checkIn.prescription.targetProteinG,
-        excludedTokens: [],
-      });
-      if (!rx) throw app.httpErrors.conflict('could not build a full meal');
-      items = rx.items.map((i) => ({
-        name: i.name,
-        quantity: i.quantity,
-        kcal: i.kcal,
-        proteinG: i.proteinG,
-        carbsG: i.carbsG,
-        fatG: i.fatG,
-      }));
-      totals = {
-        kcal: rx.totalKcal,
-        proteinG: rx.totalProteinG,
-        carbsG: rx.totalCarbsG,
-        fatG: rx.totalFatG,
-      };
-    }
+    // Both sizes come from the solver, so allergens, diets and dislikes are always honoured.
+    // "Smaller" keeps the calories but favours dense, drinkable, no-prep foods.
+    const smaller = variant === 'smaller';
+    const rx = prescribe(solverFoods, {
+      targetKcal,
+      targetProteinG: checkIn.prescription.targetProteinG,
+      excludedTokens,
+      pantryTokens: profile?.pantryTokens ?? [],
+      prepTimeMaxMin: profile?.prepTimeMaxMin ?? null,
+      preferLowFriction: smaller,
+      preferCalorieDense: smaller,
+      preferDrinkable: smaller && (profile?.drinkableOk ?? true),
+    });
+    if (!rx) throw app.httpErrors.conflict('no option fits your food restrictions');
+    const items = rx.items.map((i) => ({
+      foodItemId: foodIdBySlug.get(i.slug) ?? null,
+      name: i.name,
+      quantity: i.quantity,
+      kcal: i.kcal,
+      proteinG: i.proteinG,
+      carbsG: i.carbsG,
+      fatG: i.fatG,
+    }));
+    const totals = {
+      kcal: rx.totalKcal,
+      proteinG: rx.totalProteinG,
+      carbsG: rx.totalCarbsG,
+      fatG: rx.totalFatG,
+    };
 
     await prisma.$transaction([
       prisma.checkIn.update({ where: { id: checkIn.id }, data: { variant } }),

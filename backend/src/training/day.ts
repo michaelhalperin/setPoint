@@ -1,6 +1,7 @@
 import type { PrismaClient, Workout } from '@prisma/client';
 import {
   applyTrainingTarget,
+  effectiveWorkouts,
   trainingBump,
   type TrainingWorkout,
 } from '../engine/training.js';
@@ -37,7 +38,7 @@ export async function trainingForLocalDay(
   return {
     bump,
     targetKcal: applyTrainingTarget(input.baseKcal, bump, input.addCalories),
-    workouts,
+    workouts: effectiveWorkouts(workouts),
   };
 }
 

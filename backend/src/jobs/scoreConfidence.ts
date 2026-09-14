@@ -32,7 +32,7 @@ import {
   appetiteMealTarget,
   needsRefuel,
   needsPreWorkoutNudge,
-  refuelPrescription,
+  effectiveWorkouts,
   type EscalationDecision,
   type Goal,
   type SlotName,
@@ -46,8 +46,12 @@ import { deliverCheckIn } from '../push/deliver.js';
 import type { PushSender } from '../push/types.js';
 import {
   computePrescriptionTarget,
+  excludedTokensFrom,
+  loadStapleFoods,
   prescribe,
   prescriptionSummary,
+  refuelPrescription,
+  type PrescriptionResult,
   type SolverFood,
 } from '../solver/index.js';
 import { prescriptionFromSavedMeal } from '../savedMeals/index.js';
@@ -119,20 +123,8 @@ export async function runScoreConfidenceJob(
     skipped: {},
   };
 
-  const foodRows = await deps.prisma.foodItem.findMany({ where: { isStaple: true } });
   const context: JobContext = {
-    solverFoods: foodRows.map((f) => ({
-      slug: f.slug,
-      name: f.name,
-      servingDesc: f.servingDesc,
-      kcal: f.kcal,
-      proteinG: f.proteinG,
-      carbsG: f.carbsG,
-      fatG: f.fatG,
-      tags: f.tags,
-      allergens: f.allergens,
-    })),
-    foodIdBySlug: new Map(foodRows.map((f) => [f.slug, f.id])),
+    ...(await loadStapleFoods(deps.prisma)),
     wearableHalted: await wearableHaltedByStopConditions(deps.prisma, now),
   };
   summary.wearableHalted = context.wearableHalted;
@@ -409,7 +401,7 @@ async function processUser(
     return;
   }
 
-  const excludedTokens = [...restrictions.map((r) => r.token), ...(profile.dislikedFoods ?? [])];
+  const excludedTokens = excludedTokensFrom(restrictions, profile.dislikedFoods);
   const pantry = profile.pantryTokens ?? [];
 
   const tier = freshCheckInTier(escStateOf(user));
@@ -551,8 +543,10 @@ async function maybeFireTrainingCheckIn(
   if (!profile) return false;
   const enforcement = user.safetyScreening?.enforcementEnabled ?? false;
   const meals = ctx.todayMeals.map((m) => ({ at: m.loggedAt, kcal: m.kcal }));
+  const excludedTokens = excludedTokensFrom(ctx.restrictions, profile.dislikedFoods);
 
-  for (const workout of ctx.workouts) {
+  // Only a session Apple Health recorded proves the user trained — a planned one may have been skipped.
+  for (const workout of ctx.workouts.filter((w) => w.source === 'HEALTHKIT')) {
     const ended = new Date(workout.start.getTime() + workout.durationMin * 60_000);
     if (
       !needsRefuel({
@@ -575,14 +569,15 @@ async function maybeFireTrainingCheckIn(
       workoutId: workout.id,
       message: `You trained. Eat something now — dinner at ${dinner} can cover it.`,
       category: 'REFUEL',
-      rx: refuelPrescription(),
+      rx: refuelPrescription(ctx.solverFoods, excludedTokens),
+      foodIdBySlug: ctx.foodIdBySlug,
       summary: ctx.summary,
     });
     return true;
   }
 
   const nudgeMin = profile.preWorkoutNudgeMin ?? null;
-  for (const workout of ctx.workouts.filter((w) => w.source === 'PLANNED')) {
+  for (const workout of effectiveWorkouts(ctx.workouts).filter((w) => w.source === 'PLANNED')) {
     if (
       !needsPreWorkoutNudge({
         plannedStart: workout.start,
@@ -604,7 +599,8 @@ async function maybeFireTrainingCheckIn(
       workoutId: workout.id,
       message: 'Training soon. Eat something first.',
       category: 'CHECK_IN',
-      rx: refuelPrescription(),
+      rx: refuelPrescription(ctx.solverFoods, excludedTokens),
+      foodIdBySlug: ctx.foodIdBySlug,
       summary: ctx.summary,
     });
     return true;
@@ -633,7 +629,8 @@ async function createTrainingCheckIn(
     workoutId: string;
     message: string;
     category: 'CHECK_IN' | 'HEADS_UP' | 'REFUEL';
-    rx: ReturnType<typeof refuelPrescription>;
+    rx: PrescriptionResult | null;
+    foodIdBySlug: Map<string, string>;
     summary: ScoreConfidenceSummary;
   },
 ): Promise<void> {
@@ -651,32 +648,37 @@ async function createTrainingCheckIn(
       workoutId: input.workoutId,
     },
   });
-  const created = await prisma.prescription.create({
-    data: {
-      userId: user.id,
-      checkInId: checkIn.id,
-      targetKcal: input.rx.targetKcal,
-      targetProteinG: input.rx.targetProteinG,
-      totalKcal: input.rx.totalKcal,
-      totalProteinG: input.rx.totalProteinG,
-      totalCarbsG: input.rx.totalCarbsG,
-      totalFatG: input.rx.totalFatG,
-      status: 'OFFERED',
-      items: {
-        create: input.rx.items.map((i) => ({
-          name: i.name,
-          quantity: i.quantity,
-          unit: 'serving',
-          kcal: i.kcal,
-          proteinG: i.proteinG,
-          carbsG: i.carbsG,
-          fatG: i.fatG,
-        })),
-      },
-    },
-  });
-  input.summary.prescriptionsCreated += 1;
-  await markDelivered(deps, user.id, checkIn.id, 1, input.message, created.id, input.now, input.category);
+  // No food fits the user's restrictions → the nudge still goes out, without a suggestion.
+  const rx = input.rx;
+  const created = rx
+    ? await prisma.prescription.create({
+        data: {
+          userId: user.id,
+          checkInId: checkIn.id,
+          targetKcal: rx.targetKcal,
+          targetProteinG: rx.targetProteinG,
+          totalKcal: rx.totalKcal,
+          totalProteinG: rx.totalProteinG,
+          totalCarbsG: rx.totalCarbsG,
+          totalFatG: rx.totalFatG,
+          status: 'OFFERED',
+          items: {
+            create: rx.items.map((i) => ({
+              foodItemId: input.foodIdBySlug.get(i.slug) ?? null,
+              name: i.name,
+              quantity: i.quantity,
+              unit: 'serving',
+              kcal: i.kcal,
+              proteinG: i.proteinG,
+              carbsG: i.carbsG,
+              fatG: i.fatG,
+            })),
+          },
+        },
+      })
+    : null;
+  if (created) input.summary.prescriptionsCreated += 1;
+  await markDelivered(deps, user.id, checkIn.id, 1, input.message, created?.id ?? null, input.now, input.category);
   await prisma.escalationState.upsert({
     where: { userId: user.id },
     create: { userId: user.id, lastCheckInAt: input.now, currentTier: 1 },
