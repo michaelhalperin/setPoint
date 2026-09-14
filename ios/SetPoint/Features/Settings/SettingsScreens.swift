@@ -359,13 +359,45 @@ private struct DailyTargetSheet: View {
 
 struct RhythmSettingsView: View {
     @Bindable var model: SettingsViewModel
+    @State private var rhythmSet: RhythmSet = .weekdays
+
+    private enum RhythmSet: String, CaseIterable, Identifiable {
+        case weekdays, weekends
+        var id: String { rawValue }
+        var title: String {
+            switch self {
+            case .weekdays: return "Weekdays"
+            case .weekends: return "Weekends"
+            }
+        }
+    }
+
+    private var editingWeekends: Bool { rhythmSet == .weekends }
+
+    private var activeTimes: MealTimesPayload {
+        editingWeekends ? model.resolvedWeekendTimes : model.mealTimes
+    }
 
     var body: some View {
         SettingsScreen(title: "Meal times", subtitle: "Drag a meal around the dial, or tap a time.") {
             VStack(alignment: .leading, spacing: 20) {
+                SegmentedPills(
+                    options: RhythmSet.allCases,
+                    selection: $rhythmSet,
+                    title: { $0.title }
+                )
+                .appearIn(1)
+
+                if let suggestion = model.weekendSuggestion, editingWeekends {
+                    suggestionBanner(suggestion).appearIn(2)
+                }
+
                 dial.appearIn(2)
                 mealRows.appearIn(3)
-                quietCard.appearIn(4)
+                if editingWeekends {
+                    weekendDaysCard.appearIn(4)
+                }
+                quietCard.appearIn(5)
                 if let error = model.error {
                     SettingsErrorBanner(message: error)
                 }
@@ -384,22 +416,48 @@ struct RhythmSettingsView: View {
         }
         .onDisappear { model.revertToOriginal() }
         .animation(Motion.settle, value: model.checkInsPaused)
+        .animation(Motion.settle, value: rhythmSet)
+    }
+
+    private func suggestionBanner(_ suggestion: WeekendSuggestion) -> some View {
+        Button {
+            withAnimation(Motion.settle) { model.applyWeekendSuggestion() }
+        } label: {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "clock.badge.questionmark")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(Palette.accent)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Weekends are running \(suggestion.lateByMin) min later")
+                        .font(Typography.data(14, weight: .bold))
+                        .foregroundStyle(Palette.ink)
+                    Text("Set weekend breakfast to \(formatMinutes(suggestion.breakfastMin)).")
+                        .font(Typography.data(13))
+                        .foregroundStyle(Palette.inkSoft)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(14)
+            .background(Palette.accentTint, in: RoundedRectangle(cornerRadius: Radius.md, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Use suggested weekend breakfast \(formatMinutes(suggestion.breakfastMin))")
     }
 
     private var dial: some View {
         DayDial(
-            breakfastMin: model.mealTimes.breakfastMin,
-            lunchMin: model.mealTimes.lunchMin,
-            dinnerMin: model.mealTimes.dinnerMin,
+            breakfastMin: activeTimes.breakfastMin,
+            lunchMin: activeTimes.lunchMin,
+            dinnerMin: activeTimes.dinnerMin,
             quietStartMin: model.quietHours.startMin,
             quietEndMin: model.quietHours.endMin,
             showsHourLabels: false,
             onMove: { slot, minute in
-                withAnimation(Motion.settle) { model.mealTimes[slot] = minute }
+                withAnimation(Motion.settle) { setTime(minute, slot: slot) }
             }
         ) {
             VStack(spacing: 4) {
-                Text("Your day")
+                Text(editingWeekends ? "Weekends" : "Your day")
                     .font(Typography.voice(22))
                     .foregroundStyle(Palette.ink)
                 Text(model.checkInsPaused ? "Check-ins off" : "3 check-ins")
@@ -425,8 +483,9 @@ struct RhythmSettingsView: View {
     }
 
     private func mealRow(_ slot: MealSlot) -> some View {
-        let t = model.mealTimes[slot]
+        let t = activeTimes[slot]
         let checkIn = CheckInSchedule.minute(afterMeal: t)
+        let weekdayTime = model.mealTimes[slot]
         return HStack(spacing: 14) {
             Image(systemName: slot.symbol)
                 .font(.system(size: 16, weight: .semibold))
@@ -438,6 +497,12 @@ struct RhythmSettingsView: View {
                     .font(Typography.data(16, weight: .heavy))
                     .foregroundStyle(Palette.ink)
                 HStack(spacing: 4) {
+                    if editingWeekends, t != weekdayTime {
+                        Text(formatMinutes(weekdayTime))
+                            .font(Typography.data(12, weight: .semibold))
+                            .foregroundStyle(Palette.inkFaint)
+                            .strikethrough()
+                    }
                     Image(systemName: "bell.fill")
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(Palette.accent)
@@ -455,17 +520,56 @@ struct RhythmSettingsView: View {
 
     private func mealBinding(_ slot: MealSlot) -> Binding<Int> {
         Binding(
-            get: { model.mealTimes[slot] },
-            set: { minute in
-                let clamped = MealTimeEditing.clamp(
-                    minute, slot: slot,
-                    breakfast: model.mealTimes.breakfastMin,
-                    lunch: model.mealTimes.lunchMin,
-                    dinner: model.mealTimes.dinnerMin
-                )
-                withAnimation(Motion.settle) { model.mealTimes[slot] = clamped }
-            }
+            get: { activeTimes[slot] },
+            set: { setTime($0, slot: slot) }
         )
+    }
+
+    private func setTime(_ minute: Int, slot: MealSlot) {
+        if editingWeekends {
+            model.setWeekendTime(minute, slot: slot)
+        } else {
+            let clamped = MealTimeEditing.clamp(
+                minute, slot: slot,
+                breakfast: model.mealTimes.breakfastMin,
+                lunch: model.mealTimes.lunchMin,
+                dinner: model.mealTimes.dinnerMin
+            )
+            model.mealTimes[slot] = clamped
+        }
+    }
+
+    private var weekendDaysCard: some View {
+        SettingsCard(padding: 16) {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Weekend days")
+                    .font(Typography.data(16, weight: .heavy))
+                    .foregroundStyle(Palette.ink)
+                Text("Check-ins follow this set on these days.")
+                    .font(Typography.data(13))
+                    .foregroundStyle(Palette.inkSoft)
+                HStack(spacing: 6) {
+                    ForEach(Array(WeekendDays.bitsInDisplayOrder.enumerated()), id: \.offset) { index, bit in
+                        let on = WeekendDays.contains(model.weekendDays, weekday: bit)
+                        Button {
+                            withAnimation(Motion.settle) {
+                                model.weekendDays = WeekendDays.toggling(model.weekendDays, weekday: bit)
+                            }
+                        } label: {
+                            Text(WeekendDays.labels[index])
+                                .font(Typography.data(13, weight: .bold))
+                                .foregroundStyle(on ? Palette.background : Palette.ink)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 10)
+                                .background(on ? Palette.ink : Palette.surfaceSunk, in: Circle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(WeekendDays.names[index])
+                        .accessibilityAddTraits(on ? .isSelected : [])
+                    }
+                }
+            }
+        }
     }
 
     private var quietSpanMinutes: Int {

@@ -57,6 +57,9 @@ function fakePrisma(user: AnyRow | null) {
       },
     },
     $transaction: async (fn: (tx: unknown) => Promise<unknown>) => fn(prisma),
+    meal: {
+      findMany: async () => ((state.user as AnyRow)?.meals as AnyRow[]) ?? [],
+    },
   };
   return prisma as unknown as PrismaClient & { __state: typeof state };
 }
@@ -152,6 +155,17 @@ describe('settings', () => {
     expect(view.goal).toBe('BULK');
     expect(view.preferredDurationWeeks).toBe(16); // 4 kg at 0.25, not the old 20
     expect(view.paceKgPerWeek).toBe(0.25);
+  });
+
+  it('stores weekend meal times and weekend days', async () => {
+    const prisma = fakePrisma(onboardedUser());
+    const view = await updateSettings({ prisma }, 'u1', {
+      weekendMealTimes: { breakfastMin: 600, lunchMin: null, dinnerMin: 1260 },
+      weekendDays: 0b1100000,
+    });
+    expect(view.weekendMealTimes).toEqual({ breakfastMin: 600, lunchMin: null, dinnerMin: 1260 });
+    expect(view.weekendDays).toBe(0b1100000);
+    expect(view.weekendSuggestion).toBeNull();
   });
 });
 

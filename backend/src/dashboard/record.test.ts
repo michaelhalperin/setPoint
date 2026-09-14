@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildWeekRecord, type RecordInput } from './record.js';
+import { buildWeekRecord, weekendBreakfastSuggestion, type RecordInput } from './record.js';
 
 const times = { breakfastMin: 480, lunchMin: 780, dinnerMin: 1140 };
 // 2026-09-07 is a Monday.
@@ -65,5 +65,36 @@ describe('buildWeekRecord', () => {
       input({ meals: [{ date: '2026-09-07', minute: 850 }, { date: '2026-09-08', minute: 790 }, { date: '2026-09-09', minute: 785 }] }),
     );
     expect(record.pattern).toBeNull();
+  });
+});
+
+describe('weekendBreakfastSuggestion', () => {
+  it('suggests a later weekend breakfast after three late weekend first meals', () => {
+    const suggestion = weekendBreakfastSuggestion({
+      datesOldestFirst: ['2026-09-05', '2026-09-06', '2026-09-12', '2026-09-13'],
+      today: '2026-09-14',
+      weekdayBreakfastMin: 480,
+      meals: [
+        { date: '2026-09-05', minute: 560 }, // Sat
+        { date: '2026-09-06', minute: 575 }, // Sun
+        { date: '2026-09-12', minute: 545 }, // Sat
+      ],
+    });
+    expect(suggestion).toEqual({ breakfastMin: 555, lateByMin: 75 });
+  });
+
+  it('stays quiet when a weekend morning was on time', () => {
+    expect(
+      weekendBreakfastSuggestion({
+        datesOldestFirst: ['2026-09-05', '2026-09-06', '2026-09-12'],
+        today: '2026-09-14',
+        weekdayBreakfastMin: 480,
+        meals: [
+          { date: '2026-09-05', minute: 560 },
+          { date: '2026-09-06', minute: 490 },
+          { date: '2026-09-12', minute: 570 },
+        ],
+      }),
+    ).toBeNull();
   });
 });

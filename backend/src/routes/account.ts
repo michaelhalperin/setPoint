@@ -18,6 +18,11 @@ import {
 
 const minutes = z.number().int().min(0).max(1439);
 const mealTimes = z.object({ breakfastMin: minutes, lunchMin: minutes, dinnerMin: minutes });
+const weekendMealTimes = z.object({
+  breakfastMin: minutes.nullable(),
+  lunchMin: minutes.nullable(),
+  dinnerMin: minutes.nullable(),
+});
 const quietHours = z.object({ startMin: minutes, endMin: minutes });
 const scoff = z.object({
   makeSelfSick: z.boolean(),
@@ -63,6 +68,8 @@ const settingsPatch = z
     dailyKcalTarget: z.number().int().min(800).max(8000).optional(),
     dailyProteinTargetG: z.number().int().min(0).max(400).nullable().optional(),
     mealTimes: mealTimes.optional(),
+    weekendMealTimes: weekendMealTimes.optional(),
+    weekendDays: z.number().int().min(1).max(127).optional(),
     quietHours: quietHours.optional(),
     checkInsPaused: z.boolean().optional(),
     timezone: z.string().optional(),

@@ -61,6 +61,7 @@ enum DebugPreviewStub {
     case settings
     case settingsGoal
     case settingsMealTimes
+    case settingsMealTimesWeekends
     case settingsFoods
     case settingsHealth
     case settingsAccount
@@ -101,6 +102,8 @@ enum DebugPreviewStub {
             NavigationStack { GoalSettingsView(model: Self.goalStubModel) }
         case .settingsMealTimes:
             NavigationStack { RhythmSettingsView(model: .previewed()) }
+        case .settingsMealTimesWeekends:
+            NavigationStack { RhythmSettingsView(model: .previewedWeekends()) }
         case .settingsFoods:
             NavigationStack { FoodsSettingsView(model: .previewed()) }
         case .settingsHealth:
@@ -158,6 +161,7 @@ enum DebugPreviewStub {
         case "you": return .settings
         case "settings-goal": return .settingsGoal
         case "settings-meal-times": return .settingsMealTimes
+        case "settings-meal-times-weekends": return .settingsMealTimesWeekends
         case "settings-foods": return .settingsFoods
         case "settings-health": return .settingsHealth
         case "settings-account": return .settingsAccount

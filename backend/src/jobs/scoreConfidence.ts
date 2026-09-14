@@ -13,6 +13,8 @@ import {
   freshCheckInTier,
   isBiosignalFresh,
   localDateISO,
+  localWeekday,
+  mealTimesOn,
   msSinceLocalMidnight,
   startOfLocalDay,
   TIER,
@@ -238,13 +240,14 @@ async function processUser(
     return;
   }
 
+  const times = mealTimesOn(profile, localWeekday(now, user.timezone));
   const due = dueCheckIn({
     nowMin: localMinute(now, user.timezone),
-    times: profile,
+    times,
     mealMinutesToday: todayMeals.map((m) => localMinute(m.loggedAt, user.timezone)),
     checkedSlotsToday: todayCheckIns
       .filter((c) => c.tier < TIER.CONVERSATION)
-      .map((c) => checkInSlotAt(localMinute(c.createdAt, user.timezone), profile))
+      .map((c) => checkInSlotAt(localMinute(c.createdAt, user.timezone), times))
       .filter((slot): slot is SlotName => slot !== null),
     consumedKcal,
     targetKcal: profile.dailyKcalTarget,
@@ -282,7 +285,7 @@ async function processUser(
     slot: due.slot,
     overdueMin,
     hoursSinceMeal,
-    expectedGapHours: expectedGapHours(due.slot, profile),
+    expectedGapHours: expectedGapHours(due.slot, times),
     consumedKcal,
     targetKcal: profile.dailyKcalTarget,
     slotCheckIns,
@@ -304,7 +307,7 @@ async function processUser(
     wearableUsed: scored.wearableUsed,
     biosignalDeviation: wearableFresh?.hrvDeviation ?? null,
     hoursSinceMeal,
-    expectedGapHours: expectedGapHours(due.slot, profile),
+    expectedGapHours: expectedGapHours(due.slot, times),
     loggingSilence: null,
     overdueMin,
     dismissRate: scored.components.slotDismissRate,

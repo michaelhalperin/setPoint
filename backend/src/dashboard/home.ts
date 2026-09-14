@@ -3,6 +3,8 @@ import {
   checkInSlotAt,
   hoursBetween,
   isWithinQuietHours,
+  localWeekday,
+  mealTimesOn,
   msSinceLocalMidnight,
   startOfLocalDay,
   TIER,
@@ -142,11 +144,12 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
   const hoursSinceMeal = lastMeal ? hoursBetween(lastMeal.loggedAt, now) : null;
   const localMinute = (date: Date): number => Math.floor(msSinceLocalMidnight(date, user.timezone) / 60_000);
   const mins = localMinute(now);
+  const times = mealTimesOn(profile, localWeekday(now, user.timezone));
   const enforcementEnabled = user.safetyScreening?.enforcementEnabled ?? false;
 
   const day = buildDay({
     nowMin: mins,
-    mealTimes: { breakfastMin: profile.breakfastMin, lunchMin: profile.lunchMin, dinnerMin: profile.dinnerMin },
+    mealTimes: times,
     meals: todayMeals.map((m) => ({
       id: m.id,
       minuteOfDay: localMinute(m.loggedAt),
@@ -167,11 +170,11 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
   const scheduled = checksRunning
     ? upcomingCheckIn({
         nowMin: mins,
-        times: profile,
+        times,
         mealMinutesToday: todayMeals.map((m) => localMinute(m.loggedAt)),
         checkedSlotsToday: todayCheckIns
           .filter((c) => c.tier < TIER.CONVERSATION)
-          .map((c) => checkInSlotAt(localMinute(c.createdAt), profile))
+          .map((c) => checkInSlotAt(localMinute(c.createdAt), times))
           .filter((slot): slot is SlotName => slot !== null),
         consumedKcal,
         targetKcal,
@@ -191,7 +194,7 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
     remainingProteinG,
     mealsToday: todayMeals.length,
     nextMeal:
-      day.pace?.next?.slot ?? mealWindow(mins, { lunchMin: profile.lunchMin, dinnerMin: profile.dinnerMin }),
+      day.pace?.next?.slot ?? mealWindow(mins, { lunchMin: times.lunchMin, dinnerMin: times.dinnerMin }),
     hoursSinceMeal,
     hasActiveCheckIn: activeCheckIn !== null,
     enforcementEnabled,
@@ -220,11 +223,7 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
     },
     managerNote,
     meals: await toMealSummaries(todayMeals, deps.photos ?? null, now),
-    mealTimes: {
-      breakfastMin: profile.breakfastMin,
-      lunchMin: profile.lunchMin,
-      dinnerMin: profile.dinnerMin,
-    },
+    mealTimes: times,
     quietHours: { startMin: profile.quietHoursStartMin, endMin: profile.quietHoursEndMin },
     day,
     nextCheckIn,

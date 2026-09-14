@@ -23,6 +23,8 @@ final class SettingsTests: XCTestCase {
         XCTAssertNil(s.preferredDurationWeeks)
         XCTAssertTrue(s.checkInsPaused)
         XCTAssertEqual(s.mealTimes, MealTimesPayload(breakfastMin: 480, lunchMin: 780, dinnerMin: 1140))
+        XCTAssertEqual(s.weekendDays ?? WeekendDays.default, WeekendDays.default)
+        XCTAssertNil(s.weekendSuggestion)
         XCTAssertEqual(s.restrictions.first?.label, "Peanuts")
         XCTAssertFalse(s.enforcementEnabled)
     }

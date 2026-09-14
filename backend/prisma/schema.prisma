@@ -227,6 +227,13 @@ model OnboardingProfile {
   lunchMin     Int @default(780)
   dinnerMin    Int @default(1140)
 
+  // Weekend set. Null minutes mean "same as weekdays". weekendDays is a JS-getDay
+  // bitmask (bit 0 = Sunday … bit 6 = Saturday); default Sat+Sun = 65.
+  weekendBreakfastMin Int?
+  weekendLunchMin     Int?
+  weekendDinnerMin    Int?
+  weekendDays         Int @default(65)
+
   // Quiet hours — minutes from local midnight (default 23:00–07:00, §2).
   quietHoursStartMin Int @default(1380)
   quietHoursEndMin   Int @default(420)

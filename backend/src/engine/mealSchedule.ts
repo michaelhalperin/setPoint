@@ -11,6 +11,55 @@ export type MealTimes = {
   dinnerMin: number;
 };
 
+/** Per-slot override. Null = same as the weekday time. */
+export type WeekendMealTimes = {
+  breakfastMin: number | null;
+  lunchMin: number | null;
+  dinnerMin: number | null;
+};
+
+/** Stored on the profile so scoring, Home and Week share one selector. */
+export type ScheduleProfile = MealTimes & {
+  weekendBreakfastMin?: number | null;
+  weekendLunchMin?: number | null;
+  weekendDinnerMin?: number | null;
+  weekendDays?: number | null;
+};
+
+/** bit 0 = Sunday … bit 6 = Saturday. Default Sat+Sun. */
+export const DEFAULT_WEEKEND_DAYS = 0b1000001;
+
+export function isWeekendDay(weekday: number, weekendDays: number = DEFAULT_WEEKEND_DAYS): boolean {
+  return ((weekendDays >> (weekday % 7)) & 1) === 1;
+}
+
+export function resolveMealTimes(
+  weekdayTimes: MealTimes,
+  weekend: WeekendMealTimes | null | undefined,
+  weekendDays: number,
+  weekday: number,
+): MealTimes {
+  if (!isWeekendDay(weekday, weekendDays)) return weekdayTimes;
+  return {
+    breakfastMin: weekend?.breakfastMin ?? weekdayTimes.breakfastMin,
+    lunchMin: weekend?.lunchMin ?? weekdayTimes.lunchMin,
+    dinnerMin: weekend?.dinnerMin ?? weekdayTimes.dinnerMin,
+  };
+}
+
+export function mealTimesOn(profile: ScheduleProfile, weekday: number): MealTimes {
+  return resolveMealTimes(
+    { breakfastMin: profile.breakfastMin, lunchMin: profile.lunchMin, dinnerMin: profile.dinnerMin },
+    {
+      breakfastMin: profile.weekendBreakfastMin ?? null,
+      lunchMin: profile.weekendLunchMin ?? null,
+      dinnerMin: profile.weekendDinnerMin ?? null,
+    },
+    profile.weekendDays ?? DEFAULT_WEEKEND_DAYS,
+    weekday,
+  );
+}
+
 export type SlotName = 'breakfast' | 'lunch' | 'dinner';
 
 export const SLOT_ORDER: SlotName[] = ['breakfast', 'lunch', 'dinner'];

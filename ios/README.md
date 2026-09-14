@@ -89,6 +89,7 @@ Screenshot a specific screen with sample data:
 ./ios/scripts/run.sh -uiStub log-scan          # barcode product sheet
 ./ios/scripts/run.sh -uiStub saved-meal        # saved-meal editor
 ./ios/scripts/run.sh -uiStub settings          # settings screen
+./ios/scripts/run.sh -uiStub settings-meal-times-weekends # weekday vs weekend meal times
 ./ios/scripts/run.sh -uiStub settlement        # 7-day settlement view
 ```
 

@@ -62,6 +62,18 @@ final class SettingsScreensTests: XCTestCase {
         )
     }
 
+    func testWeekendMealTimesDirtyAndSaveNote() {
+        let vm = SettingsViewModel.previewed()
+        vm.weekendMealTimes.breakfastMin = 600
+        XCTAssertTrue(vm.mealTimesDirty)
+        XCTAssertEqual(
+            vm.mealTimesSaveNote,
+            "Weekends breakfast \(formatMinutes(480)) → \(formatMinutes(600))"
+        )
+        vm.weekendDays = WeekendDays.toggling(vm.weekendDays, weekday: 5)
+        XCTAssertTrue(WeekendDays.summary(vm.weekendDays).contains("Fri"))
+    }
+
     func testFoodsSaveNote() {
         let vm = SettingsViewModel.previewed()
         XCTAssertEqual(vm.restrictionsSaveNote, "1 food · applies to your next check-in")

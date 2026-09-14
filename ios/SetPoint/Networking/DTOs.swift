@@ -485,6 +485,67 @@ struct MealTimesPayload: Codable, Equatable {
     static let standard = MealTimesPayload(breakfastMin: 480, lunchMin: 780, dinnerMin: 1140)
 }
 
+struct WeekendMealTimesPayload: Codable, Equatable {
+    var breakfastMin: Int?
+    var lunchMin: Int?
+    var dinnerMin: Int?
+
+    static let empty = WeekendMealTimesPayload(breakfastMin: nil, lunchMin: nil, dinnerMin: nil)
+
+    func resolved(from weekdays: MealTimesPayload) -> MealTimesPayload {
+        MealTimesPayload(
+            breakfastMin: breakfastMin ?? weekdays.breakfastMin,
+            lunchMin: lunchMin ?? weekdays.lunchMin,
+            dinnerMin: dinnerMin ?? weekdays.dinnerMin
+        )
+    }
+
+    subscript(slot: MealSlot) -> Int? {
+        get {
+            switch slot {
+            case .breakfast: return breakfastMin
+            case .lunch: return lunchMin
+            case .dinner: return dinnerMin
+            }
+        }
+        set {
+            switch slot {
+            case .breakfast: breakfastMin = newValue
+            case .lunch: lunchMin = newValue
+            case .dinner: dinnerMin = newValue
+            }
+        }
+    }
+}
+
+struct WeekendSuggestion: Decodable, Equatable {
+    let breakfastMin: Int
+    let lateByMin: Int
+}
+
+/// JS `getDay` bitmask: bit 0 = Sunday … bit 6 = Saturday. Default Sat+Sun.
+enum WeekendDays {
+    static let `default` = 0b1000001
+    static let bitsInDisplayOrder = [1, 2, 3, 4, 5, 6, 0]
+    static let labels = ["M", "T", "W", "T", "F", "S", "S"]
+    static let names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+
+    static func contains(_ mask: Int, weekday: Int) -> Bool {
+        ((mask >> (weekday % 7)) & 1) == 1
+    }
+
+    static func toggling(_ mask: Int, weekday: Int) -> Int {
+        let next = mask ^ (1 << (weekday % 7))
+        return next == 0 ? mask : next
+    }
+
+    static func summary(_ mask: Int) -> String {
+        let picked = zip(bitsInDisplayOrder, names).compactMap { contains(mask, weekday: $0.0) ? $0.1 : nil }
+        if picked.isEmpty { return "No days" }
+        return picked.joined(separator: ", ")
+    }
+}
+
 struct QuietHoursPayload: Codable, Equatable {
     var startMin: Int
     var endMin: Int
@@ -502,6 +563,9 @@ struct SettingsResponse: Decodable {
     let startWeightKg: Double?
     let currentWeightKg: Double?
     let mealTimes: MealTimesPayload
+    var weekendMealTimes: WeekendMealTimesPayload? = nil
+    var weekendDays: Int? = nil
+    var weekendSuggestion: WeekendSuggestion? = nil
     let quietHours: QuietHoursPayload
     let checkInsPaused: Bool
     let restrictions: [Restriction]
@@ -531,6 +595,8 @@ struct SettingsPatch: Encodable {
     var dailyKcalTarget: Int?
     var dailyProteinTargetG: Int?
     var mealTimes: MealTimesPayload?
+    var weekendMealTimes: WeekendMealTimesPayload?
+    var weekendDays: Int?
     var quietHours: QuietHoursPayload?
     var checkInsPaused: Bool?
     var restrictions: [RestrictionInput]?

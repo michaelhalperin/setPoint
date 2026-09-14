@@ -2,8 +2,8 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { requireAuth, type AuthedRequest } from '../auth/index.js';
 import { getPrisma } from '../db/client.js';
-import { currentMealSlot } from '../engine/mealSchedule.js';
-import { msSinceLocalMidnight } from '../engine/time.js';
+import { currentMealSlot, mealTimesOn } from '../engine/mealSchedule.js';
+import { localWeekday, msSinceLocalMidnight } from '../engine/time.js';
 import { mealItemsSchema } from '../meals/items.js';
 import {
   SavedMealNotFoundError,
@@ -35,11 +35,27 @@ export async function savedMealRoutes(app: FastifyInstance): Promise<void> {
     const prisma = getPrisma();
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { timezone: true, onboarding: { select: { breakfastMin: true, lunchMin: true, dinnerMin: true } } },
+      select: {
+        timezone: true,
+        onboarding: {
+          select: {
+            breakfastMin: true,
+            lunchMin: true,
+            dinnerMin: true,
+            weekendBreakfastMin: true,
+            weekendLunchMin: true,
+            weekendDinnerMin: true,
+            weekendDays: true,
+          },
+        },
+      },
     });
     const now = nowRaw ? new Date(nowRaw) : new Date();
     const timezone = user?.timezone ?? 'UTC';
-    const times = user?.onboarding ?? { breakfastMin: 480, lunchMin: 780, dinnerMin: 1140 };
+    const times = mealTimesOn(
+      user?.onboarding ?? { breakfastMin: 480, lunchMin: 780, dinnerMin: 1140 },
+      localWeekday(now, timezone),
+    );
     const nowMin = Math.floor(msSinceLocalMidnight(now, timezone) / 60_000);
     return { meals: await listSavedMeals(prisma, userId, { nowMin, times }), slot: currentMealSlot(nowMin, times) };
   });
