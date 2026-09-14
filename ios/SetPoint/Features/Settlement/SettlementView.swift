@@ -57,19 +57,13 @@ struct SettlementView: View {
         let stations = s.weekStations
         return ScrollView {
             VStack(alignment: .leading, spacing: Space.md) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text("Week")
-                        .font(Typography.display(42))
-                        .foregroundStyle(Palette.ink)
+                if let range = dateRange(stations) {
+                    Text(range)
+                        .font(Typography.data(13, weight: .bold))
+                        .foregroundStyle(Palette.inkFaint)
                         .accessibilityAddTraits(.isHeader)
-                    Spacer()
-                    if let range = dateRange(stations) {
-                        Text(range)
-                            .font(Typography.data(13, weight: .bold))
-                            .foregroundStyle(Palette.inkFaint)
-                    }
+                        .appearIn(0)
                 }
-                .appearIn(0)
 
                 WeekDials(stations: stations, record: s.record) { selectedStation = $0 }
                     .padding(.bottom, Space.xs)
@@ -147,72 +141,111 @@ struct SettlementView: View {
 }
 
 private struct SettlementSkeletonView: View {
+    private let wash = Palette.background.opacity(0.28)
+    private let washStrong = Palette.background.opacity(0.42)
+
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: Space.lg) {
-                VStack(alignment: .leading, spacing: Space.xs) {
-                    SkeletonBlock(width: 164, height: 36, radius: 10)
-                    SkeletonBlock(width: 236, height: 17)
-                }
+            VStack(alignment: .leading, spacing: Space.md) {
+                SkeletonBlock(width: 92, height: 13)
 
-                VStack(alignment: .leading, spacing: Space.sm) {
-                    SkeletonBlock(width: 108, height: 13)
-                    SkeletonCard(height: 104) {
-                        VStack(alignment: .leading, spacing: Space.sm) {
-                            SkeletonBlock(width: 210, height: 28)
-                            SkeletonBlock(width: 166, height: 12)
-                            SkeletonBlock(width: 248, height: 6, radius: 3)
-                        }
-                    }
-                }
+                weekDials
+                    .padding(.bottom, Space.xs)
 
-                SkeletonCard(height: 218) {
-                    VStack(alignment: .leading, spacing: Space.md) {
-                        HStack {
-                            SkeletonBlock(width: 98, height: 12)
-                            Spacer()
-                            SkeletonBlock(width: 62, height: 25, radius: Radius.pill)
-                        }
-                        VStack(alignment: .leading, spacing: Space.xs) {
-                            SkeletonBlock(width: 248, height: 21)
-                            SkeletonBlock(width: 214, height: 21)
-                        }
-                        Spacer()
-                        HStack(spacing: 3) {
-                            ForEach(0..<6, id: \.self) { _ in
-                                SkeletonBlock(height: 8, radius: 4)
-                            }
-                        }
-                        HStack {
-                            SkeletonBlock(width: 82, height: 12)
-                            Spacer()
-                            SkeletonBlock(width: 72, height: 12)
-                        }
-                    }
-                }
-
-                VStack(alignment: .leading, spacing: Space.sm) {
-                    SkeletonBlock(width: 94, height: 13)
-                    HStack(alignment: .top, spacing: 0) {
-                        ForEach(0..<7, id: \.self) { index in
-                            VStack(spacing: Space.xs) {
-                                SkeletonBlock(width: 28, height: 28, radius: 14)
-                                SkeletonBlock(width: 22, height: 9)
-                                SkeletonBlock(width: 3, height: index.isMultiple(of: 2) ? 62 : 44, radius: 2)
-                            }
-                            .frame(maxWidth: .infinity)
-                        }
-                    }
-                    .padding(.vertical, Space.sm)
-                }
+                record
+                weight
+                intake
             }
             .padding(.horizontal, Space.gutter)
             .padding(.top, Space.md)
             .padding(.bottom, Space.xl)
         }
-        .background(Palette.background.ignoresSafeArea())
+        .scrollBounceBehavior(.basedOnSize)
         .scrollDisabled(true)
+        .background(Palette.background.ignoresSafeArea())
         .skeletonLoading()
+    }
+
+    private var weekDials: some View {
+        HStack(spacing: 0) {
+            ForEach(0..<7, id: \.self) { index in
+                VStack(spacing: 6) {
+                    MiniDayDial(marks: [], today: index == 6)
+                        .frame(width: 44, height: 44)
+                    SkeletonBlock(width: 10, height: 12)
+                }
+                .frame(maxWidth: .infinity)
+            }
+        }
+    }
+
+    private var record: some View {
+        VStack(alignment: .leading, spacing: Space.md) {
+            VStack(alignment: .leading, spacing: 8) {
+                SkeletonBlock(width: 240, height: 28, radius: 8, tint: washStrong)
+                SkeletonBlock(width: 196, height: 28, radius: 8, tint: wash)
+            }
+            HStack(spacing: Space.sm) {
+                recordStat
+                recordStat
+                recordStat
+            }
+        }
+        .padding(22)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Palette.accent, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+    }
+
+    private var recordStat: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            SkeletonBlock(width: 36, height: 34, radius: 8, tint: washStrong)
+            SkeletonBlock(width: 52, height: 12, tint: wash)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var weight: some View {
+        VStack(alignment: .leading, spacing: Space.sm) {
+            HStack(alignment: .firstTextBaseline) {
+                SkeletonBlock(width: 88, height: 36, radius: 8)
+                Spacer()
+                SkeletonBlock(width: 72, height: 26, radius: Radius.pill)
+            }
+            Capsule().fill(Palette.surfaceSunk).frame(height: 54)
+            HStack {
+                SkeletonBlock(width: 72, height: 12)
+                Spacer()
+                SkeletonBlock(width: 108, height: 12)
+            }
+            SkeletonBlock(height: 52, radius: Radius.md)
+        }
+        .padding(18)
+        .background {
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(Palette.surface)
+                .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(Palette.hairline))
+        }
+    }
+
+    private var intake: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                SkeletonBlock(width: 56, height: 11)
+                Spacer()
+                SkeletonBlock(width: 132, height: 13)
+            }
+            HStack(spacing: 5) {
+                ForEach(0..<7, id: \.self) { _ in
+                    Capsule().fill(Palette.surfaceSunk).frame(height: 6)
+                }
+            }
+        }
+        .padding(16)
+        .background {
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Palette.surface)
+                .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Palette.hairline))
+        }
     }
 }
 
@@ -264,15 +297,20 @@ private struct DayMealsSheet: View {
                 if loading {
                     VStack(spacing: Space.sm) {
                         ForEach(0..<3, id: \.self) { index in
-                            HStack(spacing: Space.sm) {
-                                SkeletonBlock(width: 42, height: 42, radius: 13)
-                                VStack(alignment: .leading, spacing: 6) {
-                                    SkeletonBlock(width: index == 1 ? 118 : 152, height: 14)
-                                    SkeletonBlock(width: 76, height: 10)
+                            HStack {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    SkeletonBlock(width: index == 1 ? 118 : 152, height: 16)
+                                    SkeletonBlock(width: 64, height: 12)
                                 }
-                                Spacer()
-                                SkeletonBlock(width: 46, height: 14)
+                                Spacer(minLength: 8)
+                                SkeletonBlock(width: 62, height: 14)
                             }
+                            .padding(14)
+                            .background(Palette.surface, in: RoundedRectangle(cornerRadius: Radius.md, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
+                                    .strokeBorder(Palette.hairline)
+                            )
                         }
                     }
                     .padding(.top, Space.xs)
@@ -350,5 +388,9 @@ private struct RetryState: View {
 #Preview("Maintain") {
     SettlementView(previewModel: .previewed(.sampleMaintain))
         .environment(AppEnvironment.preview())
+}
+
+#Preview("Skeleton") {
+    SettlementSkeletonView()
 }
 #endif
