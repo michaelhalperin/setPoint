@@ -150,6 +150,9 @@ model User {
   subscriptionStatus    String?
   subscriptionExpiresAt DateTime?
   subscriptionProductId String?
+  /// The App Store subscription this account owns — one account per subscription.
+  subscriptionOriginalTransactionId String? @unique
+  subscriptionEnvironment           String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -55,9 +55,13 @@ const schema = z.object({
   WEARABLE_MODIFIER_ENABLED: z.string().default(''),
   WEARABLE_MODIFIER_COHORT_PERCENT: z.coerce.number().int().min(0).max(100).catch(0),
   SCORE_BATCH_SIZE: z.coerce.number().int().positive().catch(50),
-  // When "true", check-ins/calendar/training/appetite require a live subscription.
-  // "false" forces the gate off. Unset: on in production, off otherwise.
+  // Only "true" turns the paywall on: check-ins/calendar/training/appetite then need a live
+  // subscription. Off by default so a deploy never cuts existing users off.
   SUBSCRIPTION_GATE: z.string().default(''),
+  // App Store purchase verification. APPLE_APP_APPLE_ID is the numeric Apple ID from
+  // App Store Connect — required to accept production (App Store) purchases.
+  APP_BUNDLE_ID: z.string().default('com.setpoint.app'),
+  APPLE_APP_APPLE_ID: z.string().default(''),
 });
 
 const parsed = schema.safeParse(process.env);
