@@ -1,5 +1,16 @@
 import type { PrismaClient } from '@prisma/client';
-import { hoursBetween, msSinceLocalMidnight, startOfLocalDay, type Goal } from '../engine/index.js';
+import {
+  checkInSlotAt,
+  hoursBetween,
+  isWithinQuietHours,
+  msSinceLocalMidnight,
+  startOfLocalDay,
+  TIER,
+  upcomingCheckIn,
+  type Goal,
+  type ScheduledCheckIn,
+  type SlotName,
+} from '../engine/index.js';
 import type { ManagerVoice } from '../managerVoice/types.js';
 import { toMealSummaries, type MealSummary } from '../meals/summary.js';
 import type { PhotoStore } from '../photos/store.js';
@@ -38,11 +49,19 @@ export type HomeView = {
   managerNote: string;
   meals: MealSummary[];
   mealTimes: { breakfastMin: number; lunchMin: number; dinnerMin: number };
+  quietHours: { startMin: number; endMin: number };
   /** Today's meal-time slots, where now sits, and pace (pace is null in quiet mode). */
   day: DayView;
+  /**
+   * The check-in the user will get if nothing is logged ("Next check-in 13:45").
+   * Null in quiet mode, while paused, while one is already open, or once the day is covered.
+   */
+  nextCheckIn: ScheduledCheckIn | null;
   activeCheckIn: null | {
     id: string;
     tier: number;
+    /** The meal it's about; null for a tier-3 conversation. */
+    slot: SlotName | null;
     status: string;
     message: string | null;
     deferUntil: string | null;
@@ -65,14 +84,14 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    include: { onboarding: true, safetyScreening: true },
+    include: { onboarding: true, safetyScreening: true, escalationState: true },
   });
   if (!user?.onboarding) throw new OnboardingIncompleteError('onboarding not complete');
 
   const profile = user.onboarding;
   const dayStart = startOfLocalDay(now, user.timezone);
 
-  const [todayMeals, lastMeal, activeCheckIn] = await Promise.all([
+  const [todayMeals, lastMeal, activeCheckIn, todayCheckIns] = await Promise.all([
     prisma.meal.findMany({
       where: { userId, loggedAt: { gte: dayStart } },
       orderBy: { loggedAt: 'asc' },
@@ -98,6 +117,10 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
       orderBy: { createdAt: 'desc' },
       include: { prescription: { include: { items: true } } },
     }),
+    prisma.checkIn.findMany({
+      where: { userId, createdAt: { gte: dayStart } },
+      select: { createdAt: true, tier: true },
+    }),
   ]);
 
   const consumedKcal = todayMeals.reduce((acc, m) => acc + m.kcal, 0);
@@ -110,7 +133,8 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
   const remainingKcal = Math.round(targetKcal - consumedKcal);
   const remainingProteinG = targetProteinG === null ? null : round1(targetProteinG - consumedProteinG);
   const hoursSinceMeal = lastMeal ? hoursBetween(lastMeal.loggedAt, now) : null;
-  const mins = Math.floor(msSinceLocalMidnight(now, user.timezone) / 60_000);
+  const localMinute = (date: Date): number => Math.floor(msSinceLocalMidnight(date, user.timezone) / 60_000);
+  const mins = localMinute(now);
   const enforcementEnabled = user.safetyScreening?.enforcementEnabled ?? false;
 
   const day = buildDay({
@@ -118,7 +142,7 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
     mealTimes: { breakfastMin: profile.breakfastMin, lunchMin: profile.lunchMin, dinnerMin: profile.dinnerMin },
     meals: todayMeals.map((m) => ({
       id: m.id,
-      minuteOfDay: Math.floor(msSinceLocalMidnight(m.loggedAt, user.timezone) / 60_000),
+      minuteOfDay: localMinute(m.loggedAt),
       kcal: m.kcal,
     })),
     targetKcal,
@@ -126,6 +150,30 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
     framingState: framing.state,
     enforcementEnabled,
   });
+
+  const escalation = user.escalationState;
+  const checksRunning =
+    enforcementEnabled &&
+    !escalation?.checkInsPaused &&
+    !(escalation?.backedOffUntil && escalation.backedOffUntil > now) &&
+    activeCheckIn === null;
+  const scheduled = checksRunning
+    ? upcomingCheckIn({
+        nowMin: mins,
+        times: profile,
+        mealMinutesToday: todayMeals.map((m) => localMinute(m.loggedAt)),
+        checkedSlotsToday: todayCheckIns
+          .filter((c) => c.tier < TIER.CONVERSATION)
+          .map((c) => checkInSlotAt(localMinute(c.createdAt), profile))
+          .filter((slot): slot is SlotName => slot !== null),
+        consumedKcal,
+        targetKcal,
+      })
+    : null;
+  const nextCheckIn =
+    scheduled && !isWithinQuietHours(scheduled.dueMin, profile.quietHoursStartMin, profile.quietHoursEndMin)
+      ? scheduled
+      : null;
 
   const managerNote = await deps.voice.homeNote({
     goal,
@@ -170,11 +218,17 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
       lunchMin: profile.lunchMin,
       dinnerMin: profile.dinnerMin,
     },
+    quietHours: { startMin: profile.quietHoursStartMin, endMin: profile.quietHoursEndMin },
     day,
+    nextCheckIn,
     activeCheckIn: activeCheckIn
       ? {
           id: activeCheckIn.id,
           tier: activeCheckIn.tier,
+          slot:
+            activeCheckIn.tier < TIER.CONVERSATION
+              ? checkInSlotAt(localMinute(activeCheckIn.createdAt), profile)
+              : null,
           status: activeCheckIn.status,
           message: activeCheckIn.message,
           deferUntil: activeCheckIn.deferUntil?.toISOString() ?? null,

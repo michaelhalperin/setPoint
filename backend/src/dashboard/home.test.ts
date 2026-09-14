@@ -26,7 +26,7 @@ function fakePrisma(over: { user?: AnyRow | null; meals?: AnyRow[]; checkIn?: An
       findFirst: async () =>
         [...meals].sort((a, b) => (b.loggedAt as Date).getTime() - (a.loggedAt as Date).getTime())[0] ?? null,
     },
-    checkIn: { findFirst: async () => over.checkIn ?? null },
+    checkIn: { findFirst: async () => over.checkIn ?? null, findMany: async () => [] },
   } as unknown as PrismaClient;
 }
 
@@ -135,6 +135,7 @@ describe('buildHome', () => {
         id: 'ci_1',
         tier: 2,
         status: 'PENDING',
+        createdAt: hoursAgo(0.2), // 13:48 — the lunch check-in
         message: 'eat now',
         deferUntil: null,
         prescription: {
@@ -148,6 +149,8 @@ describe('buildHome', () => {
 
     const view = await buildHome({ prisma, voice, now: NOW }, 'u1');
     expect(view.activeCheckIn?.id).toBe('ci_1');
+    expect(view.activeCheckIn?.slot).toBe('lunch');
+    expect(view.nextCheckIn).toBeNull(); // one is already open
     expect(view.activeCheckIn?.prescription?.items[0]?.name).toBe('Cottage cheese');
   });
 
@@ -172,6 +175,7 @@ describe('buildHome', () => {
       status: 'behind',
       next: { slot: 'dinner', atMin: 1140, suggestedKcal: 1700 },
     });
+    expect(view.nextCheckIn).toEqual({ slot: 'dinner', mealMin: 1140, dueMin: 1185, overdue: false });
   });
 
   it('drops pace entirely in quiet mode', async () => {
