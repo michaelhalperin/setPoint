@@ -307,19 +307,21 @@ struct ParsedBreakdown: View {
     }
 }
 
-/// Full-screen photo parse as a trust decision: understand the guess, inspect
-/// the portions, then keep it or return to the logger to correct it.
+/// A photo log: the plate fills the top while it's read (a scan line passes
+/// over it), then the result rises underneath — what it is, the calories big,
+/// the macro split, and the foods — with "Looks right" or "Fix".
 struct PhotoParseConfirm: View {
     @Bindable var model: LogMealViewModel
     var namespace: Namespace.ID
     var imageID: String
     var cardID: String
+    /// The meal time this lands under, when known ("Counts for lunch").
+    var countsFor: MealSlot? = nil
     /// Override the reject path (dev previews). Nil uses `model.undo()`.
     var onReject: (() -> Void)? = nil
     var onKeep: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var settled = false
     @State private var editing = false
 
     private var logged: LogMealViewModel.Logged? {
@@ -335,59 +337,23 @@ struct PhotoParseConfirm: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: Space.lg) {
-                HStack(alignment: .center, spacing: Space.md) {
-                    photo
+        GeometryReader { geo in
+            ZStack(alignment: .top) {
+                Palette.ink.ignoresSafeArea()
 
-                    VStack(alignment: .leading, spacing: Space.xs) {
-                        Text(parsing ? "Reading meal" : "Check estimate")
-                            .font(Typography.display(27))
-                            .foregroundStyle(Palette.ink)
-                            .fixedSize(horizontal: false, vertical: true)
-                        Text(parsing ? "Estimating portions." : "Review foods and portions.")
-                            .font(Typography.data(13))
-                            .foregroundStyle(Palette.inkSoft)
-                            .lineSpacing(2)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
+                photoBackdrop(width: geo.size.width, height: geo.size.height * (parsing ? 0.66 : 0.4) + geo.safeAreaInsets.top)
+
+                VStack(spacing: 0) {
+                    Spacer(minLength: geo.size.height * (parsing ? 0.6 : 0.34))
+                    sheet
+                        .frame(maxHeight: .infinity, alignment: .top)
                 }
-                .staggerReveal(settled, index: 0, rise: 8)
-
-                glance
-                    .matchedGeometryEffect(id: cardID, in: namespace)
-                    .redacted(reason: parsing ? .placeholder : [])
-                    .shimmering(parsing)
-                    .staggerReveal(settled, index: 1, rise: 8)
-
-                plate
-                    .redacted(reason: parsing ? .placeholder : [])
-                    .shimmering(parsing)
-                    .staggerReveal(settled, index: 2, rise: 10)
-
-                if let notes = logged?.notes, !notes.isEmpty {
-                    VStack(alignment: .leading, spacing: Space.xs) {
-                        Text("Assumed").sectionLabelStyle()
-                        ManagerNote(text: notes)
-                    }
-                    .staggerReveal(settled, index: 3, rise: 8)
-                }
+                .frame(width: geo.size.width)
             }
-            .padding(.horizontal, Space.gutter)
-            .padding(.top, Space.md)
-            .padding(.bottom, Space.lg)
-        }
-        .scrollBounceBehavior(.basedOnSize)
-        .scrollIndicators(.hidden)
-        .background(Palette.background.ignoresSafeArea())
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            if logged != nil {
-                confirmBar
-                    .staggerReveal(settled, index: 4, rise: 12)
-            }
+            .frame(width: geo.size.width, height: geo.size.height)
         }
         .toolbar(.hidden, for: .tabBar)
-        .animation(Motion.adaptive(Motion.standard, reduceMotion: reduceMotion), value: model.phase)
+        .animation(Motion.adaptive(Motion.morph, reduceMotion: reduceMotion), value: parsing)
         .overlay {
             if editing, let logged {
                 MealCorrectionEditor(
@@ -409,161 +375,213 @@ struct PhotoParseConfirm: View {
             }
         }
         .animation(Motion.adaptive(Motion.sheet, reduceMotion: reduceMotion), value: editing)
-        .task {
-            try? await Task.sleep(for: .milliseconds(reduceMotion ? 0 : 240))
-            settled = true
-        }
     }
 
-    @ViewBuilder
-    private var photo: some View {
-        if let photo = model.submittedPhoto {
-            Image(uiImage: photo.preview)
-                .resizable()
-                .scaledToFill()
-                .frame(width: 104, height: 104)
-                .clipShape(RoundedRectangle(cornerRadius: Radius.md, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
-                        .strokeBorder(Palette.hairline)
-                )
-                .clipped()
-                .matchedGeometryEffect(id: imageID, in: namespace)
-        }
-    }
+    // MARK: Photo
 
-    private var glance: some View {
-        Card(tint: Palette.surfaceRaised, elevation: .floating, padding: Space.md) {
-            VStack(alignment: .leading, spacing: Space.md) {
-                HStack {
-                    Text("Found").sectionLabelStyle()
-                    Spacer()
-                    if let logged {
-                        Text(confidenceLabel(logged.confidence))
-                            .font(Typography.data(11, weight: .semibold))
-                            .foregroundStyle(confidenceColor(logged.confidence))
-                            .padding(.horizontal, 9)
-                            .padding(.vertical, 5)
-                            .background(confidenceColor(logged.confidence).opacity(0.1), in: Capsule())
+    private func photoBackdrop(width: CGFloat, height: CGFloat) -> some View {
+        ZStack(alignment: .bottomLeading) {
+            if let photo = model.submittedPhoto {
+                Image(uiImage: photo.preview)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: width, height: height)
+                    .clipped()
+                    .matchedGeometryEffect(id: imageID, in: namespace)
+            }
+            LinearGradient(colors: [Palette.ink.opacity(0.35), .clear, Palette.ink.opacity(0.55)], startPoint: .top, endPoint: .bottom)
+                .frame(height: height)
+
+            if parsing {
+                LoopingPhase(period: 2.6, still: 0.5) { t in
+                    GeometryReader { box in
+                        LinearGradient(
+                            colors: [Palette.accent.opacity(0), Palette.accent.opacity(0.3), Color(hex: 0xFFE3D3)],
+                            startPoint: .top, endPoint: .bottom
+                        )
+                        .frame(height: 70)
+                        .offset(y: -70 + (box.size.height + 70) * Phase.ramp(t, 0, 0.85))
+                        .opacity(1 - Phase.ramp(t, 0.85, 1))
                     }
                 }
-
-                Text(logged?.summary ?? "Chicken and rice bowl")
-                    .font(Typography.voice(20))
-                    .foregroundStyle(Palette.ink)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text("\(logged?.kcal ?? 640)")
-                        .font(Typography.data(32, weight: .semibold))
-                        .foregroundStyle(Palette.ink)
-                        .monospacedDigit()
-                        .contentTransition(.numericText(value: Double(logged?.kcal ?? 640)))
-                    Text("kcal")
-                        .font(Typography.data(13))
-                        .foregroundStyle(Palette.inkFaint)
+                .frame(height: height)
+                .allowsHitTesting(false)
+            } else {
+                FlexWrap(spacing: 8, lineSpacing: 8) {
+                    ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+                        HStack(spacing: 6) {
+                            Circle().fill(Palette.accent).frame(width: 8, height: 8)
+                            Text(item.name)
+                        }
+                        .font(Typography.data(12, weight: .bold))
+                        .foregroundStyle(Palette.background)
+                        .padding(.leading, 8)
+                        .padding(.trailing, 11)
+                        .padding(.vertical, 6)
+                        .background(Palette.ink.opacity(0.82), in: Capsule())
+                        .appearIn(index)
+                    }
                 }
-
-                Divider().overlay(Palette.hairline)
-
-                HStack(spacing: 0) {
-                    macroStat("Protein", logged?.proteinG ?? 41)
-                    macroStat("Carbs", items.reduce(0) { $0 + $1.carbsG })
-                    macroStat("Fat", items.reduce(0) { $0 + $1.fatG })
-                }
+                .padding(.horizontal, Space.gutter)
+                .padding(.bottom, Space.lg + Space.sm)
             }
         }
-        .accessibilityElement(children: .combine)
+        .frame(width: width, height: height)
+        .clipped()
+        .ignoresSafeArea(edges: .top)
+        .accessibilityHidden(true)
     }
 
-    private func macroStat(_ label: String, _ grams: Double) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(label)
-                .font(Typography.data(11, weight: .semibold))
-                .foregroundStyle(Palette.inkFaint)
-                .textCase(.uppercase)
-                .tracking(0.5)
-            Text("\(Int(grams.rounded())) g")
-                .font(Typography.data(17, weight: .semibold))
-                .foregroundStyle(Palette.ink)
-                .monospacedDigit()
-                .contentTransition(.numericText(value: grams))
+    // MARK: Sheet
+
+    private var sheet: some View {
+        VStack(alignment: .leading, spacing: Space.sm) {
+            Capsule()
+                .fill(Palette.inkFaint.opacity(0.4))
+                .frame(width: 40, height: 5)
+                .frame(maxWidth: .infinity)
+                .padding(.bottom, Space.xxs)
+
+            if parsing {
+                Text("Reading your plate…")
+                    .font(Typography.display(30))
+                    .foregroundStyle(Palette.ink)
+                VStack(alignment: .leading, spacing: 10) {
+                    SkeletonBlock(width: 220, height: 16)
+                    SkeletonBlock(width: 140, height: 16)
+                    HStack(spacing: 10) {
+                        SkeletonBlock(height: 58, radius: 16)
+                        SkeletonBlock(height: 58, radius: 16)
+                        SkeletonBlock(height: 58, radius: 16)
+                    }
+                    .padding(.top, Space.xs)
+                }
+                .shimmering()
+            } else if let logged {
+                result(logged)
+            }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, Space.gutter)
+        .padding(.top, Space.sm)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background {
+            UnevenRoundedRectangle(topLeadingRadius: 32, topTrailingRadius: 32, style: .continuous)
+                .fill(Palette.background)
+                .ignoresSafeArea(edges: .bottom)
+        }
+        .matchedGeometryEffect(id: cardID, in: namespace)
     }
 
-    private var plate: some View {
+    private func result(_ logged: LogMealViewModel.Logged) -> some View {
         VStack(alignment: .leading, spacing: Space.sm) {
             HStack {
-                Text("Items").sectionLabelStyle()
+                if let countsFor {
+                    Label("Counts for \(countsFor.title.lowercased())", systemImage: countsFor.symbol)
+                        .font(Typography.data(12, weight: .bold))
+                        .foregroundStyle(Palette.background)
+                        .padding(.horizontal, 11)
+                        .padding(.vertical, 6)
+                        .background(Palette.ink, in: Capsule())
+                }
                 Spacer()
-                Text("Review")
-                    .font(Typography.data(10, weight: .medium))
+                Text(confidenceLabel(logged.confidence))
+                    .font(Typography.data(12, weight: .bold))
+                    .foregroundStyle(confidenceColor(logged.confidence))
+            }
+
+            Text(logged.summary ?? "Your meal")
+                .font(Typography.display(30))
+                .foregroundStyle(Palette.ink)
+                .fixedSize(horizontal: false, vertical: true)
+
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text("\(logged.kcal)")
+                    .font(Typography.data(60, weight: .heavy))
+                    .monospacedDigit()
+                    .contentTransition(.numericText(value: Double(logged.kcal)))
+                    .foregroundStyle(Palette.ink)
+                Text("kcal")
+                    .font(Typography.data(18, weight: .bold))
                     .foregroundStyle(Palette.inkFaint)
             }
 
-            VStack(spacing: 0) {
-                ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
-                    if index > 0 { Divider().overlay(Palette.hairline) }
-                    HStack(alignment: .firstTextBaseline) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(item.name)
-                                .font(Typography.data(15))
-                                .foregroundStyle(Palette.ink)
-                            Text(item.quantity)
-                                .font(Typography.data(12))
-                                .foregroundStyle(Palette.inkFaint)
-                        }
-                        Spacer(minLength: 8)
-                        VStack(alignment: .trailing, spacing: 3) {
-                            Text("\(item.kcal) kcal")
-                                .font(Typography.data(13))
+            HStack(spacing: 8) {
+                macro("Protein", grams: logged.proteinG, kcalPerGram: 4, total: logged.kcal, color: Palette.accent)
+                macro("Carbs", grams: items.reduce(0) { $0 + $1.carbsG }, kcalPerGram: 4, total: logged.kcal, color: Palette.ink)
+                macro("Fat", grams: items.reduce(0) { $0 + $1.fatG }, kcalPerGram: 9, total: logged.kcal, color: Palette.inkFaint)
+            }
+
+            ScrollView {
+                VStack(spacing: 0) {
+                    ForEach(items) { item in
+                        HStack {
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(item.name)
+                                    .font(Typography.data(15, weight: .bold))
+                                    .foregroundStyle(Palette.ink)
+                                Text(item.quantity)
+                                    .font(Typography.data(12))
+                                    .foregroundStyle(Palette.inkFaint)
+                            }
+                            Spacer()
+                            Text("\(item.kcal)")
+                                .font(Typography.data(14, weight: .bold))
                                 .foregroundStyle(Palette.inkSoft)
                                 .monospacedDigit()
-                            if !parsing {
-                                Image(systemName: "checkmark")
-                                    .font(.system(size: 9, weight: .bold))
-                                    .foregroundStyle(Palette.dayOnTrack)
-                            }
                         }
+                        .padding(.vertical, 11)
+                        .overlay(alignment: .top) { Rectangle().fill(Palette.hairline).frame(height: 1) }
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
+                    if let notes = logged.notes, !notes.isEmpty {
+                        Text(notes)
+                            .font(Typography.data(12))
+                            .foregroundStyle(Palette.inkFaint)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.top, Space.xs)
+                    }
                 }
             }
-            .background(Palette.surfaceSunk, in: RoundedRectangle(cornerRadius: Radius.md, style: .continuous))
+            .scrollBounceBehavior(.basedOnSize)
+
+            if let actionError = model.actionError {
+                Text(actionError)
+                    .font(Typography.data(13, weight: .semibold))
+                    .foregroundStyle(Palette.accentDeep)
+            }
+
+            HStack(spacing: Space.sm) {
+                ActionButton(title: "Looks right", action: onKeep)
+                Button("Fix") { editing = true }
+                    .font(Typography.data(16, weight: .bold))
+                    .foregroundStyle(Palette.inkSoft)
+                    .padding(.horizontal, Space.sm)
+                    .frame(minHeight: 54)
+            }
+            .padding(.bottom, Space.xs)
         }
     }
 
-    private var confirmBar: some View {
-        VStack(spacing: 10) {
-            if let actionError = model.actionError {
-                Text(actionError)
-                    .font(Typography.data(13))
-                    .foregroundStyle(Palette.accent)
-                    .frame(maxWidth: .infinity)
+    private func macro(_ label: String, grams: Double, kcalPerGram: Double, total: Int, color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(label).sectionLabelStyle()
+            Text("\(Int(grams.rounded())) g")
+                .font(Typography.data(20, weight: .heavy))
+                .foregroundStyle(Palette.ink)
+                .monospacedDigit()
+            GeometryReader { box in
+                Capsule().fill(Palette.surfaceSunk)
+                    .overlay(alignment: .leading) {
+                        Capsule().fill(color)
+                            .frame(width: box.size.width * min(1, grams * kcalPerGram / Double(max(total, 1))))
+                    }
             }
-
-            ActionButton(title: "Keep", action: onKeep)
-
-            Button("Edit") {
-                editing = true
-            }
-            .font(Typography.data(14, weight: .semibold))
-            .foregroundStyle(Palette.ink)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 13)
-            .background(Palette.surfaceSunk, in: RoundedRectangle(cornerRadius: Radius.md, style: .continuous))
+            .frame(height: 5)
         }
-        .padding(.horizontal, Space.gutter)
-        .padding(.top, 12)
-        .padding(.bottom, 10)
-        .background {
-            Palette.background
-                .overlay(alignment: .top) {
-                    Rectangle().fill(Palette.hairline).frame(height: 1)
-                }
-        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Palette.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Palette.hairline))
+        .accessibilityElement(children: .combine)
     }
 
     private func confidenceLabel(_ confidence: Double?) -> String {
