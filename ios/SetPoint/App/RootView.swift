@@ -73,6 +73,7 @@ enum DebugPreviewStub {
     case checkinSmaller
     case settingsAppetite
     case widgets
+    case burn
     case settingsAccount
     case settingsDelete
 
@@ -159,6 +160,8 @@ enum DebugPreviewStub {
             NavigationStack { AppetiteSettingsView(previewMode: "SMALL_FREQUENT") }
         case .widgets:
             WidgetsStubHost()
+        case .burn:
+            NavigationStack { BurnScreen(preview: .sample) }
         case .settingsAccount:
             NavigationStack { AccountSettingsView(model: .previewed()) }
         case .settingsDelete:
@@ -220,6 +223,7 @@ enum DebugPreviewStub {
         case "checkin-smaller": return .checkinSmaller
         case "settings-appetite": return .settingsAppetite
         case "widgets": return .widgets
+        case "burn": return .burn
         case "settings-goal": return .settingsGoal
         case "settings-meal-times": return .settingsMealTimes
         case "settings-meal-times-weekends": return .settingsMealTimesWeekends

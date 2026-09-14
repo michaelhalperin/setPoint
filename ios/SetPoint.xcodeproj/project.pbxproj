@@ -42,6 +42,7 @@
 		4CB94FABBDD05A5C86EF60DA /* TodaySnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8877303E2E8A44909F82A4F0 /* TodaySnapshot.swift */; };
 		4F70AD6F8F35DF388CEABDEE /* APIClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 229F87D031BDD792B3C98A80 /* APIClientTests.swift */; };
 		54832F545561456785F06973 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FE8898ED389F591B06A7F951 /* SwiftUI.framework */; };
+		54EF3A75022188B9CAAEC8B6 /* BurnScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DDF6D20FDE090349E1C4C86 /* BurnScreen.swift */; };
 		5A9C0E2C4922472B74B9C958 /* TodayModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D76F69253293040BDD400099 /* TodayModel.swift */; };
 		5BDD75C4C4F37BE56005ECF6 /* OnboardingFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D059857EA5ACFC913EC5A43 /* OnboardingFlow.swift */; };
 		5C2C73BA6DBBD160F71960E6 /* TokenStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87A7B143B2CF06863A727EC5 /* TokenStore.swift */; };
@@ -191,6 +192,7 @@
 		4B48D8D6E1339295933EFC28 /* APIConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIConfig.swift; sourceTree = "<group>"; };
 		4C1D0D284D9EA0510F955FE0 /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Signing.xcconfig; sourceTree = "<group>"; };
 		4C8DCB1E7E97ED4A55B7FEAE /* HomeScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeScreen.swift; sourceTree = "<group>"; };
+		4DDF6D20FDE090349E1C4C86 /* BurnScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BurnScreen.swift; sourceTree = "<group>"; };
 		4F3D4E3695433E4D796BC455 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		50E01D5B7E999D2C927B2941 /* TodayWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayWidgets.swift; sourceTree = "<group>"; };
 		5200F5347EF2F9288FDE504A /* PushManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushManager.swift; sourceTree = "<group>"; };
@@ -353,6 +355,7 @@
 				8CAC80F79D4396E6D06931C7 /* Appetite */,
 				D4A6B267D84D88ED27B043DA /* CheckIn */,
 				6289B3322997243B406037A1 /* Home */,
+				E1D33D9454AC2C87F00F3E4A /* Insights */,
 				95D597730328140D83BDA746 /* Onboarding */,
 				0A06E3DC38D2B0DE24526D13 /* Settings */,
 				AC22F0AF2937FA1D15F84AF3 /* Settlement */,
@@ -604,6 +607,14 @@
 			path = Resources;
 			sourceTree = "<group>";
 		};
+		E1D33D9454AC2C87F00F3E4A /* Insights */ = {
+			isa = PBXGroup;
+			children = (
+				4DDF6D20FDE090349E1C4C86 /* BurnScreen.swift */,
+			);
+			path = Insights;
+			sourceTree = "<group>";
+		};
 		E7E89E6A06F8D90077B79E51 /* Push */ = {
 			isa = PBXGroup;
 			children = (
@@ -786,6 +797,7 @@
 				47C8F715DE3DE17989FABB04 /* AuthStore.swift in Sources */,
 				861F344B7587158F94135764 /* BarcodeLogViews.swift in Sources */,
 				F5C127BA64C922FA0B491F82 /* BiosignalStats.swift in Sources */,
+				54EF3A75022188B9CAAEC8B6 /* BurnScreen.swift in Sources */,
 				977291CD24CD4C3C42B758A1 /* CalendarManager.swift in Sources */,
 				AF542C9BC23EC579CAD273F2 /* CalendarScreens.swift in Sources */,
 				46B7AC3FE3A277CDA5D42897 /* CheckInActivityAttributes.swift in Sources */,

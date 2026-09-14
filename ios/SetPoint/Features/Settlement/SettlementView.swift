@@ -117,6 +117,29 @@ struct SettlementView: View {
 
                 IntakeStrip(stations: stations)
                     .appearIn(4)
+
+                NavigationLink {
+                    BurnScreen()
+                } label: {
+                    SettingsCard {
+                        HStack(spacing: 12) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Your burn")
+                                    .font(Typography.data(17, weight: .bold))
+                                    .foregroundStyle(Palette.ink)
+                                Text("What you really spend, from meals and the scale.")
+                                    .font(Typography.data(13))
+                                    .foregroundStyle(Palette.inkSoft)
+                            }
+                            Spacer(minLength: 0)
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundStyle(Palette.inkFaint)
+                        }
+                    }
+                }
+                .buttonStyle(.plain)
+                .appearIn(5)
             }
             .padding(.horizontal, Space.gutter)
             .padding(.top, Space.md)

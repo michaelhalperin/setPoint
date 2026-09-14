@@ -96,4 +96,25 @@ final class SettingsTests: XCTestCase {
         XCTAssertEqual(vm.goal, originalGoal)
         XCTAssertFalse(vm.dirty)
     }
+
+    func testBurnInsightDecodesReadyAndEmpty() throws {
+        let ready = try JSONDecoder().decode(BurnInsightResponse.self, from: Data("""
+        {
+          "version": "expenditure.v1", "ready": true,
+          "burnKcal": 2870, "rangeLow": 2790, "rangeHigh": 2950,
+          "avgIntakeKcal": 2910, "slopeKgPerDay": 0.005,
+          "loggedDays": 52, "windowDays": 56, "weighIns": 9, "planKcal": 3120,
+          "weeks": [{ "weekStart": "2026-07-20", "intakeKcal": 2680, "burnKcal": 2870, "burnLow": 2790, "burnHigh": 2950 }]
+        }
+        """.utf8))
+        XCTAssertEqual(ready.burnKcal, 2870)
+        XCTAssertEqual(ready.weeks.count, 1)
+
+        let empty = try JSONDecoder().decode(BurnInsightResponse.self, from: Data("""
+        { "version": "expenditure.v1", "ready": false, "reason": "not_enough_days",
+          "loggedDays": 11, "windowDays": 56, "weighIns": 2, "planKcal": 3120, "weeks": [] }
+        """.utf8))
+        XCTAssertFalse(empty.ready)
+        XCTAssertEqual(empty.reason, "not_enough_days")
+    }
 }

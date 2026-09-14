@@ -9,6 +9,7 @@ export * from './mealSchedule.js';
 export * from './calendarBusy.js';
 export * from './appetite.js';
 export * from './training.js';
+export * from './expenditure.js';
 export * from './refuelRx.js';
 export * from './behaviorScore.js';
 export * from './flags.js';

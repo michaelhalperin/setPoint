@@ -56,6 +56,11 @@ describe('HTTP contracts', () => {
     const res = await app.inject({ method: 'POST', url: '/api/checkins/start-talk' });
     expect(res.statusCode).toBe(401);
   });
+
+  it('rejects unauthenticated burn insights', async () => {
+    const res = await app.inject({ method: 'GET', url: '/api/insights/burn' });
+    expect(res.statusCode).toBe(401);
+  });
 });
 
 describe('auth rate limiting', () => {

@@ -332,6 +332,66 @@ struct SettlementResponse: Decodable {
     }
 }
 
+struct BurnInsightResponse: Decodable {
+    let version: String
+    let ready: Bool
+    var reason: String? = nil
+    var burnKcal: Int? = nil
+    var rangeLow: Int? = nil
+    var rangeHigh: Int? = nil
+    var avgIntakeKcal: Int? = nil
+    var slopeKgPerDay: Double? = nil
+    let loggedDays: Int
+    let windowDays: Int
+    let weighIns: Int
+    let planKcal: Int
+    let weeks: [Week]
+
+    struct Week: Decodable, Identifiable {
+        var id: String { weekStart }
+        let weekStart: String
+        let intakeKcal: Int
+        var burnKcal: Int? = nil
+        var burnLow: Int? = nil
+        var burnHigh: Int? = nil
+    }
+
+    static let sample = BurnInsightResponse(
+        version: "expenditure.v1",
+        ready: true,
+        reason: nil,
+        burnKcal: 2870,
+        rangeLow: 2790,
+        rangeHigh: 2950,
+        avgIntakeKcal: 2910,
+        slopeKgPerDay: 0.005,
+        loggedDays: 52,
+        windowDays: 56,
+        weighIns: 9,
+        planKcal: 3120,
+        weeks: (0..<8).map { i in
+            Week(
+                weekStart: "2026-07-\(String(format: "%02d", 20 + i * 7))",
+                intakeKcal: [2680, 2740, 3010, 2890, 2950, 2820, 3100, 2880][i],
+                burnKcal: 2870,
+                burnLow: 2790,
+                burnHigh: 2950
+            )
+        }
+    )
+
+    static let sampleEmpty = BurnInsightResponse(
+        version: "expenditure.v1",
+        ready: false,
+        reason: "not_enough_days",
+        loggedDays: 11,
+        windowDays: 56,
+        weighIns: 2,
+        planKcal: 3120,
+        weeks: []
+    )
+}
+
 struct LogMealRequest: Encodable {
     var text: String?
     var image: ImagePayload?
