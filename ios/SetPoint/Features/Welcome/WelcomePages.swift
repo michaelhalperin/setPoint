@@ -262,8 +262,7 @@ private struct PlanCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Check-in · 13:45")
-                .sectionLabelStyle()
-                .foregroundStyle(Palette.accent)
+                .sectionLabelStyle(Palette.accent)
             Text("Here’s your lunch.")
                 .font(Typography.voice(24))
                 .foregroundStyle(Palette.ink)

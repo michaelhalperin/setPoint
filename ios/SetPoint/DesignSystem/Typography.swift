@@ -48,10 +48,10 @@ enum Typography {
 
 extension View {
     /// Uppercase, tracked, faint — a quiet section header.
-    func sectionLabelStyle() -> some View {
+    func sectionLabelStyle(_ color: Color = Palette.inkFaint) -> some View {
         self.font(Typography.sectionLabel)
             .tracking(1.4)
             .textCase(.uppercase)
-            .foregroundStyle(Palette.inkFaint)
+            .foregroundStyle(color)
     }
 }

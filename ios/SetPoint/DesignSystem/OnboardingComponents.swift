@@ -68,6 +68,8 @@ struct RulerPicker: View {
     let unit: String
     /// Numerals are drawn under ticks that land on a multiple of this.
     var majorStep: Double = 10
+    /// Decimal places in the big number (a 0.1 kg weigh-in shows one).
+    var fractionDigits = 0
 
     @State private var dragStartValue: Double?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -78,7 +80,7 @@ struct RulerPicker: View {
     var body: some View {
         VStack(spacing: Space.md) {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text(String(Int(value.rounded())))
+                Text(value.formatted(.number.precision(.fractionLength(fractionDigits))))
                     .font(Typography.data(52, weight: .semibold))
                     .foregroundStyle(Palette.ink)
                     .monospacedDigit()
@@ -89,7 +91,7 @@ struct RulerPicker: View {
             }
             .animation(Motion.adaptive(Motion.settle, reduceMotion: reduceMotion), value: value)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("\(Int(value.rounded())) \(unit)")
+            .accessibilityLabel("\(value.formatted(.number.precision(.fractionLength(fractionDigits)))) \(unit)")
             .accessibilityAdjustableAction { direction in
                 switch direction {
                 case .increment: setValue(min(range.upperBound, value + step))
@@ -129,12 +131,12 @@ struct RulerPicker: View {
         return HStack(spacing: 0) {
             ForEach(0 ... totalSteps, id: \.self) { i in
                 let v = range.lowerBound + Double(i) * step
-                let isMajor = v.truncatingRemainder(dividingBy: majorStep) == 0
+                let isMajor = abs((v / majorStep).rounded() * majorStep - v) < step / 2
                 VStack(spacing: 4) {
                     Capsule()
                         .fill(isMajor ? Palette.inkSoft : Palette.inkFaint.opacity(0.45))
                         .frame(width: isMajor ? 2 : 1, height: isMajor ? 26 : 14)
-                    Text(isMajor ? String(Int(v)) : "")
+                    Text(isMajor ? String(Int(v.rounded())) : "")
                         .font(Typography.data(10, weight: .medium))
                         .foregroundStyle(Palette.inkFaint)
                         .fixedSize()
