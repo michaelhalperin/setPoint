@@ -61,7 +61,9 @@ final class CalendarManager {
     func refreshCalendars() {
         calendars = store.calendars(for: .event).sorted { $0.title < $1.title }
         if selectedIds.isEmpty {
-            selectedIds = Set(calendars.map(\.calendarIdentifier))
+            // Birthdays and subscribed calendars (holidays, sports) aren't the user's own time.
+            let own = calendars.filter { Self.isOwnCalendar($0) }
+            selectedIds = Set((own.isEmpty ? calendars : own).map(\.calendarIdentifier))
             persistSelection()
         }
     }
@@ -124,19 +126,33 @@ final class CalendarManager {
         guard accessGranted, enabled, let api else { return }
         uploading = true
         defer { uploading = false }
-        let from = now
-        let to = now.addingTimeInterval(36 * 3600)
+        // From the start of today, so an all-day event today isn't clipped into "busy from now".
+        let from = Calendar.current.startOfDay(for: now)
+        let to = from.addingTimeInterval(40 * 3600)
         let cals = calendars.filter { selectedIds.contains($0.calendarIdentifier) }
         let predicate = store.predicateForEvents(withStart: from, end: to, calendars: cals.isEmpty ? nil : cals)
-        let events = store.events(matching: predicate)
+        let events = store.events(matching: predicate).filter(Self.countsAsBusy)
         let blocks = events.map { event in
-            CalendarBusyUpload.Block(start: iso(event.startDate), end: iso(event.endDate))
+            CalendarBusyUpload.Block(start: iso(event.startDate), end: iso(event.endDate), allDay: event.isAllDay)
         }
         do {
             try await api.put("/api/calendar/busy", CalendarBusyUpload(from: iso(from), to: iso(to), blocks: blocks))
         } catch {
             lastError = UserFacingError.message(for: error, fallback: "Couldn't update busy times.")
         }
+    }
+
+    static func isOwnCalendar(_ calendar: EKCalendar) -> Bool {
+        calendar.type != .birthday && calendar.type != .subscription
+    }
+
+    /// Events marked "free", cancelled, or declined don't block a meal.
+    static func countsAsBusy(_ event: EKEvent) -> Bool {
+        if event.availability == .free || event.status == .canceled { return false }
+        if let me = event.attendees?.first(where: \.isCurrentUser), me.participantStatus == .declined {
+            return false
+        }
+        return true
     }
 
     private func persistSelection() {
@@ -157,6 +173,7 @@ struct CalendarBusyUpload: Encodable {
     struct Block: Encodable {
         let start: String
         let end: String
+        let allDay: Bool
     }
 }
 

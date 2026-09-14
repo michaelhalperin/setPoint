@@ -4,6 +4,7 @@ import WidgetKit
 enum TodaySnapshotSync {
     static func write(home: HomeResponse, saved: [SavedMeal]? = nil) {
         var snap = TodaySnapshot.load()
+        snap.day = TodaySnapshot.dayKey(for: .now)
         snap.remainingKcal = home.ledger.remainingKcal
         snap.targetKcal = home.ledger.targetKcal
         snap.consumedKcal = home.ledger.consumedKcal
@@ -15,9 +16,7 @@ enum TodaySnapshotSync {
             snap.nextCheckIn = nil
         }
         if let saved {
-            snap.savedMeals = saved.prefix(2).map {
-                TodaySnapshot.Saved(id: $0.id, name: $0.name, kcal: $0.kcal)
-            }
+            snap.savedMeals = Self.snapshotMeals(saved)
         }
         snap.save()
         WidgetCenter.shared.reloadAllTimelines()
@@ -25,11 +24,16 @@ enum TodaySnapshotSync {
 
     static func writeSaved(_ saved: [SavedMeal]) {
         var snap = TodaySnapshot.load()
-        snap.savedMeals = saved.prefix(2).map {
-            TodaySnapshot.Saved(id: $0.id, name: $0.name, kcal: $0.kcal)
-        }
+        snap.savedMeals = Self.snapshotMeals(saved)
         snap.save()
         WidgetCenter.shared.reloadAllTimelines()
+    }
+
+    /// Widgets show the first two; Siri picks by meal from the rest.
+    private static func snapshotMeals(_ saved: [SavedMeal]) -> [TodaySnapshot.Saved] {
+        saved.prefix(12).map {
+            TodaySnapshot.Saved(id: $0.id, name: $0.name, kcal: $0.kcal, suggestSlot: $0.suggestSlot)
+        }
     }
 
     private static func clock(_ minutes: Int) -> String {

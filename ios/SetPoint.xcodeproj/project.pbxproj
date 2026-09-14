@@ -34,6 +34,7 @@
 		3DA25859D809C8651DA6D925 /* VisionKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 61D3788B32E3F24D91F4B9F4 /* VisionKit.framework */; };
 		3ED98D31B3CAEA9D98194499 /* MotionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 306DD98DE1DE503E86CEB6DD /* MotionTests.swift */; };
 		42998DAFBE74AA18B6857379 /* SettingsScreens.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0BB19DB69ED8A47AA90FCA8 /* SettingsScreens.swift */; };
+		43641BB186F53C08DFA957DE /* SharedKeychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69B36EAF230B9853BC5460FD /* SharedKeychain.swift */; };
 		44513A1C41411708F0A32879 /* PaywallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B3FA7987515E2FFFE27418C /* PaywallView.swift */; };
 		46B7AC3FE3A277CDA5D42897 /* CheckInActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = E73FA80DA7E099B267EAFEB5 /* CheckInActivityAttributes.swift */; };
 		47C8F715DE3DE17989FABB04 /* AuthStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB2AE29FD58952E4C0CC1673 /* AuthStore.swift */; };
@@ -69,6 +70,7 @@
 		865A193D35A6D2EE91403372 /* LogMealViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DE0776BE27E3FB776B02BB7 /* LogMealViewModel.swift */; };
 		8A38BC7599A727D54789A514 /* Fraunces-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 7785BDB9BCF84DDA64D12BEB /* Fraunces-Regular.ttf */; };
 		8B964D56522A275394FEDBBF /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 05C15A4F8ED895D36CC26A74 /* Assets.xcassets */; };
+		8BB0B6539D7055FDA1D92FE2 /* SharedKeychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69B36EAF230B9853BC5460FD /* SharedKeychain.swift */; };
 		8DD31584EACC2EA5A0BF6C76 /* SetPointWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 72122AA0FFF3F9BD35A066C4 /* SetPointWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		90EC59D1929AB926863E3FEA /* BiosignalStatsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1445D836A22672FF8571409D /* BiosignalStatsTests.swift */; };
 		939425AC35FEABDEED6A3B69 /* OnboardingSteps.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75E6AAF6106EF78152D6BCB7 /* OnboardingSteps.swift */; };
@@ -206,6 +208,7 @@
 		607F057E746FE3D54FF7FFCD /* SetPoint.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SetPoint.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		61D3788B32E3F24D91F4B9F4 /* VisionKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = VisionKit.framework; path = System/Library/Frameworks/VisionKit.framework; sourceTree = SDKROOT; };
 		6827E7745F7D8558E4078C9D /* Components.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components.swift; sourceTree = "<group>"; };
+		69B36EAF230B9853BC5460FD /* SharedKeychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedKeychain.swift; sourceTree = "<group>"; };
 		69CD7B5DF412B5A16F78BDDE /* TodayTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayTests.swift; sourceTree = "<group>"; };
 		69E046348B4D52C2800A3FDD /* TrainingScreens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainingScreens.swift; sourceTree = "<group>"; };
 		6B3FA7987515E2FFFE27418C /* PaywallView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaywallView.swift; sourceTree = "<group>"; };
@@ -606,6 +609,7 @@
 			children = (
 				E73FA80DA7E099B267EAFEB5 /* CheckInActivityAttributes.swift */,
 				5408A9946A1C2F6DE77028BA /* SetPointIntents.swift */,
+				69B36EAF230B9853BC5460FD /* SharedKeychain.swift */,
 				8877303E2E8A44909F82A4F0 /* TodaySnapshot.swift */,
 				99EDC533BAB8E6329BDB5A96 /* TodayWidgetViews.swift */,
 			);
@@ -874,6 +878,7 @@
 				6B5F95997AD3DA7FD3C892FA /* SettingsViewModel.swift in Sources */,
 				D96CBB38A59F458B632BF989 /* SettlementView.swift in Sources */,
 				3BBE11AFF9C9A1FFE3253EE5 /* SettlementViewModel.swift in Sources */,
+				8BB0B6539D7055FDA1D92FE2 /* SharedKeychain.swift in Sources */,
 				B34F74442FE761C505CF1E1F /* SignInView.swift in Sources */,
 				B0A40E92C04BD1BB1F40B013 /* Spacing.swift in Sources */,
 				FB43D45D0FA4A880D91D746C /* SubscriptionStore.swift in Sources */,
@@ -902,6 +907,7 @@
 				AC673DEEBD94FCBE411BF2FC /* CheckInLiveActivity.swift in Sources */,
 				CAA8B17AE6962508FADEE2B7 /* SetPointIntents.swift in Sources */,
 				5CBD1DA8FA61AB27EF2F5F23 /* SetPointWidgetsBundle.swift in Sources */,
+				43641BB186F53C08DFA957DE /* SharedKeychain.swift in Sources */,
 				4CB94FABBDD05A5C86EF60DA /* TodaySnapshot.swift in Sources */,
 				7642392CAF4029FD00B8F1E3 /* TodayWidgetViews.swift in Sources */,
 				27D34BB71954AC8A7696DC53 /* TodayWidgets.swift in Sources */,

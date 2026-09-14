@@ -35,6 +35,7 @@ final class HomeViewModel {
             phase = .loaded(home)
             LiveActivityController.shared.sync(activeCheckIn: home.activeCheckIn)
             TodaySnapshotSync.write(home: home)
+            await HealthKitManager.shared.reconcileToday(home.meals)
         } catch APIError.unauthorized {
             onUnauthorized()
         } catch let APIError.http(status, _) where status == 409 {

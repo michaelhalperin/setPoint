@@ -88,6 +88,21 @@ final class HealthKitManagerTests: XCTestCase {
         XCTAssertNil(manager.lastSyncAt)
     }
 
+    func testExistingUsersStayConnectedWhenNewPermissionsAreAdded() async {
+        fake.authStatus = .unnecessary
+        fake.upgradeStatus = .shouldRequest
+        let manager = makeManager()
+        await manager.refreshState()
+        XCTAssertEqual(manager.state, .connected)
+        XCTAssertTrue(manager.needsMorePermissions)
+
+        fake.upgradeStatus = nil
+        await manager.grantMorePermissions()
+        XCTAssertTrue(fake.lastShare.contains(HKQuantityType(.dietaryEnergyConsumed)))
+        XCTAssertTrue(fake.lastRead.contains(HKObjectType.workoutType()))
+        XCTAssertFalse(manager.needsMorePermissions)
+    }
+
     func testSyncIsSkippedWhenSignedOut() async {
         fake.authStatus = .unnecessary
         tokens.clear()
@@ -256,6 +271,21 @@ final class HealthKitManagerTests: XCTestCase {
         return samples
     }
 
+    func testReconcileWritesMealsLoggedElsewhereOnceAndPicksUpEdits() async {
+        let manager = makeManager()
+        _ = await manager.connect()
+        let loggedAt = iso(now)
+        let siri = MealSummary.sample(id: "m_siri", kcal: 400, protein: 20, source: "SAVED", summary: "Usual", loggedAt: loggedAt)
+        await manager.reconcileToday([siri])
+        await manager.reconcileToday([siri])
+        XCTAssertEqual(fake.foodVersions["m_siri"], 1)
+
+        let edited = MealSummary.sample(id: "m_siri", kcal: 450, protein: 20, source: "SAVED", summary: "Usual", loggedAt: loggedAt)
+        await manager.reconcileToday([edited])
+        XCTAssertEqual(fake.foods["m_siri"]?.kcal, 450)
+        XCTAssertEqual(fake.foodVersions["m_siri"], 2)
+    }
+
     func testWritesAFoodCorrelationAndOverwritesOnEdit() async {
         let manager = makeManager()
         _ = await manager.connect()
@@ -366,8 +396,12 @@ final class FakeHealthDataSource: HealthDataSource, @unchecked Sendable {
         lastRead = read
     }
 
+    /// When set, the answer for any request that includes write types (the newer permissions).
+    var upgradeStatus: HKAuthorizationRequestStatus?
+
     func requestStatus(toShare: Set<HKSampleType>, read: Set<HKObjectType>) async -> HKAuthorizationRequestStatus {
-        authStatus
+        if !toShare.isEmpty, let upgradeStatus { return upgradeStatus }
+        return authStatus
     }
 
     var lastShare: Set<HKSampleType> = []

@@ -13,6 +13,17 @@ final class WidgetSnapshotTests: XCTestCase {
         XCTAssertEqual(loaded.nextLine, "Lunch · 13:45")
     }
 
+    func testYesterdaysSnapshotDoesNotShowAsToday() {
+        var snap = TodaySnapshot.preview
+        snap.day = "2020-01-01"
+        snap.save()
+        let loaded = TodaySnapshot.load()
+        XCTAssertEqual(loaded.consumedKcal, 0)
+        XCTAssertEqual(loaded.remainingKcal, loaded.targetKcal)
+        XCTAssertNil(loaded.nextLine)
+        XCTAssertEqual(loaded.savedMeals.count, 2)
+    }
+
     func testEmptySnapshotHasNoNextLine() {
         XCTAssertNil(TodaySnapshot.empty.nextLine)
         XCTAssertEqual(TodaySnapshot.empty.progress, 0)

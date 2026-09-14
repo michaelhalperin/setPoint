@@ -932,6 +932,20 @@ struct HealthSettingsView: View {
                     .background(Palette.dayOnTrack.opacity(0.25), in: Capsule())
             }
 
+            if env.health.connected && env.health.needsMorePermissions {
+                Button {
+                    Task { await env.health.grantMorePermissions() }
+                } label: {
+                    Text("Allow meals and workouts")
+                        .font(Typography.data(16, weight: .bold))
+                        .foregroundStyle(Palette.accentDeep)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 54)
+                        .background(Palette.background, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+                .buttonStyle(PressableCard())
+            }
+
             if env.health.state == .connected && !env.health.hasHeartData {
                 Text("No heart data yet. Wear your Apple Watch, or check SetPoint’s access in Health → Sharing → Apps.")
                     .font(Typography.data(13))

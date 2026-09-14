@@ -194,6 +194,7 @@ extension TodaySnapshot {
         savedMeals: [
             Saved(id: "sm_lunch", name: "Usual lunch", kcal: 660),
             Saved(id: "sm_shake", name: "Shake", kcal: 380),
-        ]
+        ],
+        day: dayKey(for: .now)
     )
 }

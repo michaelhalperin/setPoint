@@ -41,6 +41,17 @@ struct SavedMealQuery: EntityQuery {
     }
 }
 
+enum UsualMealSlot: String, AppEnum {
+    case breakfast, lunch, dinner
+
+    static var typeDisplayRepresentation: TypeDisplayRepresentation = "Meal"
+    static var caseDisplayRepresentations: [UsualMealSlot: DisplayRepresentation] = [
+        .breakfast: "breakfast",
+        .lunch: "lunch",
+        .dinner: "dinner",
+    ]
+}
+
 struct LogSavedMealIntent: AppIntent {
     static var title: LocalizedStringResource = "Log my usual meal"
     static var description = IntentDescription("Logs one of your saved SetPoint meals.")
@@ -48,6 +59,9 @@ struct LogSavedMealIntent: AppIntent {
 
     @Parameter(title: "Meal")
     var meal: SavedMealEntity?
+
+    @Parameter(title: "Which meal")
+    var slot: UsualMealSlot?
 
     init() {}
 
@@ -60,13 +74,24 @@ struct LogSavedMealIntent: AppIntent {
     }
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        let chosen = meal ?? TodaySnapshot.load().savedMeals.first.map {
-            SavedMealEntity(id: $0.id, name: $0.name, kcal: $0.kcal)
+        let saved = TodaySnapshot.load().savedMeals
+        let chosen: SavedMealEntity?
+        if let meal {
+            chosen = meal
+        } else if let slot {
+            // "Log my usual breakfast" logs the meal tagged breakfast — never some other plate.
+            chosen = saved.first { $0.suggestSlot == slot.rawValue }
+                .map { SavedMealEntity(id: $0.id, name: $0.name, kcal: $0.kcal) }
+            if chosen == nil {
+                throw IntentError.message("No usual \(slot.rawValue) saved yet. Tag one in SetPoint.")
+            }
+        } else {
+            chosen = saved.first.map { SavedMealEntity(id: $0.id, name: $0.name, kcal: $0.kcal) }
         }
         guard let chosen else {
             throw IntentError.message("Save a usual meal in SetPoint first.")
         }
-        guard let token = AppGroup.readToken() else {
+        guard let token = SharedKeychain.readToken() else {
             throw IntentError.message("Open SetPoint to sign in first.")
         }
         var request = URLRequest(url: WidgetAPI.baseURL.appendingPathComponent("api/meals"))
@@ -114,8 +139,7 @@ struct SetPointShortcuts: AppShortcutsProvider {
         AppShortcut(
             intent: LogSavedMealIntent(),
             phrases: [
-                "Log my usual breakfast in \(.applicationName)",
-                "Log my usual lunch in \(.applicationName)",
+                "Log my usual \(\.$slot) in \(.applicationName)",
                 "Log my usual meal in \(.applicationName)",
             ],
             shortTitle: "Log usual meal",

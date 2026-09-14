@@ -44,6 +44,8 @@ final class HealthKitManager {
     private(set) var lastError: String?
     var writePreferences = HealthWritePreferences()
     private(set) var todayWrittenKcal = 0
+    /// Connected, but not yet asked for the newer permissions (writing meals, reading workouts).
+    private(set) var needsMorePermissions = false
     var connected: Bool { state == .connected }
 
     private let source: HealthDataSource
@@ -98,10 +100,15 @@ final class HealthKitManager {
         }
     }
 
-    private var readTypes: Set<HKObjectType> {
+    /// The permissions "connected" has always meant. Adding a type here would make every
+    /// existing user look disconnected after an update — new types go in `readTypes`/`shareTypes`.
+    private var coreReadTypes: Set<HKObjectType> {
         [hrvType, rhrType, bodyMassType, heightType,
-         HKCharacteristicType(.dateOfBirth), HKCharacteristicType(.biologicalSex),
-         HKObjectType.workoutType()]
+         HKCharacteristicType(.dateOfBirth), HKCharacteristicType(.biologicalSex)]
+    }
+
+    private var readTypes: Set<HKObjectType> {
+        coreReadTypes.union([HKObjectType.workoutType()])
     }
 
     private var shareTypes: Set<HKSampleType> {
@@ -128,7 +135,17 @@ final class HealthKitManager {
         }
     }
 
-    func writeMeal(_ meal: MealSummary) async {
+    /// Writes any of today's meals Health doesn't have yet (or has an older version of) —
+    /// meals logged from a check-in, Siri, the offline queue or another device, and edits.
+    func reconcileToday(_ meals: [MealSummary]) async {
+        guard isAvailable, state == .connected, writePreferences.writesNutrition else { return }
+        let written = loadWritten()
+        for meal in meals where written[meal.id]?.matches(meal) != true {
+            await writeMeal(meal, reportErrors: false)
+        }
+    }
+
+    func writeMeal(_ meal: MealSummary, reportErrors: Bool = true) async {
         guard isAvailable, state == .connected, writePreferences.writesNutrition else { return }
         let date = MealFormat.parse(meal.loggedAt) ?? clock()
         do {
@@ -143,9 +160,11 @@ final class HealthKitManager {
                 ),
                 types: writePreferences
             )
-            rememberWritten(mealId: meal.id, kcal: meal.kcal, at: date)
+            rememberWritten(meal, at: date)
         } catch {
-            lastError = UserFacingError.message(for: error, fallback: "Couldn't write this meal to Health.")
+            if reportErrors {
+                lastError = UserFacingError.message(for: error, fallback: "Couldn't write this meal to Health.")
+            }
         }
     }
 
@@ -165,6 +184,14 @@ final class HealthKitManager {
     private struct WrittenMealRecord: Codable {
         var kcal: Int
         var at: TimeInterval
+        // Optional: records written before edits were tracked don't have them.
+        var proteinG: Double?
+        var carbsG: Double?
+        var fatG: Double?
+
+        func matches(_ meal: MealSummary) -> Bool {
+            kcal == meal.kcal && proteinG == meal.proteinG && carbsG == meal.carbsG && fatG == meal.fatG
+        }
     }
 
     private func loadWritten() -> [String: WrittenMealRecord] {
@@ -180,9 +207,15 @@ final class HealthKitManager {
         }
     }
 
-    private func rememberWritten(mealId: String, kcal: Int, at date: Date) {
+    private func rememberWritten(_ meal: MealSummary, at date: Date) {
         var map = loadWritten()
-        map[mealId] = WrittenMealRecord(kcal: kcal, at: date.timeIntervalSince1970)
+        map[meal.id] = WrittenMealRecord(
+            kcal: meal.kcal,
+            at: date.timeIntervalSince1970,
+            proteinG: meal.proteinG,
+            carbsG: meal.carbsG,
+            fatG: meal.fatG
+        )
         saveWritten(map)
         refreshTodayWritten()
     }
@@ -210,6 +243,22 @@ final class HealthKitManager {
             "/api/settings",
             SettingsPatch(healthWrite: writePreferences.settingsPayload)
         )
+    }
+
+    /// For users who connected before meal write-back and workouts: shows the Health sheet
+    /// for just the new permissions.
+    func grantMorePermissions() async {
+        guard isAvailable else { return }
+        lastError = nil
+        do {
+            try await source.requestAuthorization(toShare: shareTypes, read: readTypes)
+        } catch {
+            lastError = Self.message(forConnect: error)
+            return
+        }
+        await refreshState()
+        await startBackgroundObservers()
+        await sync(force: true)
     }
 
     /// Prompts for read access, then refreshes honest state, starts observers,
@@ -240,8 +289,13 @@ final class HealthKitManager {
             state = .unavailable
             return
         }
-        let status = await source.requestStatus(toShare: shareTypes, read: readTypes)
+        let status = await source.requestStatus(toShare: [], read: coreReadTypes)
         state = status == .unnecessary ? .connected : .notConnected
+        if state == .connected {
+            needsMorePermissions = await source.requestStatus(toShare: shareTypes, read: readTypes) == .shouldRequest
+        } else {
+            needsMorePermissions = false
+        }
         do {
             let to = clock()
             let from = Calendar.current.date(byAdding: .day, value: -21, to: to) ?? to

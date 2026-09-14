@@ -1,3 +1,4 @@
+import StoreKit
 import SwiftUI
 
 struct PaywallView: View {
@@ -33,25 +34,28 @@ struct PaywallView: View {
                     HStack(spacing: Space.sm) {
                         planCard(
                             title: "Yearly",
-                            price: store.yearly?.displayPrice ?? "$49.99",
-                            badge: "7 DAYS FREE",
+                            price: priceLine(store.yearly, unit: "year"),
+                            badge: trialBadge(store.yearly),
                             selected: store.selectedYearly
                         ) { store.selectedYearly = true }
                         planCard(
                             title: "Monthly",
-                            price: store.monthly?.displayPrice ?? "$5.99",
-                            badge: nil,
+                            price: priceLine(store.monthly, unit: "month"),
+                            badge: trialBadge(store.monthly),
                             selected: !store.selectedYearly
                         ) { store.selectedYearly = false }
                     }
 
-                    VStack(alignment: .leading, spacing: 8) {
-                        timelineRow("Today", "Trial starts")
-                        timelineRow("Day 5", "Reminder")
-                        timelineRow("Day 7", "Billed")
+                    // The trial timeline only when the selected plan really starts one for this Apple ID.
+                    if let days = trialDays {
+                        VStack(alignment: .leading, spacing: 8) {
+                            timelineRow("Today", "Trial starts")
+                            if days >= 3 { timelineRow("Day \(days - 2)", "Reminder") }
+                            timelineRow("Day \(days)", "Billed")
+                        }
+                        .padding(16)
+                        .background(Palette.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
                     }
-                    .padding(16)
-                    .background(Palette.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
 
                     if let error = store.error {
                         Text(error)
@@ -60,7 +64,7 @@ struct PaywallView: View {
                     }
 
                     ActionButton(
-                        title: "Start 7-day free trial",
+                        title: purchaseTitle,
                         busy: store.purchasing,
                         busyTitle: "Starting"
                     ) {
@@ -71,6 +75,12 @@ struct PaywallView: View {
                             }
                         }
                     }
+                    .disabled(store.selectedProduct == nil)
+
+                    Text(renewalDisclosure)
+                        .font(Typography.data(12))
+                        .foregroundStyle(Palette.inkFaint)
+                        .fixedSize(horizontal: false, vertical: true)
 
                     HStack {
                         Button("Restore") {
@@ -79,6 +89,10 @@ struct PaywallView: View {
                         Spacer()
                         Button("Terms") {
                             openURL(APIConfig.baseURL.appending(path: "terms"))
+                        }
+                        Spacer()
+                        Button("Privacy") {
+                            openURL(APIConfig.baseURL.appending(path: "privacy"))
                         }
                         Spacer()
                         Button("Not now") {
@@ -97,6 +111,47 @@ struct PaywallView: View {
         }
         .background(Palette.background.ignoresSafeArea())
         .task { await store.refresh(using: env.api) }
+    }
+
+    private var trialDays: Int? {
+        guard let period = store.selectedTrial?.period else { return nil }
+        switch period.unit {
+        case .day: return period.value
+        case .week: return period.value * 7
+        case .month: return period.value * 30
+        case .year: return period.value * 365
+        @unknown default: return nil
+        }
+    }
+
+    private var purchaseTitle: String {
+        if let days = trialDays { return "Start \(days)-day free trial" }
+        guard let product = store.selectedProduct else { return "Subscribe" }
+        return "Subscribe for \(product.displayPrice)"
+    }
+
+    private var renewalDisclosure: String {
+        guard let product = store.selectedProduct else {
+            return "Plans load from the App Store. Check your connection and try again."
+        }
+        let unit = store.selectedYearly ? "year" : "month"
+        let start = trialDays.map { "After the \($0)-day free trial, " } ?? ""
+        return "\(start)\(product.displayPrice) per \(unit), charged to your Apple ID. Renews automatically unless cancelled at least 24 hours before the period ends. Manage or cancel in Apple ID settings."
+    }
+
+    private func priceLine(_ product: Product?, unit: String) -> String {
+        guard let product else { return "—" }
+        return "\(product.displayPrice)/\(unit)"
+    }
+
+    private func trialBadge(_ product: Product?) -> String? {
+        guard let product,
+              let offer = product.subscription?.introductoryOffer,
+              offer.paymentMode == .freeTrial,
+              store.isTrialEligible(product.id)
+        else { return nil }
+        let days = offer.period.unit == .week ? offer.period.value * 7 : offer.period.value
+        return offer.period.unit == .day || offer.period.unit == .week ? "\(days) DAYS FREE" : "FREE TRIAL"
     }
 
     private func feature(symbol: String, title: String) -> some View {
