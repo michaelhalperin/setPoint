@@ -214,6 +214,7 @@ extension HomeResponse {
             activeCheckIn: activeCheckIn,
             day: day?.inserting(meal, into: slot),
             nextCheckIn: nextCheckIn,
+            needsWeighIn: needsWeighIn,
             quietHours: quietHours
         )
     }

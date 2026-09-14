@@ -84,6 +84,18 @@ final class OnboardingTests: XCTestCase {
     }
 
     @MainActor
+    func testAboutRequiresMinimumAge() {
+        let vm = makeModel()
+        vm.step = .about
+        vm.draft.heightCm = 175
+        vm.draft.weightKg = 70
+        vm.draft.birthDate = Calendar.current.date(byAdding: .year, value: -15, to: .now) ?? .now
+        XCTAssertFalse(vm.canAdvance)
+        vm.draft.birthDate = Calendar.current.date(byAdding: .year, value: -16, to: .now) ?? .now
+        XCTAssertTrue(vm.canAdvance)
+    }
+
+    @MainActor
     func testTargetStepGatesOnAValidWeight() {
         let vm = makeModel()
         vm.step = .target
@@ -291,5 +303,67 @@ final class OnboardingTests: XCTestCase {
     func testClosestPresetMatchesExactTimesOnly() {
         XCTAssertEqual(MealRhythmPreset.closest(breakfast: 480, lunch: 780, dinner: 1140), .standard)
         XCTAssertEqual(MealRhythmPreset.closest(breakfast: 500, lunch: 780, dinner: 1140), .custom)
+    }
+
+    // MARK: Saved progress
+
+    private func progressStore() -> UserDefaults {
+        let name = "onboarding-progress-\(UUID().uuidString)"
+        let store = UserDefaults(suiteName: name)!
+        store.removePersistentDomain(forName: name)
+        return store
+    }
+
+    @MainActor
+    func testRelaunchRestoresTheWholeDraft() {
+        let store = progressStore()
+        let first = OnboardingViewModel(api: AppEnvironment.preview().api, progressStore: store, onComplete: {})
+        first.draft.goal = .bulk
+        first.draft.heightCm = 180
+        first.draft.weightKg = 72
+        first.draft.sex = .female
+        first.draft.activityLevel = .active
+        first.draft.targetWeightKg = 78
+        first.draft.pace = .steady
+        first.draft.mealRhythmPreset = .custom
+        first.draft.breakfastMin = 420
+        first.draft.lunchMin = 750
+        first.draft.dinnerMin = 1170
+        first.draft.quietStartMin = 1320
+        first.step = .restrictions
+        first.advance() // → safety, saved
+        first.answerSafety(true) // medical: yes
+
+        let resumed = OnboardingViewModel(api: AppEnvironment.preview().api, progressStore: store, onComplete: {})
+        XCTAssertEqual(resumed.step, .safety)
+        XCTAssertEqual(resumed.draft.sex, .female)
+        XCTAssertEqual(resumed.draft.activityLevel, .active)
+        XCTAssertEqual(resumed.draft.targetWeightKg, 78)
+        XCTAssertEqual(resumed.draft.pace, .steady)
+        XCTAssertEqual(resumed.draft.breakfastMin, 420)
+        XCTAssertEqual(resumed.draft.dinnerMin, 1170)
+        XCTAssertEqual(resumed.draft.quietStartMin, 1320)
+        XCTAssertEqual(resumed.draft.medicalSupervisionRequired, true)
+        XCTAssertEqual(resumed.safetyIndex, SafetyQuestion.makeSelfSick.rawValue)
+    }
+
+    @MainActor
+    func testRelaunchNeverSkipsPastMissingAnswers() throws {
+        let store = progressStore()
+        let first = OnboardingViewModel(api: AppEnvironment.preview().api, progressStore: store, onComplete: {})
+        first.draft.goal = .bulk
+        first.step = .about
+        first.advance() // saved at .target with no height/weight yet
+
+        let resumed = OnboardingViewModel(api: AppEnvironment.preview().api, progressStore: store, onComplete: {})
+        XCTAssertEqual(resumed.step, .about)
+    }
+
+    @MainActor
+    func testProgressIsInMemoryWithoutAStore() {
+        let first = makeModel()
+        first.draft.goal = .diet
+        first.advance()
+        XCTAssertEqual(makeModel().step, .goal)
     }
 }

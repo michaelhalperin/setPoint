@@ -18,6 +18,10 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
                     onTokenRefresh: { renewed in
                         guard tokenStore.read() != nil else { return }
                         tokenStore.write(renewed)
+                    },
+                    onUnauthorized: {
+                        // The app's AuthStore signs out (and updates the UI).
+                        NotificationCenter.default.post(name: AuthStore.sessionExpired, object: nil)
                     }
                 )
             }

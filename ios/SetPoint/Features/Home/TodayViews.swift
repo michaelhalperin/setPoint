@@ -337,6 +337,8 @@ struct LogDock: View {
                 text: logger.submittedPrompt.isEmpty ? "Working it out…" : "Working out “\(logger.submittedPrompt)”…",
                 working: true
             )
+        case let .queued(message):
+            statusLine(symbol: "icloud.slash", text: message, working: false)
         case let .logged(logged) where !logger.confirmingPhoto:
             statusLine(
                 symbol: "checkmark",

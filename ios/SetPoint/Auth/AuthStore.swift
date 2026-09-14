@@ -15,9 +15,14 @@ final class AuthStore {
     private(set) var signingIn = false
     var lastError: String?
 
+    /// Posted by API clients that live outside `AppEnvironment` (e.g. the one
+    /// HealthKit uses on a background launch) when the session is rejected.
+    static let sessionExpired = Notification.Name("com.setpoint.app.sessionExpired")
+
     private let tokenStore: TokenStore
     private let baseURL: URL
     private let session: URLSession
+    @ObservationIgnored private var expiryObserver: NSObjectProtocol?
 
     init(
         tokenStore: TokenStore,
@@ -27,6 +32,11 @@ final class AuthStore {
         self.tokenStore = tokenStore
         self.baseURL = baseURL
         self.session = session
+        expiryObserver = NotificationCenter.default.addObserver(
+            forName: Self.sessionExpired, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.handleUnauthorized() }
+        }
     }
 
     var hasToken: Bool { tokenStore.read() != nil }
@@ -36,9 +46,17 @@ final class AuthStore {
     }
 
     func signOut() {
+        // Several requests can 401 at once — sign out only once.
+        let sessionToken = tokenStore.read()
+        guard sessionToken != nil || status != .signedOut else { return }
         tokenStore.clear()
         status = .signedOut
+        if let sessionToken {
+            Task { await PushManager.shared.unregister(sessionToken: sessionToken) }
+        }
         HealthKitManager.shared.clearAccountSyncState()
+        OnboardingViewModel.clearProgress()
+        OfflineMealQueue.clear()
     }
 
     /// Called by the caller when any request comes back 401.
@@ -60,7 +78,10 @@ final class AuthStore {
                 lastError = "Sign-in failed."
                 return
             }
-            await exchange(path: "/api/auth/apple", body: ["identityToken": identityToken])
+            await exchange(path: "/api/auth/apple", body: [
+                "identityToken": identityToken,
+                "authorizationCode": String(data: credential.authorizationCode ?? Data(), encoding: .utf8) ?? "",
+            ].filter { !$0.value.isEmpty })
         }
     }
 

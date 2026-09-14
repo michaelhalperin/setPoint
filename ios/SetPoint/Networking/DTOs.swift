@@ -25,6 +25,8 @@ struct HomeResponse: Decodable {
     /// The check-in coming if nothing is logged. Nil in quiet mode, while paused,
     /// while one is open, or once the day is covered.
     var nextCheckIn: NextCheckIn? = nil
+    /// Surface a weigh-in near the plan card when the last one is stale.
+    var needsWeighIn: Bool? = nil
 
     struct NextCheckIn: Decodable, Equatable {
         let slot: String      // "breakfast" | "lunch" | "dinner"
@@ -122,7 +124,11 @@ struct HomeResponse: Decodable {
             /// "2× Hard-boiled eggs + Banana"
             var summary: String {
                 items
-                    .map { $0.quantity > 1 ? "\(Int($0.quantity))× \($0.name)" : $0.name }
+                    .map { item in
+                        let qty = item.quantity
+                        if qty > 1 { return "\(Int(qty)) × \(item.name)" }
+                        return item.name
+                    }
                     .joined(separator: " + ")
             }
         }
@@ -144,6 +150,7 @@ struct MealSummary: Decodable, Identifiable, Hashable {
     let notes: String?
     let items: [Item]?
     let parseConfidence: Double?
+    var parseQuality: String? = nil
 
     struct Item: Decodable, Hashable, Identifiable {
         var id: String { "\(name)|\(quantity)" }
@@ -190,6 +197,12 @@ struct MealsListResponse: Decodable {
     let meals: [MealSummary]
 }
 
+/// `POST /api/settings/target-review`. Accept carries the target the user saw.
+struct TargetReviewDecision: Encodable {
+    let action: String
+    let proposedKcal: Int?
+}
+
 struct SettlementResponse: Decodable {
     let days: [Day]
     let today: Today
@@ -197,6 +210,18 @@ struct SettlementResponse: Decodable {
     let weightGoal: WeightGoal?
     /// How each meal went this week. Older payloads omit it.
     var record: Record? = nil
+    var targetReview: TargetReview? = nil
+
+    struct TargetReview: Decodable {
+        let previousKcal: Int
+        let proposedKcal: Int
+        let deltaKcal: Int
+        let reason: String
+        let weighInCount: Int
+        let trendKgPerWeek: Double
+        let windowStart: String
+        let windowEnd: String
+    }
 
     /// Per day and meal: on time, after a check-in, missed, or still open — and
     /// one late-meal pattern the app can fix in a tap.
@@ -264,6 +289,8 @@ struct LogMealRequest: Encodable {
     var prescriptionId: String?
     /// ISO timestamp for a meal eaten earlier (a missed meal time). Omitted = now.
     var loggedAt: String?
+    /// Idempotency key for this log attempt (the offline queue retries with it).
+    var clientId: String?
 
     struct Macros: Encodable {
         let kcal: Int
@@ -336,12 +363,24 @@ struct ConversationRequest: Encodable {
     let message: String
 }
 
+struct ConversationConfirmResponse: Decodable {
+    let outcome: String
+    let resolved: Bool
+}
+
 /// The tier-3 "let's talk" exchange (§2). Bounded — the backend lands on an
 /// `outcome` and then `resolved` is true and the composer closes.
 struct ConversationResponse: Decodable {
     let messages: [ConversationMessage]
-    let outcome: String        // "NONE" | "ADJUST_PLAN" | "PAUSE_CHECKINS" | "SUGGEST_PROFESSIONAL"
+    let outcome: String        // "NONE" | "DELAY_CHECKINS" | "EASE_TARGET" | "PAUSE_CHECKINS" | "SUGGEST_PROFESSIONAL"
     let resolved: Bool
+    var pendingProposal: PlanProposal? = nil
+
+    struct PlanProposal: Decodable, Equatable {
+        let kind: String
+        let title: String
+        let summary: String
+    }
 }
 
 struct ConversationMessage: Decodable, Identifiable, Equatable {
@@ -372,6 +411,7 @@ struct OnboardingRequest: Encodable {
 
     struct Safety: Encodable {
         let medicalSupervisionRequired: Bool
+        let medicalConditionAffectsEating: Bool?
         let scoff: Scoff
         let restrictions: [Restriction]
         let restrictionsFreeText: String?
@@ -457,6 +497,9 @@ struct SettingsResponse: Decodable {
     var heightCm: Double? = nil
     /// Lowest diet target the backend accepts for this height (BMI 18.5).
     var minHealthyWeightKg: Double? = nil
+    var pantryTokens: [String]? = nil
+    var dislikedFoods: [String]? = nil
+    var prepTimeMaxMin: Int? = nil
 
     struct Restriction: Decodable, Identifiable {
         var id: String { token }
@@ -478,6 +521,9 @@ struct SettingsPatch: Encodable {
     var quietHours: QuietHoursPayload?
     var checkInsPaused: Bool?
     var restrictions: [RestrictionInput]?
+    var pantryTokens: [String]?
+    var dislikedFoods: [String]?
+    var prepTimeMaxMin: Int?
 
     struct RestrictionInput: Encodable {
         let label: String

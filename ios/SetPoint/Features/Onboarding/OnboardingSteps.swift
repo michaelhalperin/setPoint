@@ -138,6 +138,12 @@ struct AboutStep: View {
             }
             .appearIn(3)
 
+            if !model.draft.isOldEnough {
+                Text("SetPoint is for people \(OnboardingDraft.minimumAge) or older.")
+                    .font(Typography.data(14, weight: .semibold))
+                    .foregroundStyle(Palette.accentDeep)
+            }
+
             activityTile
                 .appearIn(4)
         }
@@ -370,7 +376,7 @@ struct AboutStep: View {
     }
 
     private var latestBirthDate: Date {
-        Calendar.current.date(byAdding: .year, value: -13, to: .now) ?? .now
+        Calendar.current.date(byAdding: .year, value: -OnboardingDraft.minimumAge, to: .now) ?? .now
     }
 }
 
@@ -655,7 +661,7 @@ struct RestrictionsStep: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Space.lg) {
-            StepHeadline(text: "Anything off the menu?", detail: "I’ll never suggest it.")
+            StepHeadline(text: "Anything off the menu?", detail: "I’ll never suggest it — including anything you type below.")
 
             FlowChips(options: common, selected: $model.draft.restrictions)
                 .appearIn(2)

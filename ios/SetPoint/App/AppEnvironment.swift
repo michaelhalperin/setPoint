@@ -12,13 +12,16 @@ final class AppEnvironment {
     let changes = AppDataChanges()
 
     init(tokenStore: TokenStore = SessionTokenStore()) {
-        self.auth = AuthStore(tokenStore: tokenStore)
+        let auth = AuthStore(tokenStore: tokenStore)
+        self.auth = auth
         self.api = APIClient(
             tokenProvider: { tokenStore.read() },
             onTokenRefresh: { renewed in
-                // Only replace a live session — never resurrect one after sign-out.
                 guard tokenStore.read() != nil else { return }
                 tokenStore.write(renewed)
+            },
+            onUnauthorized: {
+                Task { @MainActor in auth.handleUnauthorized() }
             }
         )
         push.api = api

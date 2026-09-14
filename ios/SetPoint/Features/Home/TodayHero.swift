@@ -43,6 +43,18 @@ struct TodayHero: View {
                         .font(Typography.data(16))
                         .foregroundStyle(Palette.inkSoft)
                 }
+                if !home.managerNote.isEmpty, home.activeCheckIn == nil {
+                    Text(home.managerNote)
+                        .font(Typography.voice(17))
+                        .foregroundStyle(Palette.inkSoft)
+                        .padding(.top, 4)
+                }
+                if home.needsWeighIn == true {
+                    Text("A weigh-in is due — it’s on the Week tab.")
+                        .font(Typography.data(14, weight: .bold))
+                        .foregroundStyle(Palette.accentDeep)
+                        .padding(.top, 6)
+                }
             }
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.isHeader)

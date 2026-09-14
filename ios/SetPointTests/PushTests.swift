@@ -35,6 +35,6 @@ final class PushTests: XCTestCase {
         ] }
         """.data(using: .utf8)!
         let rx = try JSONDecoder().decode(HomeResponse.ActiveCheckIn.Prescription.self, from: json)
-        XCTAssertEqual(rx.summary, "Rotisserie chicken + 2× White rice")
+        XCTAssertEqual(rx.summary, "Rotisserie chicken + 2 × White rice")
     }
 }

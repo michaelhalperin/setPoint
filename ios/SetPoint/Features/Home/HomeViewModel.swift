@@ -30,6 +30,7 @@ final class HomeViewModel {
     func load(showSpinner: Bool = true) async {
         if showSpinner { phase = .loading }
         do {
+            await OfflineMealQueue.flush(using: api)
             let home: HomeResponse = try await api.get("/api/home")
             phase = .loaded(home)
             LiveActivityController.shared.sync(activeCheckIn: home.activeCheckIn)

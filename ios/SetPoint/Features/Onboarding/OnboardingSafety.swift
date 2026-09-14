@@ -73,6 +73,12 @@ struct SafetyStep: View {
                         .foregroundStyle(Palette.inkSoft)
                 }
                 .frame(maxWidth: .infinity, minHeight: 58)
+            } else if question == .medical {
+                HStack(spacing: 8) {
+                    answerButton("No", value: false)
+                    answerButton("Not sure", value: true)
+                    answerButton("Yes", value: true)
+                }
             } else {
                 HStack(spacing: 10) {
                     answerButton("No", value: false)
@@ -109,12 +115,12 @@ struct SafetyStep: View {
             model.answerSafety(value)
         } label: {
             Text(title)
-                .font(Typography.data(18, weight: .bold))
+                .font(Typography.data(title == "Not sure" ? 14 : 18, weight: .bold))
                 .foregroundStyle(Palette.ink)
                 .frame(maxWidth: .infinity, minHeight: 58)
                 .background(Palette.surfaceSunk, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
                 .overlay {
-                    if chosen {
+                    if chosen && title != "Not sure" {
                         RoundedRectangle(cornerRadius: 18, style: .continuous)
                             .strokeBorder(Palette.accent, lineWidth: 2)
                     }

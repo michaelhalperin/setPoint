@@ -29,6 +29,7 @@ actor APIClient {
     private let session: URLSession
     private let tokenProvider: @Sendable () -> String?
     private let onTokenRefresh: @Sendable (String) -> Void
+    private let onUnauthorized: @Sendable () -> Void
 
     private static let decoder = JSONDecoder()
     private static let encoder: JSONEncoder = {
@@ -41,12 +42,14 @@ actor APIClient {
         baseURL: URL = APIConfig.baseURL,
         session: URLSession = .shared,
         tokenProvider: @escaping @Sendable () -> String?,
-        onTokenRefresh: @escaping @Sendable (String) -> Void = { _ in }
+        onTokenRefresh: @escaping @Sendable (String) -> Void = { _ in },
+        onUnauthorized: @escaping @Sendable () -> Void = {}
     ) {
         self.baseURL = baseURL
         self.session = session
         self.tokenProvider = tokenProvider
         self.onTokenRefresh = onTokenRefresh
+        self.onUnauthorized = onUnauthorized
     }
 
     func get<T: Decodable>(_ path: String, query: [String: String] = [:]) async throws -> T {
@@ -127,6 +130,7 @@ actor APIClient {
                 throw APIError.decoding(error)
             }
         case 401:
+            onUnauthorized()
             throw APIError.unauthorized
         default:
             let parsed = try? Self.decoder.decode(APIErrorBody.self, from: data)

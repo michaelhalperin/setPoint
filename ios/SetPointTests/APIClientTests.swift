@@ -46,6 +46,27 @@ final class APIClientTests: XCTestCase {
         } catch {}
         XCTAssertNil(received.get())
     }
+
+    func testUnauthorizedInvokesCallback() async {
+        StubURLProtocol.handler = { _ in (401, ["Content-Type": "application/json"], Data("{}".utf8)) }
+        let called = LockedBox(false)
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [StubURLProtocol.self]
+        let client = APIClient(
+            baseURL: URL(string: "https://api.test")!,
+            session: URLSession(configuration: config),
+            tokenProvider: { "old-token" },
+            onUnauthorized: { called.set(true) }
+        )
+        do {
+            try await client.post("/api/ping")
+            XCTFail("expected unauthorized")
+        } catch APIError.unauthorized {
+            XCTAssertTrue(called.get())
+        } catch {
+            XCTFail("wrong error \(error)")
+        }
+    }
 }
 
 final class StubURLProtocol: URLProtocol {

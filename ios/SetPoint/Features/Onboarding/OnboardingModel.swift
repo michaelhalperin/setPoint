@@ -1,7 +1,7 @@
 import Foundation
 import Observation
 
-struct ScoffAnswers {
+struct ScoffAnswers: Codable {
     var makeSelfSick: Bool?
     var lostControl: Bool?
     var lostOneStone: Bool?
@@ -30,7 +30,7 @@ enum HealthyWeight {
     }
 }
 
-struct OnboardingDraft {
+struct OnboardingDraft: Codable {
     var goal: Goal?
     var sex: Sex = .unspecified
     var birthDate = Calendar.current.date(byAdding: .year, value: -28, to: .now) ?? .now
@@ -68,6 +68,10 @@ struct OnboardingDraft {
         if let birthDate = profile.birthDate { self.birthDate = birthDate }
         if let sex = profile.sex { self.sex = sex }
     }
+
+    var isOldEnough: Bool { age >= OnboardingDraft.minimumAge }
+
+    static let minimumAge = 16
 
     mutating func applyPreset(_ preset: MealRhythmPreset) {
         mealRhythmPreset = preset
@@ -120,6 +124,7 @@ struct OnboardingDraft {
             quietHours: .init(startMin: quietStartMin, endMin: quietEndMin),
             safety: .init(
                 medicalSupervisionRequired: medicalSupervisionRequired ?? false,
+                medicalConditionAffectsEating: medicalSupervisionRequired,
                 scoff: .init(
                     makeSelfSick: scoff.makeSelfSick ?? false,
                     lostControl: scoff.lostControl ?? false,
@@ -142,7 +147,7 @@ enum SafetyQuestion: Int, CaseIterable {
 
     var text: String {
         switch self {
-        case .medical: return "Is your eating supervised by a doctor or dietitian?"
+        case .medical: return "Do you have a medical condition that affects how you should eat — including eating under a doctor’s or dietitian’s care?"
         case .makeSelfSick: return "Do you make yourself sick because you feel uncomfortably full?"
         case .lostControl: return "Do you worry you have lost control over how much you eat?"
         case .lostOneStone: return "Have you recently lost more than 6 kg in a three-month period?"
@@ -176,9 +181,19 @@ final class OnboardingViewModel {
     private let api: APIClient
     let onComplete: @MainActor () -> Void
 
-    init(api: APIClient, onComplete: @escaping @MainActor () -> Void) {
+    /// Where in-progress answers are kept between launches. nil (tests,
+    /// previews) keeps everything in memory.
+    private let progressStore: UserDefaults?
+
+    init(
+        api: APIClient,
+        progressStore: UserDefaults? = nil,
+        onComplete: @escaping @MainActor () -> Void
+    ) {
         self.api = api
+        self.progressStore = progressStore
         self.onComplete = onComplete
+        restoreProgress()
     }
 
     // MARK: Progress
@@ -313,7 +328,7 @@ final class OnboardingViewModel {
     var canAdvance: Bool {
         switch step {
         case .goal: return draft.goal != nil
-        case .about: return draft.heightCm != nil && draft.weightKg != nil
+        case .about: return draft.heightCm != nil && draft.weightKg != nil && draft.isOldEnough
         case .target: return targetWeightIsValid && draft.targetWeightKg != nil
         case .rhythm: return draft.mealRhythmPreset != .custom || mealAnchorsAreValid
         case .restrictions: return true
@@ -342,17 +357,20 @@ final class OnboardingViewModel {
             var next = step.rawValue + 1
             while let candidate = Step(rawValue: next), shouldSkip(candidate) { next += 1 }
             if let nextStep = Step(rawValue: next) { step = nextStep }
+            saveProgress()
         }
     }
 
     func goBack() {
         if step == .safety, safetyIndex > 0 {
             safetyIndex -= 1
+            saveProgress()
             return
         }
         var prev = step.rawValue - 1
         while let candidate = Step(rawValue: prev), shouldSkip(candidate) { prev -= 1 }
         if let prevStep = Step(rawValue: prev) { step = prevStep }
+        saveProgress()
     }
 
     /// Answer the card in front; the last answer submits the plan.
@@ -366,9 +384,10 @@ final class OnboardingViewModel {
         case .believesFat: draft.scoff.believesFat = value
         case .foodDominates: draft.scoff.foodDominates = value
         }
-        if safetyIndex < SafetyQuestion.allCases.count - 1 {
-            safetyIndex += 1
-        } else if safetyComplete {
+        let answeredLast = safetyIndex == SafetyQuestion.allCases.count - 1
+        if !answeredLast { safetyIndex += 1 }
+        saveProgress()
+        if answeredLast, safetyComplete {
             autoAdvance(from: .safety, after: 0.35)
         }
     }
@@ -390,7 +409,8 @@ final class OnboardingViewModel {
     }
 
     private func submit() async {
-        guard !submitting else { return }
+        // Every safety answer is required — never submit a missing one as "no".
+        guard !submitting, safetyComplete else { return }
         submitting = true
         error = nil
         defer { submitting = false }
@@ -406,9 +426,60 @@ final class OnboardingViewModel {
             let response: OnboardingResponse = try await api.post("/api/onboarding", draft.toRequest())
             result = response
             step = stepAfterSubmit(response)
+            progressStore.map(Self.clearProgress)
         } catch {
             self.error = UserFacingError.message(for: error, fallback: "Couldn't save. Try again.")
+            saveProgress()
         }
+    }
+
+    // MARK: Saved progress
+
+    private struct Progress: Codable {
+        static let version = 2
+        var version = Progress.version
+        var step: Int
+        var safetyIndex: Int
+        var draft: OnboardingDraft
+    }
+
+    private static let progressKey = "com.setpoint.app.onboarding.progress"
+
+    /// Everything answered so far — goal, body, target, meal times, quiet
+    /// hours, restrictions and safety answers — so a relaunch resumes exactly.
+    private func saveProgress() {
+        guard let progressStore, step != .reach, step != .covered else { return }
+        let progress = Progress(step: step.rawValue, safetyIndex: safetyIndex, draft: draft)
+        guard let data = try? JSONEncoder().encode(progress) else { return }
+        progressStore.set(data, forKey: Self.progressKey)
+    }
+
+    private func restoreProgress() {
+        guard let progressStore,
+              let data = progressStore.data(forKey: Self.progressKey),
+              let saved = try? JSONDecoder().decode(Progress.self, from: data),
+              saved.version == Progress.version
+        else { return }
+        draft = saved.draft
+        // Resume at the saved step, but never past one whose answers are missing.
+        let target = Step(rawValue: saved.step) ?? .goal
+        step = .goal
+        while step.rawValue < target.rawValue, step.rawValue < Step.safety.rawValue, canAdvance {
+            var next = step.rawValue + 1
+            while let candidate = Step(rawValue: next), shouldSkip(candidate) { next += 1 }
+            guard let nextStep = Step(rawValue: next) else { break }
+            step = nextStep
+        }
+        if step == .safety {
+            // Land on the first unanswered card.
+            let firstOpen = SafetyQuestion.allCases.first { safetyAnswer($0) == nil }
+            safetyIndex = firstOpen?.rawValue ?? min(saved.safetyIndex, SafetyQuestion.allCases.count - 1)
+        }
+    }
+
+    static func clearProgress(in store: UserDefaults = .standard) {
+        store.removeObject(forKey: progressKey)
+        store.removeObject(forKey: "com.setpoint.app.onboarding.snapshot") // v1 format
     }
 
     #if DEBUG
@@ -452,3 +523,10 @@ extension OnboardingResponse {
     )
 }
 #endif
+
+// Raw-value enums: Codable so an in-progress draft can be saved.
+extension Goal: Codable {}
+extension Sex: Codable {}
+extension ActivityLevel: Codable {}
+extension GoalPace: Codable {}
+extension MealRhythmPreset: Codable {}

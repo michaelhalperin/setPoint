@@ -77,7 +77,7 @@ final class CheckInTests: XCTestCase {
         let vm = ConversationViewModel.previewed(resolved: true)
         XCTAssertEqual(vm.outcomeTitle, "Plan eased")
         XCTAssertEqual(vm.outcomeIcon, "slider.horizontal.3")
-        XCTAssertEqual(vm.outcomeSummary, "Adjust anytime in Settings.")
+        XCTAssertEqual(vm.outcomeSummary, "Target lowered. Undo anytime in Goal settings.")
     }
 
     @MainActor
