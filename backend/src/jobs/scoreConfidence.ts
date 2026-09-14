@@ -52,6 +52,7 @@ import {
 } from '../solver/index.js';
 import { prescriptionFromSavedMeal } from '../savedMeals/index.js';
 import { trainingForLocalDay } from '../training/day.js';
+import { isEntitled } from '../subscription/entitlement.js';
 
 export type ScoreConfidenceDeps = {
   prisma: PrismaClient;
@@ -275,6 +276,11 @@ async function processUser(
   });
   if (!eligibility.eligible) {
     bump(summary, eligibility.reason);
+    return;
+  }
+
+  if (!isEntitled(user, now)) {
+    bump(summary, 'not_subscribed');
     return;
   }
 

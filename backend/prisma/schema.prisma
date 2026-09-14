@@ -147,6 +147,10 @@ model User {
   /// The kill switch in env still wins — this never independently fires one.
   wearableModifierEnabled Boolean @default(false)
 
+  subscriptionStatus    String?
+  subscriptionExpiresAt DateTime?
+  subscriptionProductId String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

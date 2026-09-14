@@ -12,6 +12,8 @@ struct TodayHero: View {
     let date: Date
     var onAppetite: () -> Void = {}
 
+    @Environment(AppEnvironment.self) private var env
+
     var body: some View {
         let quiet = home.resolvedQuietHours
         VStack(alignment: .leading, spacing: Space.md) {
@@ -117,7 +119,11 @@ struct TodayHero: View {
             }
             if let training = home.training, !training.workouts.isEmpty {
                 NavigationLink {
-                    TrainingScreen()
+                    if env.subscription.entitled {
+                        TrainingScreen()
+                    } else {
+                        PaywallView()
+                    }
                 } label: {
                     Text(training.bumpKcal > 0 ? "Training · +\(training.bumpKcal) ›" : "Training ›")
                         .font(Typography.data(12, weight: .bold))

@@ -117,4 +117,13 @@ final class SettingsTests: XCTestCase {
         XCTAssertFalse(empty.ready)
         XCTAssertEqual(empty.reason, "not_enough_days")
     }
+
+    func testSubscriptionStatusDecodes() throws {
+        let status = try JSONDecoder().decode(SubscriptionStatusPayload.self, from: Data("""
+        { "entitled": true, "status": "TRIALING", "productId": "setpoint.yearly", "expiresAt": "2026-09-21T12:00:00Z" }
+        """.utf8))
+        XCTAssertTrue(status.entitled)
+        XCTAssertEqual(status.productId, SubscriptionProductID.yearly)
+        XCTAssertEqual(SubscriptionProductID.monthly, "setpoint.monthly")
+    }
 }

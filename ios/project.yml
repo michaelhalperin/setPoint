@@ -89,6 +89,7 @@ targets:
       - sdk: HealthKit.framework
       - sdk: EventKit.framework
       - sdk: VisionKit.framework
+      - sdk: StoreKit.framework
       - package: Sentry
 
   SetPointWidgets:
@@ -138,6 +139,7 @@ schemes:
         SetPointWidgets: all
     run:
       config: Debug
+      storeKitConfiguration: Config/SetPoint.storekit
     test:
       config: Debug
       targets:

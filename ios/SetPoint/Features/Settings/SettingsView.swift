@@ -76,8 +76,12 @@ struct SettingsView: View {
                     }
                     rowDivider
                     NavigationLink {
-                        CalendarSettingsView()
-                            .onAppear { seenCalendar = true }
+                        if env.subscription.entitled {
+                            CalendarSettingsView()
+                                .onAppear { seenCalendar = true }
+                        } else {
+                            PaywallView()
+                        }
                     } label: {
                         YouRow(
                             symbol: "calendar",
@@ -88,8 +92,12 @@ struct SettingsView: View {
                     }
                     rowDivider
                     NavigationLink {
-                        TrainingScreen()
-                            .onAppear { seenTraining = true }
+                        if env.subscription.entitled {
+                            TrainingScreen()
+                                .onAppear { seenTraining = true }
+                        } else {
+                            PaywallView()
+                        }
                     } label: {
                         YouRow(
                             symbol: "dumbbell.fill",
@@ -100,8 +108,12 @@ struct SettingsView: View {
                     }
                     rowDivider
                     NavigationLink {
-                        AppetiteSettingsView()
-                            .onAppear { seenAppetite = true }
+                        if env.subscription.entitled {
+                            AppetiteSettingsView()
+                                .onAppear { seenAppetite = true }
+                        } else {
+                            PaywallView()
+                        }
                     } label: {
                         YouRow(
                             symbol: "fork.knife",

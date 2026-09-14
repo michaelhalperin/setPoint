@@ -12,6 +12,7 @@ final class AppEnvironment {
     let health = HealthKitManager.shared
     let calendar = CalendarManager.shared
     let changes = AppDataChanges()
+    let subscription = SubscriptionStore()
 
     init(tokenStore: TokenStore = SessionTokenStore()) {
         let auth = AuthStore(tokenStore: tokenStore)

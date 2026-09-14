@@ -61,6 +61,11 @@ describe('HTTP contracts', () => {
     const res = await app.inject({ method: 'GET', url: '/api/insights/burn' });
     expect(res.statusCode).toBe(401);
   });
+
+  it('rejects unauthenticated subscription status', async () => {
+    const res = await app.inject({ method: 'GET', url: '/api/subscription' });
+    expect(res.statusCode).toBe(401);
+  });
 });
 
 describe('auth rate limiting', () => {

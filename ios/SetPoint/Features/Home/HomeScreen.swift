@@ -19,6 +19,7 @@ struct HomeContent: View {
     @State private var selectedMeal: MealSummary?
     @State private var choosingSnooze = false
     @State private var showingAppetite = false
+    @State private var showingPaywall = false
     @State private var checkInBusy = false
     @State private var checkInError: String?
     @FocusState private var composerFocused: Bool
@@ -182,6 +183,10 @@ struct HomeContent: View {
             }
             Button("Cancel", role: .cancel) {}
         }
+        .sheet(isPresented: $showingPaywall) {
+            PaywallView()
+                .presentationDetents([.large])
+        }
         .sheet(isPresented: $showingAppetite) {
             AppetitePickerSheet(
                 previewTarget: loadedHome?.ledger.targetKcal ?? 2500,
@@ -280,7 +285,13 @@ struct HomeContent: View {
                         if home.enforcementEnabled, env.push.authorizationStatus == .denied {
                             NotificationsOffBanner()
                         }
-                        TodayHero(home: home, moment: moment, date: now, onAppetite: { showingAppetite = true })
+                        TodayHero(home: home, moment: moment, date: now, onAppetite: {
+                            if env.subscription.entitled {
+                                showingAppetite = true
+                            } else {
+                                showingPaywall = true
+                            }
+                        })
                     }
                     .padding(.horizontal, Space.gutter)
                     .padding(.top, Space.sm)

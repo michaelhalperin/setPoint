@@ -74,6 +74,7 @@ enum DebugPreviewStub {
     case settingsAppetite
     case widgets
     case burn
+    case paywall
     case settingsAccount
     case settingsDelete
 
@@ -162,6 +163,8 @@ enum DebugPreviewStub {
             WidgetsStubHost()
         case .burn:
             NavigationStack { BurnScreen(preview: .sample) }
+        case .paywall:
+            PaywallView()
         case .settingsAccount:
             NavigationStack { AccountSettingsView(model: .previewed()) }
         case .settingsDelete:
@@ -224,6 +227,7 @@ enum DebugPreviewStub {
         case "settings-appetite": return .settingsAppetite
         case "widgets": return .widgets
         case "burn": return .burn
+        case "paywall": return .paywall
         case "settings-goal": return .settingsGoal
         case "settings-meal-times": return .settingsMealTimes
         case "settings-meal-times-weekends": return .settingsMealTimesWeekends

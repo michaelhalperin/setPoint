@@ -10,7 +10,7 @@
 import { env } from '../env.js';
 
 /** Bump when the substance changes; the app can compare it to what a user accepted. */
-export const LEGAL_VERSION = '2026-09-14-fast-log';
+export const LEGAL_VERSION = '2026-09-14-subscription';
 export const LEGAL_EFFECTIVE_DATE = 'September 14, 2026';
 
 const SUPPORT = env.SUPPORT_EMAIL;
@@ -198,7 +198,17 @@ the app or in iOS Settings.</p>
 
 <h2>Accounts</h2>
 <p>You sign in with Apple. You may delete your account at any time in Settings,
-which permanently erases your data.</p>
+which permanently erases your data. Account deletion is never blocked by a
+lapsed subscription.</p>
+
+<h2>Subscriptions</h2>
+<p>Optional paid plans (<code>setpoint.yearly</code> with a 7-day free trial, and
+<code>setpoint.monthly</code>) are billed through Apple. Payment is charged to your
+Apple ID. The yearly trial converts to a paid year unless you cancel at least
+24 hours before the trial ends. Subscriptions renew automatically until you
+cancel in Apple ID settings. Check-ins, calendar, training and appetite require
+an active subscription (with a short grace period after expiry). Meal logging,
+safety screening, weight tracking and account deletion stay available.</p>
 
 <h2>Availability and changes</h2>
 <p>The service is provided "as is" and may change, be interrupted, or be

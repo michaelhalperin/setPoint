@@ -78,6 +78,7 @@ struct MainTabView: View {
             )
             home = h
             await h.load()
+            await env.subscription.refresh(using: env.api)
         }
     }
 

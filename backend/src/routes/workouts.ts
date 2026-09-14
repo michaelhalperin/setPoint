@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { requireAuth, type AuthedRequest } from '../auth/index.js';
 import { getPrisma } from '../db/client.js';
+import { requireEntitlement } from '../subscription/requireEntitlement.js';
 import { localDateISO, localDayRange, msSinceLocalMidnight, shiftDateISO, startOfLocalDay } from '../engine/time.js';
 import { applyTrainingTarget, REFUEL_WINDOW_MIN, trainingBump } from '../engine/training.js';
 import { asTrainingWorkout } from '../training/day.js';
@@ -35,6 +36,7 @@ export async function workoutRoutes(app: FastifyInstance): Promise<void> {
   app.put('/', async (req) => {
     const body = putBody.parse(req.body);
     const userId = (req as AuthedRequest).userId;
+    await requireEntitlement(app, userId);
     const prisma = getPrisma();
     const user = await prisma.user.findUnique({ where: { id: userId }, include: { onboarding: true } });
     if (!user?.onboarding) throw app.httpErrors.conflict('onboarding not complete');
@@ -59,6 +61,7 @@ export async function workoutRoutes(app: FastifyInstance): Promise<void> {
   app.post('/planned', async (req) => {
     const body = plannedBody.parse(req.body);
     const userId = (req as AuthedRequest).userId;
+    await requireEntitlement(app, userId);
     const prisma = getPrisma();
     const start = new Date(body.start);
     const row = await prisma.workout.create({

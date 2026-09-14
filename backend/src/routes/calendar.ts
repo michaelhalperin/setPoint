@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { requireAuth, type AuthedRequest } from '../auth/index.js';
 import { getPrisma } from '../db/client.js';
+import { requireEntitlement } from '../subscription/requireEntitlement.js';
 import { localDateISO, startOfLocalDay } from '../engine/time.js';
 import { toMinuteBlocks } from '../engine/calendarBusy.js';
 import { clearBusy, replaceBusyWindow } from '../calendar/replaceBusy.js';
@@ -27,6 +28,7 @@ export async function calendarRoutes(app: FastifyInstance): Promise<void> {
       throw app.httpErrors.badRequest('busy window must be between 0 and 48 hours');
     }
     const userId = (req as AuthedRequest).userId;
+    await requireEntitlement(app, userId);
     const stored = await replaceBusyWindow(
       getPrisma(),
       userId,
