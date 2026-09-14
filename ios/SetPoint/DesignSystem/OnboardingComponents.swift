@@ -1,53 +1,6 @@
 import SwiftUI
 import UIKit
 
-/// The manager opening a beat of the intake — first person, editorial serif,
-/// with the same accent rule the check-in voice uses, so it reads as the same
-/// person talking. An optional `context` line above acknowledges the last answer.
-struct ManagerLine: View {
-    /// A short note on what you just told it, e.g. "Gaining to 84 kg." Shown
-    /// above the line.
-    var context: String?
-    /// What the manager says to open this beat.
-    let line: String
-    /// A quiet aside under the line (the old "subtitle" — practical detail).
-    var aside: String?
-
-    var body: some View {
-        HStack(alignment: .top, spacing: Space.sm) {
-            RoundedRectangle(cornerRadius: 2)
-                .fill(Palette.accent)
-                .frame(width: 3)
-                .padding(.vertical, 2)
-
-            VStack(alignment: .leading, spacing: Space.xs) {
-                if let context {
-                    Text(context)
-                        .sectionLabelStyle()
-                        .foregroundStyle(Palette.accent)
-                        .appearIn(0)
-                }
-                Text(line)
-                    .font(Typography.voice(24))
-                    .foregroundStyle(Palette.ink)
-                    .lineSpacing(3)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .appearIn(context == nil ? 0 : 1)
-                if let aside {
-                    Text(aside)
-                        .font(Typography.data(13))
-                        .foregroundStyle(Palette.inkSoft)
-                        .lineSpacing(2)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .appearIn(context == nil ? 1 : 2)
-                }
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.bottom, Space.sm)
-    }
-}
-
 /// A large tappable option card (goal, activity level). Lifts and tints when
 /// chosen; a checkmark draws in.
 struct ChoiceCard: View {
@@ -258,32 +211,210 @@ struct MinutesField: View {
     }
 }
 
-/// The onboarding journey indicator — one segment per step, filling as you go.
-/// The current segment sits at a low opacity ("in progress"); completed ones are
-/// solid. Segments animate their fill when `step` advances.
-struct ProgressThread: View {
-    /// 0-based index of the current step.
-    let step: Int
-    /// Number of steps shown (the outcome screen isn't one).
-    let total: Int
+/// A setup screen's question — big serif, nothing beside it, an optional quiet line under.
+struct StepHeadline: View {
+    let text: String
+    var detail: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Space.xs) {
+            Text(text)
+                .font(Typography.display(38))
+                .foregroundStyle(Palette.ink)
+                .fixedSize(horizontal: false, vertical: true)
+                .appearIn(0)
+            if let detail {
+                Text(detail)
+                    .font(Typography.data(16))
+                    .foregroundStyle(Palette.inkSoft)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .appearIn(1)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityAddTraits(.isHeader)
+    }
+}
+
+/// The round Next button. Onboarding progress lives in the ring around it
+/// instead of a step bar across the top.
+struct RingNextButton: View {
+    let progress: Double
+    var enabled = true
+    var busy = false
+    let action: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        HStack(spacing: 4) {
-            ForEach(0 ..< max(total, 1), id: \.self) { i in
-                Capsule()
-                    .fill(fill(for: i))
-                    .frame(height: 4)
+        Button(action: action) {
+            ZStack {
+                Circle()
+                    .stroke(Palette.surfaceSunk, lineWidth: 3)
+                Circle()
+                    .trim(from: 0, to: progress)
+                    .stroke(Palette.accent, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                    .animation(Motion.adaptive(Motion.enter, reduceMotion: reduceMotion), value: progress)
+                Circle()
+                    .fill(Palette.accent)
+                    .padding(8)
+                    .elevation(enabled ? .resting : .flat)
+                if busy {
+                    ProgressView().tint(.white)
+                } else {
+                    Image(systemName: "arrow.right")
+                        .font(.system(size: 22, weight: .semibold))
+                        .foregroundStyle(.white)
+                }
             }
+            .frame(width: 78, height: 78)
+            .opacity(enabled ? 1 : 0.45)
+            .animation(Motion.adaptive(Motion.settle, reduceMotion: reduceMotion), value: enabled)
         }
-        .animation(Motion.adaptive(Motion.enter, reduceMotion: reduceMotion), value: step)
-    }
-
-    private func fill(for i: Int) -> Color {
-        if i < step { return Palette.accent }
-        if i == step { return Palette.accent.opacity(0.35) }
-        return Palette.surfaceSunk
+        .buttonStyle(PressableCard())
+        .disabled(!enabled || busy)
+        .accessibilityLabel("Next")
+        .accessibilityValue("\(Int((progress * 100).rounded())) percent done")
     }
 }
 
+/// The quiet circular Back button that pairs with `RingNextButton`.
+struct CircleBackButton: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "chevron.left")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(Palette.ink)
+                .frame(width: 52, height: 52)
+                .background(Palette.surfaceSunk, in: Circle())
+        }
+        .buttonStyle(PressableCard())
+        .accessibilityLabel("Back")
+    }
+}
+
+/// A pill-shaped segmented control on a sunk track.
+struct SegmentedPills<Option: Hashable>: View {
+    let options: [Option]
+    @Binding var selection: Option
+    let title: (Option) -> String
+    var detail: ((Option) -> String)?
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Namespace private var ns
+
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(options, id: \.self) { option in
+                let on = option == selection
+                Button {
+                    withAnimation(Motion.adaptive(Motion.settle, reduceMotion: reduceMotion)) { selection = option }
+                } label: {
+                    VStack(spacing: 2) {
+                        Text(title(option))
+                            .font(Typography.data(16, weight: .bold))
+                            .foregroundStyle(on ? Palette.ink : Palette.inkSoft)
+                        if let detail {
+                            Text(detail(option))
+                                .font(Typography.data(12, weight: .medium))
+                                .foregroundStyle(on ? Palette.inkSoft : Palette.inkFaint)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, detail == nil ? 13 : 11)
+                    .background {
+                        if on {
+                            RoundedRectangle(cornerRadius: detail == nil ? 999 : 17, style: .continuous)
+                                .fill(Palette.surface)
+                                .elevation(.resting)
+                                .matchedGeometryEffect(id: "segment", in: ns)
+                        }
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(on ? .isSelected : [])
+            }
+        }
+        .padding(5)
+        .background(Palette.surfaceSunk, in: RoundedRectangle(cornerRadius: detail == nil ? 999 : 22, style: .continuous))
+    }
+}
+
+/// Wrapping selectable chips.
+struct FlowChips: View {
+    let options: [String]
+    @Binding var selected: [String]
+
+    var body: some View {
+        FlexWrap(spacing: 10, lineSpacing: 10) {
+            ForEach(options, id: \.self) { option in
+                let isOn = selected.contains(option)
+                Button {
+                    withAnimation(Motion.settle) {
+                        if isOn { selected.removeAll { $0 == option } } else { selected.append(option) }
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        if isOn {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 11, weight: .bold))
+                        }
+                        Text(option)
+                    }
+                    .font(Typography.data(16, weight: .semibold))
+                    .foregroundStyle(isOn ? Palette.background : Palette.ink)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .background(isOn ? Palette.ink : Palette.surface, in: Capsule())
+                    .overlay(Capsule().strokeBorder(isOn ? Color.clear : Palette.hairline))
+                    .elevation(isOn ? .flat : .resting)
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(isOn ? .isSelected : [])
+            }
+        }
+    }
+}
+
+/// Minimal flow layout (iOS 16+ Layout).
+struct FlexWrap: Layout {
+    var spacing: CGFloat = 8
+    var lineSpacing: CGFloat = 8
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let maxWidth = proposal.width ?? .infinity
+        var x: CGFloat = 0, y: CGFloat = 0, lineHeight: CGFloat = 0
+        for view in subviews {
+            let size = view.sizeThatFits(.unspecified)
+            if x + size.width > maxWidth, x > 0 {
+                x = 0
+                y += lineHeight + lineSpacing
+                lineHeight = 0
+            }
+            x += size.width + spacing
+            lineHeight = max(lineHeight, size.height)
+        }
+        return CGSize(width: maxWidth == .infinity ? x : maxWidth, height: y + lineHeight)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var x = bounds.minX
+        var y = bounds.minY
+        var lineHeight: CGFloat = 0
+        for view in subviews {
+            let size = view.sizeThatFits(.unspecified)
+            if x + size.width > bounds.maxX, x > bounds.minX {
+                x = bounds.minX
+                y += lineHeight + lineSpacing
+                lineHeight = 0
+            }
+            view.place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(size))
+            x += size.width + spacing
+            lineHeight = max(lineHeight, size.height)
+        }
+    }
+}

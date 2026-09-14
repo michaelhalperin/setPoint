@@ -1,127 +1,111 @@
 import SwiftUI
 
+/// Setup after sign-in. Each step is one screen; the round Next button carries
+/// progress in its ring. The last two steps (notifications, the payoff) bring
+/// their own actions.
 struct OnboardingFlow: View {
     @Bindable var model: OnboardingViewModel
+    @Environment(AppEnvironment.self) private var env
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    var body: some View {
-        VStack(spacing: 0) {
-            if let index = model.threadIndex {
-                VStack(spacing: Space.xs) {
-                    HStack {
-                        Text(model.stepTitle ?? "")
-                            .sectionLabelStyle()
-                    }
-                    ProgressThread(step: index, total: OnboardingViewModel.threadedSteps.count)
-                }
-                .padding(.horizontal, Space.gutter)
-                .padding(.top, Space.sm)
-                .transition(.opacity)
-            }
+    private var terracotta: Bool { model.step == .covered && model.enforcementEnabled }
 
+    var body: some View {
+        ZStack {
+            (terracotta ? Palette.accent : Palette.background)
+                .ignoresSafeArea()
+
+            content
+                .id(model.step)
+                .transition(.opacity)
+        }
+        .animation(Motion.adaptive(Motion.enter, reduceMotion: reduceMotion), value: model.step)
+        .task {
+            await env.push.syncAuthorizationStatus()
+            model.asksForNotifications = env.push.authorizationStatus == .notDetermined
+        }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        switch model.step {
+        case .reach:
+            ReachStep(model: model)
+                .padding(.horizontal, Space.gutter)
+                .padding(.top, Space.lg)
+                .padding(.bottom, Space.xs)
+        case .covered:
+            CoveredStep(model: model)
+                .padding(.horizontal, Space.gutter)
+                .padding(.top, Space.lg)
+                .padding(.bottom, Space.xs)
+        default:
             ScrollView {
                 stepView
                     .padding(.horizontal, Space.gutter)
-                    .padding(.top, topPadding)
-                    .padding(.bottom, 148) // clear the floating nav
+                    .padding(.top, Space.lg)
+                    .padding(.bottom, Space.md)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .transition(.opacity)
-                    .id(model.step)
             }
             .scrollDismissesKeyboard(.interactively)
             .scrollBounceBehavior(.basedOnSize)
-        }
-        .background(Palette.background.ignoresSafeArea())
-        .safeAreaInset(edge: .bottom, spacing: 0) { navBar }
-        .animation(Motion.adaptive(Motion.enter, reduceMotion: reduceMotion), value: model.step)
-    }
-
-    private var topPadding: CGFloat {
-        switch model.step {
-        case .hook, .demo, .outcome: return 0
-        default: return Space.lg
+            .safeAreaInset(edge: .bottom, spacing: 0) { navBar }
         }
     }
 
     @ViewBuilder
     private var stepView: some View {
         switch model.step {
-        case .hook: HookStep()
-        case .demo: DemoStep()
         case .goal: GoalStep(model: model)
-        case .vitals: VitalsStep(model: model)
-        case .birthdate: BirthdateStep(model: model)
-        case .sex: SexStep(model: model)
-        case .activity: ActivityStep(model: model)
+        case .about: AboutStep(model: model)
         case .target: TargetStep(model: model)
         case .rhythm: RhythmStep(model: model)
-        case .wearable: WearableStep(model: model)
         case .restrictions: RestrictionsStep(model: model)
-        case .medical: MedicalStep(model: model)
         case .safety: SafetyStep(model: model)
-        case .review: ReviewStep(model: model)
-        case .outcome: OutcomeStep(model: model)
+        case .reach, .covered: EmptyView()
         }
     }
 
     private var navBar: some View {
-        HStack(spacing: Space.sm) {
-            if model.canGoBack {
-                Button {
-                    model.goBack()
-                } label: {
-                    Label("Back", systemImage: "chevron.left")
-                        .labelStyle(.titleAndIcon)
-                        .font(Typography.data(15, weight: .medium))
-                        .foregroundStyle(Palette.inkSoft)
-                        .padding(.vertical, 10)
-                        .padding(.horizontal, 6)
+        VStack(spacing: Space.xs) {
+            if let error = model.error {
+                Text(error)
+                    .font(Typography.data(13, weight: .semibold))
+                    .foregroundStyle(Palette.accentDeep)
+                    .transition(.opacity)
+            }
+            HStack {
+                if model.canGoBack {
+                    CircleBackButton { model.goBack() }
+                        .transition(.opacity)
                 }
-                .transition(.opacity)
+                Spacer()
+                RingNextButton(
+                    progress: model.progress,
+                    enabled: model.canAdvance,
+                    busy: model.submitting
+                ) { model.advance() }
             }
-
-            ActionButton(
-                title: model.primaryTitle,
-                kind: .primary
-            ) {
-                guard model.canAdvance else { return }
-                model.advance()
-            }
-            .opacity(model.canAdvance ? 1 : 0.4)
-            .allowsHitTesting(model.canAdvance)
-            .animation(Motion.adaptive(Motion.settle, reduceMotion: reduceMotion), value: model.canAdvance)
         }
-        .padding(.horizontal, Space.gutter)
-        .padding(.top, Space.md)
-        .padding(.bottom, Space.xs)
+        .padding(.horizontal, 24)
+        .padding(.top, Space.sm)
+        .padding(.bottom, Space.xxs)
         .background(alignment: .top) {
             VStack(spacing: 0) {
-                LinearGradient(
-                    colors: [Palette.background.opacity(0), Palette.background],
-                    startPoint: .top, endPoint: .bottom
-                )
-                .frame(height: 20)
+                LinearGradient(colors: [Palette.background.opacity(0), Palette.background], startPoint: .top, endPoint: .bottom)
+                    .frame(height: 24)
                 Palette.background
             }
             .ignoresSafeArea()
         }
-        .overlay(alignment: .top) {
-            if let error = model.error {
-                Text(error)
-                    .font(Typography.data(13))
-                    .foregroundStyle(Palette.accent)
-                    .padding(.bottom, 4)
-                    .offset(y: -22)
-                    .transition(.opacity)
-            }
-        }
-        .animation(Motion.adaptive(Motion.enter, reduceMotion: reduceMotion), value: model.canGoBack)
+        .animation(Motion.adaptive(Motion.settle, reduceMotion: reduceMotion), value: model.canGoBack)
+        .animation(Motion.adaptive(Motion.settle, reduceMotion: reduceMotion), value: model.error)
     }
 }
 
 #if DEBUG
 #Preview {
-    OnboardingFlow(model: OnboardingViewModel(api: AppEnvironment.preview().api, onComplete: {}))
+    OnboardingFlow(model: .previewed(at: .goal))
         .environment(AppEnvironment.preview())
 }
 #endif

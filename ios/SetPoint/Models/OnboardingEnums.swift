@@ -21,6 +21,15 @@ enum Goal: String, CaseIterable, Identifiable {
         }
     }
 
+    /// The two-to-four-word line on the onboarding goal tile.
+    var tagline: String {
+        switch self {
+        case .bulk: return "Build size"
+        case .diet: return "Lose fat, keep energy"
+        case .maintain: return "Hold steady"
+        }
+    }
+
     /// Whether this goal needs a target weight + pace.
     var hasWeightTarget: Bool { self != .maintain }
 
@@ -95,6 +104,16 @@ enum MealRhythmPreset: String, CaseIterable, Identifiable {
         }
     }
 
+    /// The segmented-control label on the rhythm dial.
+    var shortTitle: String {
+        switch self {
+        case .standard: return "Standard"
+        case .early: return "Early"
+        case .night: return "Late"
+        case .custom: return "Custom"
+        }
+    }
+
     var subtitle: String {
         switch self {
         case .standard: return "8:00 · 13:00 · 19:00"
@@ -131,6 +150,16 @@ func derivedQuietHours(breakfastMin: Int, dinnerMin: Int) -> (start: Int, end: I
     let start = (dinnerMin + 240) % 1440
     let end = max(0, breakfastMin - 60)
     return (start, end)
+}
+
+/// When a check-in would come: a usual meal time plus a grace period with
+/// nothing logged. Onboarding draws these as the bells on the day dial.
+enum CheckInSchedule {
+    static let graceMin = 45
+
+    static func minute(afterMeal mealMin: Int) -> Int {
+        (mealMin + graceMin) % 1440
+    }
 }
 
 enum ActivityLevel: String, CaseIterable, Identifiable {

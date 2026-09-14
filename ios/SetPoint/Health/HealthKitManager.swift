@@ -2,6 +2,14 @@ import Foundation
 import HealthKit
 import Observation
 
+/// What Apple Health knows about the body, for prefilling onboarding.
+struct HealthProfile: Equatable {
+    var heightCm: Double?
+    var weightKg: Double?
+    var birthDate: Date?
+    var sex: Sex?
+}
+
 /// Reads HRV + resting heart rate, computes the deviation from personal baseline
 /// on-device, and sends only the z-scores to `POST /api/biosignals` (plan §2, §4).
 @MainActor
@@ -16,6 +24,7 @@ final class HealthKitManager {
     private let hrvType = HKQuantityType(.heartRateVariabilitySDNN)
     private let rhrType = HKQuantityType(.restingHeartRate)
     private let bodyMassType = HKQuantityType(.bodyMass)
+    private let heightType = HKQuantityType(.height)
     private let hrvUnit = HKUnit.secondUnit(with: .milli)
     private let rhrUnit = HKUnit(from: "count/min")
     private let kgUnit = HKUnit.gramUnit(with: .kilo)
@@ -24,6 +33,11 @@ final class HealthKitManager {
 
     var isAvailable: Bool { HKHealthStore.isHealthDataAvailable() }
 
+    private var readTypes: Set<HKObjectType> {
+        [hrvType, rhrType, bodyMassType, heightType,
+         HKCharacteristicType(.dateOfBirth), HKCharacteristicType(.biologicalSex)]
+    }
+
     /// Prompts for read access. HealthKit never reveals whether *read* was
     /// granted, so we treat "the sheet was shown without error" as connected and
     /// let a later empty query be the real signal.
@@ -31,7 +45,7 @@ final class HealthKitManager {
     func connect() async -> Bool {
         guard isAvailable else { return false }
         do {
-            try await store.requestAuthorization(toShare: [], read: [hrvType, rhrType, bodyMassType])
+            try await store.requestAuthorization(toShare: [], read: readTypes)
             connected = true
             enableBackgroundDelivery()
             await sync()
@@ -53,6 +67,30 @@ final class HealthKitManager {
         guard isAvailable else { return false }
         let hrv = await samples(hrvType, unit: hrvUnit, days: days)
         return !hrv.isEmpty
+    }
+
+    /// Height, weight, birth date and sex as far as Health knows them — the
+    /// onboarding "Fill from Apple Health" shortcut. Missing or implausible
+    /// values stay nil.
+    func readProfile() async -> HealthProfile {
+        guard isAvailable else { return HealthProfile() }
+        async let height = latest(heightType, unit: .meterUnit(with: .centi))
+        async let weight = latest(bodyMassType, unit: kgUnit)
+        let (heightCm, weightKg) = await (height, weight)
+
+        var profile = HealthProfile()
+        if let heightCm, (120 ... 230).contains(heightCm) { profile.heightCm = heightCm.rounded() }
+        if let weightKg, (35 ... 250).contains(weightKg) { profile.weightKg = (weightKg * 10).rounded() / 10 }
+        if let components = try? store.dateOfBirthComponents(),
+           let date = Calendar.current.date(from: components) {
+            profile.birthDate = date
+        }
+        switch (try? store.biologicalSex())?.biologicalSex {
+        case .male: profile.sex = .male
+        case .female: profile.sex = .female
+        default: break
+        }
+        return profile
     }
 
     /// Fetch → compute → upload. Safe to call often; no-ops without access.
@@ -100,6 +138,17 @@ final class HealthKitManager {
             store.enableBackgroundDelivery(for: type, frequency: .hourly) { _, _ in }
             let query = HKObserverQuery(sampleType: type, predicate: nil) { [weak self] _, completion, _ in
                 Task { await self?.sync(); completion() }
+            }
+            store.execute(query)
+        }
+    }
+
+    private func latest(_ type: HKQuantityType, unit: HKUnit) async -> Double? {
+        let sort = NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)
+        return await withCheckedContinuation { continuation in
+            let query = HKSampleQuery(sampleType: type, predicate: nil, limit: 1, sortDescriptors: [sort]) { _, results, _ in
+                let value = (results?.first as? HKQuantitySample)?.quantity.doubleValue(for: unit)
+                continuation.resume(returning: value)
             }
             store.execute(query)
         }

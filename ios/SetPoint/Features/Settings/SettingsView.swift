@@ -566,7 +566,7 @@ private struct DevOnboardingPreview: View {
         }
         .onAppear {
             if model == nil {
-                model = .previewed(at: .hook, onComplete: { dismiss() })
+                model = .previewed(at: .goal, onComplete: { dismiss() })
             }
         }
     }

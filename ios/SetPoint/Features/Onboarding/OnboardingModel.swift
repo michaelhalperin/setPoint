@@ -52,11 +52,36 @@ struct OnboardingDraft {
 
     var restrictions: [String] = []
     var restrictionsFreeText = ""
-    var medicalSupervisionRequired = false
+    /// nil until the first safety card is answered.
+    var medicalSupervisionRequired: Bool?
     var scoff = ScoffAnswers()
 
-    /// Explicit consent to the privacy policy + terms, checked on Review.
-    var agreedToTerms = false
+    var age: Int {
+        Calendar.current.dateComponents([.year], from: birthDate, to: .now).year ?? 0
+    }
+
+    /// Fill in whatever Apple Health knows, leaving the rest as the user set it.
+    mutating func apply(_ profile: HealthProfile) {
+        if let height = profile.heightCm { heightCm = height }
+        if let weight = profile.weightKg { weightKg = weight }
+        if let birthDate = profile.birthDate { self.birthDate = birthDate }
+        if let sex = profile.sex { self.sex = sex }
+    }
+
+    mutating func applyPreset(_ preset: MealRhythmPreset) {
+        mealRhythmPreset = preset
+        guard let times = preset.times else { return }
+        breakfastMin = times.breakfast
+        lunchMin = times.lunch
+        dinnerMin = times.dinner
+        applyDerivedQuietHours()
+    }
+
+    mutating func applyDerivedQuietHours() {
+        let quiet = derivedQuietHours(breakfastMin: breakfastMin, dinnerMin: dinnerMin)
+        quietStartMin = quiet.start
+        quietEndMin = quiet.end
+    }
 
     func toRequest() -> OnboardingRequest {
         let df = DateFormatter()
@@ -81,7 +106,7 @@ struct OnboardingDraft {
             mealTimes: .init(breakfastMin: breakfastMin, lunchMin: lunchMin, dinnerMin: dinnerMin),
             quietHours: .init(startMin: quietStartMin, endMin: quietEndMin),
             safety: .init(
-                medicalSupervisionRequired: medicalSupervisionRequired,
+                medicalSupervisionRequired: medicalSupervisionRequired ?? false,
                 scoff: .init(
                     makeSelfSick: scoff.makeSelfSick ?? false,
                     lostControl: scoff.lostControl ?? false,
@@ -98,23 +123,42 @@ struct OnboardingDraft {
     }
 }
 
+/// The safety cards, in order: the medical question first, then SCOFF (§3).
+enum SafetyQuestion: Int, CaseIterable {
+    case medical, makeSelfSick, lostControl, lostOneStone, believesFat, foodDominates
+
+    var text: String {
+        switch self {
+        case .medical: return "Is your eating supervised by a doctor or dietitian?"
+        case .makeSelfSick: return "Do you make yourself sick because you feel uncomfortably full?"
+        case .lostControl: return "Do you worry you have lost control over how much you eat?"
+        case .lostOneStone: return "Have you recently lost more than 6 kg in a three-month period?"
+        case .believesFat: return "Do you believe yourself to be fat when others say you are too thin?"
+        case .foodDominates: return "Would you say that food dominates your life?"
+        }
+    }
+}
+
 @MainActor
 @Observable
 final class OnboardingViewModel {
-    /// The intake as many small beats rather than a few dense forms — each
-    /// screen is one decision. `hook`/`demo` sell before asking for anything;
-    /// `outcome` delivers. Everything between is threaded with a progress bar.
+    /// Setup after sign-in (the pitch lives in `WelcomeView`, before it). One
+    /// decision per screen; `safety` submits, `reach` and `covered` come after.
     enum Step: Int, CaseIterable {
-        case hook, demo
-        case goal, vitals, birthdate, sex, activity, target, rhythm, wearable, restrictions, medical, safety
-        case review, outcome
+        case goal, about, target, rhythm, restrictions, safety
+        case reach, covered
     }
 
-    var step: Step = .hook
+    var step: Step = .goal
     var draft = OnboardingDraft()
+    /// Which safety card is in front.
+    var safetyIndex = 0
     var submitting = false
     var result: OnboardingResponse?
     var error: String?
+    /// Set by the flow from the live notification status — nothing to ask when
+    /// the user has already decided.
+    var asksForNotifications = true
 
     private let api: APIClient
     let onComplete: @MainActor () -> Void
@@ -124,15 +168,25 @@ final class OnboardingViewModel {
         self.onComplete = onComplete
     }
 
-    /// Beats that carry the progress thread (the sell and the payoff don't).
-    static let threadedSteps: [Step] = [
-        .goal, .vitals, .birthdate, .sex, .activity, .target, .rhythm, .wearable, .restrictions, .medical, .safety, .review,
-    ]
+    // MARK: Progress
 
-    /// 0-based position of `step` within the thread, or nil if it isn't threaded.
-    var threadIndex: Int? {
-        Self.threadedSteps.firstIndex(of: step)
+    /// The steps that fill the ring on the Next button, for this goal.
+    var progressSteps: [Step] {
+        [.goal, .about, .target, .rhythm, .restrictions, .safety].filter { !shouldSkip($0) }
     }
+
+    /// 0...1 — how full the ring is once the current step is done.
+    var progress: Double {
+        let steps = progressSteps
+        guard let index = steps.firstIndex(of: step) else { return 1 }
+        return Double(index + 1) / Double(steps.count)
+    }
+
+    var enforcementEnabled: Bool {
+        result?.enforcementDisabledReason == nil
+    }
+
+    // MARK: Validation
 
     var targetWeightIsValid: Bool {
         guard let goal = draft.goal else { return false }
@@ -161,52 +215,53 @@ final class OnboardingViewModel {
         }
     }
 
+    /// Whole weeks to the target at the chosen pace, or nil without one.
+    var etaWeeks: Int? {
+        guard let goal = draft.goal, goal.hasWeightTarget,
+              let current = draft.weightKg, let target = draft.targetWeightKg else { return nil }
+        let rate = draft.pace.kgPerWeek(for: goal)
+        guard rate > 0, target != current else { return nil }
+        return Int((abs(target - current) / rate).rounded(.up))
+    }
+
     var mealAnchorsAreValid: Bool {
         draft.breakfastMin < draft.lunchMin && draft.lunchMin < draft.dinnerMin
     }
 
+    var safetyComplete: Bool {
+        draft.medicalSupervisionRequired != nil && draft.scoff.isComplete
+    }
+
+    func safetyAnswer(_ question: SafetyQuestion) -> Bool? {
+        switch question {
+        case .medical: return draft.medicalSupervisionRequired
+        case .makeSelfSick: return draft.scoff.makeSelfSick
+        case .lostControl: return draft.scoff.lostControl
+        case .lostOneStone: return draft.scoff.lostOneStone
+        case .believesFat: return draft.scoff.believesFat
+        case .foodDominates: return draft.scoff.foodDominates
+        }
+    }
+
+    // MARK: Navigation
+
     var canGoBack: Bool {
-        step != .hook && step != .outcome && !submitting
+        guard !submitting else { return false }
+        switch step {
+        case .goal, .reach, .covered: return false
+        default: return true
+        }
     }
 
     var canAdvance: Bool {
         switch step {
-        case .hook, .demo: return true
         case .goal: return draft.goal != nil
-        case .vitals: return draft.heightCm != nil && draft.weightKg != nil
-        case .birthdate, .sex, .activity, .wearable, .medical: return true
+        case .about: return draft.heightCm != nil && draft.weightKg != nil
         case .target: return targetWeightIsValid && draft.targetWeightKg != nil
         case .rhythm: return draft.mealRhythmPreset != .custom || mealAnchorsAreValid
         case .restrictions: return true
-        case .safety: return draft.scoff.isComplete
-        case .review: return !submitting && draft.agreedToTerms
-        case .outcome: return true
-        }
-    }
-
-    var primaryTitle: String {
-        switch step {
-        case .hook: return "Let's go"
-        case .review: return submitting ? "Building…" : "Build plan"
-        case .outcome: return "Start"
-        default: return "Continue"
-        }
-    }
-
-    var stepTitle: String? {
-        switch step {
-        case .goal: return "Direction"
-        case .vitals: return "Body"
-        case .birthdate: return "Birthday"
-        case .sex, .activity: return "About you"
-        case .target: return "Target"
-        case .rhythm: return "Rhythm"
-        case .wearable: return "Signal"
-        case .restrictions: return "Boundaries"
-        case .medical: return "Medical"
-        case .safety: return "Safety check"
-        case .review: return "Ready"
-        default: return nil
+        case .safety: return safetyComplete && !submitting
+        case .reach, .covered: return true
         }
     }
 
@@ -220,9 +275,11 @@ final class OnboardingViewModel {
 
     func advance() {
         switch step {
-        case .review:
+        case .safety:
             Task { await submit() }
-        case .outcome:
+        case .reach:
+            step = .covered
+        case .covered:
             onComplete()
         default:
             var next = step.rawValue + 1
@@ -232,14 +289,35 @@ final class OnboardingViewModel {
     }
 
     func goBack() {
+        if step == .safety, safetyIndex > 0 {
+            safetyIndex -= 1
+            return
+        }
         var prev = step.rawValue - 1
         while let candidate = Step(rawValue: prev), shouldSkip(candidate) { prev -= 1 }
         if let prevStep = Step(rawValue: prev) { step = prevStep }
     }
 
-    /// A single-choice screen (goal, sex, activity, a rhythm preset, wearable,
-    /// medical) advances itself shortly after the tap — no separate Continue
-    /// needed. Guards against firing if the user has already navigated away.
+    /// Answer the card in front; the last answer submits the plan.
+    func answerSafety(_ value: Bool) {
+        guard let question = SafetyQuestion(rawValue: safetyIndex) else { return }
+        switch question {
+        case .medical: draft.medicalSupervisionRequired = value
+        case .makeSelfSick: draft.scoff.makeSelfSick = value
+        case .lostControl: draft.scoff.lostControl = value
+        case .lostOneStone: draft.scoff.lostOneStone = value
+        case .believesFat: draft.scoff.believesFat = value
+        case .foodDominates: draft.scoff.foodDominates = value
+        }
+        if safetyIndex < SafetyQuestion.allCases.count - 1 {
+            safetyIndex += 1
+        } else if safetyComplete {
+            autoAdvance(from: .safety, after: 0.35)
+        }
+    }
+
+    /// A single-choice screen advances itself shortly after the tap. Guards
+    /// against firing if the user has already navigated away.
     func autoAdvance(from origin: Step, after seconds: Double = 0.32) {
         Task {
             try? await Task.sleep(for: .seconds(seconds))
@@ -248,32 +326,36 @@ final class OnboardingViewModel {
         }
     }
 
+    /// Where a saved plan goes next: straight to the payoff in quiet mode (no
+    /// check-ins to deliver) or when notifications are already decided.
+    func stepAfterSubmit(_ response: OnboardingResponse) -> Step {
+        response.enforcementDisabledReason == nil && asksForNotifications ? .reach : .covered
+    }
+
     private func submit() async {
+        guard !submitting else { return }
         submitting = true
         error = nil
         defer { submitting = false }
         #if DEBUG
         if previewOnly {
-            result = OnboardingResponse(
-                dailyKcalTarget: 3120, dailyProteinTargetG: 142,
-                targetWeightKg: 85, paceKgPerWeek: 0.25,
-                enforcementEnabled: true, enforcementDisabledReason: nil
-            )
-            step = .outcome
+            let response = OnboardingResponse.preview
+            result = response
+            step = stepAfterSubmit(response)
             return
         }
         #endif
         do {
             let response: OnboardingResponse = try await api.post("/api/onboarding", draft.toRequest())
             result = response
-            step = .outcome
+            step = stepAfterSubmit(response)
         } catch {
             self.error = UserFacingError.message(for: error, fallback: "Couldn't save. Try again.")
         }
     }
 
     #if DEBUG
-    /// When true, Review → Start skips the API so a preview can walk the whole flow.
+    /// When true, Safety → next skips the API so a preview can walk the whole flow.
     var previewOnly = false
 
     static func previewed(
@@ -282,25 +364,34 @@ final class OnboardingViewModel {
     ) -> OnboardingViewModel {
         let vm = OnboardingViewModel(api: AppEnvironment.preview().api, onComplete: onComplete)
         vm.previewOnly = true
-        vm.draft.goal = .bulk
-        vm.draft.heightCm = 182
-        vm.draft.weightKg = 79
-        vm.draft.targetWeightKg = 85
-        vm.draft.pace = .steady
-        vm.draft.restrictions = ["Dairy", "Peanuts"]
-        vm.draft.scoff = ScoffAnswers(
-            makeSelfSick: false, lostControl: false, lostOneStone: false,
-            believesFat: false, foodDominates: false
-        )
-        if step == .outcome {
-            vm.result = OnboardingResponse(
-                dailyKcalTarget: 3120, dailyProteinTargetG: 142,
-                targetWeightKg: 85, paceKgPerWeek: 0.25,
-                enforcementEnabled: true, enforcementDisabledReason: nil
+        if step != .goal {
+            vm.draft.goal = .bulk
+            vm.draft.heightCm = 178
+            vm.draft.weightKg = 74
+            vm.draft.targetWeightKg = 80
+            vm.draft.pace = .steady
+        }
+        if step == .safety { vm.safetyIndex = 2 }
+        if step == .reach || step == .covered {
+            vm.draft.medicalSupervisionRequired = false
+            vm.draft.scoff = ScoffAnswers(
+                makeSelfSick: false, lostControl: false, lostOneStone: false,
+                believesFat: false, foodDominates: false
             )
+            vm.result = .preview
         }
         vm.step = step
         return vm
     }
     #endif
 }
+
+#if DEBUG
+extension OnboardingResponse {
+    static let preview = OnboardingResponse(
+        dailyKcalTarget: 3120, dailyProteinTargetG: 142,
+        targetWeightKg: 80, paceKgPerWeek: 0.25,
+        enforcementEnabled: true, enforcementDisabledReason: nil
+    )
+}
+#endif

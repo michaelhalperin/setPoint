@@ -157,3 +157,43 @@ extension View {
         modifier(FirstAppearPulse(active: active))
     }
 }
+
+/// A repeating 0..<1 phase for looping illustrations (the welcome pages), read
+/// off the display clock so every loop is deterministic and costs nothing off
+/// screen. Under Reduce Motion it holds a single representative frame.
+struct LoopingPhase<Content: View>: View {
+    let period: Double
+    /// Seconds to shift this loop by, so siblings can stagger.
+    var offset: Double = 0
+    /// The frame shown under Reduce Motion.
+    var still: Double = 0.7
+    @ViewBuilder var content: (Double) -> Content
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        if reduceMotion {
+            content(still)
+        } else {
+            TimelineView(.animation) { context in
+                let seconds = context.date.timeIntervalSinceReferenceDate + period - offset
+                content(seconds.truncatingRemainder(dividingBy: period) / period)
+            }
+        }
+    }
+}
+
+/// Easing helpers for phase-driven loops.
+enum Phase {
+    /// 0 before `start`, 1 after `end`, smoothstepped in between.
+    static func ramp(_ t: Double, _ start: Double, _ end: Double) -> Double {
+        guard end > start else { return t >= end ? 1 : 0 }
+        let x = min(1, max(0, (t - start) / (end - start)))
+        return x * x * (3 - 2 * x)
+    }
+
+    /// Rises over `inStart...inEnd`, holds, then falls over `outStart...outEnd`.
+    static func window(_ t: Double, _ inStart: Double, _ inEnd: Double, _ outStart: Double, _ outEnd: Double) -> Double {
+        ramp(t, inStart, inEnd) * (1 - ramp(t, outStart, outEnd))
+    }
+}

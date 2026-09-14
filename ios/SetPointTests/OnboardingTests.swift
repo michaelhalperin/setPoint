@@ -53,30 +53,29 @@ final class OnboardingTests: XCTestCase {
     // MARK: Step gating — one decision per screen
 
     @MainActor
-    func testTheSellGatesNothing() {
-        let vm = OnboardingViewModel(api: AppEnvironment.preview().api, onComplete: {})
-        XCTAssertEqual(vm.step, .hook)
-        XCTAssertTrue(vm.canAdvance)
-        vm.advance()
-        XCTAssertEqual(vm.step, .demo)
-        XCTAssertTrue(vm.canAdvance)
-        vm.advance()
+    private func makeModel() -> OnboardingViewModel {
+        OnboardingViewModel(api: AppEnvironment.preview().api, onComplete: {})
+    }
+
+    @MainActor
+    func testSetupStartsAtTheGoalWithNoWayBack() {
+        let vm = makeModel()
         XCTAssertEqual(vm.step, .goal)
+        XCTAssertFalse(vm.canGoBack) // the pitch lives before sign-in, not behind this
     }
 
     @MainActor
     func testGoalGatesUntilChosen() {
-        let vm = OnboardingViewModel(api: AppEnvironment.preview().api, onComplete: {})
-        vm.step = .goal
+        let vm = makeModel()
         XCTAssertFalse(vm.canAdvance)
         vm.draft.goal = .bulk
         XCTAssertTrue(vm.canAdvance)
     }
 
     @MainActor
-    func testVitalsRequiresHeightAndWeight() {
-        let vm = OnboardingViewModel(api: AppEnvironment.preview().api, onComplete: {})
-        vm.step = .vitals
+    func testAboutRequiresHeightAndWeight() {
+        let vm = makeModel()
+        vm.step = .about
         XCTAssertFalse(vm.canAdvance)
         vm.draft.heightCm = 175
         XCTAssertFalse(vm.canAdvance)
@@ -86,7 +85,7 @@ final class OnboardingTests: XCTestCase {
 
     @MainActor
     func testTargetStepGatesOnAValidWeight() {
-        let vm = OnboardingViewModel(api: AppEnvironment.preview().api, onComplete: {})
+        let vm = makeModel()
         vm.step = .target
         vm.draft.goal = .bulk
         vm.draft.weightKg = 70
@@ -99,37 +98,42 @@ final class OnboardingTests: XCTestCase {
 
     @MainActor
     func testMaintainSkipsTheTargetStepBothWays() {
-        let vm = OnboardingViewModel(api: AppEnvironment.preview().api, onComplete: {})
+        let vm = makeModel()
         vm.draft.goal = .maintain
-        vm.step = .vitals
-        vm.draft.heightCm = 175
-        vm.draft.weightKg = 70
+        vm.step = .about
         vm.advance()
-        XCTAssertEqual(vm.step, .birthdate)       // .target skipped going forward
+        XCTAssertEqual(vm.step, .rhythm)          // .target skipped going forward
         vm.goBack()
-        XCTAssertEqual(vm.step, .vitals)          // and skipped coming back
+        XCTAssertEqual(vm.step, .about)           // and skipped coming back
     }
 
     @MainActor
-    func testGainKeepsTheTargetStepInBothDirections() {
-        let vm = OnboardingViewModel(api: AppEnvironment.preview().api, onComplete: {})
+    func testGainKeepsTheTargetStep() {
+        let vm = makeModel()
         vm.draft.goal = .bulk
-        vm.step = .vitals
-        vm.draft.heightCm = 175
-        vm.draft.weightKg = 70
-        vm.advance()
-        XCTAssertEqual(vm.step, .birthdate)
-        vm.advance()
-        XCTAssertEqual(vm.step, .sex)
-        vm.advance()
-        XCTAssertEqual(vm.step, .activity)
+        vm.step = .about
         vm.advance()
         XCTAssertEqual(vm.step, .target)
+        vm.advance()
+        XCTAssertEqual(vm.step, .rhythm)
+    }
+
+    @MainActor
+    func testProgressRingCountsOnlyTheStepsThisGoalSees() {
+        let vm = makeModel()
+        vm.draft.goal = .bulk
+        XCTAssertEqual(vm.progress, 1.0 / 6, accuracy: 0.001)
+        vm.step = .safety
+        XCTAssertEqual(vm.progress, 1, accuracy: 0.001)
+
+        vm.draft.goal = .maintain
+        vm.step = .goal
+        XCTAssertEqual(vm.progress, 1.0 / 5, accuracy: 0.001)
     }
 
     @MainActor
     func testRhythmGatesOnlyWhenCustomIsInvalid() {
-        let vm = OnboardingViewModel(api: AppEnvironment.preview().api, onComplete: {})
+        let vm = makeModel()
         vm.step = .rhythm
         XCTAssertTrue(vm.canAdvance)               // default preset is always valid
 
@@ -146,49 +150,87 @@ final class OnboardingTests: XCTestCase {
     }
 
     @MainActor
-    func testSafetyGatesUntilAllFiveAreAnswered() {
-        let vm = OnboardingViewModel(api: AppEnvironment.preview().api, onComplete: {})
+    func testApplyingAPresetSetsTimesAndQuietHours() {
+        var draft = OnboardingDraft()
+        draft.applyPreset(.night)
+        XCTAssertEqual([draft.breakfastMin, draft.lunchMin, draft.dinnerMin], [600, 900, 1260])
+        XCTAssertEqual(draft.quietStartMin, 60)
+        XCTAssertEqual(draft.quietEndMin, 540)
+    }
+
+    @MainActor
+    func testSafetyCardsWalkMedicalThenScoff() {
+        let vm = makeModel()
         vm.step = .safety
         XCTAssertFalse(vm.canAdvance)
-        vm.draft.scoff = ScoffAnswers(
-            makeSelfSick: false, lostControl: false, lostOneStone: false,
-            believesFat: false, foodDominates: false
-        )
+
+        vm.answerSafety(true)
+        XCTAssertEqual(vm.draft.medicalSupervisionRequired, true)
+        XCTAssertEqual(vm.safetyIndex, 1)
+
+        for _ in 0 ..< 4 { vm.answerSafety(false) }
+        XCTAssertEqual(vm.safetyIndex, 5)
+        XCTAssertFalse(vm.canAdvance)              // the last SCOFF card is still open
+
+        vm.goBack()
+        XCTAssertEqual(vm.step, .safety)           // back steps through the cards first
+        XCTAssertEqual(vm.safetyIndex, 4)
+        vm.safetyIndex = 5
+
+        vm.draft.scoff.foodDominates = true
+        XCTAssertTrue(vm.safetyComplete)
         XCTAssertTrue(vm.canAdvance)
     }
 
     @MainActor
-    func testReviewGatesOnConsent() {
-        let vm = OnboardingViewModel(api: AppEnvironment.preview().api, onComplete: {})
-        vm.step = .review
-        XCTAssertFalse(vm.canAdvance)
-        vm.draft.agreedToTerms = true
-        XCTAssertTrue(vm.canAdvance)
+    func testQuietModeAndDecidedNotificationsSkipTheAsk() {
+        let vm = makeModel()
+        let on = OnboardingResponse(dailyKcalTarget: 2400, dailyProteinTargetG: 120, targetWeightKg: nil,
+                                    paceKgPerWeek: nil, enforcementEnabled: true, enforcementDisabledReason: nil)
+        let quiet = OnboardingResponse(dailyKcalTarget: 2000, dailyProteinTargetG: nil, targetWeightKg: nil,
+                                       paceKgPerWeek: nil, enforcementEnabled: false,
+                                       enforcementDisabledReason: "EATING_DISORDER_SCREEN")
+        XCTAssertEqual(vm.stepAfterSubmit(on), .reach)
+        XCTAssertEqual(vm.stepAfterSubmit(quiet), .covered)
+        vm.asksForNotifications = false
+        XCTAssertEqual(vm.stepAfterSubmit(on), .covered)
+    }
+
+    @MainActor
+    func testEtaUsesThePace() {
+        let vm = makeModel()
+        vm.draft.goal = .bulk
+        vm.draft.weightKg = 74
+        vm.draft.targetWeightKg = 80
+        vm.draft.pace = .steady                     // 0.25 kg/wk for a gain
+        XCTAssertEqual(vm.etaWeeks, 24)
+        vm.draft.goal = .maintain
+        XCTAssertNil(vm.etaWeeks)
+    }
+
+    func testHealthProfileFillsOnlyWhatItKnows() {
+        var draft = OnboardingDraft()
+        draft.heightCm = 180
+        draft.sex = .female
+        draft.apply(HealthProfile(heightCm: nil, weightKg: 72.4, birthDate: nil, sex: nil))
+        XCTAssertEqual(draft.heightCm, 180)
+        XCTAssertEqual(draft.weightKg, 72.4)
+        XCTAssertEqual(draft.sex, .female)
+    }
+
+    func testCheckInTimesFollowTheMeals() {
+        XCTAssertEqual(CheckInSchedule.minute(afterMeal: 780), 825)
+        XCTAssertEqual(CheckInSchedule.minute(afterMeal: 1420), 25) // wraps past midnight
     }
 
     @MainActor
     func testAutoAdvanceOnlyFiresIfStillOnTheOriginatingStep() async {
-        let vm = OnboardingViewModel(api: AppEnvironment.preview().api, onComplete: {})
+        let vm = makeModel()
         vm.draft.goal = .bulk
-        vm.step = .goal
         vm.autoAdvance(from: .goal, after: 0.05)
-        vm.step = .vitals // navigate away before the timer fires
+        vm.step = .about // navigate away before the timer fires
         try? await Task.sleep(for: .milliseconds(150))
-        XCTAssertEqual(vm.step, .vitals) // unchanged — the stale auto-advance was ignored
-    }
-
-    @MainActor
-    func testThreadIndexSkipsTheSellAndThePayoff() {
-        let vm = OnboardingViewModel(api: AppEnvironment.preview().api, onComplete: {})
-        XCTAssertNil(vm.threadIndex) // hook
-        vm.step = .demo
-        XCTAssertNil(vm.threadIndex)
-        vm.step = .goal
-        XCTAssertEqual(vm.threadIndex, 0)
-        vm.step = .review
-        XCTAssertEqual(vm.threadIndex, OnboardingViewModel.threadedSteps.count - 1)
-        vm.step = .outcome
-        XCTAssertNil(vm.threadIndex)
+        XCTAssertEqual(vm.step, .about) // unchanged — the stale auto-advance was ignored
     }
 
     @MainActor
