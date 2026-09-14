@@ -57,6 +57,7 @@ export type HomeView = {
    * Null in quiet mode, while paused, while one is already open, or once the day is covered.
    */
   nextCheckIn: ScheduledCheckIn | null;
+  needsWeighIn: boolean;
   activeCheckIn: null | {
     id: string;
     tier: number;
@@ -91,7 +92,7 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
   const profile = user.onboarding;
   const dayStart = startOfLocalDay(now, user.timezone);
 
-  const [todayMeals, lastMeal, activeCheckIn, todayCheckIns] = await Promise.all([
+  const [todayMeals, lastMeal, activeCheckIn, todayCheckIns, lastWeighIn] = await Promise.all([
     prisma.meal.findMany({
       where: { userId, loggedAt: { gte: dayStart } },
       orderBy: { loggedAt: 'asc' },
@@ -109,6 +110,7 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
         notes: true,
         items: true,
         parseConfidence: true,
+        parseQuality: true,
       },
     }),
     prisma.meal.findFirst({ where: { userId }, orderBy: { loggedAt: 'desc' }, select: { loggedAt: true } }),
@@ -120,6 +122,11 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
     prisma.checkIn.findMany({
       where: { userId, createdAt: { gte: dayStart } },
       select: { createdAt: true, tier: true },
+    }),
+    prisma.weightEntry.findFirst({
+      where: { userId },
+      orderBy: { measuredAt: 'desc' },
+      select: { measuredAt: true },
     }),
   ]);
 
@@ -221,6 +228,9 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
     quietHours: { startMin: profile.quietHoursStartMin, endMin: profile.quietHoursEndMin },
     day,
     nextCheckIn,
+    needsWeighIn:
+      goal !== 'MAINTAIN' &&
+      (!lastWeighIn || now.getTime() - lastWeighIn.measuredAt.getTime() > 7 * 24 * 3_600_000),
     activeCheckIn: activeCheckIn
       ? {
           id: activeCheckIn.id,

@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { STAPLE_FOODS } from '../data/stapleFoods.js';
 import type { ManagerVoice } from '../managerVoice/types.js';
 import type { PushPayload, PushSender } from '../push/types.js';
-import { runScoreConfidenceJob } from './scoreConfidence.js';
+import { CHECK_IN_COPY_TIMEOUT_MS, runScoreConfidenceJob } from './scoreConfidence.js';
 
 const NOW = new Date('2026-07-01T16:00:00Z'); // 12:00 in New York (EDT)
 const hoursAgo = (h: number) => new Date(NOW.getTime() - h * 3_600_000);
@@ -27,6 +27,9 @@ function makeFakePrisma(users: AnyRow[], opts: { seedFoods?: boolean } = {}) {
   if (opts.seedFoods) {
     for (const f of STAPLE_FOODS) foodItems.push({ id: id('fi'), isStaple: true, ...f });
   }
+  for (const u of users) {
+    pushTokens.push({ id: id('pt'), userId: u.id, token: `tok_${u.id as string}`, kind: 'alert' });
+  }
 
   const match = (row: AnyRow, where: AnyRow = {}): boolean =>
     Object.entries(where).every(([k, v]) => {
@@ -34,16 +37,22 @@ function makeFakePrisma(users: AnyRow[], opts: { seedFoods?: boolean } = {}) {
         const cond = v as Record<string, unknown>;
         if ('in' in cond) return (cond.in as unknown[]).includes(row[k]);
         if ('gte' in cond) return (row[k] as Date) >= (cond.gte as Date);
+        if ('gt' in cond) return (row[k] as string) > (cond.gt as string);
+        if ('lt' in cond) return (row[k] as number) < (cond.lt as number);
         if ('not' in cond) return row[k] !== cond.not;
       }
       return row[k] === v;
     });
 
   const collection = (rows: AnyRow[], prefix: string) => ({
-    findMany: async ({ where }: { where?: AnyRow } = {}) => rows.filter((r) => match(r, where)),
+    findMany: async ({ where, take }: { where?: AnyRow; take?: number } = {}) => {
+      const found = rows.filter((r) => match(r, where));
+      return take != null ? found.slice(0, take) : found;
+    },
     findFirst: async ({ where }: { where?: AnyRow } = {}) => rows.find((r) => match(r, where)) ?? null,
+    findUnique: async ({ where }: { where?: AnyRow } = {}) => rows.find((r) => match(r, where)) ?? null,
     create: async ({ data }: { data: AnyRow }) => {
-      const row = { id: id(prefix), createdAt: NOW, updatedAt: NOW, deferCount: 0, ...data };
+      const row = { id: id(prefix), createdAt: NOW, updatedAt: NOW, deferCount: 0, deliveryStatus: 'CREATED', ...data };
       rows.push(row);
       return row;
     },
@@ -51,6 +60,19 @@ function makeFakePrisma(users: AnyRow[], opts: { seedFoods?: boolean } = {}) {
       const row = rows.find((r) => match(r, where));
       if (row) Object.assign(row, data);
       return row;
+    },
+    updateMany: async ({ where, data }: { where: AnyRow; data: AnyRow }) => {
+      let count = 0;
+      for (const row of rows.filter((r) => match(r, where))) {
+        Object.assign(row, data);
+        count += 1;
+      }
+      return { count };
+    },
+    deleteMany: async ({ where }: { where?: AnyRow } = {}) => {
+      const before = rows.length;
+      for (let i = rows.length - 1; i >= 0; i -= 1) if (match(rows[i]!, where)) rows.splice(i, 1);
+      return { count: before - rows.length };
     },
     upsert: async ({ where, create, update }: { where: AnyRow; create: AnyRow; update: AnyRow }) => {
       const row = rows.find((r) => match(r, where));
@@ -71,9 +93,15 @@ function makeFakePrisma(users: AnyRow[], opts: { seedFoods?: boolean } = {}) {
       escalationStates,
       escalationConversations,
       prescriptions,
+      pushTokens,
     },
     user: {
-      findMany: async () => users.filter((u) => u.onboarding != null),
+      findMany: async ({ where, take }: { where?: AnyRow; take?: number } = {}) => {
+        let found = users.filter((u) => u.onboarding != null);
+        const idFilter = where?.id as { gt?: string } | undefined;
+        if (idFilter?.gt) found = found.filter((u) => (u.id as string) > idFilter.gt!);
+        return take != null ? found.slice(0, take) : found;
+      },
     },
     checkIn: collection(checkIns, 'ci'),
     confidenceScore: collection(confidenceScores, 'cs'),
@@ -92,6 +120,7 @@ function baseUser(over: AnyRow = {}): AnyRow {
     id: 'u1',
     timezone: 'America/New_York',
     createdAt: hoursAgo(1000),
+    wearableModifierEnabled: false,
     onboarding: {
       mode: 'BASIC',
       goal: 'DIET',
@@ -103,6 +132,9 @@ function baseUser(over: AnyRow = {}): AnyRow {
       dinnerMin: 1140,
       quietHoursStartMin: 1380,
       quietHoursEndMin: 420,
+      pantryTokens: [],
+      dislikedFoods: [],
+      prepTimeMaxMin: null,
     },
     safetyScreening: { enforcementEnabled: true },
     escalationState: { consecutiveMisses: 0, currentTier: 1, checkInsPaused: false, backedOffUntil: null },
@@ -112,7 +144,13 @@ function baseUser(over: AnyRow = {}): AnyRow {
 }
 
 const sentPushes: PushPayload[] = [];
-const push: PushSender = { send: vi.fn(async (_tokens, payload) => void sentPushes.push(payload)) };
+const push: PushSender = {
+  send: vi.fn(async (tokens, payload) => {
+    sentPushes.push(payload);
+    const n = tokens.length;
+    return { attempted: n, sent: Math.max(n, 1), failed: 0, invalidTokens: [] };
+  }),
+};
 const voice: ManagerVoice = {
   checkInMessage: vi.fn(async () => 'Time to eat.'),
   homeNote: vi.fn(async () => 'note'),
@@ -261,7 +299,63 @@ describe('runScoreConfidenceJob', () => {
 
       expect(summary.checkInsCreated).toBe(1);
       expect(voice.checkInMessage).toHaveBeenCalledWith(expect.objectContaining({ slot: 'lunch', tier: 1 }));
-      expect(fake.__tables.confidenceScores[0]).toMatchObject({ firedCheckIn: true });
+      expect(fake.__tables.confidenceScores[0]).toMatchObject({ firedCheckIn: true, scoringVersion: 'behavior.v1' });
+    });
+
+    it('does not create a second check-in for the same episode key', async () => {
+      const fake = makeFakePrisma([baseUser()], { seedFoods: true });
+      fake.meal.create({ data: breakfast });
+      await runScoreConfidenceJob({
+        prisma: fake as unknown as PrismaClient,
+        push,
+        voice,
+        now: LUNCH_PLUS_50,
+      });
+      const again = await runScoreConfidenceJob({
+        prisma: fake as unknown as PrismaClient,
+        push,
+        voice,
+        now: LUNCH_PLUS_50,
+      });
+      expect(again.checkInsCreated).toBe(0);
+      expect(fake.__tables.checkIns.filter((c) => c.tier !== 3)).toHaveLength(1);
+    });
+
+    it("sends the manager's-voice line as the check-in, as one alert", async () => {
+      const fake = makeFakePrisma([baseUser()], { seedFoods: true });
+      fake.meal.create({ data: breakfast });
+      fake.__tables.pushTokens.push({ id: 'pt_live', userId: 'u1', token: 'live_start', kind: 'live_activity_start' });
+      const said: ManagerVoice = { ...voice, checkInMessage: vi.fn(async () => 'Lunch slipped. Eggs and toast now.') };
+
+      await runScoreConfidenceJob({ prisma: fake as unknown as PrismaClient, push, voice: said, now: LUNCH_PLUS_50 });
+
+      expect(fake.__tables.checkIns[0]).toMatchObject({ message: 'Lunch slipped. Eggs and toast now.', deliveryStatus: 'SENT' });
+      expect(push.send).toHaveBeenCalledTimes(1);
+      expect(vi.mocked(push.send).mock.calls[0]![0]).toEqual(['tok_u1']);
+    });
+
+    it('falls back to the deterministic line when the voice fails or hangs', async () => {
+      const failing = makeFakePrisma([baseUser()], { seedFoods: true });
+      failing.meal.create({ data: breakfast });
+      const broken: ManagerVoice = { ...voice, checkInMessage: vi.fn(async () => { throw new Error('ai down'); }) };
+      await runScoreConfidenceJob({ prisma: failing as unknown as PrismaClient, push, voice: broken, now: LUNCH_PLUS_50 });
+      const failedMessage = failing.__tables.checkIns[0]?.message;
+      expect(typeof failedMessage).toBe('string');
+      expect(failedMessage).not.toBe('');
+
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+      try {
+        const hanging = makeFakePrisma([baseUser()], { seedFoods: true });
+        hanging.meal.create({ data: breakfast });
+        const slow: ManagerVoice = { ...voice, checkInMessage: vi.fn(() => new Promise<string>(() => {})) };
+        const run = runScoreConfidenceJob({ prisma: hanging as unknown as PrismaClient, push, voice: slow, now: LUNCH_PLUS_50 });
+        await vi.advanceTimersByTimeAsync(CHECK_IN_COPY_TIMEOUT_MS + 10);
+        const summary = await run;
+        expect(summary.checkInsCreated).toBe(1);
+        expect(hanging.__tables.checkIns[0]?.message).toBe(failedMessage);
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it('does not check in twice for the same meal', async () => {

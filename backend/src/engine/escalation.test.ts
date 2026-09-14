@@ -52,6 +52,17 @@ describe('decideEscalation', () => {
     ).toEqual({ kind: 'wait' });
   });
 
+  it('does not record a miss when the check-in was never delivered', () => {
+    expect(
+      decideEscalation({
+        checkIn: pending({ deliveredAt: hoursAgo(ENGINE_CONFIG.checkInTtlHours + 1), deliveryStatus: 'FAILED' }),
+        state: state(),
+        stillDue: null,
+        now: NOW,
+      }),
+    ).toEqual({ kind: 'resolve' });
+  });
+
   it('records a miss when a PENDING check-in outlives its TTL unanswered', () => {
     const d = decideEscalation({
       checkIn: pending({ deliveredAt: hoursAgo(ENGINE_CONFIG.checkInTtlHours + 1) }),

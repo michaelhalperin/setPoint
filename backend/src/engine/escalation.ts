@@ -8,6 +8,8 @@ export type ActiveCheckIn = {
   /** When the current tier's notification was delivered (drives the PENDING TTL). */
   deliveredAt: Date;
   deferUntil: Date | null;
+  /** CREATED/FAILED never become misses. Default SENT for older rows. */
+  deliveryStatus?: 'CREATED' | 'SENT' | 'DELIVERED_UNKNOWN' | 'FAILED' | 'OPENED' | 'ANSWERED';
 };
 
 export type EscalationState = {
@@ -56,10 +58,13 @@ export function decideEscalation(input: EscalationInput): EscalationDecision {
     return { kind: 'wait' };
   }
 
-  // Delivered but untouched: wait until the TTL, then it's a full miss.
+  // Delivered but untouched: wait until the TTL, then it's a full miss — unless
+  // the notification never actually left the server.
   if (checkIn.status === 'PENDING') {
     const ageHours = (now.getTime() - checkIn.deliveredAt.getTime()) / MS_PER_HOUR;
     if (ageHours < config.checkInTtlHours) return { kind: 'wait' };
+    const delivery = checkIn.deliveryStatus ?? 'SENT';
+    if (delivery === 'CREATED' || delivery === 'FAILED') return { kind: 'resolve' };
     return registerMiss(state, now, config);
   }
 

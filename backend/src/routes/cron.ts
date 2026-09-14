@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { pruneAiUsage } from '../ai/quota.js';
 import { getPrisma } from '../db/client.js';
+import { recordHeartbeat } from '../jobs/heartbeat.js';
 import { runScoreConfidenceJob } from '../jobs/scoreConfidence.js';
 import { runSettleDayJob } from '../jobs/settleDay.js';
 import { createManagerVoice } from '../managerVoice/factory.js';
@@ -34,14 +35,21 @@ export async function cronRoutes(app: FastifyInstance): Promise<void> {
     method: ['GET', 'POST'],
     url: '/score',
     handler: async (req) => {
-      const summary = await runScoreConfidenceJob({
-        prisma: getPrisma(),
-        push: createPushSender(),
-        voice: createManagerVoice(),
-      });
-      req.log.info(summary, 'cron:score complete');
-      await flushSentry();
-      return summary;
+      const started = new Date();
+      try {
+        const summary = await runScoreConfidenceJob({
+          prisma: getPrisma(),
+          push: createPushSender(),
+          voice: createManagerVoice(),
+        });
+        req.log.info(summary, 'cron:score complete');
+        await recordHeartbeat(getPrisma(), 'score', started, true, summary);
+        await flushSentry();
+        return summary;
+      } catch (err) {
+        await recordHeartbeat(getPrisma(), 'score', started, false, { error: String(err) }).catch(() => {});
+        throw err;
+      }
     },
   });
 
@@ -64,6 +72,18 @@ export async function cronRoutes(app: FastifyInstance): Promise<void> {
       req.log.info({ ...summary, aiUsagePruned }, 'cron:settle complete');
       await flushSentry();
       return { ...summary, aiUsagePruned };
+    },
+  });
+
+  // Retry meal-photo deletes that failed when a meal was undone.
+  app.route({
+    method: ['GET', 'POST'],
+    url: '/cleanup-photos',
+    handler: async (req) => {
+      const photos = (await import('../photos/store.js')).getPhotoStore();
+      if (!photos) return { attempted: 0, note: 'photo store unconfigured' };
+      req.log.info('cron:cleanup-photos no pending keys stored; account deletion still wipes the prefix');
+      return { attempted: 0 };
     },
   });
 }

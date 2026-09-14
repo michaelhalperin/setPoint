@@ -27,6 +27,7 @@ function fakePrisma(over: { user?: AnyRow | null; meals?: AnyRow[]; checkIn?: An
         [...meals].sort((a, b) => (b.loggedAt as Date).getTime() - (a.loggedAt as Date).getTime())[0] ?? null,
     },
     checkIn: { findFirst: async () => over.checkIn ?? null, findMany: async () => [] },
+    weightEntry: { findFirst: async () => null },
   } as unknown as PrismaClient;
 }
 
@@ -91,6 +92,7 @@ describe('buildHome', () => {
     expect(view.mealTimes).toEqual({ breakfastMin: 480, lunchMin: 780, dinnerMin: 1140 });
     expect(view.framing).toMatchObject({ state: 'under', accent: true, primaryCta: 'log_meal', heroKcal: 1700 });
     expect(view.managerNote).toBe('MANAGER NOTE');
+    expect(view.needsWeighIn).toBe(true);
   });
 
   it('feeds the note quiet mode and pace so it does not repeat the number or push in quiet mode', async () => {

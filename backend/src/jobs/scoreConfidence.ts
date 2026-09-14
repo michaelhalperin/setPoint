@@ -1,21 +1,29 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
+import { fallbackTierThree } from '../ai/tierThree.js';
+import { env } from '../env.js';
 import {
   checkEligibility,
   checkInSlotAt,
+  computeBehaviorScore,
   decideEscalation,
   deriveHoursSinceMeal,
   dueCheckIn,
+  expectedGapHours,
   freshCheckInTier,
   isBiosignalFresh,
+  localDateISO,
   msSinceLocalMidnight,
   startOfLocalDay,
   TIER,
+  userInWearableCohort,
   type EscalationDecision,
   type Goal,
   type SlotName,
 } from '../engine/index.js';
-import type { ManagerVoice } from '../managerVoice/types.js';
+import { fallbackManagerVoice } from '../managerVoice/fallback.js';
+import type { ManagerVoice, ManagerVoiceContext } from '../managerVoice/types.js';
 import { captureError } from '../observability/sentry.js';
+import { deliverCheckIn } from '../push/deliver.js';
 import type { PushSender } from '../push/types.js';
 import {
   computePrescriptionTarget,
@@ -60,13 +68,11 @@ type JobContext = {
 };
 
 /**
- * The server-driven confidence job (plan §2). Runs on Vercel Cron via
- * `POST /api/cron/score`. Per onboarded user:
+ * The server-driven confidence job. Per onboarded user, in batches:
  *   1. advance any open check-in through the defer/escalation state machine,
  *   2. if nothing is pending and the user is eligible, check the meal schedule,
- *   3. when a meal is overdue, create a check-in + a solver prescription and deliver.
- *
- * Timing and prescription selection are deterministic — no model calls (§7).
+ *   3. score overdue slots with a versioned behavior formula (wearable = modifier),
+ *   4. create a check-in + prescription and deliver (deterministic copy on the path).
  */
 export async function runScoreConfidenceJob(
   deps: ScoreConfidenceDeps,
@@ -102,20 +108,28 @@ export async function runScoreConfidenceJob(
     foodIdBySlug: new Map(foodRows.map((f) => [f.slug, f.id])),
   };
 
-  const users = await deps.prisma.user.findMany({
-    where: { onboarding: { isNot: null } },
-    include: USER_INCLUDE,
-  });
-  summary.usersEvaluated = users.length;
-
-  for (const user of users) {
-    try {
-      await processUser(deps, context, user, now, summary);
-    } catch (err) {
-      summary.errors += 1;
-      console.error(`scoreConfidence: user ${user.id} failed`, err);
-      captureError(err, { userId: user.id, tags: { job: 'score' } });
+  const batchSize = env.SCORE_BATCH_SIZE;
+  let cursor: string | undefined;
+  for (;;) {
+    const users = await deps.prisma.user.findMany({
+      where: { onboarding: { isNot: null }, ...(cursor ? { id: { gt: cursor } } : {}) },
+      orderBy: { id: 'asc' },
+      take: batchSize,
+      include: USER_INCLUDE,
+    });
+    if (users.length === 0) break;
+    summary.usersEvaluated += users.length;
+    for (const user of users) {
+      try {
+        await processUser(deps, context, user, now, summary);
+      } catch (err) {
+        summary.errors += 1;
+        console.error(`scoreConfidence: user ${user.id} failed`, err);
+        captureError(err, { userId: user.id, tags: { job: 'score' } });
+      }
     }
+    cursor = users[users.length - 1]!.id;
+    if (users.length < batchSize) break;
   }
 
   return summary;
@@ -148,7 +162,7 @@ async function processUser(
   const { prisma } = deps;
   const dayStart = startOfLocalDay(now, user.timezone);
 
-  const [activeCheckIns, lastMeal, todayMeals, todayCheckIns, restrictions] = await Promise.all([
+  const [activeCheckIns, lastMeal, todayMeals, todayCheckIns, restrictions, recentCheckIns] = await Promise.all([
     prisma.checkIn.findMany({
       where: { userId: user.id, status: { in: ['PENDING', 'DEFERRED'] } },
       orderBy: { createdAt: 'desc' },
@@ -160,19 +174,23 @@ async function processUser(
     }),
     prisma.checkIn.findMany({
       where: { userId: user.id, createdAt: { gte: dayStart } },
-      select: { createdAt: true, tier: true },
+      select: { createdAt: true, tier: true, episodeKey: true },
     }),
     prisma.dietaryRestriction.findMany({ where: { userId: user.id, isHardExclusion: true } }),
+    prisma.checkIn.findMany({
+      where: { userId: user.id, tier: { lt: TIER.CONVERSATION } },
+      orderBy: { createdAt: 'desc' },
+      take: 14,
+      select: { status: true, feedbackPositive: true, deferCount: true },
+    }),
   ]);
 
   const consumedKcal = todayMeals.reduce((acc, m) => acc + m.kcal, 0);
   const underTarget = consumedKcal < profile.dailyKcalTarget;
 
-  // 1. Advance any open check-in.
   let blocked = false;
   for (const ci of activeCheckIns) {
     const isDeferred = ci.status === 'DEFERRED';
-
     const decision = decideEscalation({
       checkIn: {
         status: isDeferred ? 'DEFERRED' : 'PENDING',
@@ -180,16 +198,13 @@ async function processUser(
         deferCount: ci.deferCount,
         deliveredAt: ci.deliveredAt ?? ci.createdAt,
         deferUntil: ci.deferUntil,
+        deliveryStatus: ci.deliveryStatus,
       },
       state: escStateOf(user),
-      // Logging a meal resolves the check-in outright, so an open one after a
-      // snooze is still due unless the day's target has been met since.
       stillDue: isDeferred ? underTarget : null,
       now,
     });
-
-    blocked =
-      (await applyDecision(deps, user, ci.id, ci.message, decision, now, summary)) || blocked;
+    blocked = (await applyDecision(deps, user, ci.id, ci.message, decision, now, summary)) || blocked;
   }
 
   if (blocked || activeCheckIns.length > 0) {
@@ -197,7 +212,6 @@ async function processUser(
     return;
   }
 
-  // 2. Eligibility gate — checked before anything is evaluated (§2).
   const eligibility = checkEligibility({
     now,
     timezone: user.timezone,
@@ -214,7 +228,6 @@ async function processUser(
     return;
   }
 
-  // 3. Is a meal overdue? Usual meal time + grace, nothing logged, under target.
   const due = dueCheckIn({
     nowMin: localMinute(now, user.timezone),
     times: profile,
@@ -232,28 +245,67 @@ async function processUser(
     return;
   }
 
+  const episodeKey = `${localDateISO(now, user.timezone)}:${due.slot}`;
+  const existing = todayCheckIns.find((c) => c.episodeKey === episodeKey);
+  if (existing) {
+    bump(summary, 'duplicate_episode');
+    return;
+  }
+
   const hoursSinceMeal = deriveHoursSinceMeal(lastMeal?.loggedAt ?? null, user.createdAt, now);
-  const biosignal =
-    profile.mode === 'SMART' && user.biosignalState && isBiosignalFresh(user.biosignalState.updatedAt, now)
-      ? user.biosignalState.hrvDeviation
+  const wearableFresh =
+    profile.mode === 'SMART' &&
+    user.biosignalState &&
+    isBiosignalFresh(user.biosignalState.updatedAt, now)
+      ? user.biosignalState
       : null;
-  // Audit row for the fired check-in (beta metrics read it).
+  const wearableEnabled = userInWearableCohort(user.id, user.wearableModifierEnabled);
+  const scored = computeBehaviorScore({
+    overdueMin: Math.max(0, localMinute(now, user.timezone) - due.dueMin),
+    hoursSinceMeal,
+    expectedGapHours: expectedGapHours(due.slot, profile),
+    consumedKcal,
+    targetKcal: profile.dailyKcalTarget,
+    recentCheckIns,
+    wearable: wearableFresh
+      ? { hrvDeviation: wearableFresh.hrvDeviation, rhrDeviation: wearableFresh.rhrDeviation }
+      : null,
+    wearableEnabled,
+  });
+
   const score = await prisma.confidenceScore.create({
     data: {
       userId: user.id,
       computedAt: now,
       mode: profile.mode,
-      score: 1,
-      biosignalDeviation: biosignal,
+      score: scored.score,
+      scoringVersion: scored.version,
+      behaviorScore: scored.behaviorScore,
+      wearableModifier: scored.wearableModifier,
+      wearableUsed: scored.wearableUsed,
+      biosignalDeviation: wearableFresh?.hrvDeviation ?? null,
       hoursSinceMeal,
-      expectedGapHours: null,
+      expectedGapHours: expectedGapHours(due.slot, profile),
       loggingSilence: null,
-      threshold: 1,
-      firedCheckIn: true,
+      overdueMin: scored.components.overdue,
+      loggingReliability: scored.components.reliability,
+      deferRate: scored.components.deferRate,
+      dismissRate: scored.components.dismissRate,
+      targetCoverage: scored.components.coverage,
+      components: scored.components,
+      threshold: scored.threshold,
+      firedCheckIn: scored.shouldFire,
     },
   });
 
-  // 4. Solve for a directive prescription (§2, §5.4).
+  if (!scored.shouldFire) {
+    bump(summary, 'below_threshold');
+    return;
+  }
+
+  const excludedTokens = [...restrictions.map((r) => r.token), ...(profile.dislikedFoods ?? [])];
+  const pantry = profile.pantryTokens ?? [];
+
   const tier = freshCheckInTier(escStateOf(user));
   const target = computePrescriptionTarget({
     dailyKcalTarget: profile.dailyKcalTarget,
@@ -267,14 +319,15 @@ async function processUser(
       ? prescribe(ctx.solverFoods, {
           targetKcal: target.targetKcal,
           targetProteinG: target.targetProteinG,
-          excludedTokens: restrictions.map((r) => r.token),
+          excludedTokens,
           preferLowFriction: tier >= 2,
+          pantryTokens: pantry,
+          prepTimeMaxMin: profile.prepTimeMaxMin,
         })
       : null;
   const summaryLine = rx ? prescriptionSummary(rx) : null;
 
-  // 5. Fire the check-in.
-  const message = await deps.voice.checkInMessage({
+  const message = await checkInCopy(deps.voice, {
     tier,
     goal: profile.goal as Goal,
     hoursSinceMeal,
@@ -289,8 +342,10 @@ async function processUser(
       confidenceScoreId: score.id,
       tier,
       status: 'PENDING',
+      deliveryStatus: 'CREATED',
       message,
-      deliveredAt: now,
+      slot: due.slot,
+      episodeKey,
     },
   });
 
@@ -325,7 +380,7 @@ async function processUser(
     summary.prescriptionsCreated += 1;
   }
 
-  await sendPush(deps, user.id, checkIn.id, tier, message, prescriptionId);
+  await markDelivered(deps, user.id, checkIn.id, tier, message, prescriptionId, now);
   await prisma.escalationState.upsert({
     where: { userId: user.id },
     create: { userId: user.id, lastCheckInAt: now, currentTier: tier },
@@ -334,7 +389,6 @@ async function processUser(
   summary.checkInsCreated += 1;
 }
 
-/** Applies an escalation decision. Returns whether a check-in still blocks new scoring. */
 async function applyDecision(
   deps: ScoreConfidenceDeps,
   user: UserWithRelations,
@@ -361,10 +415,10 @@ async function applyDecision(
     case 'redeliver':
       await prisma.checkIn.update({
         where: { id: checkInId },
-        data: { status: 'PENDING', tier: decision.tier, deferUntil: null, deliveredAt: now },
+        data: { status: 'PENDING', tier: decision.tier, deferUntil: null },
       });
       const rx = await prisma.prescription.findFirst({ where: { checkInId }, select: { id: true } });
-      await sendPush(deps, user.id, checkInId, decision.tier, message ?? 'Time to eat.', rx?.id ?? null);
+      await markDelivered(deps, user.id, checkInId, decision.tier, message ?? 'Time to eat.', rx?.id ?? null, now);
       summary.checkInsRedelivered += 1;
       return true;
 
@@ -391,12 +445,23 @@ async function applyDecision(
       });
 
       if (decision.startTier3) {
+        const opener = fallbackTierThree.opener({
+          goal: (user.onboarding?.goal as Goal) ?? 'MAINTAIN',
+          recentMisses: 3,
+        });
         const conversationCheckIn = await prisma.checkIn.create({
-          data: { userId: user.id, tier: 3, status: 'PENDING', deliveredAt: now },
+          data: {
+            userId: user.id,
+            tier: 3,
+            status: 'PENDING',
+            deliveryStatus: 'CREATED',
+            message: opener,
+          },
         });
         await prisma.escalationConversation.create({
           data: { userId: user.id, checkInId: conversationCheckIn.id },
         });
+        await markDelivered(deps, user.id, conversationCheckIn.id, 3, opener, null, now);
         summary.tier3Started += 1;
         return true;
       }
@@ -410,19 +475,44 @@ async function applyDecision(
   }
 }
 
-async function sendPush(
+/** How long a check-in waits for the manager's-voice line before sending the deterministic one. */
+export const CHECK_IN_COPY_TIMEOUT_MS = 4_000;
+
+async function checkInCopy(voice: ManagerVoice, ctx: ManagerVoiceContext): Promise<string> {
+  const fallback = () => fallbackManagerVoice.checkInMessage(ctx);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timedOut = new Promise<null>((resolve) => {
+    timer = setTimeout(() => resolve(null), CHECK_IN_COPY_TIMEOUT_MS);
+  });
+  try {
+    const line = await Promise.race([voice.checkInMessage(ctx).catch(() => null), timedOut]);
+    return line?.trim() ? line : await fallback();
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function markDelivered(
   deps: ScoreConfidenceDeps,
   userId: string,
   checkInId: string,
   tier: number,
   body: string,
-  prescriptionId: string | null = null,
+  prescriptionId: string | null,
+  now: Date,
 ): Promise<void> {
-  const tokens = await deps.prisma.pushToken.findMany({
-    where: { userId, kind: 'alert' },
+  const outcome = await deliverCheckIn({
+    prisma: deps.prisma,
+    push: deps.push,
+    userId,
+    payload: { userId, checkInId, tier, title: 'SetPoint', body, prescriptionId },
   });
-  await deps.push.send(
-    tokens.map((t) => t.token),
-    { userId, checkInId, tier, title: 'SetPoint', body, prescriptionId },
-  );
+  await deps.prisma.checkIn.update({
+    where: { id: checkInId },
+    data: {
+      deliveryStatus: outcome.status,
+      deliveredAt: outcome.status === 'SENT' ? now : null,
+      lastPushError: outcome.lastPushError,
+    },
+  });
 }

@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { getPrisma } from '../db/client.js';
 import { env } from '../env.js';
+import { BETA_STOP_CONDITIONS, evaluateStopConditions } from '../engine/stopConditions.js';
 import {
   buildBetaMetrics,
   type CheckInMetricRecord,
@@ -104,6 +105,29 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     });
 
     req.log.info({ total: metrics.checkIns.total }, 'admin:metrics');
-    return metrics;
+    const heartbeat = await prisma.schedulerHeartbeat.findUnique({ where: { job: 'score' } });
+    const stale = !heartbeat || Date.now() - heartbeat.lastRunAt.getTime() > 20 * 60_000;
+    const evaluation = evaluateStopConditions({
+      wearableEnabled: env.WEARABLE_MODIFIER_ENABLED === 'true',
+      schedulerStale: stale,
+      deliveryFailRate: metrics.checkIns.missRate,
+      optOutRate: 0,
+    });
+    return {
+      ...metrics,
+      scheduler: {
+        lastRunAt: heartbeat?.lastRunAt.toISOString() ?? null,
+        lastOk: heartbeat?.lastOk ?? null,
+        stale,
+      },
+      wearableModifier: {
+        killSwitch: env.WEARABLE_MODIFIER_ENABLED === 'true',
+        cohortPercent: env.WEARABLE_MODIFIER_COHORT_PERCENT,
+      },
+      stopConditions: {
+        ...BETA_STOP_CONDITIONS,
+        evaluation,
+      },
+    };
   });
 }
