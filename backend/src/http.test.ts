@@ -45,3 +45,41 @@ describe('HTTP contracts', () => {
     expect(res.statusCode).toBe(401);
   });
 });
+
+describe('auth rate limiting', () => {
+  it('answers 429 with retry-after once the shared limiter says no, and leaves other routes alone', async () => {
+    const seen: string[] = [];
+    const limited = await buildApp({
+      authRateLimiter: async (key) => {
+        seen.push(key);
+        return { allowed: false, retryAfterSeconds: 42 };
+      },
+    });
+    try {
+      const res = await limited.inject({ method: 'POST', url: '/api/auth/dev', payload: {} });
+      expect(res.statusCode).toBe(429);
+      expect(res.headers['retry-after']).toBe('42');
+      expect(seen[0]).toMatch(/^auth:/);
+
+      const health = await limited.inject({ method: 'GET', url: '/api/health' });
+      expect(health.statusCode).toBe(200);
+      expect(seen).toHaveLength(1);
+    } finally {
+      await limited.close();
+    }
+  });
+
+  it('lets sign-in through when the limiter itself is down', async () => {
+    const broken = await buildApp({
+      authRateLimiter: async () => {
+        throw new Error('db down');
+      },
+    });
+    try {
+      const res = await broken.inject({ method: 'POST', url: '/api/auth/apple', payload: {} });
+      expect(res.statusCode).not.toBe(429);
+    } finally {
+      await broken.close();
+    }
+  });
+});

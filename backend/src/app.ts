@@ -3,7 +3,9 @@ import sensible from '@fastify/sensible';
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import { ZodError } from 'zod';
 import { AiQuotaExceededError } from './ai/quota.js';
+import { getPrisma } from './db/client.js';
 import { env } from './env.js';
+import { postgresRateLimiter, type RateLimiter } from './http/rateLimit.js';
 import { captureError, flushSentry, initSentry } from './observability/sentry.js';
 import { UnderageError } from './onboarding/age.js';
 import { UnhealthyTargetError } from './onboarding/targets.js';
@@ -20,7 +22,20 @@ import { mealRoutes } from './routes/meals.js';
 import { pushTokenRoutes } from './routes/pushTokens.js';
 import { weightRoutes } from './routes/weight.js';
 
-export async function buildApp(): Promise<FastifyInstance> {
+const AUTH_LIMIT_PER_MINUTE = 40;
+
+export type BuildAppOptions = {
+  /** Defaults to the shared Postgres limiter; off in tests so they never touch a real database. */
+  authRateLimiter?: RateLimiter | null;
+};
+
+export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyInstance> {
+  const authRateLimiter =
+    options.authRateLimiter !== undefined
+      ? options.authRateLimiter
+      : env.NODE_ENV === 'test'
+        ? null
+        : postgresRateLimiter(getPrisma);
   initSentry();
 
   // pino-pretty (a devDependency, loaded in a worker thread) is opt-in via
@@ -40,17 +55,25 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(sensible);
   await app.register(cors, { origin: true });
 
-  const authHits = new Map<string, number[]>();
-  app.addHook('onRequest', async (req, reply) => {
-    if (!req.url.startsWith('/api/auth')) return;
-    const now = Date.now();
-    const recent = (authHits.get(req.ip) ?? []).filter((t) => now - t < 60_000);
-    recent.push(now);
-    authHits.set(req.ip, recent);
-    if (recent.length > 40) {
-      return reply.status(429).send({ error: 'Too Many Requests', message: 'slow down' });
-    }
-  });
+  // Sign-in endpoints: 40 attempts a minute per client IP, counted in Postgres
+  // so the limit holds across serverless instances. Fails open — a database
+  // hiccup must not lock everyone out of signing in.
+  if (authRateLimiter) {
+    app.addHook('onRequest', async (req, reply) => {
+      if (!req.url.startsWith('/api/auth')) return;
+      try {
+        const decision = await authRateLimiter(`auth:${req.ip}`, AUTH_LIMIT_PER_MINUTE, 60);
+        if (!decision.allowed) {
+          return reply
+            .status(429)
+            .header('retry-after', String(decision.retryAfterSeconds))
+            .send({ error: 'Too Many Requests', message: 'Too many sign-in attempts. Try again in a minute.' });
+        }
+      } catch (err) {
+        req.log.warn({ err }, 'auth rate limit unavailable — allowing request');
+      }
+    });
+  }
 
   app.setErrorHandler(async (err: unknown, req, reply) => {
     if (err instanceof ZodError) {

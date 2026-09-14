@@ -400,7 +400,7 @@ model ConfidenceScore {
   mode       AppMode
 
   score Float
-  scoringVersion String @default("behavior.v1")
+  scoringVersion String @default("behavior.v2")
   behaviorScore  Float?
   wearableModifier Float?
   wearableUsed     Boolean @default(false)
@@ -417,12 +417,15 @@ model ConfidenceScore {
   targetCoverage     Float?
   components         Json?
 
-  threshold    Float   @default(0.45)
+  threshold    Float   @default(0.5)
   firedCheckIn Boolean @default(false)
+  /// "<local date>:<slot>" — one row per meal episode, updated while it's held.
+  episodeKey   String?
 
   checkIn CheckIn?
 
   @@index([userId, computedAt])
+  @@unique([userId, episodeKey])
 }
 
 // ---------------------------------------------------------------------------
@@ -652,4 +655,35 @@ model SchedulerHeartbeat {
   lastOk     Boolean
   durationMs Int?
   summary    Json?
+}
+
+// ---------------------------------------------------------------------------
+// Object-storage cleanup
+// ---------------------------------------------------------------------------
+
+/// A photo delete that failed (storage hiccup), retried by the daily cron.
+/// No user relation on purpose: account deletion must leave these behind.
+model PendingPhotoDeletion {
+  id          String    @id @default(cuid())
+  /// "object" — a single photo key; "user" — every photo under a deleted user's prefix.
+  kind        String
+  /// The object key, or the user id for kind "user".
+  target      String
+  attempts    Int       @default(0)
+  lastError   String?
+  createdAt   DateTime  @default(now())
+  lastTriedAt DateTime?
+
+  @@unique([kind, target])
+  @@index([attempts, createdAt])
+}
+
+/// Shared fixed-window request counter (auth endpoints), pruned daily.
+model RateLimitBucket {
+  /// "<scope>:<client>:<window start ms>"
+  key       String   @id
+  count     Int      @default(0)
+  windowEnd DateTime
+
+  @@index([windowEnd])
 }

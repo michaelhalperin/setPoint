@@ -2,6 +2,7 @@ import type { PrismaClient } from '@prisma/client';
 import type { MealImage, MealParser, ParsedMeal } from '../ai/parseMeal.js';
 import type { AiUsageKind } from '../ai/quota.js';
 import { captureError } from '../observability/sentry.js';
+import { queuePhotoDeletion } from '../photos/cleanup.js';
 import type { PhotoStore } from '../photos/store.js';
 
 export class MealParsingUnavailableError extends Error {}
@@ -128,6 +129,8 @@ export async function logMeal(
       },
     });
   } catch (err) {
+    // The meal wasn't stored here, so neither should its photo be.
+    if (photoKey) await queuePhotoDeletion(deps.prisma, { kind: 'object', key: photoKey }, err);
     // Two copies of the same attempt raced; the other one won.
     const existing =
       input.clientId && isUniqueViolation(err) ? await findByClientId(deps.prisma, userId, input.clientId) : null;
