@@ -80,6 +80,7 @@ const baseInput = (over: Partial<OnboardingInput> = {}): OnboardingInput => ({
       foodDominates: false,
     },
     restrictions: [{ label: 'Peanuts' }, { label: 'peanut' }, { label: 'Shellfish', source: 'ALLERGY' }],
+    restrictionsFreeText: 'cilantro, mushrooms',
   },
   ...over,
 });
@@ -96,7 +97,9 @@ describe('runOnboarding', () => {
     expect(prisma.__store.onboardingProfile[0]).toMatchObject({ goal: 'BULK', completedAt: NOW });
     expect(prisma.__store.safetyScreening[0]).toMatchObject({ scoffScore: 0, scoffFlagged: false });
     // "Peanuts" and "peanut" dedupe to one token
-    expect(prisma.__store.dietaryRestriction.map((r) => r.token).sort()).toEqual(['peanut', 'shellfish']);
+    expect(prisma.__store.dietaryRestriction.map((r) => r.token).sort()).toEqual(
+      ['cilantro', 'mushroom', 'peanut', 'shellfish'],
+    );
     expect(prisma.__store.escalationState).toHaveLength(1);
   });
 

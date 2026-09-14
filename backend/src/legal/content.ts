@@ -10,8 +10,8 @@
 import { env } from '../env.js';
 
 /** Bump when the substance changes; the app can compare it to what a user accepted. */
-export const LEGAL_VERSION = '2026-09-10';
-export const LEGAL_EFFECTIVE_DATE = 'September 10, 2026';
+export const LEGAL_VERSION = '2026-09-14';
+export const LEGAL_EFFECTIVE_DATE = 'September 14, 2026';
 
 const SUPPORT = env.SUPPORT_EMAIL;
 
@@ -56,10 +56,14 @@ export function privacyPolicyHtml(): string {
     `<h1>Privacy Policy</h1>
 <p class="meta">Effective ${LEGAL_EFFECTIVE_DATE}</p>
 
-<p>SetPoint ("we", "us") is an app that helps you eat enough for a weight goal by
-checking in when you appear to be falling behind. This policy explains what we
-collect, why, and the choices you have. We collect the minimum needed to run the
-service and we never sell your data or use health data for advertising.</p>
+<p>SetPoint ("we", "us") is an under-fueling coach: it watches whether meals
+are logged on the rhythm you set, and checks in when a meal appears to have
+slipped. Check-ins are based on observed meal behavior, not a medical
+diagnosis. Wearable heart-rate data, when connected, may slightly adjust
+confidence on an already-due check-in; it never independently decides that
+you are under-fuelled. This policy explains what we collect, why, and the
+choices you have. We collect the minimum needed to run the service and we
+never sell your data or use health data for advertising.</p>
 
 <h2>What we collect</h2>
 <ul>
@@ -67,9 +71,9 @@ service and we never sell your data or use health data for advertising.</p>
   <li><strong>Your profile</strong> — height, weight, date of birth, sex, activity level, goal, target weight and pace, preferred meal times, quiet hours, and time zone. Used to calculate your calorie and protein targets and to decide when a check-in is due.</li>
   <li><strong>Meals you log</strong> — the text or photo you enter, and the resulting calorie and macronutrient estimate. Photos and text you submit for automatic parsing are sent to our AI provider (see "Service providers"). Meal photos are kept in private storage that is only readable through short-lived links the app requests.</li>
   <li><strong>Dietary restrictions</strong> — allergies and restrictions you enter, used as hard exclusions when suggesting food.</li>
-  <li><strong>Safety screening answers</strong> — a medical-supervision question and a validated eating-concern questionnaire, used once to decide whether the app's active check-ins should be enabled for you. Stored so you don't have to answer again; never used for any other purpose.</li>
+  <li><strong>Safety screening answers</strong> — medical-eligibility questions and a validated eating-concern questionnaire, used once to decide whether active check-ins should be enabled. Uncertain answers keep check-ins off. Stored so you don't have to answer again; never used for any other purpose.</li>
   <li><strong>Weight entries</strong> — weigh-ins you record or that are read from Apple Health.</li>
-  <li><strong>Derived biosignal values (Smart mode only)</strong> — if you connect Apple Health, the app reads your heart-rate variability and resting heart rate <em>on your device</em>, converts them to a normalized deviation from your own baseline, and sends only that derived number. Raw heart-rate time series never leave your phone.</li>
+  <li><strong>Derived biosignal values (Smart mode only)</strong> — if you connect Apple Health, the app reads your heart-rate variability and resting heart rate <em>on your device</em>, converts them to a normalized deviation from your own baseline, and may send only that derived number. Raw heart-rate time series never leave your phone. These values may adjust an already-due check-in; they are not a diagnosis of under-fueling.</li>
   <li><strong>Check-in activity</strong> — when check-ins fire, whether you logged, deferred, or missed them, and any thumbs up/down you give. Used to operate the escalation logic and to tune the detection thresholds during the beta.</li>
   <li><strong>Device push token</strong> — an Apple-issued identifier used to deliver check-in notifications and Live Activities.</li>
 </ul>
@@ -86,12 +90,13 @@ service and we never sell your data or use health data for advertising.</p>
 
 <h2>Apple Health (HealthKit)</h2>
 <p>Health data access is optional and used only for the features described above:
-reading heart-rate variability and resting heart rate to detect under-fuelling,
-and reading body weight to track progress. Data read from Health is processed on
-your device; only derived values (a biosignal deviation score, a weight number)
-are sent to our server. Health data is never used for advertising and is never
-shared with third parties. You can revoke access at any time in the Health app or
-in iOS Settings.</p>
+reading heart-rate variability and resting heart rate as a <em>bounded modifier</em>
+on check-ins that are already due from missed or late meals, and reading body
+weight to track progress. Wearable signals never independently trigger a
+check-in. Data read from Health is processed on your device; only derived
+values (a biosignal deviation score, a weight number) are sent to our server.
+Health data is never used for advertising and is never shared with third
+parties. You can revoke access at any time in the Health app or in iOS Settings.</p>
 
 <h2>Service providers</h2>
 <ul>
@@ -145,10 +150,12 @@ export function termsOfServiceHtml(): string {
 <p>By using SetPoint you agree to these terms.</p>
 
 <h2>What SetPoint is</h2>
-<p>SetPoint is a tool that estimates nutrition targets, tracks what you eat, and
-sends check-ins prompting you to eat when you appear to be falling behind. It is
-intended for generally healthy adults pursuing a weight-gain, fat-loss, or
-maintenance goal.</p>
+<p>SetPoint is a tool that estimates nutrition targets, tracks meals you log, and
+sends check-ins when a scheduled meal appears overdue. It is intended for
+generally healthy people 16 or older who want a minimum-fueling guardrail —
+including bulkers, athletes, busy users, and cautious dieters. It observes
+logged behavior; it does not measure physiology with certainty and it is not
+a medical device.</p>
 
 <h2>Not medical advice</h2>
 <p>SetPoint is not a medical device and does not provide medical, nutritional, or

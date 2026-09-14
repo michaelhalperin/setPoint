@@ -5,6 +5,7 @@ import { ZodError } from 'zod';
 import { AiQuotaExceededError } from './ai/quota.js';
 import { env } from './env.js';
 import { captureError, flushSentry, initSentry } from './observability/sentry.js';
+import { UnderageError } from './onboarding/age.js';
 import { UnhealthyTargetError } from './onboarding/targets.js';
 import { accountRoutes } from './routes/account.js';
 import { adminRoutes } from './routes/admin.js';
@@ -27,6 +28,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   const prettyLogs = process.env.LOG_PRETTY === 'true';
   const app = Fastify({
     trustProxy: true,
+    bodyLimit: 1_000_000,
     logger:
       env.NODE_ENV === 'test'
         ? { level: 'silent' }
@@ -37,6 +39,18 @@ export async function buildApp(): Promise<FastifyInstance> {
 
   await app.register(sensible);
   await app.register(cors, { origin: true });
+
+  const authHits = new Map<string, number[]>();
+  app.addHook('onRequest', async (req, reply) => {
+    if (!req.url.startsWith('/api/auth')) return;
+    const now = Date.now();
+    const recent = (authHits.get(req.ip) ?? []).filter((t) => now - t < 60_000);
+    recent.push(now);
+    authHits.set(req.ip, recent);
+    if (recent.length > 40) {
+      return reply.status(429).send({ error: 'Too Many Requests', message: 'slow down' });
+    }
+  });
 
   app.setErrorHandler(async (err: unknown, req, reply) => {
     if (err instanceof ZodError) {
@@ -52,6 +66,9 @@ export async function buildApp(): Promise<FastifyInstance> {
       return reply
         .status(400)
         .send({ error: 'Bad Request', message: err.message, minWeightKg: err.minWeightKg });
+    }
+    if (err instanceof UnderageError) {
+      return reply.status(403).send({ error: 'Forbidden', message: err.message });
     }
     // Deliberate errors from `app.httpErrors.*` carry a statusCode; honour it and
     // expose their message. Everything else is an unexpected 500.
