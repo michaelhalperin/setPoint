@@ -44,6 +44,11 @@ describe('HTTP contracts', () => {
     });
     expect(res.statusCode).toBe(401);
   });
+
+  it('rejects unauthenticated start-talk', async () => {
+    const res = await app.inject({ method: 'POST', url: '/api/checkins/start-talk' });
+    expect(res.statusCode).toBe(401);
+  });
 });
 
 describe('auth rate limiting', () => {

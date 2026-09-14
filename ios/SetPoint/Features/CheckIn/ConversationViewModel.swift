@@ -25,6 +25,9 @@ final class ConversationViewModel {
 
     let checkInID: String
     private let api: APIClient
+    #if DEBUG
+    private var usesLocalPreview = false
+    #endif
 
     init(checkInID: String, api: APIClient) {
         self.checkInID = checkInID
@@ -52,6 +55,22 @@ final class ConversationViewModel {
         draft = ""
         messages.append(ConversationMessage(role: "user", content: text, at: nil))
 
+        #if DEBUG
+        if usesLocalPreview {
+            messages.append(ConversationMessage(
+                role: "assistant",
+                content: "Let's push your check-ins later. You can fine-tune it in Settings.",
+                at: nil
+            ))
+            pendingProposal = ConversationResponse.PlanProposal(
+                kind: "DELAY_CHECKINS",
+                title: "Move check-ins later",
+                summary: "Shift meal times 30 minutes later for a few days."
+            )
+            return
+        }
+        #endif
+
         do {
             let res: ConversationResponse = try await api.post(
                 "/api/checkins/\(checkInID)/conversation",
@@ -70,6 +89,14 @@ final class ConversationViewModel {
         confirming = true
         sendError = nil
         defer { confirming = false }
+        #if DEBUG
+        if usesLocalPreview {
+            outcome = kind
+            resolved = true
+            pendingProposal = nil
+            return
+        }
+        #endif
         do {
             struct Body: Encodable { let kind: String }
             let res: ConversationConfirmResponse = try await api.post(
@@ -125,6 +152,7 @@ final class ConversationViewModel {
     #if DEBUG
     static func previewed(resolved: Bool) -> ConversationViewModel {
         let vm = ConversationViewModel(checkInID: "ci_preview", api: AppEnvironment.preview().api)
+        vm.usesLocalPreview = true
         vm.messages = [
             ConversationMessage(role: "assistant", content: "A few check-ins in a row didn’t land. What would help?", at: nil),
         ]

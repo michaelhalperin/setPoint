@@ -9,6 +9,7 @@ struct SettingsView: View {
     @State private var showingDevOnboarding = false
     @State private var showingDevMealConfirm = false
     @State private var showingDevCheckIn = false
+    @State private var showingDevConversation = false
     #endif
 
     init(previewModel: SettingsViewModel? = nil) {
@@ -131,6 +132,9 @@ struct SettingsView: View {
         .fullScreenCover(isPresented: $showingDevCheckIn) {
             DevCheckInPreview()
         }
+        .fullScreenCover(isPresented: $showingDevConversation) {
+            DevConversationPreview()
+        }
         #endif
     }
 
@@ -165,6 +169,14 @@ struct SettingsView: View {
             }
             .buttonStyle(PressableCard())
             .appearIn(8)
+
+            Button {
+                showingDevConversation = true
+            } label: {
+                DestinationRow(title: "Let’s talk", subtitle: "Starts a real conversation")
+            }
+            .buttonStyle(PressableCard())
+            .appearIn(9)
         }
     }
     #endif
@@ -631,6 +643,59 @@ private struct DevCheckInPreview: View {
                     onAlreadyAte: { dismiss() }
                 )
             }
+        }
+    }
+}
+
+/// Opens a real tier-3 conversation against the signed-in account — reachable
+/// from Settings so it doesn't need three consecutive misses.
+private struct DevConversationPreview: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(AppEnvironment.self) private var env
+    @State private var checkInID: String?
+    @State private var error: String?
+
+    var body: some View {
+        Group {
+            if let checkInID {
+                ConversationView(
+                    checkInID: checkInID,
+                    onDismiss: { dismiss() },
+                    onResolved: { dismiss() }
+                )
+            } else if let error {
+                VStack(spacing: 14) {
+                    Text(error)
+                        .font(Typography.data(15))
+                        .foregroundStyle(Palette.inkSoft)
+                        .multilineTextAlignment(.center)
+                    ActionButton(title: "Try again", kind: .secondary) {
+                        Task { await start() }
+                    }
+                    .frame(maxWidth: 200)
+                    ActionButton(title: "Close", kind: .secondary) { dismiss() }
+                        .frame(maxWidth: 200)
+                }
+                .padding(28)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Palette.background.ignoresSafeArea())
+            } else {
+                ProgressView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Palette.background.ignoresSafeArea())
+            }
+        }
+        .task { await start() }
+    }
+
+    private func start() async {
+        guard checkInID == nil else { return }
+        error = nil
+        do {
+            let res: StartTalkResponse = try await env.api.post("/api/checkins/start-talk")
+            checkInID = res.checkInId
+        } catch {
+            self.error = UserFacingError.message(for: error, fallback: "Couldn't start the conversation.")
         }
     }
 }

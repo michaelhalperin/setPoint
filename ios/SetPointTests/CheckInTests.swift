@@ -72,6 +72,12 @@ final class CheckInTests: XCTestCase {
         XCTAssertTrue(res.resolved)
     }
 
+    func testStartTalkResponseDecodes() throws {
+        let json = #"{"checkInId":"ci_talk"}"#.data(using: .utf8)!
+        let res = try JSONDecoder().decode(StartTalkResponse.self, from: json)
+        XCTAssertEqual(res.checkInId, "ci_talk")
+    }
+
     @MainActor
     func testConversationOutcomeCopyMapsToPlainLanguage() {
         let vm = ConversationViewModel.previewed(resolved: true)

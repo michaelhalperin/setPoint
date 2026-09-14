@@ -363,6 +363,10 @@ struct ConversationRequest: Encodable {
     let message: String
 }
 
+struct StartTalkResponse: Decodable {
+    let checkInId: String
+}
+
 struct ConversationConfirmResponse: Decodable {
     let outcome: String
     let resolved: Bool

@@ -12,7 +12,12 @@ import { requireAuth, type AuthedRequest } from '../auth/index.js';
 import { getPrisma } from '../db/client.js';
 import { applyPlanProposal, ProposalNotApplicableError } from '../checkins/applyProposal.js';
 import { proposalFromOutcome } from '../checkins/proposals.js';
+import { startTalk } from '../checkins/startTalk.js';
 import { ENGINE_CONFIG, type Goal } from '../engine/index.js';
+import { env, isProd } from '../env.js';
+
+/** Same gate as POST /api/auth/dev — off in production unless ENABLE_DEV_LOGIN=true. */
+const devToolsEnabled = !isProd || env.ENABLE_DEV_LOGIN === 'true';
 
 const params = z.object({ id: z.string().min(1) });
 
@@ -73,6 +78,13 @@ function conversant() {
 
 export async function checkInRoutes(app: FastifyInstance): Promise<void> {
   app.addHook('preHandler', requireAuth(app));
+
+  // Debug: open a real tier-3 conversation without waiting for three misses.
+  if (devToolsEnabled) {
+    app.post('/start-talk', async (req) => {
+      return startTalk(getPrisma(), (req as AuthedRequest).userId);
+    });
+  }
 
   // Fetch one check-in (e.g. the landing target of a notification deep-link).
   app.get('/:id', async (req) => {
