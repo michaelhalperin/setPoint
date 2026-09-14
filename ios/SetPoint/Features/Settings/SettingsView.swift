@@ -594,7 +594,6 @@ private struct DevMealConfirmPreview: View {
 /// check-in to be pending.
 private struct DevCheckInPreview: View {
     @Environment(\.dismiss) private var dismiss
-    @Namespace private var ns
 
     var body: some View {
         ZStack {
@@ -605,11 +604,11 @@ private struct DevCheckInPreview: View {
             if let checkIn = HomeResponse.sampleUnder.activeCheckIn {
                 PrescriptionView(
                     checkIn: checkIn,
-                    namespace: ns,
-                    geometryID: "dev-check-in",
+                    headline: TodayCopy.headline(TodayMoment.resolve(.sampleUnder)),
+                    whyNow: TodayCopy.whyNow(.sampleUnder),
                     onDismiss: { dismiss() },
                     onResolved: { dismiss() },
-                    onLogSomethingElse: { dismiss() }
+                    onAlreadyAte: { dismiss() }
                 )
             }
         }

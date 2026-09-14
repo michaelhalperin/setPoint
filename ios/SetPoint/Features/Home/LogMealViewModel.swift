@@ -46,6 +46,9 @@ final class LogMealViewModel {
     }
     var backdate: Backdate?
 
+    /// Recent meals, newest first, one per name — the "Again?" chips.
+    private(set) var recents: [MealSummary] = []
+
     private let api: APIClient
     private let onMealChanged: @MainActor () -> Void
     private var heldText = ""
@@ -112,6 +115,64 @@ final class LogMealViewModel {
             photo = submittedPhoto
             submittedPhoto = nil
             confirmingPhoto = false
+            backdate = snapshotBackdate
+            phase = .failed(UserFacingError.message(for: error, fallback: "Couldn't log. Try again."))
+        }
+    }
+
+    /// Load recent meals from today and yesterday for the "Again?" chips.
+    func loadRecents(today: [MealSummary], now: Date = .now) async {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd"
+        let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: now) ?? now
+        let older: MealsListResponse? = try? await api.get("/api/meals", query: ["date": formatter.string(from: yesterday)])
+        recents = Self.distinctRecents(today + (older?.meals ?? []))
+    }
+
+    /// Newest first, one per (case-insensitive) name, only meals with a name.
+    static func distinctRecents(_ meals: [MealSummary], limit: Int = 6) -> [MealSummary] {
+        var seen = Set<String>()
+        return meals
+            .filter { !($0.summary ?? "").trimmingCharacters(in: .whitespaces).isEmpty }
+            .sorted { $0.loggedAt > $1.loggedAt }
+            .filter { seen.insert(($0.summary ?? "").lowercased()).inserted }
+            .prefix(limit)
+            .map { $0 }
+    }
+
+    /// Log a recent meal again with its exact numbers — no parse, no AI quota.
+    func logAgain(_ meal: MealSummary) async {
+        guard phase != .parsing else { return }
+        let snapshotBackdate = backdate
+        submittedPrompt = meal.summary ?? "Logged"
+        backdate = nil
+        phase = .parsing
+        do {
+            let res: LogMealResponse = try await api.post(
+                "/api/meals",
+                LogMealRequest(
+                    text: meal.summary,
+                    macros: .init(kcal: meal.kcal, proteinG: meal.proteinG, carbsG: meal.carbsG, fatG: meal.fatG),
+                    loggedAt: snapshotBackdate.map { ISO8601DateFormatter().string(from: $0.at) }
+                )
+            )
+            phase = .logged(
+                Logged(
+                    mealId: res.meal.id,
+                    kcal: res.meal.kcal,
+                    proteinG: res.meal.proteinG,
+                    summary: meal.summary,
+                    notes: nil,
+                    confidence: nil,
+                    items: [],
+                    fromPhoto: false,
+                    resolvedCheckIn: res.resolvedCheckInId != nil
+                )
+            )
+            onMealChanged()
+        } catch {
             backdate = snapshotBackdate
             phase = .failed(UserFacingError.message(for: error, fallback: "Couldn't log. Try again."))
         }

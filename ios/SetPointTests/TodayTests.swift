@@ -23,7 +23,9 @@ final class TodayTests: XCTestCase {
         heroKcal: Int = 1200,
         enforcement: Bool = true,
         checkIn: HomeResponse.ActiveCheckIn? = nil,
-        day: HomeResponse.Day? = nil
+        day: HomeResponse.Day? = nil,
+        next: HomeResponse.NextCheckIn? = nil,
+        lastMealAt: String? = nil
     ) -> HomeResponse {
         HomeResponse(
             goal: "BULK",
@@ -32,68 +34,67 @@ final class TodayTests: XCTestCase {
             ledger: .init(
                 consumedKcal: 3000 - heroKcal, targetKcal: 3000, remainingKcal: heroKcal,
                 consumedProteinG: 60, targetProteinG: 160, remainingProteinG: 100,
-                mealsToday: 1, lastMealAt: nil
+                mealsToday: 1, lastMealAt: lastMealAt
             ),
             framing: .init(state: state, accent: state == "under", primaryCta: nil, heroKcal: heroKcal),
             managerNote: "Note",
             meals: [],
             mealTimes: .standard,
             activeCheckIn: checkIn,
-            day: day
+            day: day,
+            nextCheckIn: next
         )
     }
 
-    // MARK: Next card
+    // MARK: Moment
 
-    func testACheckInAlwaysOwnsTheNextCard() {
-        XCTAssertEqual(TodayNext.resolve(home(checkIn: checkIn())), .checkIn)
-        XCTAssertEqual(TodayNext.resolve(home(checkIn: checkIn(status: "DEFERRED"))), .snoozed)
-        XCTAssertEqual(TodayNext.resolve(home(checkIn: checkIn(tier: 3))), .conversation)
+    private func next(_ slot: String = "lunch", due: Int = 825, overdue: Bool = false) -> HomeResponse.NextCheckIn {
+        .init(slot: slot, mealMin: due - 45, dueMin: due, overdue: overdue)
     }
 
-    func testUnderTargetPointsAtTheNextMeal() {
-        let next = HomeResponse.Day.Next(slot: "lunch", atMin: 780, suggestedKcal: 1200)
-        XCTAssertEqual(TodayNext.resolve(home(day: day(next: next))), .meal(.lunch, atMin: 780, suggestedKcal: 1200))
-        XCTAssertEqual(TodayNext.resolve(home(heroKcal: 450, day: day(next: nil))), .toGo(kcal: 450))
-        XCTAssertEqual(TodayNext.resolve(home(heroKcal: 450, day: nil)), .toGo(kcal: 450))
+    func testACheckInTakesOverToday() {
+        var pending = checkIn()
+        pending.slot = "lunch"
+        XCTAssertEqual(TodayMoment.resolve(home(checkIn: pending)), .checkIn(.lunch))
+        XCTAssertTrue(TodayMoment.resolve(home(checkIn: pending)).takesOver)
+        XCTAssertEqual(TodayMoment.resolve(home(checkIn: checkIn(tier: 3))), .conversation)
+        XCTAssertEqual(TodayMoment.resolve(home(checkIn: checkIn(status: "DEFERRED"))), .snoozed(until: nil))
+        XCTAssertFalse(TodayMoment.resolve(home(checkIn: checkIn(status: "DEFERRED"))).takesOver)
     }
 
-    func testMetOrPassedTargetIsCoveredAndQuietModeSaysNothing() {
-        XCTAssertEqual(TodayNext.resolve(home(state: "on_track", heroKcal: 40)), .covered)
-        XCTAssertEqual(TodayNext.resolve(home(state: "over", heroKcal: -250)), .covered)
-        XCTAssertEqual(TodayNext.resolve(home(enforcement: false, day: day())), .quiet)
+    func testUnderTargetWatchesTheNextCheckIn() {
+        XCTAssertEqual(TodayMoment.resolve(home(next: next())), .watching(.lunch, dueMin: 825, overdue: false))
+        XCTAssertEqual(TodayMoment.resolve(home(heroKcal: 450)), .toGo(kcal: 450)) // nothing scheduled
+    }
+
+    func testMetTargetIsCoveredAndQuietModeSaysNothing() {
+        XCTAssertEqual(TodayMoment.resolve(home(state: "on_track", heroKcal: 40, next: next())), .covered)
+        XCTAssertEqual(TodayMoment.resolve(home(state: "over", heroKcal: -250)), .covered)
+        XCTAssertEqual(TodayMoment.resolve(home(enforcement: false, day: day())), .quiet)
     }
 
     // MARK: Copy
 
-    func testPaceLineOnlySpeaksWhileThereIsFoodToEat() {
-        XCTAssertEqual(TodayCopy.paceLine(home(day: day(status: "behind", behind: 600))), "About 600 kcal behind your usual pace")
-        XCTAssertEqual(TodayCopy.paceLine(home(day: day(status: "on_pace"))), "On pace with your usual meals")
-        XCTAssertEqual(TodayCopy.paceLine(home(day: day(status: "ahead"))), "Ahead of your usual pace")
-        XCTAssertNil(TodayCopy.paceLine(home(state: "over", heroKcal: -250, day: day())))
-        XCTAssertNil(TodayCopy.paceLine(home(enforcement: false, day: day())))
-        XCTAssertNil(TodayCopy.paceLine(home(day: nil)))
+    func testHeadlinesStayShort() {
+        XCTAssertEqual(TodayCopy.headline(.watching(.lunch, dueMin: 825, overdue: false)), "Lunch is next.")
+        XCTAssertEqual(TodayCopy.headline(.checkIn(.dinner)), "Dinner slipped.")
+        XCTAssertEqual(TodayCopy.headline(.checkIn(nil)), "Time to eat.")
+        XCTAssertEqual(TodayCopy.headline(.covered), "Day covered.")
     }
 
-    func testHeroCaptionFollowsTheSign() {
-        XCTAssertEqual(TodayCopy.heroCaption(.init(state: "under", accent: true, primaryCta: nil, heroKcal: 900)), "kcal left")
-        XCTAssertEqual(TodayCopy.heroCaption(.init(state: "over", accent: false, primaryCta: nil, heroKcal: -250)), "kcal past target")
+    func testSinceLastMealOnlyCountsToday() {
+        let now = ISO8601DateFormatter().date(from: "2026-09-10T15:20:00Z")!
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        XCTAssertEqual(TodayCopy.sinceLastMeal(home(lastMealAt: "2026-09-09T20:00:00Z"), now: now, calendar: calendar), "Nothing logged yet today.")
+        XCTAssertTrue(TodayCopy.sinceLastMeal(home(lastMealAt: "2026-09-10T08:05:00Z"), now: now, calendar: calendar).hasPrefix("Nothing since"))
     }
 
-    // MARK: Layout
-
-    func testTrackSpansTheMealTimesWithAir() {
-        let layout = DayTrackLayout(mealTimes: .standard, nowMin: 750)
-        XCTAssertEqual(layout.startMin, 390)   // 06:30
-        XCTAssertEqual(layout.endMin, 1290)    // 21:30
-        XCTAssertEqual(layout.fraction(390), 0)
-        XCTAssertEqual(layout.fraction(840), 0.5)
-        XCTAssertEqual(layout.fraction(2000), 1)
-    }
-
-    func testTrackStretchesToIncludeNow() {
-        XCTAssertEqual(DayTrackLayout(mealTimes: .standard, nowMin: 1430).endMin, 1440)
-        XCTAssertEqual(DayTrackLayout(mealTimes: .standard, nowMin: 300).startMin, 270)
+    func testDialStatesComeFromTheDay() {
+        let states = TodayCopy.dialStates(home(day: day()))
+        XCTAssertEqual(states[.breakfast], .logged)
+        XCTAssertEqual(states[.lunch], .now)
+        XCTAssertEqual(states[.dinner], .upcoming)
     }
 
     func testMealsGroupBySlotInBackendOrder() {
@@ -145,9 +146,28 @@ final class TodayTests: XCTestCase {
     // MARK: Snooze
 
     func testSnoozeChoicesOnlyOfferTheNextMealWhenItIsFarEnough() {
+        XCTAssertEqual(CheckInActions.snoozeChoices(nextMealMinutes: nil).map(\.title), ["1 hour", "2 hours"])
         XCTAssertEqual(CheckInActions.snoozeChoices(nextMealMinutes: nil).map(\.minutes), [60, 120])
         XCTAssertEqual(CheckInActions.snoozeChoices(nextMealMinutes: 30).map(\.minutes), [60, 120])
         XCTAssertEqual(CheckInActions.snoozeChoices(nextMealMinutes: 200).map(\.minutes), [60, 120, 200])
         XCTAssertEqual(CheckInActions.snoozeChoices(nextMealMinutes: 900).last?.minutes, 360)
+        XCTAssertTrue(CheckInActions.snoozeChoices(nextMealMinutes: 200).last?.title.hasPrefix("After ") == true)
+    }
+
+    // MARK: Again?
+
+    @MainActor
+    func testRecentsAreNewestFirstOneEachAndNamed() {
+        func meal(_ id: String, _ at: String, _ summary: String?) -> MealSummary {
+            .init(id: id, loggedAt: at, kcal: 500, proteinG: 30, carbsG: 40, fatG: 10, source: "TEXT",
+                  summary: summary, photoUrl: nil, notes: nil, items: nil, parseConfidence: nil)
+        }
+        let recents = LogMealViewModel.distinctRecents([
+            meal("a", "2026-09-13T08:00:00Z", "Oats"),
+            meal("b", "2026-09-14T08:00:00Z", "oats"),
+            meal("c", "2026-09-14T12:00:00Z", "Chicken wrap"),
+            meal("d", "2026-09-14T13:00:00Z", nil),
+        ])
+        XCTAssertEqual(recents.map(\.id), ["c", "b"])
     }
 }

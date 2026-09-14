@@ -1,9 +1,9 @@
 import SwiftUI
 
-/// Today (§5.2), rebuilt around one question: am I on pace today, and what do I
-/// do next? The manager's line, the day (what's left, protein, the day track,
-/// pace), one Next card, and the meal log under each meal time. Logging lives in
-/// `LogDock`, pinned above the tab bar so it's in the same place in every state.
+/// Today (§5.2): the day dial as hero — what's logged, what's due, and when the
+/// next check-in comes — or, when a check-in fires, a terracotta takeover with the
+/// meal to eat. Calories and protein sit in a strip below, then the meal log.
+/// Logging lives in `LogDock`, pinned above the tab bar in every state.
 struct HomeContent: View {
     @Bindable var model: HomeViewModel
     var deepLinkCheckInID: Binding<String?> = .constant(nil)
@@ -21,7 +21,6 @@ struct HomeContent: View {
     @State private var checkInBusy = false
     @State private var checkInError: String?
     @FocusState private var composerFocused: Bool
-    @Namespace private var checkInNamespace
     @Namespace private var photoLogNamespace
 
     init(
@@ -39,7 +38,6 @@ struct HomeContent: View {
         _logger = State(initialValue: previewLogger)
     }
 
-    private static let checkInGeometryID = "active-check-in"
     private static let photoImageID = "photo-log-image"
     private static let photoCardID = "photo-log-card"
 
@@ -77,25 +75,26 @@ struct HomeContent: View {
                                 Task { await model.load(showSpinner: false) }
                             }
                         )
-                    } else {
+                        .transition(.opacity)
+                    } else if let home = loadedHome {
                         PrescriptionView(
                             checkIn: checkIn,
+                            headline: TodayCopy.headline(TodayMoment.resolve(home)),
+                            whyNow: TodayCopy.whyNow(home, now: now),
                             nextMealMinutes: minutesUntilNextMeal(),
-                            namespace: checkInNamespace,
-                            geometryID: Self.checkInGeometryID,
                             onDismiss: closeCheckIn,
                             onResolved: {
                                 closeCheckIn()
                                 Task { await model.load(showSpinner: false) }
                             },
-                            onLogSomethingElse: {
+                            onAlreadyAte: {
                                 closeCheckIn()
-                                DispatchQueue.main.async { composerFocused = true }
+                                offerQuickLog(for: checkIn)
                             }
                         )
+                        .transition(.move(edge: .bottom))
                     }
                 }
-                .transition(.opacity)
                 .zIndex(2)
             }
 
@@ -104,7 +103,8 @@ struct HomeContent: View {
                     model: logger,
                     namespace: photoLogNamespace,
                     imageID: Self.photoImageID,
-                    cardID: Self.photoCardID
+                    cardID: Self.photoCardID,
+                    countsFor: loadedHome?.day?.slots.first { $0.slotState == .now }?.meal
                 ) {
                     Task { await keepPhotoLog() }
                 }
@@ -134,7 +134,12 @@ struct HomeContent: View {
             if startComposerExpanded {
                 composerFocused = true
             }
+
             await env.push.syncAuthorizationStatus()
+        }
+        .onChange(of: composerFocused) { _, isFocused in
+            guard isFocused, let meals = loadedHome?.meals else { return }
+            Task { await logger?.loadRecents(today: meals) }
         }
         .onChange(of: logger?.phase) { _, phase in
             if let phase { handleLoggerPhase(phase) }
@@ -169,51 +174,52 @@ struct HomeContent: View {
     }
 
     private func loaded(_ home: HomeResponse) -> some View {
-        ScrollView {
+        let moment = TodayMoment.resolve(home)
+        return ScrollView {
             VStack(alignment: .leading, spacing: Space.lg) {
-                if home.enforcementEnabled, env.push.authorizationStatus == .denied {
-                    NotificationsOffBanner()
-                        .appearIn(0)
+                if moment.takesOver, let checkIn = home.activeCheckIn {
+                    CheckInTakeover(
+                        home: home,
+                        checkIn: checkIn,
+                        moment: moment,
+                        busy: checkInBusy,
+                        error: checkInError,
+                        onOpen: openCheckIn,
+                        onAteThis: ateThis,
+                        onAlreadyAte: alreadyAte,
+                        onSnooze: { choosingSnooze = true }
+                    )
+                    .transition(.opacity)
+                } else {
+                    VStack(alignment: .leading, spacing: Space.md) {
+                        if home.enforcementEnabled, env.push.authorizationStatus == .denied {
+                            NotificationsOffBanner()
+                        }
+                        TodayHero(home: home, moment: moment, date: now)
+                    }
+                    .padding(.horizontal, Space.gutter)
+                    .padding(.top, Space.sm)
+                    .transition(.opacity)
                 }
 
-                VStack(alignment: .leading, spacing: Space.md) {
-                    TodayHeader(date: now, note: home.managerNote)
-                        .appearIn(0)
-
-                    DayPanel(home: home)
+                VStack(alignment: .leading, spacing: Space.lg) {
+                    FuelStrip(home: home, moment: moment)
                         .appearIn(1)
 
-                    if TodayNext.resolve(home) != .quiet {
-                        NextCard(
-                            home: home,
-                            showsCheckIn: !showingCheckIn,
-                            namespace: checkInNamespace,
-                            geometryID: Self.checkInGeometryID,
-                            busy: checkInBusy,
-                            error: checkInError,
-                            onOpenCheckIn: openCheckIn,
-                            onAteThis: ateThis,
-                            onSomethingElse: focusDock,
-                            onSnooze: { choosingSnooze = true },
-                            onLog: focusDock
-                        )
-                        .appearIn(2)
-                    }
+                    MealLog(
+                        home: home,
+                        pending: pendingMeal,
+                        landingNamespace: photoLogNamespace,
+                        landingCardID: photoLandingCardID,
+                        onOpenMeal: { selectedMeal = $0 },
+                        onLogMissed: logMissed
+                    )
+                    .appearIn(2)
                 }
-
-                MealLog(
-                    home: home,
-                    pending: pendingMeal,
-                    landingNamespace: photoLogNamespace,
-                    landingCardID: photoLandingCardID,
-                    onOpenMeal: { selectedMeal = $0 },
-                    onLogMissed: logMissed
-                )
-                .appearIn(3)
+                .padding(.horizontal, Space.gutter)
             }
-            .padding(.horizontal, Space.gutter)
-            .padding(.top, Space.sm)
             .padding(.bottom, Space.lg)
+            .animation(Motion.adaptive(Motion.morph, reduceMotion: reduceMotion), value: moment.takesOver)
         }
         .scrollBounceBehavior(.basedOnSize)
         .scrollDismissesKeyboard(.interactively)
@@ -244,8 +250,30 @@ struct HomeContent: View {
         withAnimation(springForCheckIn) { showingCheckIn = false }
     }
 
-    private func focusDock() {
-        composerFocused = true
+    /// After "I already ate": open the dock at the meal's time so logging it is one step.
+    private func offerQuickLog(for checkIn: HomeResponse.ActiveCheckIn) {
+        Task { await model.load(showSpinner: false) }
+        if let slot = checkIn.slot.flatMap(MealSlot.init(rawValue:)) {
+            let times = loadedHome?.resolvedMealTimes ?? .standard
+            let at = slot == .breakfast ? times.breakfastMin : slot == .lunch ? times.lunchMin : times.dinnerMin
+            logger?.backdate = .init(slot: slot, at: TodayLayout.today(atMin: at, now: now))
+        }
+        DispatchQueue.main.async { composerFocused = true }
+    }
+
+    private func alreadyAte() {
+        guard let checkIn = activeCheckIn, !checkInBusy else { return }
+        checkInBusy = true
+        checkInError = nil
+        Task {
+            do {
+                try await CheckInActions.alreadyAte(checkInID: checkIn.id, api: env.api)
+                offerQuickLog(for: checkIn)
+            } catch {
+                checkInError = UserFacingError.message(for: error, fallback: "Couldn't close that. Try again.")
+            }
+            checkInBusy = false
+        }
     }
 
     private func logMissed(_ slot: HomeResponse.Day.Slot) {
@@ -286,6 +314,7 @@ struct HomeContent: View {
     }
 
     private func handleLoggerPhase(_ phase: LogMealViewModel.Phase) {
+
         switch phase {
         case .parsing:
             composerFocused = false

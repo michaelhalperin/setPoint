@@ -3,7 +3,7 @@ import SwiftUI
 #if DEBUG
 
 /// An ISO timestamp for today at a local minute of day, so sample meals land in
-/// the right place on the day track wherever the preview runs.
+/// the right place on the dial wherever the preview runs.
 private func todayAt(_ minute: Int) -> String {
     let formatter = ISO8601DateFormatter()
     formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
@@ -104,7 +104,8 @@ extension HomeResponse {
             status: "PENDING",
             message: "You're well past your usual meal gap. Let's get food in now.",
             deferUntil: nil,
-            prescription: samplePrescription
+            prescription: samplePrescription,
+            slot: "lunch"
         )
     )
 
@@ -117,7 +118,8 @@ extension HomeResponse {
             status: "DEFERRED",
             message: "You're well past your usual meal gap. Let's get food in now.",
             deferUntil: ISO8601DateFormatter().string(from: Date.now.addingTimeInterval(75 * 60)),
-            prescription: samplePrescription
+            prescription: samplePrescription,
+            slot: "lunch"
         )
     )
 
@@ -130,7 +132,9 @@ extension HomeResponse {
     // MARK: Other days
 
     /// Mid-afternoon, on pace, dinner next.
-    static let sampleOnPace = HomeResponse(
+    static let sampleOnPace = baseOnPace.withNextCheckIn(.init(slot: "dinner", mealMin: 1140, dueMin: 1185, overdue: false))
+
+    private static let baseOnPace = HomeResponse(
         goal: "BULK",
         mode: "BASIC",
         enforcementEnabled: true,
@@ -182,7 +186,9 @@ extension HomeResponse {
     )
 
     /// Late morning with nothing logged — breakfast passed.
-    static let sampleMissed = HomeResponse(
+    static let sampleMissed = baseMissed.withNextCheckIn(.init(slot: "lunch", mealMin: 780, dueMin: 825, overdue: false))
+
+    private static let baseMissed = HomeResponse(
         goal: "BULK",
         mode: "SMART",
         enforcementEnabled: true,
@@ -218,7 +224,9 @@ extension HomeResponse {
     )
 
     /// Early morning, nothing yet.
-    static let sampleEmpty = HomeResponse(
+    static let sampleEmpty = baseEmpty.withNextCheckIn(.init(slot: "breakfast", mealMin: 480, dueMin: 525, overdue: false))
+
+    private static let baseEmpty = HomeResponse(
         goal: "BULK",
         mode: "SMART",
         enforcementEnabled: true,
@@ -331,6 +339,15 @@ extension HomeResponse {
         source: "PHOTO",
         summary: "Chicken burrito bowl, large"
     ))
+}
+
+extension HomeResponse {
+    /// A copy with a scheduled check-in, for previews.
+    func withNextCheckIn(_ next: NextCheckIn?) -> HomeResponse {
+        var copy = self
+        copy.nextCheckIn = next
+        return copy
+    }
 }
 
 #endif

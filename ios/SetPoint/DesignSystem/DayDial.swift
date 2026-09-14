@@ -1,5 +1,18 @@
 import SwiftUI
 
+/// Today's live state on the dial: each meal's state, the day so far, and now.
+struct DialToday: Equatable {
+    var states: [MealSlot: SlotState]
+    /// Nil draws no day-so-far ring or now marker (a schedule preview).
+    var nowMin: Int?
+    /// The day-so-far ring: accent while watching, green once covered, faint in quiet mode.
+    var ringColor: Color = Palette.accent
+    /// Quiet mode shows no bells — nothing will check in.
+    var showsBells = true
+    /// The meal whose check-in has fired.
+    var firedSlot: MealSlot?
+}
+
 /// The day as a 24-hour dial — SetPoint's motif. Midnight at the top, running
 /// clockwise. Usual meal times are knobs on the ring, quiet hours a darker arc,
 /// and a bell sits just past each meal where a check-in would come if nothing's
@@ -19,6 +32,8 @@ struct DayDial<Center: View>: View {
     var ringProgress: Double?
     /// Knobs and bells pop in when this flips on.
     var markersShown = true
+    /// Live state for Today; nil draws the plain schedule (onboarding).
+    var today: DialToday?
     @ViewBuilder var center: () -> Center
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -33,6 +48,8 @@ struct DayDial<Center: View>: View {
             let c = CGPoint(x: geo.size.width / 2, y: geo.size.height / 2)
             let r = size * 0.33
             let ringWidth = size * 0.076
+            let knobSize = min(44, max(18, size * 0.13))
+            let bellSize = min(28, max(12, size * 0.082))
 
             ZStack {
                 Circle()
@@ -42,6 +59,15 @@ struct DayDial<Center: View>: View {
 
                 quietArc(radius: r, width: ringWidth)
                     .position(c)
+
+                if let nowMin = today?.nowMin, let today, nowMin > quietEndMin {
+                    Circle()
+                        .trim(from: Double(quietEndMin) / 1440, to: Double(nowMin) / 1440)
+                        .stroke(today.ringColor, style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                        .frame(width: r * 2, height: r * 2)
+                        .position(c)
+                }
 
                 if let ringProgress {
                     Circle()
@@ -81,16 +107,32 @@ struct DayDial<Center: View>: View {
 
                 ForEach(Array(meals.enumerated()), id: \.offset) { index, entry in
                     let (slot, minute) = entry
-                    knob(slot)
+                    let state = today?.states[slot]
+                    knob(slot, state: state, size: knobSize)
                         .scaleEffect(markersShown ? 1 : 0.2)
                         .opacity(markersShown ? 1 : 0)
                         .animation(markerAnimation(index), value: markersShown)
                         .position(point(minute, radius: r, center: c))
-                    PingBell(fill: theme == .terra ? Palette.background : Palette.accentTint, stagger: Double(index) * 0.8)
+                    if showsBell(for: state) {
+                        PingBell(
+                            fill: theme == .terra ? Palette.background : Palette.accentTint,
+                            stagger: Double(index) * 0.8,
+                            fired: today?.firedSlot == slot,
+                            size: bellSize
+                        )
                         .scaleEffect(markersShown ? 1 : 0.2)
                         .opacity(markersShown ? 1 : 0)
                         .animation(markerAnimation(index).delay(0.15), value: markersShown)
                         .position(point(CheckInSchedule.minute(afterMeal: minute), radius: r + size * 0.118, center: c))
+                    }
+                }
+
+                if let nowMin = today?.nowMin {
+                    Circle()
+                        .fill(Palette.ink)
+                        .overlay(Circle().strokeBorder(Palette.background, lineWidth: 3))
+                        .frame(width: 13, height: 13)
+                        .position(point(nowMin, radius: r, center: c))
                 }
 
                 center()
@@ -104,16 +146,58 @@ struct DayDial<Center: View>: View {
 
     // MARK: Pieces
 
-    private func knob(_ slot: MealSlot) -> some View {
-        Image(systemName: slot.symbol)
-            .font(.system(size: 17, weight: .semibold))
-            .foregroundStyle(Palette.accent)
-            .frame(width: 44, height: 44)
-            .background(theme == .terra ? Palette.background : Palette.surface, in: Circle())
-            .overlay {
-                if theme == .paper { Circle().strokeBorder(Palette.accent, lineWidth: 3) }
+    @ViewBuilder
+    private func knob(_ slot: MealSlot, state: SlotState?, size: CGFloat) -> some View {
+        switch state {
+        case .logged:
+            Image(systemName: "checkmark")
+                .font(.system(size: size * 0.36, weight: .bold))
+                .foregroundStyle(Palette.background)
+                .frame(width: size, height: size)
+                .background(Palette.ink, in: Circle())
+                .elevation(.resting)
+        case .missed:
+            Image(systemName: slot.symbol)
+                .font(.system(size: size * 0.39, weight: .semibold))
+                .foregroundStyle(Palette.accent)
+                .frame(width: size, height: size)
+                .background(Palette.accentTint, in: Circle())
+                .overlay(Circle().strokeBorder(Palette.accent, style: StrokeStyle(lineWidth: size > 30 ? 2.5 : 1.5, dash: [4, 3])))
+        case .upcoming:
+            Image(systemName: slot.symbol)
+                .font(.system(size: size * 0.39, weight: .semibold))
+                .foregroundStyle(Palette.inkFaint)
+                .frame(width: size, height: size)
+                .background(Palette.surface, in: Circle())
+                .overlay(Circle().strokeBorder(Palette.surfaceSunk, lineWidth: 2))
+                .elevation(.resting)
+        case .now, nil:
+            ZStack {
+                if state == .now {
+                    LoopingPhase(period: 2, still: 1) { t in
+                        Circle()
+                            .fill(Palette.accentSoft)
+                            .scaleEffect(1 + 0.9 * Phase.ramp(t, 0, 0.7))
+                            .opacity(0.8 * (1 - Phase.ramp(t, 0, 0.7)))
+                    }
+                }
+                Image(systemName: slot.symbol)
+                    .font(.system(size: size * 0.39, weight: .semibold))
+                    .foregroundStyle(Palette.accent)
+                    .frame(width: size, height: size)
+                    .background(theme == .terra ? Palette.background : Palette.surface, in: Circle())
+                    .overlay {
+                        if theme == .paper { Circle().strokeBorder(Palette.accent, lineWidth: size > 30 ? 3 : 2) }
+                    }
+                    .elevation(.resting)
             }
-            .elevation(.resting)
+            .frame(width: size, height: size)
+        }
+    }
+
+    private func showsBell(for state: SlotState?) -> Bool {
+        guard let today else { return true }
+        return today.showsBells && state != .logged
     }
 
     @ViewBuilder
@@ -165,25 +249,29 @@ struct DayDial<Center: View>: View {
     }
 }
 
-/// A bell that sends out a soft ring every couple of seconds.
+/// A bell that sends out a soft ring every couple of seconds; solid once it has fired.
 private struct PingBell: View {
     let fill: Color
     let stagger: Double
+    var fired = false
+    var size: CGFloat = 28
 
     var body: some View {
         ZStack {
-            LoopingPhase(period: 2.4, offset: stagger, still: 1) { t in
-                Circle()
-                    .fill(fill)
-                    .scaleEffect(0.7 + 1.4 * Phase.ramp(t, 0, 0.7))
-                    .opacity(0.8 * (1 - Phase.ramp(t, 0, 0.7)))
+            if !fired {
+                LoopingPhase(period: 2.4, offset: stagger, still: 1) { t in
+                    Circle()
+                        .fill(fill)
+                        .scaleEffect(0.7 + 1.4 * Phase.ramp(t, 0, 0.7))
+                        .opacity(0.8 * (1 - Phase.ramp(t, 0, 0.7)))
+                }
             }
-            Circle().fill(fill)
+            Circle().fill(fired ? Palette.accent : fill)
             Image(systemName: "bell.fill")
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(Palette.accent)
+                .font(.system(size: size * 0.43, weight: .semibold))
+                .foregroundStyle(fired ? .white : Palette.accent)
         }
-        .frame(width: 28, height: 28)
+        .frame(width: size, height: size)
     }
 }
 

@@ -41,85 +41,108 @@ enum TodayPending: Equatable {
     case logged(title: String, kcal: Int)
 }
 
-/// What the single "Next" card on Today is about.
-enum TodayNext: Equatable {
-    /// A tier 1–2 check-in waiting for an answer.
-    case checkIn
-    /// A check-in the user snoozed.
-    case snoozed
+/// What Today is about right now — decides the hero (the dial, or the
+/// terracotta check-in takeover) and its words.
+enum TodayMoment: Equatable {
+    /// A tier 1–2 check-in waiting for an answer — the manager is talking.
+    case checkIn(MealSlot?)
     /// Tier 3 — the "let's talk" conversation.
     case conversation
-    /// Under target with a meal time still open.
-    case meal(MealSlot, atMin: Int, suggestedKcal: Int)
-    /// Under target but every meal time has passed.
+    /// A check-in the user snoozed, until this time.
+    case snoozed(until: Date?)
+    /// Watching a meal: the next check-in comes at `dueMin` if nothing's logged.
+    case watching(MealSlot, dueMin: Int, overdue: Bool)
+    /// Under target with nothing scheduled (paused, or the meal times have passed).
     case toGo(kcal: Int)
     /// Target met or passed — nothing to push.
     case covered
-    /// Quiet mode: the manager doesn't prompt at all.
+    /// Quiet mode: no check-ins, no "left", no accent.
     case quiet
 
-    /// Stable within a case, distinct between cases — drives the card's
-    /// crossfade when the situation changes, without re-triggering on a plain
-    /// re-render.
-    var caseKey: String {
-        switch self {
-        case .checkIn: return "checkIn"
-        case .snoozed: return "snoozed"
-        case .conversation: return "conversation"
-        case let .meal(slot, _, _): return "meal-\(slot.rawValue)"
-        case .toGo: return "toGo"
-        case .covered: return "covered"
-        case .quiet: return "quiet"
-        }
-    }
-
-    static func resolve(_ home: HomeResponse) -> TodayNext {
+    static func resolve(_ home: HomeResponse) -> TodayMoment {
         if let checkIn = home.activeCheckIn {
             if checkIn.tier >= 3 { return .conversation }
-            return checkIn.status == "DEFERRED" ? .snoozed : .checkIn
+            if checkIn.status == "DEFERRED" {
+                return .snoozed(until: checkIn.deferUntil.flatMap(MealFormat.parse))
+            }
+            return .checkIn(checkIn.slot.flatMap(MealSlot.init(rawValue:)))
         }
         guard home.enforcementEnabled else { return .quiet }
         guard home.framing.state == "under" else { return .covered }
-        if let next = home.day?.pace?.next {
-            return .meal(MealSlot(rawValue: next.slot) ?? .lunch, atMin: next.atMin, suggestedKcal: next.suggestedKcal)
+        if let next = home.nextCheckIn {
+            return .watching(MealSlot(rawValue: next.slot) ?? .lunch, dueMin: next.dueMin, overdue: next.overdue)
         }
         return .toGo(kcal: max(0, home.ledger.remainingKcal))
+    }
+
+    /// The takeover replaces the dial while the manager is asking something.
+    var takesOver: Bool {
+        switch self {
+        case .checkIn, .conversation: return true
+        default: return false
+        }
     }
 }
 
 enum TodayCopy {
-    /// Caption beside the big number.
-    static func heroCaption(_ framing: HomeResponse.Framing) -> String {
-        framing.heroKcal >= 0 ? "kcal left" : "kcal past target"
-    }
-
-    /// One line about pace under the day track — only while there's still food
-    /// to eat, never in quiet mode, and never about going over.
-    static func paceLine(_ home: HomeResponse) -> String? {
-        guard home.enforcementEnabled, home.framing.state == "under", let pace = home.day?.pace else { return nil }
-        switch pace.status {
-        case "behind": return "About \(pace.behindKcal.formatted()) kcal behind your usual pace"
-        case "ahead": return "Ahead of your usual pace"
-        default: return "On pace with your usual meals"
+    static func headline(_ moment: TodayMoment) -> String {
+        switch moment {
+        case let .checkIn(slot): return slot.map { "\($0.title) slipped." } ?? "Time to eat."
+        case .conversation: return "Rough few days."
+        case .snoozed: return "Snoozed."
+        case let .watching(slot, _, overdue): return overdue ? "\(slot.title) slipped." : "\(slot.title) is next."
+        case let .toGo(kcal): return "\(kcal.formatted()) kcal to go."
+        case .covered: return "Day covered."
+        case .quiet: return "Here’s today."
         }
     }
-}
 
-/// Positions along the day track as fractions (0...1) of a window that spans
-/// the user's meal times with some air either side, always including now.
-struct DayTrackLayout: Equatable {
-    let startMin: Int
-    let endMin: Int
-
-    init(mealTimes: MealTimesPayload, nowMin: Int) {
-        let start = max(0, min(mealTimes.breakfastMin - 90, nowMin - 30))
-        let end = min(1440, max(mealTimes.dinnerMin + 150, nowMin + 30))
-        startMin = start
-        endMin = max(end, start + 60)
+    static func detail(_ moment: TodayMoment, home: HomeResponse, now: Date = .now) -> String? {
+        switch moment {
+        case .checkIn:
+            return sinceLastMeal(home, now: now)
+        case .conversation:
+            return "Let’s change something."
+        case let .snoozed(until):
+            return until.map { "I’ll check again at \($0.formatted(date: .omitted, time: .shortened))." }
+        case let .watching(_, _, overdue):
+            return overdue ? "Checking in now." : nil
+        case .toGo:
+            return "A snack or a late meal covers it."
+        case .covered:
+            return "Nothing else needed today."
+        case .quiet:
+            return "Log when you like. No check-ins."
+        }
     }
 
-    func fraction(_ minute: Int) -> Double {
-        min(1, max(0, Double(minute - startMin) / Double(endMin - startMin)))
+    /// "Nothing since 8:05." — when the last meal was today.
+    static func sinceLastMeal(_ home: HomeResponse, now: Date = .now, calendar: Calendar = .current) -> String {
+        guard let iso = home.ledger.lastMealAt, let last = MealFormat.parse(iso),
+              calendar.isDate(last, inSameDayAs: now) else {
+            return "Nothing logged yet today."
+        }
+        return "Nothing since \(last.formatted(date: .omitted, time: .shortened))."
+    }
+
+    /// "Usually 13:00 · nothing since 8:05" — why the check-in came now.
+    static func whyNow(_ home: HomeResponse, now: Date = .now) -> String? {
+        guard let slot = home.activeCheckIn?.slot.flatMap(MealSlot.init(rawValue:)) else { return nil }
+        let times = home.resolvedMealTimes
+        let at = slot == .breakfast ? times.breakfastMin : slot == .lunch ? times.lunchMin : times.dinnerMin
+        let since = sinceLastMeal(home, now: now).dropLast().lowercased()
+        return "Usually \(formatMinutes(at)) · \(since)"
+    }
+
+    /// Each meal's state, for the dial's knobs.
+    /// Quiet mode never marks a meal as missed.
+    static func dialStates(_ home: HomeResponse) -> [MealSlot: SlotState] {
+        var states: [MealSlot: SlotState] = [:]
+        for slot in home.day?.slots ?? [] {
+            let state = slot.slotState
+            states[slot.meal] = state == .missed && !home.enforcementEnabled ? .upcoming : state
+        }
+        return states
     }
 }
 

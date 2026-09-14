@@ -156,7 +156,6 @@ private struct LogMealStubHost: View {
 }
 
 private struct PrescriptionStubHost: View {
-    @Namespace private var ns
     var body: some View {
         ZStack {
             // A dimmed Home behind, so the morph's depth reads in review.
@@ -167,11 +166,11 @@ private struct PrescriptionStubHost: View {
             if let checkIn = HomeResponse.sampleUnder.activeCheckIn {
                 PrescriptionView(
                     checkIn: checkIn,
-                    namespace: ns,
-                    geometryID: "stub",
+                    headline: TodayCopy.headline(TodayMoment.resolve(.sampleUnder)),
+                    whyNow: TodayCopy.whyNow(.sampleUnder),
                     onDismiss: {},
                     onResolved: {},
-                    onLogSomethingElse: {}
+                    onAlreadyAte: {}
                 )
             }
         }

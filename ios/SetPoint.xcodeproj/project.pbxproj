@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		000E7329E0AD58A858975969 /* TodayViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B56D79A560DD326A2E790A2 /* TodayViews.swift */; };
 		06C546487C6FA154FBABC414 /* Elevation.swift in Sources */ = {isa = PBXBuildFile; fileRef = E087827D97886CF3572DF6AC /* Elevation.swift */; };
+		06D6ACCDD65043C968DE9F91 /* TodayHero.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC403257C8BD1A8974AE5F39 /* TodayHero.swift */; };
 		083FD217A6D6A6354C46DF7C /* OnboardingModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9086CF76120B951F38382F7E /* OnboardingModel.swift */; };
 		08A4C7B6908362B05B98089D /* OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = 822F10719F105FCD59A9BF02 /* OFL.txt */; };
 		0C84A8759937084B64E92F7D /* CheckInActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = E73FA80DA7E099B267EAFEB5 /* CheckInActivityAttributes.swift */; };
@@ -199,6 +200,7 @@
 		E6FBF6B25E85349394163FF0 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		E73FA80DA7E099B267EAFEB5 /* CheckInActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckInActivityAttributes.swift; sourceTree = "<group>"; };
 		EBDF76CE6B64FD92287D0E0E /* MealViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealViews.swift; sourceTree = "<group>"; };
+		EC403257C8BD1A8974AE5F39 /* TodayHero.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayHero.swift; sourceTree = "<group>"; };
 		EC5D2AA52B39239A03B631E7 /* PrescriptionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrescriptionView.swift; sourceTree = "<group>"; };
 		EC89EFB897DDB22BB5344B9D /* HealthKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitManager.swift; sourceTree = "<group>"; };
 		ECFB3596BCF94EF40A22F565 /* CheckInTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckInTests.swift; sourceTree = "<group>"; };
@@ -316,6 +318,7 @@
 				3DE0776BE27E3FB776B02BB7 /* LogMealViewModel.swift */,
 				6B5888ECCC1D863A84318CA1 /* MealPhoto.swift */,
 				EBDF76CE6B64FD92287D0E0E /* MealViews.swift */,
+				EC403257C8BD1A8974AE5F39 /* TodayHero.swift */,
 				D76F69253293040BDD400099 /* TodayModel.swift */,
 				2B56D79A560DD326A2E790A2 /* TodayViews.swift */,
 			);
@@ -673,6 +676,7 @@
 				3BBE11AFF9C9A1FFE3253EE5 /* SettlementViewModel.swift in Sources */,
 				B34F74442FE761C505CF1E1F /* SignInView.swift in Sources */,
 				B0A40E92C04BD1BB1F40B013 /* Spacing.swift in Sources */,
+				06D6ACCDD65043C968DE9F91 /* TodayHero.swift in Sources */,
 				5A9C0E2C4922472B74B9C958 /* TodayModel.swift in Sources */,
 				000E7329E0AD58A858975969 /* TodayViews.swift in Sources */,
 				5C2C73BA6DBBD160F71960E6 /* TokenStore.swift in Sources */,
