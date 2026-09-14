@@ -20,6 +20,7 @@ final class SettingsTests: XCTestCase {
         XCTAssertEqual(s.targetWeightKg, 74)
         XCTAssertEqual(s.paceKgPerWeek, 0.5)
         XCTAssertEqual(s.currentWeightKg, 77.5)
+        XCTAssertNil(s.preferredDurationWeeks)
         XCTAssertTrue(s.checkInsPaused)
         XCTAssertEqual(s.mealTimes, MealTimesPayload(breakfastMin: 480, lunchMin: 780, dinnerMin: 1140))
         XCTAssertEqual(s.restrictions.first?.label, "Peanuts")

@@ -72,6 +72,66 @@ enum GoalPace: String, CaseIterable, Identifiable {
     }
 }
 
+/// Safety caps and timeframe math, mirrored from the backend's `targets.ts`.
+/// Duration is the input; pace is derived then clamped. The honest week count
+/// is remaining ÷ clamped pace — a short ask is never stored past the cap.
+enum WeightPace {
+    static let minKgPerWeek = 0.1
+    static let dietMaxFractionPerWeek = 0.0075
+    static let bulkMaxKgPerWeek = 0.5
+    static let minWeeks = 1
+    static let maxWeeks = 104
+
+    static func remainingKg(goal: Goal, currentKg: Double, targetKg: Double) -> Double {
+        let delta = goal == .bulk ? targetKg - currentKg : currentKg - targetKg
+        return max(0, delta)
+    }
+
+    static func clampKgPerWeek(goal: Goal, weightKg: Double?, pace: Double) -> Double {
+        if goal == .maintain { return 0 }
+        let magnitude = abs(pace) > 0 ? abs(pace) : minKgPerWeek
+        let ceiling: Double
+        if goal == .diet, let weightKg {
+            ceiling = max(minKgPerWeek, weightKg * dietMaxFractionPerWeek)
+        } else {
+            ceiling = bulkMaxKgPerWeek
+        }
+        return (min(max(magnitude, minKgPerWeek), ceiling) * 100).rounded() / 100
+    }
+
+    static func clampWeeks(_ weeks: Int) -> Int {
+        min(maxWeeks, max(minWeeks, weeks))
+    }
+
+    static func etaWeeks(remainingKg: Double, paceKgPerWeek: Double) -> Int? {
+        guard remainingKg > 0.05, paceKgPerWeek > 0 else { return nil }
+        return Int((remainingKg / paceKgPerWeek).rounded(.up))
+    }
+
+    /// Matches backend `resolveGoalPace`. Duration wins when both are present.
+    static func resolve(
+        goal: Goal,
+        weightKg: Double?,
+        remainingKg: Double?,
+        preferredWeeks: Int?,
+        paceKgPerWeek: Double
+    ) -> (paceKgPerWeek: Double, preferredDurationWeeks: Int?) {
+        if goal == .maintain { return (0, nil) }
+        let requestedPace: Double
+        if let preferredWeeks, preferredWeeks > 0, let remainingKg, remainingKg > 0 {
+            requestedPace = remainingKg / Double(preferredWeeks)
+        } else {
+            requestedPace = paceKgPerWeek
+        }
+        let pace = clampKgPerWeek(goal: goal, weightKg: weightKg, pace: requestedPace)
+        var weeks = remainingKg.flatMap { etaWeeks(remainingKg: $0, paceKgPerWeek: pace) }
+        if weeks == nil, let preferredWeeks, preferredWeeks > 0 {
+            weeks = preferredWeeks
+        }
+        return (pace, weeks.map(clampWeeks))
+    }
+}
+
 enum Sex: String, CaseIterable, Identifiable {
     case male = "MALE"
     case female = "FEMALE"

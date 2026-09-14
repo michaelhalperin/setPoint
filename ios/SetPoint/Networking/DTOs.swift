@@ -362,6 +362,7 @@ struct OnboardingRequest: Encodable {
     let activityLevel: String
     var targetWeightKg: Double?
     var paceKgPerWeek: Double?
+    var preferredDurationWeeks: Int?
     let mealTimes: MinutesTriple
     let quietHours: MinutesRange
     let safety: Safety
@@ -387,6 +388,7 @@ struct OnboardingResponse: Decodable {
     let dailyProteinTargetG: Int?
     let targetWeightKg: Double?
     let paceKgPerWeek: Double?
+    var preferredDurationWeeks: Int? = nil
     let enforcementEnabled: Bool
     let enforcementDisabledReason: String?   // "MEDICAL_SUPERVISION" | "EATING_DISORDER_SCREEN" | nil
 }
@@ -443,6 +445,7 @@ struct SettingsResponse: Decodable {
     let dailyProteinTargetG: Int?
     let targetWeightKg: Double?
     let paceKgPerWeek: Double
+    var preferredDurationWeeks: Int? = nil
     let startWeightKg: Double?
     let currentWeightKg: Double?
     let mealTimes: MealTimesPayload
@@ -465,8 +468,10 @@ struct SettingsResponse: Decodable {
 
 struct SettingsPatch: Encodable {
     var goal: String?
+    var mode: String?
     var targetWeightKg: Double?
     var paceKgPerWeek: Double?
+    var preferredDurationWeeks: Int?
     var dailyKcalTarget: Int?
     var dailyProteinTargetG: Int?
     var mealTimes: MealTimesPayload?

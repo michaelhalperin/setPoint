@@ -9,7 +9,7 @@ final class SettingsScreensTests: XCTestCase {
         XCTAssertFalse(vm.mealTimesDirty)
         XCTAssertFalse(vm.restrictionsDirty)
 
-        vm.pace = .gentle
+        vm.applyPaceShortcut(.gentle)
         XCTAssertTrue(vm.goalDirty)
         XCTAssertFalse(vm.mealTimesDirty)
         XCTAssertFalse(vm.restrictionsDirty)
@@ -30,10 +30,10 @@ final class SettingsScreensTests: XCTestCase {
     func testGoalSaveNoteForTargetPaceAndRecalc() {
         let vm = SettingsViewModel.previewed()
         vm.targetWeightKg = 80
-        vm.pace = .gentle
+        vm.applyPaceShortcut(.gentle)
         XCTAssertEqual(
             vm.goalSaveNote,
-            "Target 84 → 80 kg · Pace steady → gentle · Your daily target will be recalculated."
+            "Target 84 → 80 kg · Timeframe 18 → 4 weeks · Your daily target will be recalculated."
         )
     }
 

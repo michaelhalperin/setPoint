@@ -42,6 +42,7 @@ struct OnboardingDraft {
     // Weight goal (M16) — nil / ignored for Maintain.
     var targetWeightKg: Double?
     var pace: GoalPace = .gentle
+    var preferredDurationWeeks: Int?
 
     var mealRhythmPreset: MealRhythmPreset = .standard
     var breakfastMin = 480    // 08:00
@@ -91,6 +92,17 @@ struct OnboardingDraft {
         df.dateFormat = "yyyy-MM-dd"
 
         let resolvedGoal = goal ?? .bulk
+        let remaining: Double? = {
+            guard resolvedGoal.hasWeightTarget, let current = weightKg, let target = targetWeightKg else { return nil }
+            return WeightPace.remainingKg(goal: resolvedGoal, currentKg: current, targetKg: target)
+        }()
+        let resolved = WeightPace.resolve(
+            goal: resolvedGoal,
+            weightKg: weightKg,
+            remainingKg: remaining,
+            preferredWeeks: resolvedGoal.hasWeightTarget ? preferredDurationWeeks : nil,
+            paceKgPerWeek: pace.kgPerWeek(for: resolvedGoal)
+        )
 
         return OnboardingRequest(
             goal: resolvedGoal.rawValue,
@@ -102,7 +114,8 @@ struct OnboardingDraft {
             weightKg: weightKg,
             activityLevel: activityLevel.rawValue,
             targetWeightKg: resolvedGoal.hasWeightTarget ? targetWeightKg : nil,
-            paceKgPerWeek: resolvedGoal.hasWeightTarget ? pace.kgPerWeek(for: resolvedGoal) : nil,
+            paceKgPerWeek: resolvedGoal.hasWeightTarget ? resolved.paceKgPerWeek : nil,
+            preferredDurationWeeks: resolvedGoal.hasWeightTarget ? preferredDurationWeeks : nil,
             mealTimes: .init(breakfastMin: breakfastMin, lunchMin: lunchMin, dinnerMin: dinnerMin),
             quietHours: .init(startMin: quietStartMin, endMin: quietEndMin),
             safety: .init(
@@ -215,13 +228,57 @@ final class OnboardingViewModel {
         }
     }
 
-    /// Whole weeks to the target at the chosen pace, or nil without one.
+    /// Whole weeks to the target at a safe pace, or nil without one.
     var etaWeeks: Int? {
+        resolvedPace.preferredDurationWeeks
+    }
+
+    /// Why the entered timeframe won't be honored, or nil when it matches a safe pace.
+    var durationMessage: String? {
+        guard targetWeightMessage == nil,
+              let preferred = draft.preferredDurationWeeks,
+              let honest = etaWeeks,
+              preferred != honest else { return nil }
+        if preferred < honest {
+            return "That's faster than a safe pace — about \(honest) weeks."
+        }
+        return "That's slower than I'll go — about \(honest) weeks."
+    }
+
+    private var remainingKg: Double? {
         guard let goal = draft.goal, goal.hasWeightTarget,
               let current = draft.weightKg, let target = draft.targetWeightKg else { return nil }
-        let rate = draft.pace.kgPerWeek(for: goal)
-        guard rate > 0, target != current else { return nil }
-        return Int((abs(target - current) / rate).rounded(.up))
+        return WeightPace.remainingKg(goal: goal, currentKg: current, targetKg: target)
+    }
+
+    private var resolvedPace: (paceKgPerWeek: Double, preferredDurationWeeks: Int?) {
+        guard let goal = draft.goal else { return (0, nil) }
+        return WeightPace.resolve(
+            goal: goal,
+            weightKg: draft.weightKg,
+            remainingKg: remainingKg,
+            preferredWeeks: draft.preferredDurationWeeks,
+            paceKgPerWeek: draft.pace.kgPerWeek(for: goal)
+        )
+    }
+
+    func applyPaceShortcut(_ pace: GoalPace) {
+        draft.pace = pace
+        guard let goal = draft.goal, let remaining = remainingKg else { return }
+        let rate = WeightPace.clampKgPerWeek(goal: goal, weightKg: draft.weightKg, pace: pace.kgPerWeek(for: goal))
+        draft.preferredDurationWeeks = WeightPace.etaWeeks(remainingKg: remaining, paceKgPerWeek: rate)
+    }
+
+    func setDurationWeeks(_ weeks: Int) {
+        draft.preferredDurationWeeks = WeightPace.clampWeeks(weeks)
+        guard let goal = draft.goal, let remaining = remainingKg, remaining > 0 else { return }
+        draft.pace = GoalPace.closest(toKgPerWeek: remaining / Double(WeightPace.clampWeeks(weeks)), for: goal)
+    }
+
+    func proposeDurationIfNeeded() {
+        guard draft.preferredDurationWeeks == nil, let remaining = remainingKg else { return }
+        let rate = draft.pace.kgPerWeek(for: draft.goal ?? .bulk)
+        draft.preferredDurationWeeks = WeightPace.etaWeeks(remainingKg: remaining, paceKgPerWeek: rate)
     }
 
     var mealAnchorsAreValid: Bool {

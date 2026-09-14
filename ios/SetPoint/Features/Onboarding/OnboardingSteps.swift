@@ -23,7 +23,12 @@ struct GoalStep: View {
 
     private func choose(_ goal: Goal) {
         UISelectionFeedbackGenerator().selectionChanged()
-        withAnimation(Motion.settle) { model.draft.goal = goal }
+        withAnimation(Motion.settle) {
+            if model.draft.goal != goal {
+                model.draft.preferredDurationWeeks = nil
+            }
+            model.draft.goal = goal
+        }
         model.autoAdvance(from: .goal, after: 0.55)
     }
 }
@@ -432,26 +437,50 @@ struct TargetStep: View {
                     .transition(.opacity)
             }
 
-            SegmentedPills(
-                options: GoalPace.allCases,
-                selection: $model.draft.pace,
-                title: { $0.title },
-                detail: { $0.blurb(for: goal) }
-            )
-            .appearIn(3)
-
-            if let weeks = model.etaWeeks, model.targetWeightMessage == nil {
-                Label("About \(weeks) weeks", systemImage: "clock")
-                    .font(Typography.data(15, weight: .semibold))
-                    .foregroundStyle(Palette.inkSoft)
+            if model.targetWeightMessage == nil {
+                Text("How long?")
+                    .font(Typography.data(13, weight: .semibold))
+                    .foregroundStyle(Palette.inkFaint)
                     .frame(maxWidth: .infinity)
-                    .contentTransition(.numericText())
-                    .appearIn(4)
+                    .appearIn(3)
+
+                WeeksStepper(
+                    weeks: Binding(
+                        get: { model.draft.preferredDurationWeeks ?? model.etaWeeks ?? 12 },
+                        set: { model.setDurationWeeks($0) }
+                    ),
+                    large: true
+                )
+                .appearIn(3)
+
+                SegmentedPills(
+                    options: GoalPace.allCases,
+                    selection: Binding(
+                        get: { model.draft.pace },
+                        set: { model.applyPaceShortcut($0) }
+                    ),
+                    title: { $0.title },
+                    detail: { $0.blurb(for: goal) }
+                )
+                .appearIn(4)
+
+                if let message = model.durationMessage {
+                    Text(message)
+                        .font(Typography.data(13, weight: .semibold))
+                        .foregroundStyle(Palette.accentDeep)
+                        .frame(maxWidth: .infinity)
+                        .multilineTextAlignment(.center)
+                        .transition(.opacity)
+                }
             }
         }
         .animation(Motion.settle, value: model.targetWeightMessage)
         .animation(Motion.settle, value: model.etaWeeks)
-        .onAppear(perform: proposeTargetIfNeeded)
+        .animation(Motion.settle, value: model.durationMessage)
+        .onAppear {
+            proposeTargetIfNeeded()
+            model.proposeDurationIfNeeded()
+        }
     }
 
     private var startLabel: String {

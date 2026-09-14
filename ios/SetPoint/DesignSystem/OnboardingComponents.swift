@@ -346,6 +346,60 @@ struct SegmentedPills<Option: Hashable>: View {
     }
 }
 
+/// Whole-week stepper for a weight-goal timeframe.
+struct WeeksStepper: View {
+    @Binding var weeks: Int
+    var large: Bool = false
+
+    var body: some View {
+        HStack {
+            stepperButton("minus", delta: -1)
+            Spacer()
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text("\(weeks)")
+                    .font(Typography.data(large ? 64 : 48, weight: .heavy))
+                    .tracking(large ? -2 : -1)
+                    .monospacedDigit()
+                    .foregroundStyle(Palette.ink)
+                    .contentTransition(.numericText(value: Double(weeks)))
+                Text("weeks")
+                    .font(Typography.data(large ? 22 : 18, weight: .semibold))
+                    .foregroundStyle(Palette.inkFaint)
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("\(weeks) weeks")
+            .accessibilityAdjustableAction { direction in
+                switch direction {
+                case .increment: nudge(1)
+                case .decrement: nudge(-1)
+                @unknown default: break
+                }
+            }
+            Spacer()
+            stepperButton("plus", delta: 1)
+        }
+    }
+
+    private func stepperButton(_ symbol: String, delta: Int) -> some View {
+        Button { nudge(delta) } label: {
+            Image(systemName: symbol)
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundStyle(Palette.ink)
+                .frame(width: large ? 56 : 48, height: large ? 56 : 48)
+                .background(Palette.surfaceSunk, in: Circle())
+        }
+        .buttonStyle(PressableCard())
+        .accessibilityLabel(delta > 0 ? "Increase duration" : "Decrease duration")
+    }
+
+    private func nudge(_ delta: Int) {
+        UISelectionFeedbackGenerator().selectionChanged()
+        withAnimation(Motion.settle) {
+            weeks = WeightPace.clampWeeks(weeks + delta)
+        }
+    }
+}
+
 /// Wrapping selectable chips.
 struct FlowChips: View {
     let options: [String]

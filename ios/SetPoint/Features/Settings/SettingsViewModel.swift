@@ -19,6 +19,7 @@ final class SettingsViewModel {
     var goal: Goal = .bulk
     var targetWeightKg: Double?
     var pace: GoalPace = .gentle
+    var preferredDurationWeeks: Int?
     var kcalTarget = 2500
     var proteinTarget: Int?
     var mealTimes = MealTimesPayload(breakfastMin: 480, lunchMin: 780, dinnerMin: 1140)
@@ -54,8 +55,80 @@ final class SettingsViewModel {
         guard let o = original else { return false }
         if goal.rawValue != o.goal { return true }
         guard goal.hasWeightTarget else { return false }
-        return targetWeightKg != o.targetWeightKg
-            || abs(pace.kgPerWeek(for: goal) - o.paceKgPerWeek) > 0.001
+        if targetWeightKg != o.targetWeightKg { return true }
+        return preferredDurationWeeks != originalDurationWeeks
+    }
+
+    private var originalDurationWeeks: Int? {
+        guard let o = original else { return nil }
+        if let stored = o.preferredDurationWeeks { return stored }
+        return inferredWeeks(goal: Goal(rawValue: o.goal) ?? goal, current: o.currentWeightKg, target: o.targetWeightKg, paceKgPerWeek: o.paceKgPerWeek)
+    }
+
+    var durationMessage: String? {
+        guard goal.hasWeightTarget, targetWeightMessage == nil,
+              let preferred = preferredDurationWeeks,
+              let honest = honestDurationWeeks,
+              preferred != honest else { return nil }
+        if preferred < honest {
+            return "That's faster than a safe pace — about \(honest) weeks."
+        }
+        return "That's slower than I'll go — about \(honest) weeks."
+    }
+
+    var honestDurationWeeks: Int? {
+        resolvedPace.preferredDurationWeeks
+    }
+
+    private var remainingKg: Double? {
+        guard goal.hasWeightTarget, let current = currentWeightKg, let target = targetWeightKg else { return nil }
+        return WeightPace.remainingKg(goal: goal, currentKg: current, targetKg: target)
+    }
+
+    private var resolvedPace: (paceKgPerWeek: Double, preferredDurationWeeks: Int?) {
+        WeightPace.resolve(
+            goal: goal,
+            weightKg: currentWeightKg,
+            remainingKg: remainingKg,
+            preferredWeeks: preferredDurationWeeks,
+            paceKgPerWeek: pace.kgPerWeek(for: goal)
+        )
+    }
+
+    private func inferredWeeks(goal: Goal, current: Double?, target: Double?, paceKgPerWeek: Double) -> Int? {
+        guard let current, let target else { return nil }
+        let remaining = WeightPace.remainingKg(goal: goal, currentKg: current, targetKg: target)
+        return WeightPace.etaWeeks(remainingKg: remaining, paceKgPerWeek: paceKgPerWeek)
+    }
+
+    func applyPaceShortcut(_ pace: GoalPace) {
+        self.pace = pace
+        guard let remaining = remainingKg else { return }
+        let rate = WeightPace.clampKgPerWeek(goal: goal, weightKg: currentWeightKg, pace: pace.kgPerWeek(for: goal))
+        preferredDurationWeeks = WeightPace.etaWeeks(remainingKg: remaining, paceKgPerWeek: rate)
+    }
+
+    func setDurationWeeks(_ weeks: Int) {
+        preferredDurationWeeks = WeightPace.clampWeeks(weeks)
+        guard let remaining = remainingKg, remaining > 0 else { return }
+        pace = GoalPace.closest(toKgPerWeek: remaining / Double(WeightPace.clampWeeks(weeks)), for: goal)
+    }
+
+    func proposeDurationIfNeeded() {
+        guard preferredDurationWeeks == nil else { return }
+        preferredDurationWeeks = inferredWeeks(
+            goal: goal,
+            current: currentWeightKg,
+            target: targetWeightKg,
+            paceKgPerWeek: pace.kgPerWeek(for: goal)
+        )
+    }
+
+    func resetDurationForGoalChange() {
+        preferredDurationWeeks = nil
+        pace = .gentle
+        if !goal.hasWeightTarget { return }
+        proposeDurationIfNeeded()
     }
 
     var dirty: Bool {
@@ -105,10 +178,8 @@ final class SettingsViewModel {
         if goal.hasWeightTarget, let oldT = o.targetWeightKg, let newT = targetWeightKg, oldT != newT {
             parts.append("Target \(formatKg(oldT)) → \(formatKg(newT)) kg")
         }
-        let oldGoal = Goal(rawValue: o.goal) ?? goal
-        let oldPace = GoalPace.closest(toKgPerWeek: o.paceKgPerWeek, for: oldGoal)
-        if goal.hasWeightTarget, oldPace != pace {
-            parts.append("Pace \(oldPace.title.lowercased()) → \(pace.title.lowercased())")
+        if goal.hasWeightTarget, let oldW = originalDurationWeeks, let newW = preferredDurationWeeks, oldW != newW {
+            parts.append("Timeframe \(oldW) → \(newW) weeks")
         }
         if kcalEdited {
             parts.append("Daily target \(o.dailyKcalTarget.formatted()) → \(kcalTarget.formatted()) kcal")
@@ -210,7 +281,8 @@ final class SettingsViewModel {
         )
         if goal.hasWeightTarget {
             patch.targetWeightKg = targetWeightKg
-            patch.paceKgPerWeek = pace.kgPerWeek(for: goal)
+            patch.paceKgPerWeek = resolvedPace.paceKgPerWeek
+            patch.preferredDurationWeeks = preferredDurationWeeks
         }
         if kcalEdited { patch.dailyKcalTarget = kcalTarget }
         if proteinEdited { patch.dailyProteinTargetG = proteinTarget }
@@ -254,6 +326,8 @@ final class SettingsViewModel {
         goal = Goal(rawValue: s.goal) ?? .bulk
         targetWeightKg = s.targetWeightKg
         pace = GoalPace.closest(toKgPerWeek: s.paceKgPerWeek, for: goal)
+        preferredDurationWeeks = s.preferredDurationWeeks
+            ?? inferredWeeks(goal: goal, current: s.currentWeightKg, target: s.targetWeightKg, paceKgPerWeek: s.paceKgPerWeek)
         startWeightKg = s.startWeightKg
         currentWeightKg = s.currentWeightKg
         minHealthyWeightKg = s.minHealthyWeightKg

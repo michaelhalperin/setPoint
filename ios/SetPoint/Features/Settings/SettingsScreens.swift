@@ -14,14 +14,7 @@ struct GoalSettingsView: View {
 
                 if model.goal.hasWeightTarget {
                     targetCard.appearIn(3)
-                    pace.appearIn(4)
-                    if let weeks = etaWeeks {
-                        Label("About \(weeks) weeks", systemImage: "clock")
-                            .font(Typography.data(14, weight: .bold))
-                            .foregroundStyle(Palette.inkSoft)
-                            .frame(maxWidth: .infinity)
-                            .appearIn(5)
-                    }
+                    duration.appearIn(4)
                 }
 
                 dailyTargets.appearIn(6)
@@ -45,7 +38,10 @@ struct GoalSettingsView: View {
         }
         .sheet(item: $editingTarget, content: dailyTargetSheet)
         .onDisappear { model.revertToOriginal() }
-        .onAppear { proposeTargetIfNeeded() }
+        .onAppear {
+            proposeTargetIfNeeded()
+            model.proposeDurationIfNeeded()
+        }
     }
 
     private var goalTiles: some View {
@@ -55,8 +51,10 @@ struct GoalSettingsView: View {
                 Button {
                     UISelectionFeedbackGenerator().selectionChanged()
                     withAnimation(Motion.settle) {
+                        let changed = model.goal != goal
                         model.goal = goal
                         proposeTargetIfNeeded()
+                        if changed { model.resetDurationForGoalChange() }
                     }
                 } label: {
                     VStack(spacing: 8) {
@@ -154,13 +152,32 @@ struct GoalSettingsView: View {
         }
     }
 
-    private var pace: some View {
-        SegmentedPills(
-            options: GoalPace.allCases,
-            selection: $model.pace,
-            title: { $0.title },
-            detail: { $0.blurb(for: model.goal) }
-        )
+    private var duration: some View {
+        VStack(alignment: .leading, spacing: Space.md) {
+            Text("How long?").sectionLabelStyle()
+            WeeksStepper(
+                weeks: Binding(
+                    get: { model.preferredDurationWeeks ?? model.honestDurationWeeks ?? 12 },
+                    set: { model.setDurationWeeks($0) }
+                )
+            )
+            SegmentedPills(
+                options: GoalPace.allCases,
+                selection: Binding(
+                    get: { model.pace },
+                    set: { model.applyPaceShortcut($0) }
+                ),
+                title: { $0.title },
+                detail: { $0.blurb(for: model.goal) }
+            )
+            if let message = model.durationMessage {
+                Text(message)
+                    .font(Typography.data(13, weight: .semibold))
+                    .foregroundStyle(Palette.accentDeep)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+            }
+        }
     }
 
     private var dailyTargets: some View {
@@ -270,17 +287,6 @@ struct GoalSettingsView: View {
             return "\(current.formatted(.number.precision(.fractionLength(0 ... 1)))) kg · now"
         }
         return "Now"
-    }
-
-    private var etaWeeks: Int? {
-        guard model.goal.hasWeightTarget,
-              let target = model.targetWeightKg,
-              let current = model.currentWeightKg else { return nil }
-        let rate = model.pace.kgPerWeek(for: model.goal)
-        guard rate > 0 else { return nil }
-        let delta = abs(target - current)
-        guard delta > 0.05 else { return nil }
-        return Int((delta / rate).rounded(.up))
     }
 
     private var savedProteinLabel: String? {

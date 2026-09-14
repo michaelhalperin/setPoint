@@ -204,8 +204,25 @@ final class OnboardingTests: XCTestCase {
         vm.draft.targetWeightKg = 80
         vm.draft.pace = .steady                     // 0.25 kg/wk for a gain
         XCTAssertEqual(vm.etaWeeks, 24)
+        vm.draft.preferredDurationWeeks = 4
+        XCTAssertEqual(vm.etaWeeks, 12) // 6 kg at the 0.5 kg/wk bulk cap
+        XCTAssertEqual(vm.durationMessage, "That's faster than a safe pace — about 12 weeks.")
         vm.draft.goal = .maintain
         XCTAssertNil(vm.etaWeeks)
+    }
+
+    func testWeightPaceClampsAnAggressiveTimeframe() {
+        let remaining = WeightPace.remainingKg(goal: .diet, currentKg: 80, targetKg: 74)
+        XCTAssertEqual(remaining, 6)
+        let resolved = WeightPace.resolve(
+            goal: .diet,
+            weightKg: 80,
+            remainingKg: remaining,
+            preferredWeeks: 4,
+            paceKgPerWeek: 0.35
+        )
+        XCTAssertEqual(resolved.paceKgPerWeek, 0.6, accuracy: 0.001)
+        XCTAssertEqual(resolved.preferredDurationWeeks, 10)
     }
 
     func testHealthProfileFillsOnlyWhatItKnows() {
@@ -243,9 +260,15 @@ final class OnboardingTests: XCTestCase {
         let json = try encoded(vm.draft.toRequest())
         XCTAssertEqual(json["targetWeightKg"] as? Double, 76)
         XCTAssertEqual(json["paceKgPerWeek"] as? Double, GoalPace.steady.kgPerWeek(for: .diet))
+        XCTAssertNil(json["preferredDurationWeeks"])
+
+        vm.draft.preferredDurationWeeks = 16
+        let withDuration = try encoded(vm.draft.toRequest())
+        XCTAssertEqual(withDuration["preferredDurationWeeks"] as? Int, 16)
 
         vm.draft.goal = .maintain
         XCTAssertNil(try encoded(vm.draft.toRequest())["targetWeightKg"])
+        XCTAssertNil(try encoded(vm.draft.toRequest())["preferredDurationWeeks"])
     }
 
     // MARK: Meal rhythm presets
