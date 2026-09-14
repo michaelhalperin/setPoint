@@ -129,8 +129,11 @@ export function buildCheckInAlertPayload(payload: PushPayload): Record<string, u
       sound: 'default',
       'interruption-level': 'time-sensitive',
       'relevance-score': 1,
+      // Registered by the app: "I ate this" / "In 1 hour" on the notification.
+      ...(payload.tier < 3 ? { category: 'CHECK_IN' } : {}),
     },
     checkInId: payload.checkInId,
+    prescriptionId: payload.prescriptionId ?? null,
     tier: payload.tier,
     deepLink: `setpoint://check-in/${payload.checkInId}`,
   };

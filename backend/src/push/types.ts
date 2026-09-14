@@ -4,6 +4,8 @@ export type PushPayload = {
   tier: number;
   title: string;
   body: string;
+  /** The suggested meal, so "I ate this" works straight from the notification. */
+  prescriptionId?: string | null;
 };
 
 /**

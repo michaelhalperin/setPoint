@@ -28,6 +28,15 @@ describe('buildCheckInAlertPayload', () => {
     const p = buildCheckInAlertPayload(payload) as { aps: { alert: { title: string; body: string } } };
     expect(p.aps.alert).toEqual({ title: 'SetPoint', body: payload.body });
   });
+
+  it('offers the notification actions for a meal check-in, not for the tier-3 talk', () => {
+    const meal = buildCheckInAlertPayload({ ...payload, prescriptionId: 'rx_7' }) as { aps: Record<string, unknown>; prescriptionId: string };
+    expect(meal.aps.category).toBe('CHECK_IN');
+    expect(meal.prescriptionId).toBe('rx_7');
+
+    const talk = buildCheckInAlertPayload({ ...payload, tier: 3 }) as { aps: Record<string, unknown> };
+    expect(talk.aps).not.toHaveProperty('category');
+  });
 });
 
 describe('buildLiveActivityPayload', () => {
