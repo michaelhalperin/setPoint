@@ -127,18 +127,29 @@ export function toBarcodeFoodView(row: BarcodeFoodRow): BarcodeFoodView {
   };
 }
 
+/** Open Food Facts entries get corrected; a cached product older than this is re-fetched. */
+export const BARCODE_CACHE_MAX_AGE_MS = 30 * 86_400_000;
+
 export async function lookupBarcode(deps: BarcodeLookupDeps, rawCode: string): Promise<BarcodeFoodView | null> {
   const code = normalizeBarcode(rawCode);
   if (!code) return null;
   const now = deps.now ?? new Date();
 
   const cached = await deps.prisma.barcodeFood.findUnique({ where: { code } });
-  if (cached) return toBarcodeFoodView(cached);
+  if (cached && now.getTime() - cached.fetchedAt.getTime() < BARCODE_CACHE_MAX_AGE_MS) {
+    return toBarcodeFoodView(cached);
+  }
 
-  const payload = await deps.fetchProduct(code);
-  if (!payload) return null;
-  const parsed = parseOffProduct(code, payload, now);
-  if (!parsed) return null;
+  let payload: OffProduct | null;
+  try {
+    payload = await deps.fetchProduct(code);
+  } catch (err) {
+    // Open Food Facts down or slow: a stale entry beats no entry.
+    if (cached) return toBarcodeFoodView(cached);
+    throw err;
+  }
+  const parsed = payload ? parseOffProduct(code, payload, now) : null;
+  if (!parsed) return cached ? toBarcodeFoodView(cached) : null;
 
   const stored = await deps.prisma.barcodeFood.upsert({
     where: { code },
@@ -159,10 +170,12 @@ export async function lookupBarcode(deps: BarcodeLookupDeps, rawCode: string): P
 
 const OFF_URL = 'https://world.openfoodfacts.org/api/v2/product';
 const OFF_USER_AGENT = 'SetPoint/0.1 (https://setpoint.app; support@setpoint.app)';
+const OFF_TIMEOUT_MS = 5_000;
 
 export async function fetchOpenFoodFacts(code: string): Promise<OffProduct | null> {
   const res = await fetch(`${OFF_URL}/${code}.json`, {
     headers: { Accept: 'application/json', 'User-Agent': OFF_USER_AGENT },
+    signal: AbortSignal.timeout(OFF_TIMEOUT_MS),
   });
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`Open Food Facts ${res.status}`);

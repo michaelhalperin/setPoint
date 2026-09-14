@@ -208,7 +208,7 @@ async function processUser(
         end: { gt: dayStart },
         start: { lt: new Date(dayStart.getTime() + 86_400_000) },
       },
-      select: { start: true, end: true },
+      select: { start: true, end: true, allDay: true },
     }),
     prisma.workout.findMany({
       where: {

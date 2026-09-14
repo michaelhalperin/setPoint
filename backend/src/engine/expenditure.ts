@@ -53,10 +53,12 @@ export function estimateExpenditure(input: {
     return empty(base, 'not_enough_weighins');
   }
 
-  const avgIntakeKcal = days.reduce((sum, d) => sum + d.kcal, 0) / days.length;
+  // A day with nothing logged is a missing day, not a 0-kcal day — averaging it in would drag burn down.
+  const logged = days.filter((d) => d.kcal > 0);
+  const avgIntakeKcal = logged.reduce((sum, d) => sum + d.kcal, 0) / logged.length;
   const slope = linearKgPerDay(weighIns);
   const burn = Math.max(0, avgIntakeKcal - slope * KCAL_PER_KG);
-  const half = rangeHalfKcal({ days, weighIns, slope, avgIntakeKcal });
+  const half = rangeHalfKcal({ days: logged, weighIns, slope, avgIntakeKcal });
   const burnKcal = round10(burn);
 
   return {
@@ -80,7 +82,8 @@ export function weeklyIntakeBars(
   for (let i = 0; i < sorted.length; i += 7) {
     const slice = sorted.slice(i, i + 7);
     if (slice.length === 0) continue;
-    const avg = slice.reduce((sum, d) => sum + d.kcal, 0) / slice.length;
+    const logged = slice.filter((d) => d.kcal > 0);
+    const avg = logged.length > 0 ? logged.reduce((sum, d) => sum + d.kcal, 0) / logged.length : 0;
     weeks.push({
       weekStart: slice[0]!.date,
       intakeKcal: round10(avg),
@@ -140,10 +143,10 @@ function rangeHalfKcal(input: {
   const xs = input.weighIns.map((s) => (s.at.getTime() - t0) / 86_400_000);
   const meanX = xs.reduce((a, b) => a + b, 0) / xs.length;
   const ssx = xs.reduce((sum, x) => sum + (x - meanX) ** 2, 0);
-  const residuals = input.weighIns.map((s, i) => {
-    const predicted = input.weighIns[0]!.kg + input.slope * xs[i]!;
-    return s.kg - predicted;
-  });
+  // Residuals around the fitted line, whose intercept is meanY − slope·meanX (not the first weigh-in).
+  const meanY = input.weighIns.reduce((sum, s) => sum + s.kg, 0) / input.weighIns.length;
+  const intercept = meanY - input.slope * meanX;
+  const residuals = input.weighIns.map((s, i) => s.kg - (intercept + input.slope * xs[i]!));
   const sse = residuals.reduce((sum, r) => sum + r ** 2, 0);
   const seSlope = ssx <= 0 ? 0 : Math.sqrt(sse / Math.max(1, residuals.length - 2) / ssx);
   const seBurn = Math.sqrt(seIntake ** 2 + (seSlope * KCAL_PER_KG) ** 2);

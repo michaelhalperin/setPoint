@@ -2,12 +2,13 @@ import { describe, expect, it } from 'vitest';
 import type { PrismaClient } from '@prisma/client';
 import { replaceBusyWindow } from './replaceBusy.js';
 
-type Row = { userId: string; start: Date; end: Date };
+type Row = { userId: string; start: Date; end: Date; allDay?: boolean };
 
 function fakePrisma(existing: Row[] = []) {
   const rows = [...existing];
-  return {
+  const client = {
     __rows: rows,
+    $transaction: async (fn: (tx: unknown) => Promise<unknown>) => fn(client),
     calendarBusyBlock: {
       deleteMany: async ({ where }: { where: { userId: string; start: { lt: Date }; end: { gt: Date } } }) => {
         const before = rows.length;
@@ -24,7 +25,8 @@ function fakePrisma(existing: Row[] = []) {
         return { count: data.length };
       },
     },
-  } as unknown as PrismaClient & { __rows: Row[] };
+  };
+  return client as unknown as PrismaClient & { __rows: Row[] };
 }
 
 describe('replaceBusyWindow', () => {
@@ -39,7 +41,7 @@ describe('replaceBusyWindow', () => {
     ]);
     expect(stored).toBe(1);
     expect((prisma as unknown as { __rows: Row[] }).__rows).toEqual([
-      { userId: 'u1', start: new Date('2026-09-14T16:00:00Z'), end: new Date('2026-09-14T18:00:00Z') },
+      { userId: 'u1', start: new Date('2026-09-14T16:00:00Z'), end: new Date('2026-09-14T18:00:00Z'), allDay: false },
     ]);
   });
 });

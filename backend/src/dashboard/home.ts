@@ -169,7 +169,7 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
     }),
     prisma.calendarBusyBlock.findMany({
       where: { userId, end: { gt: dayStart }, start: { lt: new Date(dayStart.getTime() + 86_400_000) } },
-      select: { start: true, end: true },
+      select: { start: true, end: true, allDay: true },
     }),
     prisma.dayAppetite.findUnique({
       where: { userId_localDate: { userId, localDate: localDateISO(now, user.timezone) } },

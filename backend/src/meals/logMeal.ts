@@ -100,7 +100,10 @@ export async function logMeal(
     const servings = input.servings && input.servings > 0 ? input.servings : 1;
     const portion = macrosForServings(food, servings);
     macros = { kcal: portion.kcal, proteinG: portion.proteinG, carbsG: portion.carbsG, fatG: portion.fatG };
-    const qty = servings === 1 ? '1 serving' : `${servings} servings`;
+    // No serving size on the label → the portion is per 100 g, so say grams rather than "servings".
+    const qty = food.servingG && food.servingG > 0
+      ? servings === 1 ? '1 serving' : `${servings} servings`
+      : `${Math.round(portion.grams)} g`;
     items = [
       {
         name: food.name,

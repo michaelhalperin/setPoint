@@ -5,6 +5,7 @@ import {
   headsUpCopy,
   qualifyingBusyBlocks,
   shiftDueForBusy,
+  toMinuteBlocks,
   withOverdue,
 } from './calendarBusy.js';
 import type { ScheduledCheckIn } from './mealSchedule.js';
@@ -101,5 +102,28 @@ describe('headsUpCopy', () => {
   it('names the busy window in plain language', () => {
     expect(headsUpCopy({ startMin: 720, endMin: 900 }, 'lunch')).toContain('12–3');
     expect(headsUpCopy({ startMin: 720, endMin: 900 }, 'lunch')).toContain('noon');
+  });
+});
+
+describe('toMinuteBlocks', () => {
+  // 2026-09-14 in New York starts at 04:00Z.
+  const dayStart = new Date('2026-09-14T04:00:00Z');
+  const tz = 'America/New_York';
+
+  it('keeps an all-day event all-day even when its stored start was clipped to the upload time', () => {
+    const blocks = toMinuteBlocks(
+      [{ start: new Date('2026-09-14T14:00:00Z'), end: new Date('2026-09-15T04:00:00Z'), allDay: true }],
+      dayStart,
+      tz,
+    );
+    expect(blocks[0]?.allDay).toBe(true);
+    expect(qualifyingBusyBlocks(blocks, prefsOn, 1)).toEqual([]);
+  });
+
+  it('does not pull check-ins earlier for an all-day event unless the user opts in', () => {
+    const blocks = toMinuteBlocks([{ start: dayStart, end: new Date('2026-09-15T04:00:00Z') }], dayStart, tz);
+    const due: ScheduledCheckIn = { slot: 'lunch', mealMin: 780, dueMin: 825, overdue: false };
+    expect(applyCalendarShift(due, times, blocks, prefsOn, 1)?.movedFromMin).toBeNull();
+    expect(applyCalendarShift(due, times, blocks, { ...prefsOn, includeAllDay: true }, 1)?.movedFromMin).toBe(825);
   });
 });

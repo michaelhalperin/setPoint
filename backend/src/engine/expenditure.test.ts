@@ -37,6 +37,13 @@ describe('expenditure.v1', () => {
     expect(est.rangeHigh).toBeGreaterThanOrEqual(est.burnKcal!);
   });
 
+  it('does not count unlogged days as eating nothing', () => {
+    const gappy = full.map((n, i) => (i % 6 === 0 ? 0 : n)); // 10 of 56 days unlogged
+    const est = estimateExpenditure({ days: days(gappy), weighIns: sixWeighIns });
+    expect(est.ready).toBe(true);
+    expect(est.burnKcal).toBe(2800);
+  });
+
   it('subtracts stored energy when weight is rising', () => {
     const rising = weighIns([
       { day: 0, kg: 80 },

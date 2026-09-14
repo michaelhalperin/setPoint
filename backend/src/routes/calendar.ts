@@ -13,7 +13,7 @@ const busyBody = z.object({
   from: iso,
   to: iso,
   blocks: z
-    .array(z.object({ start: iso, end: iso }))
+    .array(z.object({ start: iso, end: iso, allDay: z.boolean().optional() }))
     .max(200),
 });
 
@@ -34,7 +34,7 @@ export async function calendarRoutes(app: FastifyInstance): Promise<void> {
       userId,
       from,
       to,
-      body.blocks.map((b) => ({ start: new Date(b.start), end: new Date(b.end) })),
+      body.blocks.map((b) => ({ start: new Date(b.start), end: new Date(b.end), allDay: b.allDay ?? false })),
     );
     return { stored };
   });
@@ -57,7 +57,7 @@ export async function calendarRoutes(app: FastifyInstance): Promise<void> {
       }),
       prisma.calendarBusyBlock.findMany({
         where: { userId, start: { lt: weekEnd }, end: { gt: weekAgo } },
-        select: { start: true, end: true },
+        select: { start: true, end: true, allDay: true },
         orderBy: { start: 'asc' },
       }),
     ]);

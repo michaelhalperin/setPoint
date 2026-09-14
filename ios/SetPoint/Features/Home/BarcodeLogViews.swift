@@ -162,7 +162,8 @@ struct BarcodeProductSheet: View {
                     .foregroundStyle(Palette.ink)
                     .monospacedDigit()
                     .frame(minWidth: 36)
-                Text("servings")
+                // No serving size on the label: each step is 100 g.
+                Text((product.food.servingG ?? 0) > 0 ? "servings" : "× 100 g")
                     .font(Typography.data(13))
                     .foregroundStyle(Palette.inkFaint)
                 Button {

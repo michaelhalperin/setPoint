@@ -1,30 +1,35 @@
 import type { PrismaClient } from '@prisma/client';
 
+export type BusyBlockInput = { start: Date; end: Date; allDay?: boolean };
+
 export async function replaceBusyWindow(
   prisma: PrismaClient,
   userId: string,
   from: Date,
   to: Date,
-  blocks: { start: Date; end: Date }[],
+  blocks: BusyBlockInput[],
 ): Promise<number> {
-  await prisma.calendarBusyBlock.deleteMany({
-    where: {
-      userId,
-      start: { lt: to },
-      end: { gt: from },
-    },
-  });
   const rows = blocks
     .filter((b) => b.end > b.start)
     .map((b) => ({
       userId,
       start: b.start < from ? from : b.start,
       end: b.end > to ? to : b.end,
+      allDay: b.allDay ?? false,
     }))
     .filter((b) => b.end > b.start);
-  if (rows.length > 0) {
-    await prisma.calendarBusyBlock.createMany({ data: rows });
-  }
+  await prisma.$transaction(async (tx) => {
+    await tx.calendarBusyBlock.deleteMany({
+      where: {
+        userId,
+        start: { lt: to },
+        end: { gt: from },
+      },
+    });
+    if (rows.length > 0) {
+      await tx.calendarBusyBlock.createMany({ data: rows });
+    }
+  });
   return rows.length;
 }
 

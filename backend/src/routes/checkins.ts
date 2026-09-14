@@ -107,12 +107,21 @@ export async function checkInRoutes(app: FastifyInstance): Promise<void> {
     const { minutes, until } = z
       .object({
         minutes: z.number().int().min(15).max(360).optional(),
-        until: z.string().min(10).optional(),
+        until: z.string().datetime({ offset: true }).optional(),
       })
       .parse(req.body ?? {});
-    const deferUntil = until
-      ? new Date(until)
-      : new Date(Date.now() + (minutes ?? ENGINE_CONFIG.snoozeHours * 60) * 60_000);
+    const now = Date.now();
+    let deferUntil: Date;
+    if (until) {
+      // Same band as `minutes`: an explicit time can't snooze for less than 15 minutes or more than 6 hours.
+      deferUntil = new Date(until);
+      const aheadMin = (deferUntil.getTime() - now) / 60_000;
+      if (!(aheadMin >= 15 && aheadMin <= 360)) {
+        throw app.httpErrors.badRequest('until must be between 15 minutes and 6 hours from now');
+      }
+    } else {
+      deferUntil = new Date(now + (minutes ?? ENGINE_CONFIG.snoozeHours * 60) * 60_000);
+    }
     const result = await getPrisma().checkIn.updateMany({
       where: {
         id,

@@ -184,8 +184,11 @@ export function slotNameOf(value: string | null | undefined): SlotName | null {
 }
 
 /** Clip UTC busy intervals onto a local day and express them as minutes from midnight. */
+/** An event this long is treated as all-day even when the client didn't flag it. */
+const ALL_DAY_MIN_MS = 23 * 60 * 60 * 1000;
+
 export function toMinuteBlocks(
-  blocks: { start: Date; end: Date }[],
+  blocks: { start: Date; end: Date; allDay?: boolean }[],
   dayStart: Date,
   timezone: string,
 ): MinuteBlock[] {
@@ -202,7 +205,10 @@ export function toMinuteBlocks(
     out.push({
       startMin,
       endMin,
-      allDay: block.start <= dayStart && block.end >= dayEnd,
+      allDay:
+        block.allDay === true ||
+        (block.start <= dayStart && block.end >= dayEnd) ||
+        block.end.getTime() - block.start.getTime() >= ALL_DAY_MIN_MS,
     });
   }
   return out;

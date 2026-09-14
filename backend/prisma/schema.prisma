@@ -526,8 +526,10 @@ model CalendarBusyBlock {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  start DateTime
-  end   DateTime
+  start  DateTime
+  end    DateTime
+  /// An all-day event. Only counts as busy when the user opts in.
+  allDay Boolean  @default(false)
 
   createdAt DateTime @default(now())
 

@@ -114,6 +114,38 @@ describe('lookupBarcode', () => {
     expect(fetchProduct).not.toHaveBeenCalled();
   });
 
+  it('refreshes a stale cache entry and falls back to it when Open Food Facts fails', async () => {
+    const old = new Date(NOW.getTime() - 40 * 86_400_000);
+    const stale = {
+      code: '3017620422003',
+      name: 'Old yogurt',
+      brand: null,
+      servingG: 170,
+      kcal100g: 97,
+      proteinG100g: 9,
+      carbsG100g: 3.6,
+      fatG100g: 5,
+      fetchedAt: old,
+    };
+    const refreshed = await lookupBarcode(
+      { prisma: cachePrisma([{ ...stale }]) as never, fetchProduct: async () => offHit, now: NOW },
+      '3017620422003',
+    );
+    expect(refreshed?.name).toBe('Greek yogurt');
+
+    const fallback = await lookupBarcode(
+      {
+        prisma: cachePrisma([{ ...stale }]) as never,
+        fetchProduct: async () => {
+          throw new Error('timeout');
+        },
+        now: NOW,
+      },
+      '3017620422003',
+    );
+    expect(fallback?.name).toBe('Old yogurt');
+  });
+
   it('fetches, caches, and returns a miss as null', async () => {
     const rows: Record<string, unknown>[] = [];
     const prisma = cachePrisma(rows);
