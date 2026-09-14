@@ -78,6 +78,7 @@ Without `DATABASE_URL` the server still boots; `/api/health` just reports
 | GET    | `/api/checkins/:id` | Fetch one check-in + prescription (bearer auth)          |
 | POST   | `/api/checkins/:id/defer` | Snooze it — `status DEFERRED`, `deferUntil = now + 2h` (§2) |
 | POST   | `/api/checkins/:id/feedback` | `{ positive }` thumbs — labeled beta signal (§8) |
+| POST   | `/api/checkins/:id/dismiss` | "I already ate" — closes it without a meal, not a miss; recorded as a thumbs-down |
 | GET    | `/api/checkins/:id/conversation` | Tier-3 "let's talk" transcript — seeds the opener on first read (§2) |
 | POST   | `/api/checkins/:id/conversation` | `{ message }` → the manager's reply; lands on an `outcome` (`ADJUST_PLAN` / `PAUSE_CHECKINS` / `SUGGEST_PROFESSIONAL`) then `resolved`. `PAUSE_CHECKINS` sets `escalationState.checkInsPaused` |
 | POST   | `/api/push-tokens` / `DELETE /api/push-tokens/:token` | register/unregister an APNs token (`kind: alert \| live_activity_start`) |
@@ -88,8 +89,8 @@ Without `DATABASE_URL` the server still boots; `/api/health` just reports
 | GET    | `/api/settings`   | Current profile / quiet hours / restrictions / pause / enforcement (bearer auth) |
 | PATCH  | `/api/settings`   | Update quiet hours, meal times, targets, goal, `checkInsPaused`, or replace restrictions |
 | DELETE | `/api/account`    | `{ "confirmation": "delete my account" }` → cascading delete + Apple token revoke (bearer auth, §4) |
-| GET    | `/api/home`       | Home dashboard — running ledger, goal framing, manager's note, active check-in (bearer auth, §5.2) |
-| GET    | `/api/settlement` | Last 7 settled days + today's live projection + week summary (bearer auth, §5.7) |
+| GET    | `/api/home`       | Home dashboard — running ledger, goal framing, manager's note, `day` slots, `nextCheckIn`, active check-in (bearer auth, §5.2) |
+| GET    | `/api/settlement` | Last 7 settled days + today's live projection + week summary + `record` (per meal: on time / after a check-in / missed, and a late-meal `pattern`) (bearer auth, §5.7) |
 | POST   | `/api/cron/score` | Runs the confidence engine. Requires the cron secret.    |
 | POST   | `/api/cron/settle`| Writes yesterday's `DayOutcome` for every user. Requires the cron secret. |
 
@@ -160,6 +161,14 @@ and `User.appleRefreshToken` is populated).
   (cascades everywhere)
 
 See [`COMPLIANCE.md`](./COMPLIANCE.md) for the App Store / privacy checklist.
+
+## Check-in timing (`src/engine/mealSchedule.ts`)
+
+A check-in is due at a usual meal time plus a grace period (45 min) when nothing
+has been logged for that meal, the day's target isn't met, and it's outside quiet
+hours — at most once per meal per day. `upcomingCheckIn()` is the same rule looking
+ahead, so `GET /api/home` can say when the next one would come. The weighted
+confidence formula below no longer decides when a check-in fires.
 
 ## Confidence engine (`src/engine/`)
 
