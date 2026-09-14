@@ -69,6 +69,13 @@ describe('upcomingCheckIn', () => {
     expect(upcomingCheckIn(input({ nowMin: 400, mealMinutesToday: [] }))).toMatchObject({ slot: 'breakfast', dueMin: 525 });
     expect(upcomingCheckIn(input({ nowMin: 400, mealMinutesToday: [390] }))).toMatchObject({ slot: 'lunch' });
   });
+
+  it('inserts mid-morning and afternoon slots when extraSlots is on', () => {
+    expect(upcomingCheckIn(input({ nowMin: 500, mealMinutesToday: [490], extraSlots: true }))).toMatchObject({
+      slot: 'snack_am',
+      mealMin: 630,
+    });
+  });
 });
 
 describe('checkInSlotAt', () => {

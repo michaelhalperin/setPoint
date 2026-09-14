@@ -18,6 +18,7 @@ struct HomeContent: View {
     @State private var showingCheckIn = false
     @State private var selectedMeal: MealSummary?
     @State private var choosingSnooze = false
+    @State private var showingAppetite = false
     @State private var checkInBusy = false
     @State private var checkInError: String?
     @FocusState private var composerFocused: Bool
@@ -100,7 +101,8 @@ struct HomeContent: View {
                             onAlreadyAte: {
                                 closeCheckIn()
                                 offerQuickLog(for: checkIn)
-                            }
+                            },
+                            suggestSmallerDefault: home.appetite?.suggestSmallerDefault == true
                         )
                         .transition(.move(edge: .bottom))
                     }
@@ -179,6 +181,13 @@ struct HomeContent: View {
                 Button(choice.title) { snooze(minutes: choice.minutes) }
             }
             Button("Cancel", role: .cancel) {}
+        }
+        .sheet(isPresented: $showingAppetite) {
+            AppetitePickerSheet(
+                previewTarget: loadedHome?.ledger.targetKcal ?? 2500,
+                onPicked: { Task { await model.load(showSpinner: false) } }
+            )
+            .presentationDetents([.large])
         }
         .toolbar(showingCheckIn || logger?.confirmingPhoto == true ? .hidden : .visible, for: .tabBar)
         .task {
@@ -264,7 +273,7 @@ struct HomeContent: View {
                         if home.enforcementEnabled, env.push.authorizationStatus == .denied {
                             NotificationsOffBanner()
                         }
-                        TodayHero(home: home, moment: moment, date: now)
+                        TodayHero(home: home, moment: moment, date: now, onAppetite: { showingAppetite = true })
                     }
                     .padding(.horizontal, Space.gutter)
                     .padding(.top, Space.sm)

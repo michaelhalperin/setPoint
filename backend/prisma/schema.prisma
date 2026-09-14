@@ -170,6 +170,7 @@ model User {
   targetReviews           WeightTargetReview[]
   calendarBusyBlocks      CalendarBusyBlock[]
   workouts                Workout[]
+  dayAppetites            DayAppetite[]
 }
 
 model PushToken {
@@ -262,6 +263,9 @@ model OnboardingProfile {
 
   trainingAddCalories    Boolean @default(true)
   preWorkoutNudgeMin     Int?    @default(90)
+
+  appetiteMode           String  @default("NORMAL")
+  drinkableOk            Boolean @default(true)
 
   completedAt DateTime?
   createdAt   DateTime  @default(now())
@@ -554,6 +558,17 @@ model Workout {
   @@index([userId, start])
 }
 
+model DayAppetite {
+  userId    String
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  localDate String
+  level     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@id([userId, localDate])
+}
+
 // ---------------------------------------------------------------------------
 // Check-ins + escalation (§2)
 // ---------------------------------------------------------------------------
@@ -586,6 +601,8 @@ model CheckIn {
   workoutId String?
   /// "Dinner at hh:mm covers it" — closed without counting as a miss.
   coveredByDinner Boolean @default(false)
+  /// full (default) or smaller — the check-in prescription currently showing.
+  variant String @default("full")
 
   deliveredAt    DateTime?
   lastPushError  String?

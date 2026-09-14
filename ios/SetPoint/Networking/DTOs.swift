@@ -30,6 +30,7 @@ struct HomeResponse: Decodable {
     var busyBlocks: [BusyBlock]? = nil
     var movedSlots: [MovedSlot]? = nil
     var training: Training? = nil
+    var appetite: Appetite? = nil
 
     struct BusyBlock: Decodable, Equatable {
         let startMin: Int
@@ -55,6 +56,19 @@ struct HomeResponse: Decodable {
             let startMin: Int
             let durationMin: Int
             var activeKcal: Int? = nil
+        }
+    }
+
+    struct Appetite: Decodable, Equatable {
+        var mode: String
+        var level: String
+        var drinkableOk: Bool
+        var suggestSmallerDefault: Bool
+        var extraSlots: [ExtraSlot]
+
+        struct ExtraSlot: Decodable, Equatable {
+            let slot: String
+            let atMin: Int
         }
     }
 
@@ -137,6 +151,7 @@ struct HomeResponse: Decodable {
         /// The meal it's about; nil for a tier-3 conversation.
         var slot: String? = nil
         var kind: String? = nil
+        var variant: String? = nil
 
         struct Prescription: Decodable {
             let id: String
@@ -582,6 +597,11 @@ struct TrainingSettingsPayload: Codable, Equatable {
     var preWorkoutNudgeMin: Int?
 }
 
+struct AppetiteSettingsPayload: Codable, Equatable {
+    var mode: String?
+    var drinkableOk: Bool?
+}
+
 struct WorkoutSyncPayload: Encodable {
     let workouts: [Item]
 
@@ -701,6 +721,7 @@ struct SettingsResponse: Decodable {
     var healthWrite: HealthWritePayload? = nil
     var calendar: CalendarSettingsPayload? = nil
     var training: TrainingSettingsPayload? = nil
+    var appetite: AppetiteSettingsPayload? = nil
 
     struct Restriction: Decodable, Identifiable {
         var id: String { token }
@@ -730,6 +751,7 @@ struct SettingsPatch: Encodable {
     var healthWrite: HealthWritePayload?
     var calendar: CalendarSettingsPayload?
     var training: TrainingSettingsPayload?
+    var appetite: AppetiteSettingsPayload?
 
     struct RestrictionInput: Encodable {
         let label: String

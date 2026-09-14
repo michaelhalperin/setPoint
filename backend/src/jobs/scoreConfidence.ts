@@ -26,6 +26,10 @@ import {
   withOverdue,
   userInWearableCohort,
   wearableModifierKillSwitchOn,
+  appetiteShape,
+  extraAppetiteSlots,
+  remainingSlotCount,
+  appetiteMealTarget,
   needsRefuel,
   needsPreWorkoutNudge,
   refuelPrescription,
@@ -294,17 +298,27 @@ async function processUser(
 
   const times = mealTimesOn(profile, localWeekday(now, user.timezone));
   const nowMin = localMinute(now, user.timezone);
+  const dayAppetite = await prisma.dayAppetite.findUnique({
+    where: { userId_localDate: { userId: user.id, localDate: localDateISO(now, user.timezone) } },
+  });
+  const shape = appetiteShape(
+    (profile.appetiteMode as 'NORMAL' | 'SMALL_FREQUENT') ?? 'NORMAL',
+    (dayAppetite?.level as 'HUNGRY' | 'NORMAL' | 'LOW') ?? null,
+  );
+  const extraSlots = shape === 'SMALL';
+  const checkedSlotsToday = todayCheckIns
+    .filter((c) => c.tier < TIER.CONVERSATION && c.kind !== 'REFUEL' && c.kind !== 'PRE_WORKOUT')
+    .map((c) => slotNameOf(c.slot) ?? checkInSlotAt(localMinute(c.createdAt, user.timezone), times))
+    .filter((slot): slot is SlotName => slot !== null);
   const upcoming = upcomingCheckIn({
     nowMin,
     times,
     mealMinutesToday: todayMeals.map((m) => localMinute(m.loggedAt, user.timezone)),
-        checkedSlotsToday: todayCheckIns
-          .filter((c) => c.tier < TIER.CONVERSATION && c.kind !== 'REFUEL' && c.kind !== 'PRE_WORKOUT')
-          .map((c) => slotNameOf(c.slot) ?? checkInSlotAt(localMinute(c.createdAt, user.timezone), times))
-          .filter((slot): slot is SlotName => slot !== null),
-        consumedKcal,
-        targetKcal,
-      });
+    checkedSlotsToday,
+    consumedKcal,
+    targetKcal,
+    extraSlots,
+  });
   const calendarPrefs = prefsFromProfile(profile);
   const todayBusy = toMinuteBlocks(busyRows, dayStart, user.timezone);
   const shifted = upcoming
@@ -393,14 +407,33 @@ async function processUser(
   const pantry = profile.pantryTokens ?? [];
 
   const tier = freshCheckInTier(escStateOf(user));
-  const target = computePrescriptionTarget({
+  const remainingSlots = remainingSlotCount({
+    nowMin,
+    times,
+    extra: extraSlots,
+    checked: checkedSlotsToday,
+    mealMinutesToday: todayMeals.map((m) => localMinute(m.loggedAt, user.timezone)),
+  });
+  const computed = computePrescriptionTarget({
     dailyKcalTarget: targetKcal,
     consumedKcal,
     dailyProteinTargetG: profile.dailyProteinTargetG,
     consumedProteinG: todayMeals.reduce((acc, m) => acc + m.proteinG, 0),
   });
+  const shapedKcal =
+    shape === 'NORMAL'
+      ? computed.targetKcal
+      : appetiteMealTarget({
+          remainingKcal: Math.max(0, targetKcal - consumedKcal),
+          remainingSlots,
+          shape,
+        });
+  const target = { targetKcal: shapedKcal, targetProteinG: computed.targetProteinG };
 
-  const usual = usualForSlot.find((m) => m.suggestSlot === due.slot) ?? null;
+  const usual =
+    due.slot === 'snack_am' || due.slot === 'snack_pm'
+      ? null
+      : (usualForSlot.find((m) => m.suggestSlot === due.slot) ?? null);
   const rx = usual
     ? prescriptionFromSavedMeal(usual, target)
     : ctx.solverFoods.length > 0
@@ -408,9 +441,11 @@ async function processUser(
           targetKcal: target.targetKcal,
           targetProteinG: target.targetProteinG,
           excludedTokens,
-          preferLowFriction: tier >= 2,
+          preferLowFriction: tier >= 2 || shape === 'SMALL',
           pantryTokens: pantry,
           prepTimeMaxMin: profile.prepTimeMaxMin,
+          preferCalorieDense: shape === 'SMALL',
+          preferDrinkable: shape === 'SMALL' && (profile.drinkableOk ?? true),
         })
       : null;
   const summaryLine = rx ? prescriptionSummary(rx) : null;

@@ -138,6 +138,21 @@ extension HomeResponse {
         return home
     }
 
+    static var sampleAppetite: HomeResponse {
+        var home = lateLunch(note: "Five lighter meals today.", checkIn: nil)
+        home.appetite = .init(
+            mode: "SMALL_FREQUENT",
+            level: "LOW",
+            drinkableOk: true,
+            suggestSmallerDefault: true,
+            extraSlots: [
+                .init(slot: "snack_am", atMin: 630),
+                .init(slot: "snack_pm", atMin: 960),
+            ]
+        )
+        return home
+    }
+
     /// The same check-in, snoozed.
     static let sampleSnoozed = lateLunch(
         note: "There's a check-in waiting just below.",

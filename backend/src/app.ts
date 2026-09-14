@@ -25,6 +25,7 @@ import { pushTokenRoutes } from './routes/pushTokens.js';
 import { savedMealRoutes } from './routes/savedMeals.js';
 import { weightRoutes } from './routes/weight.js';
 import { workoutRoutes } from './routes/workouts.js';
+import { appetiteRoutes } from './routes/appetite.js';
 
 const AUTH_LIMIT_PER_MINUTE = 40;
 
@@ -120,6 +121,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   await app.register(foodRoutes, { prefix: '/api/foods' });
   await app.register(calendarRoutes, { prefix: '/api/calendar' });
   await app.register(workoutRoutes, { prefix: '/api/workouts' });
+  await app.register(appetiteRoutes, { prefix: '/api/appetite' });
   await app.register(checkInRoutes, { prefix: '/api/checkins' });
   await app.register(biosignalRoutes, { prefix: '/api/biosignals' });
   await app.register(pushTokenRoutes, { prefix: '/api/push-tokens' });

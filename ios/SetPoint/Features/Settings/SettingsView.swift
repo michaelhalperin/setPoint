@@ -7,6 +7,7 @@ struct SettingsView: View {
     @AppStorage(MassUnit.storageKey) private var massUnit = MassUnit.localeDefault
     @AppStorage("you.seen.calendar") private var seenCalendar = false
     @AppStorage("you.seen.training") private var seenTraining = false
+    @AppStorage("you.seen.appetite") private var seenAppetite = false
     #if DEBUG
     @State private var showingDevOnboarding = false
     @State private var showingDevMealConfirm = false
@@ -95,6 +96,18 @@ struct SettingsView: View {
                             title: "Training",
                             value: nil,
                             isNew: !seenTraining
+                        )
+                    }
+                    rowDivider
+                    NavigationLink {
+                        AppetiteSettingsView()
+                            .onAppear { seenAppetite = true }
+                    } label: {
+                        YouRow(
+                            symbol: "fork.knife",
+                            title: "Appetite",
+                            value: nil,
+                            isNew: !seenAppetite
                         )
                     }
                 }

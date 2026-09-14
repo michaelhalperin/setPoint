@@ -34,7 +34,13 @@ export const SCORE_CONFIG = {
 } as const;
 
 /** Share of the daily target a user on pace has eaten once each meal is done. */
-const EXPECTED_SHARE_THROUGH: Record<SlotName, number> = { breakfast: 1 / 3, lunch: 2 / 3, dinner: 1 };
+const EXPECTED_SHARE_THROUGH: Record<SlotName, number> = {
+  breakfast: 1 / 3,
+  lunch: 2 / 3,
+  dinner: 1,
+  snack_am: 0.45,
+  snack_pm: 0.8,
+};
 
 export type RecentCheckIn = {
   status: string;

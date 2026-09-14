@@ -48,7 +48,8 @@ export function qualifyingBusyBlocks(
 
 function previousMealMin(slot: SlotName, times: MealTimes): number | null {
   if (slot === 'breakfast') return null;
-  if (slot === 'lunch') return times.breakfastMin;
+  if (slot === 'snack_am' || slot === 'lunch') return times.breakfastMin;
+  if (slot === 'snack_pm') return times.lunchMin;
   return times.lunchMin;
 }
 
@@ -170,7 +171,15 @@ function formatClock(min: number): string {
 }
 
 export function slotNameOf(value: string | null | undefined): SlotName | null {
-  if (value === 'breakfast' || value === 'lunch' || value === 'dinner') return value;
+  if (
+    value === 'breakfast' ||
+    value === 'lunch' ||
+    value === 'dinner' ||
+    value === 'snack_am' ||
+    value === 'snack_pm'
+  ) {
+    return value;
+  }
   return null;
 }
 

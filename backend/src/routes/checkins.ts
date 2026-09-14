@@ -177,6 +177,88 @@ export async function checkInRoutes(app: FastifyInstance): Promise<void> {
     return { covered: true };
   });
 
+  app.post('/:id/variant', async (req) => {
+    const { id } = params.parse(req.params);
+    const { variant } = z.object({ variant: z.enum(['full', 'smaller']) }).parse(req.body);
+    const userId = (req as AuthedRequest).userId;
+    const prisma = getPrisma();
+    const checkIn = await prisma.checkIn.findFirst({
+      where: { id, userId, status: { in: ['PENDING', 'DEFERRED'] } },
+      include: { prescription: { include: { items: true } } },
+    });
+    if (!checkIn?.prescription) throw app.httpErrors.notFound('no active check-in with that id');
+    const targetKcal = checkIn.prescription.targetKcal;
+    const { smallerSplit } = await import('../engine/appetite.js');
+    const { prescribe } = await import('../solver/index.js');
+    const { STAPLE_FOODS } = await import('../data/stapleFoods.js');
+
+    let items: { name: string; quantity: number; kcal: number; proteinG: number; carbsG: number; fatG: number }[];
+    let totals: { kcal: number; proteinG: number; carbsG: number; fatG: number };
+    if (variant === 'smaller') {
+      const split = smallerSplit(targetKcal);
+      items = split.bites.map((b) => ({
+        name: b.name,
+        quantity: 1,
+        kcal: b.kcal,
+        proteinG: b.proteinG,
+        carbsG: 0,
+        fatG: 0,
+      }));
+      totals = {
+        kcal: split.totalKcal,
+        proteinG: split.bites.reduce((s, b) => s + b.proteinG, 0),
+        carbsG: 0,
+        fatG: 0,
+      };
+    } else {
+      const rx = prescribe(STAPLE_FOODS, {
+        targetKcal,
+        targetProteinG: checkIn.prescription.targetProteinG,
+        excludedTokens: [],
+      });
+      if (!rx) throw app.httpErrors.conflict('could not build a full meal');
+      items = rx.items.map((i) => ({
+        name: i.name,
+        quantity: i.quantity,
+        kcal: i.kcal,
+        proteinG: i.proteinG,
+        carbsG: i.carbsG,
+        fatG: i.fatG,
+      }));
+      totals = {
+        kcal: rx.totalKcal,
+        proteinG: rx.totalProteinG,
+        carbsG: rx.totalCarbsG,
+        fatG: rx.totalFatG,
+      };
+    }
+
+    await prisma.$transaction([
+      prisma.checkIn.update({ where: { id: checkIn.id }, data: { variant } }),
+      prisma.prescriptionItem.deleteMany({ where: { prescriptionId: checkIn.prescription.id } }),
+      prisma.prescription.update({
+        where: { id: checkIn.prescription.id },
+        data: {
+          totalKcal: totals.kcal,
+          totalProteinG: totals.proteinG,
+          totalCarbsG: totals.carbsG,
+          totalFatG: totals.fatG,
+          items: { create: items.map((i) => ({ ...i, unit: 'serving' })) },
+        },
+      }),
+    ]);
+
+    return {
+      variant,
+      prescription: {
+        id: checkIn.prescription.id,
+        totalKcal: totals.kcal,
+        totalProteinG: totals.proteinG,
+        items: items.map((i) => ({ name: i.name, quantity: i.quantity, kcal: i.kcal, proteinG: i.proteinG })),
+      },
+    };
+  });
+
   // Tier-3 "this isn't working right now" conversation (§2).
   app.get('/:id/conversation', async (req) => {
     const { id } = params.parse(req.params);

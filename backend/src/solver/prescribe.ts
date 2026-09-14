@@ -1,4 +1,5 @@
 import { clamp } from '../engine/types.js';
+import { CALORIE_DENSE_SLUGS, DRINKABLE_SLUGS } from '../engine/appetite.js';
 import { SOLVER_CONFIG, type SolverConfig } from './config.js';
 import { filterAllowedFoods } from './exclusions.js';
 import type { PrescriptionConstraints, PrescriptionResult, SolverFood } from './types.js';
@@ -46,6 +47,8 @@ export function selectCandidates(
       (constraints.pantryTokens ?? []).some(
         (t) => food.slug.includes(t) || food.name.toLowerCase().includes(t.replace(/_/g, ' ')),
       ) ? 1 : 0;
+    const denseHit = constraints.preferCalorieDense && CALORIE_DENSE_SLUGS.has(food.slug) ? 1.4 : 0;
+    const drinkHit = constraints.preferDrinkable && DRINKABLE_SLUGS.has(food.slug) ? 1.1 : 0;
     const prepCap = constraints.prepTimeMaxMin;
     const prepScore = prepCap != null && prepCap <= 15 ? frictionScore : 0;
 
@@ -54,7 +57,9 @@ export function selectCandidates(
       proteinScore * (wantsProtein ? 2 : 1) +
       frictionScore * (constraints.preferLowFriction ? 1 : 0.3) +
       pantryHit * 1.2 +
-      prepScore;
+      prepScore +
+      denseHit +
+      drinkHit;
 
     return { food, relevance };
   });

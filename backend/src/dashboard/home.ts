@@ -16,6 +16,9 @@ import {
   upcomingCheckIn,
   movedSlotsToday,
   withOverdue,
+  appetiteShape,
+  extraAppetiteSlots,
+  localDateISO,
   type Goal,
   type ScheduledCheckIn,
   type SlotName,
@@ -85,12 +88,20 @@ export type HomeView = {
     }[];
     refuelUntilMin: number | null;
   };
+  appetite: {
+    mode: string;
+    level: string;
+    drinkableOk: boolean;
+    suggestSmallerDefault: boolean;
+    extraSlots: { slot: string; atMin: number }[];
+  };
   activeCheckIn: null | {
     id: string;
     tier: number;
         /** The meal it's about; null for a tier-3 conversation. */
     slot: SlotName | null;
-    kind: string;
+        kind: string;
+    variant: string;
     status: string;
     message: string | null;
     deferUntil: string | null;
@@ -120,7 +131,7 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
   const profile = user.onboarding;
   const dayStart = startOfLocalDay(now, user.timezone);
 
-  const [todayMeals, lastMeal, activeCheckIn, todayCheckIns, lastWeighIn, busyRows] = await Promise.all([
+  const [todayMeals, lastMeal, activeCheckIn, todayCheckIns, lastWeighIn, busyRows, dayAppetite, smallerCount] = await Promise.all([
     prisma.meal.findMany({
       where: { userId, loggedAt: { gte: dayStart } },
       orderBy: { loggedAt: 'asc' },
@@ -160,6 +171,16 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
       where: { userId, end: { gt: dayStart }, start: { lt: new Date(dayStart.getTime() + 86_400_000) } },
       select: { start: true, end: true },
     }),
+    prisma.dayAppetite.findUnique({
+      where: { userId_localDate: { userId, localDate: localDateISO(now, user.timezone) } },
+    }),
+    prisma.checkIn.count({
+      where: {
+        userId,
+        variant: 'smaller',
+        createdAt: { gte: new Date(now.getTime() - 7 * 86_400_000) },
+      },
+    }),
   ]);
 
   const consumedKcal = todayMeals.reduce((acc, m) => acc + m.kcal, 0);
@@ -186,6 +207,11 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
   const mins = localMinute(now);
   const times = mealTimesOn(profile, localWeekday(now, user.timezone));
   const enforcementEnabled = user.safetyScreening?.enforcementEnabled ?? false;
+  const shape = appetiteShape(
+    (profile.appetiteMode as 'NORMAL' | 'SMALL_FREQUENT') ?? 'NORMAL',
+    (dayAppetite?.level as 'HUNGRY' | 'NORMAL' | 'LOW') ?? null,
+  );
+  const extraSlots = shape === 'SMALL';
 
   const day = buildDay({
     nowMin: mins,
@@ -222,6 +248,7 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
           .filter((slot): slot is SlotName => slot !== null),
         consumedKcal,
         targetKcal,
+        extraSlots,
       })
     : null;
   const shifted = scheduled
@@ -296,6 +323,13 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
       workouts: trainingRows,
       refuelUntilMin,
     },
+    appetite: {
+      mode: profile.appetiteMode ?? 'NORMAL',
+      level: dayAppetite?.level ?? (shape === 'SMALL' ? 'LOW' : 'NORMAL'),
+      drinkableOk: profile.drinkableOk ?? true,
+      suggestSmallerDefault: smallerCount >= 2,
+      extraSlots: extraSlots ? extraAppetiteSlots(times).map((s) => ({ slot: s.slot, atMin: s.mealMin })) : [],
+    },
     needsWeighIn:
       goal !== 'MAINTAIN' &&
       (!lastWeighIn || now.getTime() - lastWeighIn.measuredAt.getTime() > 7 * 24 * 3_600_000),
@@ -309,6 +343,7 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
                 checkInSlotAt(localMinute(activeCheckIn.createdAt), times)
               : null,
           kind: activeCheckIn.kind,
+          variant: activeCheckIn.variant,
           status: activeCheckIn.status,
           message: activeCheckIn.message,
           deferUntil: activeCheckIn.deferUntil?.toISOString() ?? null,

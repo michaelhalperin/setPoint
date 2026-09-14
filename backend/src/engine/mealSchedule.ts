@@ -60,9 +60,11 @@ export function mealTimesOn(profile: ScheduleProfile, weekday: number): MealTime
   );
 }
 
-export type SlotName = 'breakfast' | 'lunch' | 'dinner';
+export type CoreSlot = 'breakfast' | 'lunch' | 'dinner';
+export type SlotName = CoreSlot | 'snack_am' | 'snack_pm';
 
 export const SLOT_ORDER: SlotName[] = ['breakfast', 'lunch', 'dinner'];
+export const APPETITE_SLOT_ORDER: SlotName[] = ['breakfast', 'snack_am', 'lunch', 'snack_pm', 'dinner'];
 
 export const SCHEDULE_CONFIG = {
   /** Minutes after a usual meal time, with nothing logged, before a check-in. */
@@ -82,6 +84,8 @@ export type ScheduleInput = {
   consumedKcal: number;
   targetKcal: number;
   graceMin?: number;
+  /** Extra mid-morning / afternoon check-ins (SMALL_FREQUENT / LOW). */
+  extraSlots?: boolean;
 };
 
 export type ScheduledCheckIn = {
@@ -95,7 +99,11 @@ export type ScheduledCheckIn = {
 };
 
 function atOf(times: MealTimes, slot: SlotName): number {
-  return slot === 'breakfast' ? times.breakfastMin : slot === 'lunch' ? times.lunchMin : times.dinnerMin;
+  if (slot === 'breakfast') return times.breakfastMin;
+  if (slot === 'lunch') return times.lunchMin;
+  if (slot === 'dinner') return times.dinnerMin;
+  if (slot === 'snack_am') return Math.floor((times.breakfastMin + times.lunchMin) / 2);
+  return Math.floor((times.lunchMin + times.dinnerMin) / 2);
 }
 
 /**
@@ -104,7 +112,9 @@ function atOf(times: MealTimes, slot: SlotName): number {
  */
 export function slotWindowStart(slot: SlotName, times: MealTimes): number {
   if (slot === 'breakfast') return 0;
+  if (slot === 'snack_am') return Math.floor((times.breakfastMin + atOf(times, 'snack_am')) / 2);
   if (slot === 'lunch') return Math.floor((times.breakfastMin + times.lunchMin) / 2);
+  if (slot === 'snack_pm') return Math.floor((times.lunchMin + atOf(times, 'snack_pm')) / 2);
   return Math.floor((times.lunchMin + times.dinnerMin) / 2);
 }
 
@@ -119,10 +129,11 @@ export function currentMealSlot(nowMin: number, times: MealTimes): SlotName {
 }
 
 /** The next meal time after `slot`, or the end of the day after dinner. */
-function slotCloses(slot: SlotName, times: MealTimes): number {
-  if (slot === 'breakfast') return times.lunchMin;
-  if (slot === 'lunch') return times.dinnerMin;
-  return MINUTES_PER_DAY;
+function slotCloses(slot: SlotName, times: MealTimes, extra: boolean): number {
+  const order = extra ? APPETITE_SLOT_ORDER : SLOT_ORDER;
+  const idx = order.indexOf(slot);
+  if (idx < 0 || idx === order.length - 1) return MINUTES_PER_DAY;
+  return atOf(times, order[idx + 1]!);
 }
 
 /**
@@ -159,10 +170,12 @@ export function dueCheckIn(input: ScheduleInput): ScheduledCheckIn | null {
 export function upcomingCheckIn(input: ScheduleInput): ScheduledCheckIn | null {
   if (input.consumedKcal >= input.targetKcal) return null;
   const grace = input.graceMin ?? SCHEDULE_CONFIG.graceMin;
-  for (const slot of SLOT_ORDER) {
+  const extra = input.extraSlots === true;
+  const order = extra ? APPETITE_SLOT_ORDER : SLOT_ORDER;
+  for (const slot of order) {
     const mealMin = atOf(input.times, slot);
     const dueMin = mealMin + grace;
-    if (input.nowMin >= slotCloses(slot, input.times)) continue;
+    if (input.nowMin >= slotCloses(slot, input.times, extra)) continue;
     if (input.checkedSlotsToday.includes(slot)) continue;
     if (covered(slot, input)) continue;
     return { slot, mealMin, dueMin, overdue: input.nowMin >= dueMin };

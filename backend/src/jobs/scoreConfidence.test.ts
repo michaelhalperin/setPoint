@@ -125,6 +125,7 @@ function makeFakePrisma(users: AnyRow[], opts: { seedFoods?: boolean } = {}) {
     prescription: collection(prescriptions, 'rx'),
     calendarBusyBlock: { findMany: async () => [] },
     workout: collection(workouts, 'wo'),
+    dayAppetite: { findUnique: async () => null },
   };
 }
 

@@ -90,6 +90,7 @@
 		C7E6BD3F022C447E43FE1584 /* UserFacingError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86D8304C476B77D8C38E8772 /* UserFacingError.swift */; };
 		C93EAD75456886331D136C11 /* OnboardingSafety.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFA804FA8D6FABD40D1DD2E0 /* OnboardingSafety.swift */; };
 		C99996C6FE78F9F2EF44FA14 /* ActivityKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 19F7ECB0DD3A7883A2824FC1 /* ActivityKit.framework */; };
+		CA55CBE3E382E504B876F638 /* AppetiteScreens.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8769B24EB4ED270A0E607AFC /* AppetiteScreens.swift */; };
 		CD97BE2E6AED6E4C564D3C9E /* SignOutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFCE2AAFE928FE8981D26647 /* SignOutTests.swift */; };
 		CDDDDC3BA1A8B7FEC50BEF32 /* WelcomePages.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD2EBDC48EFD63B56EDFD00C /* WelcomePages.swift */; };
 		CEEE82880732D8BC516472AF /* SettingsScreensTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 810A93EE79A7E473253E6BF2 /* SettingsScreensTests.swift */; };
@@ -202,6 +203,7 @@
 		822F10719F105FCD59A9BF02 /* OFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = OFL.txt; sourceTree = "<group>"; };
 		84B5787B516857871D6B64BF /* LiveActivityController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityController.swift; sourceTree = "<group>"; };
 		86D8304C476B77D8C38E8772 /* UserFacingError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserFacingError.swift; sourceTree = "<group>"; };
+		8769B24EB4ED270A0E607AFC /* AppetiteScreens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppetiteScreens.swift; sourceTree = "<group>"; };
 		87A7B143B2CF06863A727EC5 /* TokenStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenStore.swift; sourceTree = "<group>"; };
 		8AEEC804F40BC95701983A78 /* LogMealTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogMealTests.swift; sourceTree = "<group>"; };
 		8C8F075855C3FB6506F00810 /* SetPoint.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SetPoint.entitlements; sourceTree = "<group>"; };
@@ -324,6 +326,7 @@
 		4446CB693CDE201339DF2577 /* Features */ = {
 			isa = PBXGroup;
 			children = (
+				8CAC80F79D4396E6D06931C7 /* Appetite */,
 				D4A6B267D84D88ED27B043DA /* CheckIn */,
 				6289B3322997243B406037A1 /* Home */,
 				95D597730328140D83BDA746 /* Onboarding */,
@@ -425,6 +428,14 @@
 				424CD9EAF9B439E9941AC8C5 /* OnboardingEnums.swift */,
 			);
 			path = Models;
+			sourceTree = "<group>";
+		};
+		8CAC80F79D4396E6D06931C7 /* Appetite */ = {
+			isa = PBXGroup;
+			children = (
+				8769B24EB4ED270A0E607AFC /* AppetiteScreens.swift */,
+			);
+			path = Appetite;
 			sourceTree = "<group>";
 		};
 		9042145BFF361930E8CBD6FA /* Welcome */ = {
@@ -740,6 +751,7 @@
 				9B0C59C6A3F3D67DA3DD2DB7 /* APIConfig.swift in Sources */,
 				E9BE1261A4D3B02ADCA6C6C4 /* AppDelegate.swift in Sources */,
 				21B611B9BD8199A8E7D5BBE5 /* AppEnvironment.swift in Sources */,
+				CA55CBE3E382E504B876F638 /* AppetiteScreens.swift in Sources */,
 				47C8F715DE3DE17989FABB04 /* AuthStore.swift in Sources */,
 				861F344B7587158F94135764 /* BarcodeLogViews.swift in Sources */,
 				F5C127BA64C922FA0B491F82 /* BiosignalStats.swift in Sources */,

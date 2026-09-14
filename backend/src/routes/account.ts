@@ -101,6 +101,12 @@ const settingsPatch = z
         preWorkoutNudgeMin: z.union([z.literal(0), z.literal(60), z.literal(90), z.literal(120), z.null()]).optional(),
       })
       .optional(),
+    appetite: z
+      .object({
+        mode: z.enum(['NORMAL', 'SMALL_FREQUENT']).optional(),
+        drinkableOk: z.boolean().optional(),
+      })
+      .optional(),
   })
   .refine((p) => Object.keys(p).length > 0, { message: 'no changes provided' });
 

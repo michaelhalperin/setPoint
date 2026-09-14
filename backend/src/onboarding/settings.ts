@@ -52,6 +52,10 @@ export type SettingsView = {
     addCalories: boolean;
     preWorkoutNudgeMin: number | null;
   };
+  appetite: {
+    mode: 'NORMAL' | 'SMALL_FREQUENT';
+    drinkableOk: boolean;
+  };
 };
 
 export type SettingsPatch = {
@@ -90,6 +94,10 @@ export type SettingsPatch = {
   training?: {
     addCalories?: boolean;
     preWorkoutNudgeMin?: number | null;
+  };
+  appetite?: {
+    mode?: 'NORMAL' | 'SMALL_FREQUENT';
+    drinkableOk?: boolean;
   };
 };
 
@@ -241,6 +249,10 @@ export async function updateSettings(
           patch.training.preWorkoutNudgeMin === 0 ? null : patch.training.preWorkoutNudgeMin;
       }
     }
+    if (patch.appetite) {
+      if (patch.appetite.mode != null) profileData.appetiteMode = patch.appetite.mode;
+      if (patch.appetite.drinkableOk != null) profileData.drinkableOk = patch.appetite.drinkableOk;
+    }
     if (Object.keys(profileData).length > 0) {
       await tx.onboardingProfile.update({ where: { userId }, data: profileData });
     }
@@ -355,6 +367,10 @@ function toView(user: UserWithSettings, weekendSuggestion: WeekendBreakfastSugge
     training: {
       addCalories: p.trainingAddCalories ?? true,
       preWorkoutNudgeMin: p.preWorkoutNudgeMin ?? null,
+    },
+    appetite: {
+      mode: (p.appetiteMode as 'NORMAL' | 'SMALL_FREQUENT') ?? 'NORMAL',
+      drinkableOk: p.drinkableOk ?? true,
     },
   };
 }

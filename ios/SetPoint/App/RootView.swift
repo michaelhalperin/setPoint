@@ -69,6 +69,9 @@ enum DebugPreviewStub {
     case calendarConnect
     case training
     case refuel
+    case appetite
+    case checkinSmaller
+    case settingsAppetite
     case settingsAccount
     case settingsDelete
 
@@ -137,6 +140,22 @@ enum DebugPreviewStub {
                 onCoveredByDinner: {},
                 onDismiss: {}
             )
+        case .appetite:
+            AppetitePickerSheet(previewLevel: "LOW", previewTarget: 2500)
+        case .checkinSmaller:
+            if let checkIn = HomeResponse.sampleUnder.activeCheckIn {
+                PrescriptionView(
+                    checkIn: checkIn,
+                    headline: "Lunch slipped.",
+                    whyNow: "Usually 13:00",
+                    onDismiss: {},
+                    onResolved: {},
+                    onAlreadyAte: {},
+                    suggestSmallerDefault: true
+                )
+            }
+        case .settingsAppetite:
+            NavigationStack { AppetiteSettingsView(previewMode: "SMALL_FREQUENT") }
         case .settingsAccount:
             NavigationStack { AccountSettingsView(model: .previewed()) }
         case .settingsDelete:
@@ -192,8 +211,11 @@ enum DebugPreviewStub {
         case "calendar-connect": return .calendarConnect
         case "home-busy": return .home(.sampleBusy)
         case "home-training": return .home(.sampleTraining)
+        case "home-appetite": return .home(.sampleAppetite)
         case "training": return .training
         case "refuel": return .refuel
+        case "checkin-smaller": return .checkinSmaller
+        case "settings-appetite": return .settingsAppetite
         case "settings-goal": return .settingsGoal
         case "settings-meal-times": return .settingsMealTimes
         case "settings-meal-times-weekends": return .settingsMealTimesWeekends

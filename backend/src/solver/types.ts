@@ -23,6 +23,8 @@ export type PrescriptionConstraints = {
   pantryTokens?: string[];
   /** Soft cap on prep; foods tagged no_cook win when set low. */
   prepTimeMaxMin?: number | null;
+  preferCalorieDense?: boolean;
+  preferDrinkable?: boolean;
 };
 
 export type PrescriptionLineItem = {

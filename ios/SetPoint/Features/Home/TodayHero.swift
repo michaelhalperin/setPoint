@@ -10,6 +10,7 @@ struct TodayHero: View {
     let home: HomeResponse
     let moment: TodayMoment
     let date: Date
+    var onAppetite: () -> Void = {}
 
     var body: some View {
         let quiet = home.resolvedQuietHours
@@ -127,6 +128,15 @@ struct TodayHero: View {
                 }
                 .buttonStyle(.plain)
             }
+            Button(action: onAppetite) {
+                Text("Appetite ›")
+                    .font(Typography.data(12, weight: .bold))
+                    .foregroundStyle(Palette.ink)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Palette.surfaceSunk, in: Capsule())
+            }
+            .buttonStyle(.plain)
             Spacer(minLength: 0)
         }
     }
