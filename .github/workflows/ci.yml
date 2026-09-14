@@ -22,6 +22,9 @@ jobs:
         ports: ['5432:5432']
         options: >-
           --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    # Prisma reads DATABASE_URL even to validate; point every step at the CI database.
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/setpoint
     defaults:
       run:
         working-directory: backend
@@ -41,12 +44,10 @@ jobs:
       # schema.prisma exactly — a schema edit without a migration fails here.
       - name: Apply migrations to an empty database
         run: pnpm exec prisma migrate deploy
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/setpoint
       - name: Check schema.prisma matches migrations
         run: >-
           pnpm exec prisma migrate diff
-          --from-url postgresql://postgres:postgres@localhost:5432/setpoint
+          --from-url "$DATABASE_URL"
           --to-schema-datamodel prisma/schema.prisma
           --exit-code
       - run: pnpm typecheck
@@ -61,15 +62,13 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
+      # gen.sh seeds the gitignored Config/Signing.xcconfig from the example
+      # (CI builds unsigned, so the placeholder team ID is fine).
       - name: Generate Xcode project
         working-directory: ios
         run: |
-          if command -v xcodegen >/dev/null; then
-            xcodegen generate
-          else
-            brew install xcodegen
-            xcodegen generate
-          fi
+          command -v xcodegen >/dev/null || brew install xcodegen
+          ./scripts/gen.sh
       - name: Build and test
         working-directory: ios
         run: |
