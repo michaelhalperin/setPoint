@@ -22,8 +22,28 @@ struct HomeResponse: Decodable {
     let activeCheckIn: ActiveCheckIn?
     /// Today's meal-time slots, where now sits, and pace. Older payloads omit it.
     var day: Day? = nil
+    /// The check-in coming if nothing is logged. Nil in quiet mode, while paused,
+    /// while one is open, or once the day is covered.
+    var nextCheckIn: NextCheckIn? = nil
+
+    struct NextCheckIn: Decodable, Equatable {
+        let slot: String      // "breakfast" | "lunch" | "dinner"
+        let mealMin: Int
+        let dueMin: Int
+        let overdue: Bool
+    }
 
     var resolvedMealTimes: MealTimesPayload { mealTimes ?? .standard }
+
+    /// Quiet hours, minutes from midnight. Older payloads omit them; the default
+    /// matches onboarding's derived window.
+    var quietHours: QuietHoursPayload? = nil
+    var resolvedQuietHours: QuietHoursPayload {
+        if let quietHours { return quietHours }
+        let times = resolvedMealTimes
+        let derived = derivedQuietHours(breakfastMin: times.breakfastMin, dinnerMin: times.dinnerMin)
+        return QuietHoursPayload(startMin: derived.start, endMin: derived.end)
+    }
 
     /// The shape of today, decided by the backend: breakfast / lunch / dinner
     /// slots (logged, due now, missed, upcoming), now, and pace.
@@ -82,6 +102,8 @@ struct HomeResponse: Decodable {
         let message: String?
         let deferUntil: String?
         let prescription: Prescription?
+        /// The meal it's about; nil for a tier-3 conversation.
+        var slot: String? = nil
 
         struct Prescription: Decodable {
             let id: String
@@ -173,6 +195,34 @@ struct SettlementResponse: Decodable {
     let today: Today
     let weekSummary: String
     let weightGoal: WeightGoal?
+    /// How each meal went this week. Older payloads omit it.
+    var record: Record? = nil
+
+    /// Per day and meal: on time, after a check-in, missed, or still open — and
+    /// one late-meal pattern the app can fix in a tap.
+    struct Record: Decodable {
+        let days: [RecordDay]
+        let onTime: Int
+        let afterCheckIn: Int
+        let missed: Int
+        let checkIns: Int
+        let pattern: Pattern?
+
+        struct RecordDay: Decodable, Identifiable {
+            var id: String { date }
+            let date: String
+            /// breakfast, lunch, dinner: "on_time" | "after_check_in" | "missed" | "open"
+            let slots: [String]
+        }
+
+        struct Pattern: Decodable, Equatable {
+            let slot: String
+            let lateDays: Int
+            let ofDays: Int
+            let currentMin: Int
+            let suggestedMin: Int
+        }
+    }
 
     struct Day: Decodable, Identifiable {
         var id: String { date }
@@ -345,6 +395,16 @@ struct WeightLogRequest: Encodable {
     let weightKg: Double
     var measuredAt: String?
     var source: String?      // "manual" | "healthkit"
+}
+
+struct WeightHistoryResponse: Decodable {
+    let entries: [Entry]
+
+    struct Entry: Decodable, Identifiable {
+        let id: String
+        let weightKg: Double
+        let measuredAt: String
+    }
 }
 
 struct WeightLogResponse: Decodable {
