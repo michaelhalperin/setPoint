@@ -12,6 +12,9 @@ final class SettlementViewModel {
 
     var phase: Phase = .loading
     var loggingWeight = false
+    /// Recent weigh-ins, oldest first — the trend line.
+    private(set) var weights: [WeightHistoryResponse.Entry] = []
+    private(set) var applyingPattern = false
     /// Set after a weigh-in that reached the goal — the view shows a note.
     var reachedGoalTarget: Double?
 
@@ -25,7 +28,9 @@ final class SettlementViewModel {
 
     func load() async {
         do {
+            async let history: WeightHistoryResponse? = try? api.get("/api/weight", query: ["limit": "30"])
             let s: SettlementResponse = try await api.get("/api/settlement")
+            weights = (await history)?.entries.reversed() ?? []
             phase = .loaded(s)
         } catch APIError.unauthorized {
             onUnauthorized()
@@ -56,6 +61,30 @@ final class SettlementViewModel {
         }
     }
 
+    /// "Expect it at 13:30" — move that meal time, keep the others.
+    func applyPattern(_ pattern: SettlementResponse.Record.Pattern) async -> Bool {
+        applyingPattern = true
+        defer { applyingPattern = false }
+        do {
+            let settings: SettingsResponse = try await api.get("/api/settings")
+            var times = settings.mealTimes
+            switch pattern.slot {
+            case "breakfast": times.breakfastMin = pattern.suggestedMin
+            case "lunch": times.lunchMin = pattern.suggestedMin
+            default: times.dinnerMin = pattern.suggestedMin
+            }
+            let _: SettingsResponse = try await api.patch("/api/settings", SettingsPatch(mealTimes: times))
+            PatternMemory.dismiss(pattern)
+            await load()
+            return true
+        } catch APIError.unauthorized {
+            onUnauthorized()
+            return false
+        } catch {
+            return false
+        }
+    }
+
     func logWeight(kg: Double) async -> Bool {
         loggingWeight = true
         defer { loggingWeight = false }
@@ -80,6 +109,21 @@ final class SettlementViewModel {
         return vm
     }
     #endif
+}
+
+/// Remembers a pattern the user already answered, so Week doesn't ask again.
+enum PatternMemory {
+    private static func key(_ pattern: SettlementResponse.Record.Pattern) -> String {
+        "com.setpoint.app.pattern.\(pattern.slot).\(pattern.suggestedMin)"
+    }
+
+    static func isDismissed(_ pattern: SettlementResponse.Record.Pattern) -> Bool {
+        UserDefaults.standard.bool(forKey: key(pattern))
+    }
+
+    static func dismiss(_ pattern: SettlementResponse.Record.Pattern) {
+        UserDefaults.standard.set(true, forKey: key(pattern))
+    }
 }
 
 #if DEBUG
@@ -108,6 +152,22 @@ extension SettlementResponse {
             etaWeeks: 15,
             lastWeighInAt: "2026-09-05T08:00:00.000Z",
             needsWeighIn: false
+        ),
+        record: .init(
+            days: [
+                .init(date: "2026-09-02", slots: ["on_time", "after_check_in", "on_time"]),
+                .init(date: "2026-09-03", slots: ["on_time", "after_check_in", "on_time"]),
+                .init(date: "2026-09-04", slots: ["on_time", "on_time", "on_time"]),
+                .init(date: "2026-09-05", slots: ["on_time", "after_check_in", "missed"]),
+                .init(date: "2026-09-06", slots: ["after_check_in", "after_check_in", "on_time"]),
+                .init(date: "2026-09-07", slots: ["on_time", "on_time", "on_time"]),
+                .init(date: "2026-09-08", slots: ["on_time", "open", "open"]),
+            ],
+            onTime: 13,
+            afterCheckIn: 5,
+            missed: 1,
+            checkIns: 6,
+            pattern: .init(slot: "lunch", lateDays: 4, ofDays: 5, currentMin: 780, suggestedMin: 810)
         )
     )
 
