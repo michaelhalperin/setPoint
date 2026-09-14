@@ -9,18 +9,22 @@ function fakePrisma(over: { onboarding?: AnyRow; weightEntries?: AnyRow[]; meals
   const user: AnyRow = {
     id: 'u1',
     timezone: 'America/New_York',
-    onboarding: over.onboarding ?? { goal: 'DIET', dailyKcalTarget: 2200 },
+    onboarding: over.onboarding ?? { goal: 'DIET', dailyKcalTarget: 2200, breakfastMin: 480, lunchMin: 780, dinnerMin: 1140 },
     weightEntries: over.weightEntries ?? [],
   };
   return {
     user: { findUnique: async () => user },
     dayOutcome: { findMany: async () => [] },
     meal: { findMany: async () => over.meals ?? [] },
+    checkIn: { findMany: async () => [] },
   } as unknown as PrismaClient;
 }
 
 const dietGoal = {
   goal: 'DIET',
+  breakfastMin: 480,
+  lunchMin: 780,
+  dinnerMin: 1140,
   dailyKcalTarget: 2200,
   startWeightKg: 82,
   targetWeightKg: 76,
@@ -32,7 +36,7 @@ const dietGoal = {
 describe('buildSettlement weightGoal', () => {
   it('is null when the user has no weight goal', async () => {
     const view = await buildSettlement(
-      { prisma: fakePrisma({ onboarding: { goal: 'MAINTAIN', dailyKcalTarget: 2500 } }), now: NOW },
+      { prisma: fakePrisma({ onboarding: { goal: 'MAINTAIN', dailyKcalTarget: 2500, breakfastMin: 480, lunchMin: 780, dinnerMin: 1140 } }), now: NOW },
       'u1',
     );
     expect(view.weightGoal).toBeNull();
@@ -71,5 +75,19 @@ describe('buildSettlement weightGoal', () => {
       'u1',
     );
     expect(view.weightGoal?.needsWeighIn).toBe(false);
+  });
+});
+
+describe('buildSettlement record', () => {
+  it('covers the last seven local days, today last', async () => {
+    const view = await buildSettlement(
+      { prisma: fakePrisma({ meals: [{ kcal: 500, loggedAt: new Date('2026-09-15T12:10:00Z') }] }), now: NOW },
+      'u1',
+    );
+    expect(view.record.days.map((d) => d.date)).toEqual([
+      '2026-09-09', '2026-09-10', '2026-09-11', '2026-09-12', '2026-09-13', '2026-09-14', '2026-09-15',
+    ]);
+    expect(view.record.days[6]?.slots).toEqual(['on_time', 'open', 'open']); // 8:10 breakfast; it's 14:00
+    expect(view.today.kcalConsumed).toBe(500);
   });
 });

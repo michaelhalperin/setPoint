@@ -1,7 +1,8 @@
 import type { PrismaClient } from '@prisma/client';
-import { localDateISO, shiftDateISO, startOfLocalDay, type Goal } from '../engine/index.js';
+import { localDateISO, localDayRange, msSinceLocalMidnight, shiftDateISO, startOfLocalDay, type Goal } from '../engine/index.js';
 import { computeWeightProgress, type PaceStatus } from '../weight/progress.js';
 import { classifyDay, type DayKind } from './classify.js';
+import { buildWeekRecord, type WeekRecord } from './record.js';
 import { OnboardingIncompleteError } from './home.js';
 
 export type SettlementDeps = {
@@ -45,6 +46,8 @@ export type SettlementView = {
   weekSummary: string;
   /** Null when the user has no weight goal (MAINTAIN or none set). */
   weightGoal: WeightGoalView | null;
+  /** How each meal went this week, with or without a check-in. */
+  record: WeekRecord;
 };
 
 const WINDOW_DAYS = 7;
@@ -82,12 +85,33 @@ export async function buildSettlement(deps: SettlementDeps, userId: string): Pro
     summaryLine: r.summaryLine,
   }));
 
+  const windowStart = localDayRange(windowStartISO, user.timezone).start;
+  const todayStart = startOfLocalDay(now, user.timezone);
+  const [windowMeals, windowCheckIns] = await Promise.all([
+    prisma.meal.findMany({
+      where: { userId, loggedAt: { gte: windowStart } },
+      select: { kcal: true, loggedAt: true },
+    }),
+    prisma.checkIn.findMany({
+      where: { userId, createdAt: { gte: windowStart } },
+      select: { createdAt: true, status: true, tier: true },
+    }),
+  ]);
+
   // Today, live (not yet settled).
-  const todayMeals = await prisma.meal.findMany({
-    where: { userId, loggedAt: { gte: startOfLocalDay(now, user.timezone) } },
-    select: { kcal: true },
+  const todayKcal = windowMeals.filter((m) => m.loggedAt >= todayStart).reduce((acc, m) => acc + m.kcal, 0);
+
+  const local = (date: Date) => ({
+    date: localDateISO(date, user.timezone),
+    minute: Math.floor(msSinceLocalMidnight(date, user.timezone) / 60_000),
   });
-  const todayKcal = todayMeals.reduce((acc, m) => acc + m.kcal, 0);
+  const record = buildWeekRecord({
+    dates: Array.from({ length: WINDOW_DAYS }, (_, i) => shiftDateISO(windowStartISO, i)),
+    nowMin: local(now).minute,
+    times: profile,
+    meals: windowMeals.map((m) => local(m.loggedAt)),
+    checkIns: windowCheckIns.map((c) => ({ ...local(c.createdAt), status: c.status, tier: c.tier })),
+  });
 
   return {
     days,
@@ -100,6 +124,7 @@ export async function buildSettlement(deps: SettlementDeps, userId: string): Pro
     },
     weekSummary: weekSummary(days, goal),
     weightGoal: buildWeightGoal(profile, user.weightEntries[0] ?? null, now),
+    record,
   };
 }
 
