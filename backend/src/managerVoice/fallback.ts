@@ -13,7 +13,7 @@ export const fallbackManagerVoice: ManagerVoice = {
   async checkInMessage(ctx: ManagerVoiceContext): Promise<string> {
     const directive = ctx.prescriptionSummary ? ` Try ${ctx.prescriptionSummary}.` : '';
     if (ctx.tier <= 1) {
-      return `Time to eat.${directive || ''}`;
+      return ctx.slot ? `${cap(ctx.slot)} slipped.${directive}` : `Time to eat.${directive}`;
     }
     return `Eat now.${directive}`;
   },

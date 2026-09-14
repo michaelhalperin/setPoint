@@ -1,18 +1,18 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
 import {
   checkEligibility,
-  computeConfidence,
+  checkInSlotAt,
   decideEscalation,
-  deriveHoursSinceLastLog,
   deriveHoursSinceMeal,
-  expectedGapHours,
+  dueCheckIn,
   freshCheckInTier,
   isBiosignalFresh,
+  msSinceLocalMidnight,
   startOfLocalDay,
-  type ConfidenceInput,
+  TIER,
   type EscalationDecision,
   type Goal,
-  type Mode,
+  type SlotName,
 } from '../engine/index.js';
 import type { ManagerVoice } from '../managerVoice/types.js';
 import { captureError } from '../observability/sentry.js';
@@ -63,10 +63,10 @@ type JobContext = {
  * The server-driven confidence job (plan §2). Runs on Vercel Cron via
  * `POST /api/cron/score`. Per onboarded user:
  *   1. advance any open check-in through the defer/escalation state machine,
- *   2. if nothing is pending and the user is eligible, score confidence,
- *   3. on a firing score, create a check-in + a solver prescription and deliver.
+ *   2. if nothing is pending and the user is eligible, check the meal schedule,
+ *   3. when a meal is overdue, create a check-in + a solver prescription and deliver.
  *
- * All scoring and prescription selection is deterministic — no model calls (§7).
+ * Timing and prescription selection are deterministic — no model calls (§7).
  */
 export async function runScoreConfidenceJob(
   deps: ScoreConfidenceDeps,
@@ -132,34 +132,8 @@ function escStateOf(user: UserWithRelations): { consecutiveMisses: number; curre
   };
 }
 
-function buildConfidenceInput(
-  user: UserWithRelations,
-  lastMealAt: Date | null,
-  now: Date,
-): ConfidenceInput {
-  const profile = user.onboarding!;
-  const mode = profile.mode as Mode;
-
-  let biosignal: ConfidenceInput['biosignal'] = null;
-  if (
-    mode === 'SMART' &&
-    user.biosignalState &&
-    isBiosignalFresh(user.biosignalState.updatedAt, now)
-  ) {
-    biosignal = {
-      hrvZ: user.biosignalState.hrvDeviation,
-      rhrZ: user.biosignalState.rhrDeviation ?? null,
-    };
-  }
-
-  return {
-    mode,
-    hoursSinceMeal: deriveHoursSinceMeal(lastMealAt, user.createdAt, now),
-    expectedGapHours: expectedGapHours(profile),
-    hoursSinceLastLog: deriveHoursSinceLastLog(lastMealAt, user.createdAt, now),
-    biosignal,
-  };
-}
+const localMinute = (date: Date, timeZone: string): number =>
+  Math.floor(msSinceLocalMidnight(date, timeZone) / 60_000);
 
 async function processUser(
   deps: ScoreConfidenceDeps,
@@ -174,7 +148,7 @@ async function processUser(
   const { prisma } = deps;
   const dayStart = startOfLocalDay(now, user.timezone);
 
-  const [activeCheckIns, lastMeal, todayMeals, restrictions] = await Promise.all([
+  const [activeCheckIns, lastMeal, todayMeals, todayCheckIns, restrictions] = await Promise.all([
     prisma.checkIn.findMany({
       where: { userId: user.id, status: { in: ['PENDING', 'DEFERRED'] } },
       orderBy: { createdAt: 'desc' },
@@ -182,18 +156,22 @@ async function processUser(
     prisma.meal.findFirst({ where: { userId: user.id }, orderBy: { loggedAt: 'desc' } }),
     prisma.meal.findMany({
       where: { userId: user.id, loggedAt: { gte: dayStart } },
-      select: { kcal: true, proteinG: true },
+      select: { kcal: true, proteinG: true, loggedAt: true },
+    }),
+    prisma.checkIn.findMany({
+      where: { userId: user.id, createdAt: { gte: dayStart } },
+      select: { createdAt: true, tier: true },
     }),
     prisma.dietaryRestriction.findMany({ where: { userId: user.id, isHardExclusion: true } }),
   ]);
 
-  const input = buildConfidenceInput(user, lastMeal?.loggedAt ?? null, now);
+  const consumedKcal = todayMeals.reduce((acc, m) => acc + m.kcal, 0);
+  const underTarget = consumedKcal < profile.dailyKcalTarget;
 
   // 1. Advance any open check-in.
   let blocked = false;
   for (const ci of activeCheckIns) {
     const isDeferred = ci.status === 'DEFERRED';
-    const freshConfidence = isDeferred ? computeConfidence(input).score : null;
 
     const decision = decideEscalation({
       checkIn: {
@@ -204,7 +182,9 @@ async function processUser(
         deferUntil: ci.deferUntil,
       },
       state: escStateOf(user),
-      freshConfidence,
+      // Logging a meal resolves the check-in outright, so an open one after a
+      // snooze is still due unless the day's target has been met since.
+      stillDue: isDeferred ? underTarget : null,
       now,
     });
 
@@ -217,7 +197,7 @@ async function processUser(
     return;
   }
 
-  // 2. Eligibility gate — checked before any scoring (§2).
+  // 2. Eligibility gate — checked before anything is evaluated (§2).
   const eligibility = checkEligibility({
     now,
     timezone: user.timezone,
@@ -234,31 +214,50 @@ async function processUser(
     return;
   }
 
-  // 3. Score.
-  const result = computeConfidence(input);
+  // 3. Is a meal overdue? Usual meal time + grace, nothing logged, under target.
+  const due = dueCheckIn({
+    nowMin: localMinute(now, user.timezone),
+    times: profile,
+    mealMinutesToday: todayMeals.map((m) => localMinute(m.loggedAt, user.timezone)),
+    checkedSlotsToday: todayCheckIns
+      .filter((c) => c.tier < TIER.CONVERSATION)
+      .map((c) => checkInSlotAt(localMinute(c.createdAt, user.timezone), profile))
+      .filter((slot): slot is SlotName => slot !== null),
+    consumedKcal,
+    targetKcal: profile.dailyKcalTarget,
+  });
+  summary.scored += 1;
+  if (!due) {
+    bump(summary, 'not_due');
+    return;
+  }
+
+  const hoursSinceMeal = deriveHoursSinceMeal(lastMeal?.loggedAt ?? null, user.createdAt, now);
+  const biosignal =
+    profile.mode === 'SMART' && user.biosignalState && isBiosignalFresh(user.biosignalState.updatedAt, now)
+      ? user.biosignalState.hrvDeviation
+      : null;
+  // Audit row for the fired check-in (beta metrics read it).
   const score = await prisma.confidenceScore.create({
     data: {
       userId: user.id,
       computedAt: now,
-      mode: input.mode,
-      score: result.score,
-      biosignalDeviation: result.components.biosignalDeviation,
-      hoursSinceMeal: input.hoursSinceMeal,
-      expectedGapHours: input.expectedGapHours,
-      loggingSilence: result.components.loggingSilence,
-      threshold: result.threshold,
-      firedCheckIn: result.fires,
+      mode: profile.mode,
+      score: 1,
+      biosignalDeviation: biosignal,
+      hoursSinceMeal,
+      expectedGapHours: null,
+      loggingSilence: null,
+      threshold: 1,
+      firedCheckIn: true,
     },
   });
-  summary.scored += 1;
-
-  if (!result.fires) return;
 
   // 4. Solve for a directive prescription (§2, §5.4).
   const tier = freshCheckInTier(escStateOf(user));
   const target = computePrescriptionTarget({
     dailyKcalTarget: profile.dailyKcalTarget,
-    consumedKcal: todayMeals.reduce((acc, m) => acc + m.kcal, 0),
+    consumedKcal,
     dailyProteinTargetG: profile.dailyProteinTargetG,
     consumedProteinG: todayMeals.reduce((acc, m) => acc + m.proteinG, 0),
   });
@@ -278,9 +277,10 @@ async function processUser(
   const message = await deps.voice.checkInMessage({
     tier,
     goal: profile.goal as Goal,
-    hoursSinceMeal: input.hoursSinceMeal,
+    hoursSinceMeal,
     kcalGap: target.targetKcal,
     prescriptionSummary: summaryLine,
+    slot: due.slot,
   });
 
   const checkIn = await prisma.checkIn.create({
@@ -294,8 +294,9 @@ async function processUser(
     },
   });
 
+  let prescriptionId: string | null = null;
   if (rx) {
-    await prisma.prescription.create({
+    const created = await prisma.prescription.create({
       data: {
         userId: user.id,
         checkInId: checkIn.id,
@@ -320,10 +321,11 @@ async function processUser(
         },
       },
     });
+    prescriptionId = created.id;
     summary.prescriptionsCreated += 1;
   }
 
-  await sendPush(deps, user.id, checkIn.id, tier, message);
+  await sendPush(deps, user.id, checkIn.id, tier, message, prescriptionId);
   await prisma.escalationState.upsert({
     where: { userId: user.id },
     create: { userId: user.id, lastCheckInAt: now, currentTier: tier },
@@ -361,7 +363,8 @@ async function applyDecision(
         where: { id: checkInId },
         data: { status: 'PENDING', tier: decision.tier, deferUntil: null, deliveredAt: now },
       });
-      await sendPush(deps, user.id, checkInId, decision.tier, message ?? 'Time to eat.');
+      const rx = await prisma.prescription.findFirst({ where: { checkInId }, select: { id: true } });
+      await sendPush(deps, user.id, checkInId, decision.tier, message ?? 'Time to eat.', rx?.id ?? null);
       summary.checkInsRedelivered += 1;
       return true;
 
@@ -413,12 +416,13 @@ async function sendPush(
   checkInId: string,
   tier: number,
   body: string,
+  prescriptionId: string | null = null,
 ): Promise<void> {
   const tokens = await deps.prisma.pushToken.findMany({
     where: { userId, kind: 'alert' },
   });
   await deps.push.send(
     tokens.map((t) => t.token),
-    { userId, checkInId, tier, title: 'SetPoint', body },
+    { userId, checkInId, tier, title: 'SetPoint', body, prescriptionId },
   );
 }

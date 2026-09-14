@@ -18,8 +18,8 @@ export type EscalationState = {
 export type EscalationInput = {
   checkIn: ActiveCheckIn;
   state: EscalationState;
-  /** Fresh confidence at re-check time. Null for an unanswered-TTL expiry (no re-score). */
-  freshConfidence: number | null;
+  /** Whether the meal is still due when the snooze ends. Null for an unanswered-TTL expiry. */
+  stillDue: boolean | null;
   now: Date;
   config?: EngineConfig;
 };
@@ -49,7 +49,7 @@ export type EscalationDecision =
  */
 export function decideEscalation(input: EscalationInput): EscalationDecision {
   const config = input.config ?? ENGINE_CONFIG;
-  const { checkIn, state, freshConfidence, now } = input;
+  const { checkIn, state, stillDue, now } = input;
 
   // Deferred, but the snooze window is still open.
   if (checkIn.status === 'DEFERRED' && checkIn.deferUntil && checkIn.deferUntil > now) {
@@ -64,7 +64,7 @@ export function decideEscalation(input: EscalationInput): EscalationDecision {
   }
 
   // Deferred and the snooze has elapsed → re-check confidence.
-  if (freshConfidence !== null && freshConfidence <= config.confidenceThreshold) {
+  if (stillDue === false) {
     // No longer overdue (likely ate without logging). Benefit of the doubt (§8).
     return { kind: 'resolve' };
   }

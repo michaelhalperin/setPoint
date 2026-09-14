@@ -37,7 +37,7 @@ const state = (over: Partial<EscalationState> = {}): EscalationState => ({
 describe('decideEscalation', () => {
   it('waits while a PENDING check-in is still within its TTL', () => {
     expect(
-      decideEscalation({ checkIn: pending({ deliveredAt: hoursAgo(1) }), state: state(), freshConfidence: null, now: NOW }),
+      decideEscalation({ checkIn: pending({ deliveredAt: hoursAgo(1) }), state: state(), stillDue: null, now: NOW }),
     ).toEqual({ kind: 'wait' });
   });
 
@@ -46,7 +46,7 @@ describe('decideEscalation', () => {
       decideEscalation({
         checkIn: deferred({ deferUntil: new Date(NOW.getTime() + 3_600_000) }),
         state: state(),
-        freshConfidence: 0.9,
+        stillDue: true,
         now: NOW,
       }),
     ).toEqual({ kind: 'wait' });
@@ -56,7 +56,7 @@ describe('decideEscalation', () => {
     const d = decideEscalation({
       checkIn: pending({ deliveredAt: hoursAgo(ENGINE_CONFIG.checkInTtlHours + 1) }),
       state: state({ consecutiveMisses: 0 }),
-      freshConfidence: null,
+      stillDue: null,
       now: NOW,
     });
     expect(d).toMatchObject({ kind: 'miss', consecutiveMisses: 1, startTier3: false, backedOffUntil: null });
@@ -64,13 +64,13 @@ describe('decideEscalation', () => {
 
   it('resolves without a miss when confidence has dropped by the re-check', () => {
     expect(
-      decideEscalation({ checkIn: deferred(), state: state(), freshConfidence: 0.4, now: NOW }),
+      decideEscalation({ checkIn: deferred(), state: state(), stillDue: false, now: NOW }),
     ).toEqual({ kind: 'resolve' });
   });
 
   it('escalates a tier-1 episode to tier 2 when still overdue', () => {
     expect(
-      decideEscalation({ checkIn: deferred({ tier: 1 }), state: state(), freshConfidence: 0.9, now: NOW }),
+      decideEscalation({ checkIn: deferred({ tier: 1 }), state: state(), stillDue: true, now: NOW }),
     ).toEqual({ kind: 'redeliver', tier: 2 });
   });
 
@@ -79,7 +79,7 @@ describe('decideEscalation', () => {
       decideEscalation({
         checkIn: deferred({ tier: 2, deferCount: 1 }),
         state: state(),
-        freshConfidence: 0.9,
+        stillDue: true,
         now: NOW,
       }),
     ).toEqual({ kind: 'redeliver', tier: 2 });
@@ -89,7 +89,7 @@ describe('decideEscalation', () => {
     const d = decideEscalation({
       checkIn: deferred({ tier: 2, deferCount: ENGINE_CONFIG.maxDefersBeforeMiss }),
       state: state({ consecutiveMisses: 1 }),
-      freshConfidence: 0.9,
+      stillDue: true,
       now: NOW,
     });
     expect(d).toMatchObject({ kind: 'miss', consecutiveMisses: 2, startTier3: false });
@@ -99,7 +99,7 @@ describe('decideEscalation', () => {
     const d = decideEscalation({
       checkIn: pending({ deliveredAt: hoursAgo(ENGINE_CONFIG.checkInTtlHours + 1) }),
       state: state({ consecutiveMisses: ENGINE_CONFIG.missesBeforeTier3 - 1 }),
-      freshConfidence: null,
+      stillDue: null,
       now: NOW,
     });
     expect(d.kind).toBe('miss');

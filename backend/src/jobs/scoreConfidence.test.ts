@@ -225,6 +225,78 @@ describe('runScoreConfidenceJob', () => {
 
     expect(summary.scored).toBe(1);
     expect(summary.checkInsCreated).toBe(0);
-    expect(fake.__tables.confidenceScores[0]).toMatchObject({ firedCheckIn: false });
+    expect(summary.skipped.not_due).toBe(1);
+    expect(fake.__tables.confidenceScores).toHaveLength(0);
+  });
+
+  describe('on the meal schedule', () => {
+    const LUNCH_PLUS_50 = new Date('2026-07-01T17:50:00Z'); // 13:50 in New York; lunch is 13:00
+    const breakfast = { userId: 'u1', loggedAt: new Date('2026-07-01T12:10:00Z'), kcal: 500, proteinG: 30, source: 'TEXT' };
+
+    it('waits until the meal time plus grace, even hours after breakfast', async () => {
+      const fake = makeFakePrisma([baseUser()]);
+      fake.meal.create({ data: breakfast });
+
+      const summary = await runScoreConfidenceJob({
+        prisma: fake as unknown as PrismaClient,
+        push,
+        voice,
+        now: new Date('2026-07-01T17:40:00Z'), // 13:40 — lunch is due at 13:45
+      });
+
+      expect(summary.checkInsCreated).toBe(0);
+      expect(summary.skipped.not_due).toBe(1);
+    });
+
+    it('checks in for lunch once its grace period has passed, naming the meal', async () => {
+      const fake = makeFakePrisma([baseUser()], { seedFoods: true });
+      fake.meal.create({ data: breakfast });
+
+      const summary = await runScoreConfidenceJob({
+        prisma: fake as unknown as PrismaClient,
+        push,
+        voice,
+        now: LUNCH_PLUS_50,
+      });
+
+      expect(summary.checkInsCreated).toBe(1);
+      expect(voice.checkInMessage).toHaveBeenCalledWith(expect.objectContaining({ slot: 'lunch', tier: 1 }));
+      expect(fake.__tables.confidenceScores[0]).toMatchObject({ firedCheckIn: true });
+    });
+
+    it('does not check in twice for the same meal', async () => {
+      const fake = makeFakePrisma([baseUser()]);
+      fake.meal.create({ data: breakfast });
+      fake.__tables.checkIns.push({
+        id: 'ci_lunch',
+        userId: 'u1',
+        status: 'LOGGED',
+        tier: 1,
+        createdAt: new Date('2026-07-01T17:46:00Z'), // 13:46 — this morning's lunch check-in
+      });
+
+      const summary = await runScoreConfidenceJob({
+        prisma: fake as unknown as PrismaClient,
+        push,
+        voice,
+        now: new Date('2026-07-01T19:00:00Z'), // 15:00
+      });
+
+      expect(summary.checkInsCreated).toBe(0);
+    });
+
+    it('stays quiet once the day’s target is met', async () => {
+      const fake = makeFakePrisma([baseUser()]);
+      fake.meal.create({ data: { ...breakfast, kcal: 2300 } });
+
+      const summary = await runScoreConfidenceJob({
+        prisma: fake as unknown as PrismaClient,
+        push,
+        voice,
+        now: new Date('2026-07-01T23:50:00Z'), // 19:50 — dinner is due, but the day is covered
+      });
+
+      expect(summary.checkInsCreated).toBe(0);
+    });
   });
 });

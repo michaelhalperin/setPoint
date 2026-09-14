@@ -57,6 +57,7 @@ export function createAiManagerVoice(client: Anthropic, fallback: ManagerVoice):
         'check_in',
         {
           tone: ctx.tier >= 2 ? 'firm' : 'gentle',
+          meal: ctx.slot ?? null,
           goal: ctx.goal.toLowerCase(),
           hoursSinceLastMeal: Math.round(ctx.hoursSinceMeal),
           caloriesToTarget: ctx.kcalGap ?? null,

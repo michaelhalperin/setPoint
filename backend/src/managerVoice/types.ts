@@ -1,3 +1,4 @@
+import type { SlotName } from '../engine/mealSchedule.js';
 import type { Goal } from '../engine/types.js';
 import type { DayKind, FramingState } from '../dashboard/classify.js';
 
@@ -9,6 +10,8 @@ export type ManagerVoiceContext = {
   kcalGap: number | null;
   /** The solver's "eat this" line, e.g. "2× Hard-boiled eggs + Banana". */
   prescriptionSummary?: string | null;
+  /** The meal that slipped, when the check-in is for one. */
+  slot?: SlotName | null;
 };
 
 export type HomeNoteContext = {
