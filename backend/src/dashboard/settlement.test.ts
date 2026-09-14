@@ -90,4 +90,27 @@ describe('buildSettlement record', () => {
     expect(view.record.days[6]?.slots).toEqual(['on_time', 'open', 'open']); // 8:10 breakfast; it's 14:00
     expect(view.today.kcalConsumed).toBe(500);
   });
+
+  it('does not treat days before onboarding as missed meals', async () => {
+    const view = await buildSettlement(
+      {
+        prisma: fakePrisma({
+          onboarding: {
+            goal: 'DIET',
+            dailyKcalTarget: 2200,
+            breakfastMin: 480,
+            lunchMin: 780,
+            dinnerMin: 1140,
+            completedAt: new Date('2026-09-15T12:00:00Z'),
+          },
+        }),
+        now: NOW,
+      },
+      'u1',
+    );
+    expect(view.record.days.slice(0, 6).every((d) => d.slots.every((s) => s === 'open'))).toBe(true);
+    // 14:00 local — breakfast already passed with nothing logged; lunch/dinner still open.
+    expect(view.record.days[6]?.slots).toEqual(['missed', 'open', 'open']);
+    expect(view.record.missed).toBe(1);
+  });
 });

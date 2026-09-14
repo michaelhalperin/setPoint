@@ -48,6 +48,8 @@ export type RecordInput = {
   times: MealTimes;
   meals: { date: string; minute: number }[];
   checkIns: { date: string; minute: number; status: string; tier: number }[];
+  /** Local YYYY-MM-DD the plan started. Days before this are not missed. */
+  planStartDate?: string;
 };
 
 export const RECORD_CONFIG = {
@@ -105,7 +107,11 @@ export function buildWeekRecord(input: RecordInput, config = RECORD_CONFIG): Wee
         else mark = 'missed';
       } else if (ate) {
         mark = 'on_time';
-      } else if (date === today && input.nowMin < nextMealMin(slot, input.times)) {
+      } else if (
+        (input.planStartDate != null && date < input.planStartDate) ||
+        (date === today && input.nowMin < nextMealMin(slot, input.times))
+      ) {
+        // Before the plan existed, or this meal hasn't come yet today.
         mark = 'open';
       } else {
         mark = 'missed';

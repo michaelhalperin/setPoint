@@ -46,6 +46,20 @@ describe('buildWeekRecord', () => {
     expect(record.pattern).toEqual({ slot: 'lunch', lateDays: 4, ofDays: 5, currentMin: 780, suggestedMin: 840 });
   });
 
+  it('does not count days before the plan started as missed', () => {
+    const record = buildWeekRecord(input({ planStartDate: '2026-09-13', nowMin: 600 }));
+    expect(record.days[0]?.slots).toEqual(['open', 'open', 'open']);
+    expect(record.days[5]?.slots).toEqual(['open', 'open', 'open']);
+    expect(record.days[6]?.slots).toEqual(['open', 'open', 'open']); // today, still morning
+    expect(record.missed).toBe(0);
+  });
+
+  it('still marks a skipped meal missed once the plan has started', () => {
+    const record = buildWeekRecord(input({ planStartDate: '2026-09-12', nowMin: 600 }));
+    expect(record.days[5]?.slots).toEqual(['missed', 'missed', 'missed']); // yesterday on the plan
+    expect(record.missed).toBe(3);
+  });
+
   it('suggests nothing without a clear pattern', () => {
     const record = buildWeekRecord(
       input({ meals: [{ date: '2026-09-07', minute: 850 }, { date: '2026-09-08', minute: 790 }, { date: '2026-09-09', minute: 785 }] }),

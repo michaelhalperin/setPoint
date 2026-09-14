@@ -111,6 +111,7 @@ export async function buildSettlement(deps: SettlementDeps, userId: string): Pro
     times: profile,
     meals: windowMeals.map((m) => local(m.loggedAt)),
     checkIns: windowCheckIns.map((c) => ({ ...local(c.createdAt), status: c.status, tier: c.tier })),
+    planStartDate: profile.completedAt ? localDateISO(profile.completedAt, user.timezone) : undefined,
   });
 
   return {
