@@ -15,7 +15,9 @@ struct SearchComposer: View {
     @State private var pickerItem: PhotosPickerItem?
 
     private var showHint: Bool {
-        focused.wrappedValue && (model.phase == .compose || isFailed)
+        focused.wrappedValue
+            && model.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && (model.phase == .compose || isFailed)
     }
 
     private var isFailed: Bool {
@@ -30,16 +32,31 @@ struct SearchComposer: View {
             }
 
             HStack(alignment: .bottom, spacing: 8) {
-                TextField(prompt, text: $model.text, axis: .vertical)
-                    .font(Typography.data(16))
-                    .lineLimit(1 ... 4)
-                    .focused(focused)
-                    .submitLabel(.send)
-                    .onSubmit(submit)
-                    .disabled(model.phase == .parsing)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
-                    .background(Palette.surfaceSunk, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                HStack(spacing: 8) {
+                    TextField(prompt, text: $model.text, axis: .vertical)
+                        .font(Typography.data(16))
+                        .lineLimit(1 ... 4)
+                        .focused(focused)
+                        .submitLabel(.send)
+                        .onSubmit(submit)
+                        .disabled(model.phase == .parsing)
+                        .accessibilityHint("Food name is enough.")
+
+                    if showHint {
+                        Text("Food name is enough")
+                            .font(Typography.data(12, weight: .medium))
+                            .foregroundStyle(Palette.inkFaint)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.85)
+                            .fixedSize()
+                            .allowsHitTesting(false)
+                            .transition(.opacity)
+                            .accessibilityHidden(true)
+                    }
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(Palette.surfaceSunk, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
 
                 cameraButton
 
@@ -47,14 +64,6 @@ struct SearchComposer: View {
                     sendButton
                         .transition(.scale.combined(with: .opacity))
                 }
-            }
-
-            if showHint {
-                Text("Food name is enough.")
-                    .font(Typography.data(12))
-                    .foregroundStyle(Palette.inkFaint)
-                    .padding(.leading, 14)
-                    .transition(.opacity)
             }
 
             if case let .failed(message) = model.phase {

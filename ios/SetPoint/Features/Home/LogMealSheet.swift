@@ -406,24 +406,6 @@ struct PhotoParseConfirm: View {
                 }
                 .frame(height: height)
                 .allowsHitTesting(false)
-            } else {
-                FlexWrap(spacing: 8, lineSpacing: 8) {
-                    ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
-                        HStack(spacing: 6) {
-                            Circle().fill(Palette.accent).frame(width: 8, height: 8)
-                            Text(item.name)
-                        }
-                        .font(Typography.data(12, weight: .bold))
-                        .foregroundStyle(Palette.background)
-                        .padding(.leading, 8)
-                        .padding(.trailing, 11)
-                        .padding(.vertical, 6)
-                        .background(Palette.ink.opacity(0.82), in: Capsule())
-                        .appearIn(index)
-                    }
-                }
-                .padding(.horizontal, Space.gutter)
-                .padding(.bottom, Space.lg + Space.sm)
             }
         }
         .frame(width: width, height: height)
@@ -446,15 +428,34 @@ struct PhotoParseConfirm: View {
                 Text("Reading your plate…")
                     .font(Typography.display(30))
                     .foregroundStyle(Palette.ink)
-                VStack(alignment: .leading, spacing: 10) {
-                    SkeletonBlock(width: 220, height: 16)
-                    SkeletonBlock(width: 140, height: 16)
-                    HStack(spacing: 10) {
-                        SkeletonBlock(height: 58, radius: 16)
-                        SkeletonBlock(height: 58, radius: 16)
-                        SkeletonBlock(height: 58, radius: 16)
+                VStack(alignment: .leading, spacing: Space.sm) {
+                    HStack(spacing: 8) {
+                        ForEach(0..<4, id: \.self) { _ in
+                            VStack(alignment: .leading, spacing: 6) {
+                                SkeletonBlock(width: 36, height: 11)
+                                SkeletonBlock(width: 40, height: 20)
+                                Capsule().fill(Palette.surfaceSunk).frame(height: 5)
+                            }
+                            .padding(12)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Palette.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Palette.hairline))
+                        }
                     }
-                    .padding(.top, Space.xs)
+                    VStack(spacing: 0) {
+                        ForEach(0..<3, id: \.self) { index in
+                            HStack {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    SkeletonBlock(width: index == 1 ? 100 : 140, height: 15)
+                                    SkeletonBlock(width: 64, height: 12)
+                                }
+                                Spacer()
+                                SkeletonBlock(width: 36, height: 14)
+                            }
+                            .padding(.vertical, 11)
+                            .overlay(alignment: .top) { Rectangle().fill(Palette.hairline).frame(height: 1) }
+                        }
+                    }
                 }
                 .shimmering()
             } else if let logged {
@@ -474,41 +475,37 @@ struct PhotoParseConfirm: View {
 
     private func result(_ logged: LogMealViewModel.Logged) -> some View {
         VStack(alignment: .leading, spacing: Space.sm) {
-            HStack {
-                if let countsFor {
-                    Label("Counts for \(countsFor.title.lowercased())", systemImage: countsFor.symbol)
-                        .font(Typography.data(12, weight: .bold))
-                        .foregroundStyle(Palette.background)
-                        .padding(.horizontal, 11)
-                        .padding(.vertical, 6)
-                        .background(Palette.ink, in: Capsule())
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 8) {
+                    if let countsFor {
+                        Label("Counts for \(countsFor.title.lowercased())", systemImage: countsFor.symbol)
+                            .font(Typography.data(12, weight: .bold))
+                            .foregroundStyle(Palette.background)
+                            .padding(.horizontal, 11)
+                            .padding(.vertical, 6)
+                            .background(Palette.ink, in: Capsule())
+                    }
+
+                    Text(logged.summary ?? "Your meal")
+                        .font(Typography.voice(20, weight: .medium))
+                        .foregroundStyle(Palette.ink)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.8)
                 }
-                Spacer()
+                .frame(maxWidth: .infinity, alignment: .leading)
+
                 Text(confidenceLabel(logged.confidence))
                     .font(Typography.data(12, weight: .bold))
                     .foregroundStyle(confidenceColor(logged.confidence))
-            }
-
-            Text(logged.summary ?? "Your meal")
-                .font(Typography.display(30))
-                .foregroundStyle(Palette.ink)
-                .fixedSize(horizontal: false, vertical: true)
-
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text("\(logged.kcal)")
-                    .font(Typography.data(60, weight: .heavy))
-                    .monospacedDigit()
-                    .contentTransition(.numericText(value: Double(logged.kcal)))
-                    .foregroundStyle(Palette.ink)
-                Text("kcal")
-                    .font(Typography.data(18, weight: .bold))
-                    .foregroundStyle(Palette.inkFaint)
+                    .fixedSize()
+                    .padding(.top, 2)
             }
 
             HStack(spacing: 8) {
-                macro("Protein", grams: logged.proteinG, kcalPerGram: 4, total: logged.kcal, color: Palette.accent)
-                macro("Carbs", grams: items.reduce(0) { $0 + $1.carbsG }, kcalPerGram: 4, total: logged.kcal, color: Palette.ink)
-                macro("Fat", grams: items.reduce(0) { $0 + $1.fatG }, kcalPerGram: 9, total: logged.kcal, color: Palette.inkFaint)
+                macro("kcal", value: "\(logged.kcal)", fraction: 1, color: Palette.accent)
+                macro("Protein", value: "\(Int(logged.proteinG.rounded())) g", fraction: logged.proteinG * 4 / Double(max(logged.kcal, 1)), color: Palette.accent)
+                macro("Carbs", value: "\(Int(items.reduce(0) { $0 + $1.carbsG }.rounded())) g", fraction: items.reduce(0) { $0 + $1.carbsG } * 4 / Double(max(logged.kcal, 1)), color: Palette.ink)
+                macro("Fat", value: "\(Int(items.reduce(0) { $0 + $1.fatG }.rounded())) g", fraction: items.reduce(0) { $0 + $1.fatG } * 9 / Double(max(logged.kcal, 1)), color: Palette.inkFaint)
             }
 
             ScrollView {
@@ -561,18 +558,22 @@ struct PhotoParseConfirm: View {
         }
     }
 
-    private func macro(_ label: String, grams: Double, kcalPerGram: Double, total: Int, color: Color) -> some View {
+    private func macro(_ label: String, value: String, fraction: Double, color: Color) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(label).sectionLabelStyle()
-            Text("\(Int(grams.rounded())) g")
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+            Text(value)
                 .font(Typography.data(20, weight: .heavy))
                 .foregroundStyle(Palette.ink)
                 .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
             GeometryReader { box in
                 Capsule().fill(Palette.surfaceSunk)
                     .overlay(alignment: .leading) {
                         Capsule().fill(color)
-                            .frame(width: box.size.width * min(1, grams * kcalPerGram / Double(max(total, 1))))
+                            .frame(width: box.size.width * min(1, max(0, fraction)))
                     }
             }
             .frame(height: 5)
@@ -693,7 +694,6 @@ private struct MealCorrectionEditor: View {
     private var canSave: Bool {
         !summary.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && correctedItems != nil
-            && !saving
     }
 
     var body: some View {
@@ -784,7 +784,7 @@ private struct MealCorrectionEditor: View {
         .background(Palette.background.ignoresSafeArea())
         .safeAreaInset(edge: .bottom, spacing: 0) {
             VStack(spacing: Space.xs) {
-                ActionButton(title: saving ? "Saving…" : "Save") {
+                ActionButton(title: "Save", busy: saving, busyTitle: "Saving") {
                     guard canSave, let correctedItems else { return }
                     Task { _ = await onSave(summary.trimmingCharacters(in: .whitespacesAndNewlines), correctedItems) }
                 }
