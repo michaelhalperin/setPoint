@@ -4,6 +4,7 @@ import SwiftUI
 struct SettingsView: View {
     @Environment(AppEnvironment.self) private var env
     @State private var model: SettingsViewModel?
+    @State private var massUnit = MassUnit.current
     #if DEBUG
     @State private var showingDevOnboarding = false
     @State private var showingDevMealConfirm = false
@@ -41,7 +42,15 @@ struct SettingsView: View {
         case .loading:
             SettingsSkeletonView()
         case let .failed(message):
-            ContentUnavailableView("Load failed", systemImage: "person", description: Text(message))
+            VStack(spacing: 14) {
+                Text(message)
+                    .font(Typography.data(15))
+                    .foregroundStyle(Palette.inkSoft)
+                    .multilineTextAlignment(.center)
+                ActionButton(title: "Try again", kind: .secondary) { Task { await model.load() } }
+                    .frame(maxWidth: 200)
+            }
+            .padding(28)
         case .loaded:
             profile(model)
         }
@@ -78,6 +87,13 @@ struct SettingsView: View {
                     rowDivider
                     NavigationLink { AccountSettingsView(model: model) } label: {
                         YouRow(symbol: "person", title: "Account", value: nil)
+                    }
+                    rowDivider
+                    Button {
+                        massUnit = massUnit == .kg ? .lb : .kg
+                        MassUnit.current = massUnit
+                    } label: {
+                        YouRow(symbol: "scalemass", title: "Units", value: massUnit.title)
                     }
                 }
                 .buttonStyle(.plain)

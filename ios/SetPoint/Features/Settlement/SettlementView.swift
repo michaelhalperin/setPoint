@@ -99,6 +99,20 @@ struct SettlementView: View {
                         showingWeighIn = true
                     }
                     .appearIn(3)
+                    if let err = model.weighInError {
+                        Text(err)
+                            .font(Typography.data(13, weight: .semibold))
+                            .foregroundStyle(Palette.accentDeep)
+                    }
+                }
+
+                if let review = s.targetReview {
+                    TargetReviewCard(review: review, busy: model.applyingTargetReview) {
+                        Task { await model.acceptTargetReview(review) }
+                    } onLater: {
+                        Task { await model.dismissTargetReview() }
+                    }
+                    .appearIn(4)
                 }
 
                 IntakeStrip(stations: stations)

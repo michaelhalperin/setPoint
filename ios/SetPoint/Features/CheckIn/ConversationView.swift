@@ -146,6 +146,29 @@ struct ConversationView: View {
                             .id("typing")
                     }
 
+                    if let err = model.sendError {
+                        Text(err)
+                            .font(Typography.data(13, weight: .semibold))
+                            .foregroundStyle(Palette.accentDeep)
+                    }
+
+                    if let proposal = model.pendingProposal, !model.resolved {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(proposal.title)
+                                .font(Typography.data(16, weight: .bold))
+                                .foregroundStyle(Palette.ink)
+                            Text(proposal.summary)
+                                .font(Typography.data(14))
+                                .foregroundStyle(Palette.inkSoft)
+                            ActionButton(title: "Apply this", busy: model.confirming) {
+                                Task { await model.confirmProposal() }
+                            }
+                        }
+                        .padding(14)
+                        .background(Palette.surfaceSunk.opacity(0.7), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .id("proposal")
+                    }
+
                     if model.resolved, let summary = model.outcomeSummary {
                         HStack(alignment: .top, spacing: 10) {
                             Image(systemName: model.outcomeIcon)

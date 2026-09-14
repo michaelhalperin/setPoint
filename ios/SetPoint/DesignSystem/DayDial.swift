@@ -491,7 +491,7 @@ enum DialClock {
     }
 }
 
-/// Snap, clamp, and angle math shared by the dial drag and the meal-time sheet.
+/// Snap, clamp, and angle math shared by the dial drag and the meal-time picker.
 enum MealTimeEditing {
     static let snapMinutes = 15
     static let breakfastEarliest = 240

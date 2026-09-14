@@ -19,6 +19,9 @@ final class ConversationViewModel {
     private(set) var resolved = false
     var draft = ""
     private(set) var sending = false
+    private(set) var sendError: String?
+    private(set) var pendingProposal: ConversationResponse.PlanProposal?
+    private(set) var confirming = false
 
     let checkInID: String
     private let api: APIClient
@@ -43,6 +46,7 @@ final class ConversationViewModel {
         let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty, !sending, !resolved else { return }
         sending = true
+        sendError = nil
         defer { sending = false }
 
         draft = ""
@@ -55,23 +59,46 @@ final class ConversationViewModel {
             )
             apply(res)
         } catch {
-            phase = .failed(UserFacingError.message(for: error, fallback: "Couldn't send. Try again."))
+            messages.removeAll { $0.role == "user" && $0.content == text && $0.at == nil }
+            draft = text
+            sendError = UserFacingError.message(for: error, fallback: "Couldn't send. Try again.")
+        }
+    }
+
+    func confirmProposal() async {
+        guard let kind = pendingProposal?.kind, !confirming else { return }
+        confirming = true
+        sendError = nil
+        defer { confirming = false }
+        do {
+            struct Body: Encodable { let kind: String }
+            let res: ConversationConfirmResponse = try await api.post(
+                "/api/checkins/\(checkInID)/conversation/confirm",
+                Body(kind: kind)
+            )
+            outcome = res.outcome
+            resolved = res.resolved
+            pendingProposal = nil
+        } catch {
+            sendError = UserFacingError.message(for: error, fallback: "Couldn't apply that change.")
         }
     }
 
     /// A short line describing where the conversation landed (shown once resolved).
     var outcomeSummary: String? {
         switch outcome {
-        case "ADJUST_PLAN": return "Adjust anytime in Settings."
+        case "ADJUST_PLAN", "EASE_TARGET": return "Target lowered. Undo anytime in Goal settings."
+        case "DELAY_CHECKINS": return "Meal times shifted 30 minutes later."
         case "PAUSE_CHECKINS": return "Resume anytime in Settings."
-        case "SUGGEST_PROFESSIONAL": return "Quiet tracking is on. Consider professional support."
+        case "SUGGEST_PROFESSIONAL": return "Check-ins paused. Resume anytime in Settings."
         default: return resolved ? "Done." : nil
         }
     }
 
     var outcomeTitle: String {
         switch outcome {
-        case "ADJUST_PLAN": return "Plan eased"
+        case "ADJUST_PLAN", "EASE_TARGET": return "Plan eased"
+        case "DELAY_CHECKINS": return "Check-ins moved later"
         case "PAUSE_CHECKINS": return "Check-ins paused"
         case "SUGGEST_PROFESSIONAL": return "Extra support"
         default: return "Sorted"
@@ -80,7 +107,8 @@ final class ConversationViewModel {
 
     var outcomeIcon: String {
         switch outcome {
-        case "ADJUST_PLAN": return "slider.horizontal.3"
+        case "ADJUST_PLAN", "EASE_TARGET": return "slider.horizontal.3"
+        case "DELAY_CHECKINS": return "clock"
         case "PAUSE_CHECKINS": return "pause.circle"
         case "SUGGEST_PROFESSIONAL": return "heart.text.square"
         default: return "checkmark.circle"
@@ -91,6 +119,7 @@ final class ConversationViewModel {
         messages = res.messages
         outcome = res.outcome
         resolved = res.resolved
+        pendingProposal = res.pendingProposal
     }
 
     #if DEBUG
