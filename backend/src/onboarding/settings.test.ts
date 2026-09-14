@@ -167,6 +167,20 @@ describe('settings', () => {
     expect(view.weekendDays).toBe(0b1100000);
     expect(view.weekendSuggestion).toBeNull();
   });
+
+  it('stores Apple Health write toggles', async () => {
+    const prisma = fakePrisma(onboardedUser());
+    const view = await updateSettings({ prisma }, 'u1', {
+      healthWrite: { energy: true, protein: false, carbs: true, fat: false, bodyMass: true },
+    });
+    expect(view.healthWrite).toEqual({
+      energy: true,
+      protein: false,
+      carbs: true,
+      fat: false,
+      bodyMass: true,
+    });
+  });
 });
 
 const dietUser = (): AnyRow => ({

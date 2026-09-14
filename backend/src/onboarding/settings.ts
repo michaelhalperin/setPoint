@@ -34,6 +34,13 @@ export type SettingsView = {
   prepTimeMaxMin: number | null;
   enforcementEnabled: boolean;
   enforcementDisabledReason: string | null;
+  healthWrite: {
+    energy: boolean;
+    protein: boolean;
+    carbs: boolean;
+    fat: boolean;
+    bodyMass: boolean;
+  };
 };
 
 export type SettingsPatch = {
@@ -55,6 +62,13 @@ export type SettingsPatch = {
   pantryTokens?: string[];
   dislikedFoods?: string[];
   prepTimeMaxMin?: number | null;
+  healthWrite?: {
+    energy: boolean;
+    protein: boolean;
+    carbs: boolean;
+    fat: boolean;
+    bodyMass: boolean;
+  };
 };
 
 export async function getSettings(
@@ -184,6 +198,13 @@ export async function updateSettings(
     if (patch.pantryTokens) profileData.pantryTokens = patch.pantryTokens.map((t) => t.trim()).filter(Boolean);
     if (patch.dislikedFoods) profileData.dislikedFoods = patch.dislikedFoods.map((t) => t.trim()).filter(Boolean);
     if (patch.prepTimeMaxMin !== undefined) profileData.prepTimeMaxMin = patch.prepTimeMaxMin;
+    if (patch.healthWrite) {
+      profileData.writeHealthEnergy = patch.healthWrite.energy;
+      profileData.writeHealthProtein = patch.healthWrite.protein;
+      profileData.writeHealthCarbs = patch.healthWrite.carbs;
+      profileData.writeHealthFat = patch.healthWrite.fat;
+      profileData.writeHealthBodyMass = patch.healthWrite.bodyMass;
+    }
     if (Object.keys(profileData).length > 0) {
       await tx.onboardingProfile.update({ where: { userId }, data: profileData });
     }
@@ -281,6 +302,13 @@ function toView(user: UserWithSettings, weekendSuggestion: WeekendBreakfastSugge
     prepTimeMaxMin: p.prepTimeMaxMin ?? null,
     enforcementEnabled: user.safetyScreening?.enforcementEnabled ?? false,
     enforcementDisabledReason: user.safetyScreening?.enforcementDisabledReason ?? null,
+    healthWrite: {
+      energy: p.writeHealthEnergy ?? true,
+      protein: p.writeHealthProtein ?? true,
+      carbs: p.writeHealthCarbs ?? true,
+      fat: p.writeHealthFat ?? true,
+      bodyMass: p.writeHealthBodyMass ?? false,
+    },
   };
 }
 

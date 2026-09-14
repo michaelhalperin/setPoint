@@ -90,14 +90,22 @@ never sell your data or use health data for advertising.</p>
 <p>We do not use your information for advertising or profiling, and we do not sell it.</p>
 
 <h2>Apple Health (HealthKit)</h2>
-<p>Health data access is optional and used only for the features described above:
-reading heart-rate variability and resting heart rate as a <em>bounded modifier</em>
-on check-ins that are already due from missed or late meals, and reading body
-weight to track progress. Wearable signals never independently trigger a
-check-in. Data read from Health is processed on your device; only derived
-values (a biosignal deviation score, a weight number) are sent to our server.
-Health data is never used for advertising and is never shared with third
-parties. You can revoke access at any time in the Health app or in iOS Settings.</p>
+<p>Health data access is optional. With your permission, SetPoint:</p>
+<ul>
+  <li>Reads heart-rate variability and resting heart rate on your device as a
+  <em>bounded modifier</em> on check-ins that are already due from missed or late
+  meals. Wearable signals never independently trigger a check-in.</li>
+  <li>Reads body weight, height, age and sex to set targets and track progress.</li>
+  <li>Writes meals you log (calories, protein, carbohydrates and fat) into Health
+  as one food entry per meal, using the meal identifier so an edit or delete in
+  SetPoint updates the same samples. You can turn each nutrient off in Settings.
+  Weight you log in SetPoint is written only if you enable that toggle.</li>
+</ul>
+<p>Data read from Health is processed on your device; only derived values (a
+biosignal deviation score, a weight number) are sent to our server. Nutrition
+written to Health stays on your device. Health data is never used for advertising
+and is never shared with third parties. You can revoke access at any time in the
+Health app or in iOS Settings.</p>
 
 <h2>Service providers</h2>
 <ul>

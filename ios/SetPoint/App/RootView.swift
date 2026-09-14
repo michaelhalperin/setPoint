@@ -64,6 +64,7 @@ enum DebugPreviewStub {
     case settingsMealTimesWeekends
     case settingsFoods
     case settingsHealth
+    case settingsHealthWrite
     case settingsAccount
     case settingsDelete
 
@@ -106,7 +107,7 @@ enum DebugPreviewStub {
             NavigationStack { RhythmSettingsView(model: .previewedWeekends()) }
         case .settingsFoods:
             NavigationStack { FoodsSettingsView(model: .previewed()) }
-        case .settingsHealth:
+        case .settingsHealth, .settingsHealthWrite:
             NavigationStack { HealthSettingsView() }
         case .settingsAccount:
             NavigationStack { AccountSettingsView(model: .previewed()) }
@@ -163,7 +164,7 @@ enum DebugPreviewStub {
         case "settings-meal-times": return .settingsMealTimes
         case "settings-meal-times-weekends": return .settingsMealTimesWeekends
         case "settings-foods": return .settingsFoods
-        case "settings-health": return .settingsHealth
+        case "settings-health", "settings-health-write": return .settingsHealthWrite
         case "settings-account": return .settingsAccount
         case "settings-delete": return .settingsDelete
         case "settlement": return .settlement(.sample)

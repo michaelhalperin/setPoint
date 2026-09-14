@@ -546,6 +546,22 @@ enum WeekendDays {
     }
 }
 
+struct HealthWritePayload: Codable, Equatable {
+    var energy: Bool
+    var protein: Bool
+    var carbs: Bool
+    var fat: Bool
+    var bodyMass: Bool
+
+    static let `default` = HealthWritePayload(
+        energy: true,
+        protein: true,
+        carbs: true,
+        fat: true,
+        bodyMass: false
+    )
+}
+
 struct QuietHoursPayload: Codable, Equatable {
     var startMin: Int
     var endMin: Int
@@ -577,6 +593,7 @@ struct SettingsResponse: Decodable {
     var pantryTokens: [String]? = nil
     var dislikedFoods: [String]? = nil
     var prepTimeMaxMin: Int? = nil
+    var healthWrite: HealthWritePayload? = nil
 
     struct Restriction: Decodable, Identifiable {
         var id: String { token }
@@ -603,6 +620,7 @@ struct SettingsPatch: Encodable {
     var pantryTokens: [String]?
     var dislikedFoods: [String]?
     var prepTimeMaxMin: Int?
+    var healthWrite: HealthWritePayload?
 
     struct RestrictionInput: Encodable {
         let label: String

@@ -17,7 +17,9 @@ Apple requires in-app account deletion for any app with account creation.
 - [x] `NSHealthShareUsageDescription` — reads height/weight/age/sex for targets;
       HRV/RHR may adjust an already-due check-in and never independently diagnose
       under-fueling.
-- [x] Do **not** request HealthKit write access — the app only reads.
+- [x] `NSHealthUpdateUsageDescription` — writes logged meals (calories, protein,
+      carbs, fat) as a food correlation, and optionally in-app weigh-ins as body
+      mass. Per-type toggles live in Settings → Apple Health.
 - [x] Backend never receives raw HRV/RHR — only a derived deviation.
 - [x] Health data is not used for advertising.
 

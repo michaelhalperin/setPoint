@@ -80,6 +80,7 @@
 		BBDBB810DCF5117BF7DA355C /* HealthDataSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC0C1818DA4EAB84F0FD8EB3 /* HealthDataSource.swift */; };
 		BBE8017B8523475AEC566B26 /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD9BC7612AD72C12B458596D /* WelcomeView.swift */; };
 		BC1B045B45916AAAC4921489 /* SavedMealEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00492385276DCD4BF736B46F /* SavedMealEditorView.swift */; };
+		BDD2AB3BD47E6A9FF25D56E7 /* HealthWrite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BB6EDFED14C73482BD780ED /* HealthWrite.swift */; };
 		C197B73ADE00D3776F148A54 /* CrashReporting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D57D01CD3323AC9AF1DB175 /* CrashReporting.swift */; };
 		C7E6BD3F022C447E43FE1584 /* UserFacingError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86D8304C476B77D8C38E8772 /* UserFacingError.swift */; };
 		C93EAD75456886331D136C11 /* OnboardingSafety.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFA804FA8D6FABD40D1DD2E0 /* OnboardingSafety.swift */; };
@@ -197,6 +198,7 @@
 		8AEEC804F40BC95701983A78 /* LogMealTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogMealTests.swift; sourceTree = "<group>"; };
 		8C8F075855C3FB6506F00810 /* SetPoint.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SetPoint.entitlements; sourceTree = "<group>"; };
 		9086CF76120B951F38382F7E /* OnboardingModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingModel.swift; sourceTree = "<group>"; };
+		9BB6EDFED14C73482BD780ED /* HealthWrite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthWrite.swift; sourceTree = "<group>"; };
 		9D05051B152A3F34D639B5E9 /* SignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInView.swift; sourceTree = "<group>"; };
 		9EDB4F489DB6A01791F0DAAD /* DeepLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepLink.swift; sourceTree = "<group>"; };
 		A04FB85DEFCCCAE9E2F79DB1 /* SettingsChrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsChrome.swift; sourceTree = "<group>"; };
@@ -451,6 +453,7 @@
 				11862FADC2373C54323DDAE4 /* BiosignalStats.swift */,
 				FC0C1818DA4EAB84F0FD8EB3 /* HealthDataSource.swift */,
 				EC89EFB897DDB22BB5344B9D /* HealthKitManager.swift */,
+				9BB6EDFED14C73482BD780ED /* HealthWrite.swift */,
 			);
 			path = Health;
 			sourceTree = "<group>";
@@ -721,6 +724,7 @@
 				1D84EE987AEB8AC6F5ABFA9A /* Haptics.swift in Sources */,
 				BBDBB810DCF5117BF7DA355C /* HealthDataSource.swift in Sources */,
 				F8132AA5435F1AE2BBF13367 /* HealthKitManager.swift in Sources */,
+				BDD2AB3BD47E6A9FF25D56E7 /* HealthWrite.swift in Sources */,
 				EA55542A09FC3324D9F8491C /* HomePreview.swift in Sources */,
 				122B4C19DE61D9CA29DADC9C /* HomeScreen.swift in Sources */,
 				95CD52B41C432324EF56E83B /* HomeViewModel.swift in Sources */,

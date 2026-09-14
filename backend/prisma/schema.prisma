@@ -244,6 +244,14 @@ model OnboardingProfile {
   dislikedFoods String[] @default([])
   prepTimeMaxMin Int?
 
+  /// Which Health types SetPoint may write. Local toggles stay source of truth on device;
+  /// these keep the preference if they reinstall.
+  writeHealthEnergy   Boolean @default(true)
+  writeHealthProtein  Boolean @default(true)
+  writeHealthCarbs    Boolean @default(true)
+  writeHealthFat      Boolean @default(true)
+  writeHealthBodyMass Boolean @default(false)
+
   completedAt DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt

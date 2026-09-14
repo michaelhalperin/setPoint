@@ -77,6 +77,15 @@ const settingsPatch = z
     pantryTokens: z.array(z.string().min(1).max(80)).max(40).optional(),
     dislikedFoods: z.array(z.string().min(1).max(80)).max(40).optional(),
     prepTimeMaxMin: z.number().int().min(0).max(240).nullable().optional(),
+    healthWrite: z
+      .object({
+        energy: z.boolean(),
+        protein: z.boolean(),
+        carbs: z.boolean(),
+        fat: z.boolean(),
+        bodyMass: z.boolean(),
+      })
+      .optional(),
   })
   .refine((p) => Object.keys(p).length > 0, { message: 'no changes provided' });
 

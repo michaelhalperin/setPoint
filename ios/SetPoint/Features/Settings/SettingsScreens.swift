@@ -843,61 +843,78 @@ struct HealthSettingsView: View {
                 hero.appearIn(2)
 
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("What I read").sectionLabelStyle()
+                    Text("SetPoint writes").sectionLabelStyle()
                     SettingsCard(padding: 0) {
                         VStack(spacing: 0) {
-                            readingRow(
-                                symbol: "waveform.path.ecg",
-                                title: "Heart rate variability",
-                                reason: "Notices a rough day",
-                                when: lastSyncWhen
-                            )
+                            writeToggle("flame", "Calories", "Today \(env.health.todayWrittenKcal) kcal", \.energy)
                             Divider().overlay(Palette.hairline).padding(.leading, 66)
-                            readingRow(
-                                symbol: "heart",
-                                title: "Resting heart rate",
-                                reason: "Alongside HRV",
-                                when: lastSyncWhen
-                            )
+                            writeToggle("fish", "Protein", nil, \.protein)
                             Divider().overlay(Palette.hairline).padding(.leading, 66)
-                            readingRow(
-                                symbol: "scalemass",
-                                title: "Weight",
-                                reason: "Your weekly weigh-in",
-                                when: lastSyncWhen
-                            )
+                            writeToggle("leaf", "Carbs", nil, \.carbs)
                             Divider().overlay(Palette.hairline).padding(.leading, 66)
-                            readingRow(
-                                symbol: "ruler",
-                                title: "Height, age, sex",
-                                reason: "Your daily target",
-                                when: env.health.connected ? "At setup" : nil
-                            )
+                            writeToggle("drop", "Fat", nil, \.fat)
+                            Divider().overlay(Palette.hairline).padding(.leading, 66)
+                            writeToggle("scalemass", "Weight you log here", "Optional", \.bodyMass)
                         }
                     }
+                    Text("Edits and deletes in SetPoint overwrite the same meal in Health.")
+                        .font(Typography.data(13))
+                        .foregroundStyle(Palette.inkSoft)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal, 4)
                 }
                 .appearIn(3)
 
-                privacyNote.appearIn(4)
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("SetPoint reads").sectionLabelStyle()
+                    FlexWrap(spacing: 10, lineSpacing: 10) {
+                        ForEach(readChips, id: \.self) { chip in
+                            Text(chip)
+                                .font(Typography.data(14, weight: .semibold))
+                                .foregroundStyle(Palette.ink)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 10)
+                                .background(Palette.surface, in: Capsule())
+                                .overlay(Capsule().strokeBorder(Palette.hairline))
+                        }
+                    }
+                }
+                .appearIn(4)
+
+                privacyNote.appearIn(5)
 
                 ActionButton(title: "Manage in the Health app", kind: .secondary, action: openHealth)
-                    .appearIn(5)
+                    .appearIn(6)
             }
         }
+        .task {
+            env.health.refreshTodayWritten()
+            await loadWritePreferences()
+        }
+    }
+
+    private var readChips: [String] {
+        ["Heart rate variability", "Resting heart rate", "Weight", "Height, age, sex"]
     }
 
     private var hero: some View {
         VStack(alignment: .leading, spacing: 14) {
-            LoopingPhase(period: 1.6, still: 0) { t in
-                Image(systemName: "heart.fill")
-                    .font(.system(size: 26, weight: .semibold))
-                    .foregroundStyle(Palette.onInkHeart)
-                    .frame(width: 56, height: 56)
-                    .background(Palette.background.opacity(0.1), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    .scaleEffect(1 + 0.08 * 0.5 * (1 - cos(t * 2 * .pi)))
+            LoopingPhase(period: 2.2, still: 0.45) { t in
+                HStack(spacing: 14) {
+                    Image(systemName: "iphone")
+                        .font(.system(size: 22, weight: .semibold))
+                    Image(systemName: t < 0.5 ? "arrow.right" : "arrow.left")
+                        .font(.system(size: 16, weight: .bold))
+                        .opacity(0.45 + 0.55 * abs(sin(t * .pi)))
+                    Image(systemName: "heart.fill")
+                        .font(.system(size: 22, weight: .semibold))
+                        .scaleEffect(1 + 0.06 * 0.5 * (1 - cos(t * 2 * .pi)))
+                }
+                .foregroundStyle(Palette.onInkHeart)
+                .frame(height: 56)
             }
 
-            Text(env.health.connected ? "Connected" : "Not connected")
+            Text("Both ways now.")
                 .font(Typography.display(30))
                 .foregroundStyle(Palette.background)
 
@@ -971,21 +988,18 @@ struct HealthSettingsView: View {
     }
 
     private var heroDetail: String {
-        if env.health.state == .connected && env.health.hasHeartData {
-            return "Your heart-rate data is flowing in."
+        if env.health.connected {
+            return "Meals you log write to Apple Health. Recovery and weight still flow the other way."
         }
-        if env.health.state == .connected {
-            return "Access may be off, or there’s no Watch data yet."
-        }
-        return "Connect to fill in your body stats and read recovery."
+        return "Connect to write meals into Health and fill in your body stats."
     }
 
-    private var lastSyncWhen: String? {
-        guard env.health.connected, let at = env.health.lastSyncAt else { return nil }
-        return lastSyncLabel(at)
-    }
-
-    private func readingRow(symbol: String, title: String, reason: String, when: String?) -> some View {
+    private func writeToggle(
+        _ symbol: String,
+        _ title: String,
+        _ caption: String?,
+        _ keyPath: WritableKeyPath<HealthWritePreferences, Bool>
+    ) -> some View {
         HStack(spacing: 14) {
             Image(systemName: symbol)
                 .font(.system(size: 15, weight: .semibold))
@@ -996,22 +1010,33 @@ struct HealthSettingsView: View {
                 Text(title)
                     .font(Typography.data(15, weight: .heavy))
                     .foregroundStyle(Palette.ink)
-                Text(reason)
-                    .font(Typography.data(12))
-                    .foregroundStyle(Palette.inkSoft)
+                if let caption {
+                    Text(caption)
+                        .font(Typography.data(12))
+                        .foregroundStyle(Palette.inkSoft)
+                }
             }
             Spacer(minLength: 8)
-            if let when {
-                Text(when)
-                    .font(Typography.data(12, weight: .bold))
-                    .foregroundStyle(Palette.inkFaint)
-                    .multilineTextAlignment(.trailing)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+            Toggle("", isOn: Binding(
+                get: { env.health.writePreferences[keyPath: keyPath] },
+                set: {
+                    env.health.writePreferences[keyPath: keyPath] = $0
+                    env.health.persistWritePreferences()
+                }
+            ))
+            .labelsHidden()
+            .tint(Palette.accent)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
         .accessibilityElement(children: .combine)
+    }
+
+    private func loadWritePreferences() async {
+        guard let settings: SettingsResponse = try? await env.api.get("/api/settings"),
+              let payload = settings.healthWrite
+        else { return }
+        env.health.applyServerWritePreferences(.from(payload))
     }
 
     private var privacyNote: some View {
@@ -1024,7 +1049,7 @@ struct HealthSettingsView: View {
                 Text("Raw readings stay on this phone.")
                     .font(Typography.data(13, weight: .bold))
                     .foregroundStyle(Palette.ink)
-                + Text(" I only send how far today is from your normal.")
+                + Text(" Nutrition you log is written into Health. I only send how far today is from your normal.")
                     .font(Typography.data(13))
                     .foregroundStyle(Palette.inkSoft)
             )
@@ -1034,17 +1059,6 @@ struct HealthSettingsView: View {
         .padding(.horizontal, 16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Palette.surfaceSunk.opacity(0.6), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-    }
-
-    private func lastSyncLabel(_ date: Date) -> String {
-        let time = timeOnly(date)
-        if Calendar.current.isDateInToday(date) { return "Today \(time)" }
-        let weekday = date.formatted(.dateTime.weekday(.wide))
-        return "\(weekday) \(time)"
-    }
-
-    private func timeOnly(_ date: Date) -> String {
-        date.formatted(date: .omitted, time: .shortened)
     }
 
     private func openHealth() {

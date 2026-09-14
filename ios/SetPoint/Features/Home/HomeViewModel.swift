@@ -48,6 +48,7 @@ final class HomeViewModel {
             try await api.delete("/api/meals/\(id)")
             onMealChanged()
             await load(showSpinner: false)
+            await HealthKitManager.shared.deleteMealFromHealth(id: id)
         } catch APIError.unauthorized {
             onUnauthorized()
             throw APIError.unauthorized

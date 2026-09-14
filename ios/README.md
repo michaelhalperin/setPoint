@@ -207,8 +207,9 @@ Test a notification locally: `xcrun simctl push <device> com.setpoint.app payloa
   `HKObserverQuery` + hourly (heart) / immediate (weight) background delivery.
   Computes on-device and posts only the z-scores to `/api/biosignals` (§4 — raw
   samples never leave the device). Anchored body-mass samples → `/api/weight`
-  (M16). Nothing is written to Health (`NSHealthUpdateUsageDescription` is omitted
-  on purpose).
+  (M16). Logged meals write back as `HKCorrelation(.food)` with a sync identifier
+  (calories / protein / carbs / fat, per Settings toggles). Optional write of
+  in-app weigh-ins. `NSHealthUpdateUsageDescription` is required for those writes.
 - Prompted from onboarding About you ("Fill from Apple Health") and Settings →
   Apple Health; `refreshState()` + `sync()` on launch and `scenePhase == .active`;
   observers re-registered in `AppDelegate` so background delivery survives relaunch

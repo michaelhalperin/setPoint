@@ -56,6 +56,7 @@ final class SettlementViewModel {
     func removeMeal(id: String) async throws {
         do {
             try await api.delete("/api/meals/\(id)")
+            await HealthKitManager.shared.deleteMealFromHealth(id: id)
             await load()
         } catch APIError.unauthorized {
             onUnauthorized()
@@ -94,6 +95,7 @@ final class SettlementViewModel {
         do {
             let res: WeightLogResponse = try await api.post("/api/weight", WeightLogRequest(weightKg: kg))
             if res.goalReached { reachedGoalTarget = res.entry.weightKg }
+            await HealthKitManager.shared.writeWeighIn(kg: kg)
             await load()
             return true
         } catch APIError.unauthorized {

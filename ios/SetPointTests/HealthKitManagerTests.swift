@@ -255,6 +255,49 @@ final class HealthKitManagerTests: XCTestCase {
         samples.append(BiosignalSample(value: 62, date: now.addingTimeInterval(-3600)))
         return samples
     }
+
+    func testWritesAFoodCorrelationAndOverwritesOnEdit() async {
+        let manager = makeManager()
+        _ = await manager.connect()
+        XCTAssertTrue(fake.lastShare.contains(HKQuantityType(.dietaryEnergyConsumed)))
+        if let food = HKObjectType.correlationType(forIdentifier: .food) {
+            XCTAssertFalse(fake.lastShare.contains(food))
+        }
+        let loggedAt = iso(now)
+        let meal = MealSummary.sample(id: "m1", kcal: 520, protein: 32, source: "TEXT", summary: "Oats", loggedAt: loggedAt)
+        await manager.writeMeal(meal)
+        XCTAssertEqual(fake.foods["m1"]?.kcal, 520)
+        XCTAssertEqual(fake.foodVersions["m1"], 1)
+
+        let edited = MealSummary.sample(id: "m1", kcal: 610, protein: 35, source: "TEXT", summary: "Oats", loggedAt: loggedAt)
+        await manager.writeMeal(edited)
+        XCTAssertEqual(fake.foods["m1"]?.kcal, 610)
+        XCTAssertEqual(fake.foodVersions["m1"], 2)
+        XCTAssertEqual(manager.todayWrittenKcal, 610)
+    }
+
+    func testDeleteRemovesTheWrittenMeal() async {
+        let manager = makeManager()
+        _ = await manager.connect()
+        await manager.writeMeal(MealSummary.sample(id: "m2", kcal: 400, protein: 20, source: "TEXT", summary: "Toast", loggedAt: iso(now)))
+        await manager.deleteMealFromHealth(id: "m2")
+        XCTAssertNil(fake.foods["m2"])
+        XCTAssertEqual(manager.todayWrittenKcal, 0)
+    }
+
+    func testWriteIsSkippedWhenNutritionTogglesAreOff() async {
+        let manager = makeManager()
+        _ = await manager.connect()
+        manager.writePreferences = HealthWritePreferences(energy: false, protein: false, carbs: false, fat: false, bodyMass: false)
+        await manager.writeMeal(MealSummary.sample(id: "m3", kcal: 400, protein: 20, source: "TEXT", summary: "Toast", loggedAt: iso(now)))
+        XCTAssertTrue(fake.foods.isEmpty)
+    }
+
+    private func iso(_ date: Date) -> String {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter.string(from: date)
+    }
 }
 
 private struct CapturedRequest {
@@ -316,13 +359,36 @@ final class FakeHealthDataSource: HealthDataSource, @unchecked Sendable {
 
     var isAvailable: Bool { available }
 
-    func requestAuthorization(read: Set<HKObjectType>) async throws {
+    func requestAuthorization(toShare: Set<HKSampleType>, read: Set<HKObjectType>) async throws {
         if let authorizationError { throw authorizationError }
         authStatus = .unnecessary
+        lastShare = toShare
+        lastRead = read
     }
 
-    func requestStatus(read: Set<HKObjectType>) async -> HKAuthorizationRequestStatus {
+    func requestStatus(toShare: Set<HKSampleType>, read: Set<HKObjectType>) async -> HKAuthorizationRequestStatus {
         authStatus
+    }
+
+    var lastShare: Set<HKSampleType> = []
+    var lastRead: Set<HKObjectType> = []
+    var foods: [String: DietaryWrite] = [:]
+    var foodVersions: [String: Int] = [:]
+    var bodyMassWrites: [(kg: Double, date: Date, id: String)] = []
+
+    func saveFood(_ write: DietaryWrite, types: HealthWritePreferences) async throws {
+        guard types.writesNutrition else { return }
+        foodVersions[write.mealId, default: 0] += 1
+        foods[write.mealId] = write
+    }
+
+    func deleteFood(mealId: String) async throws {
+        foods.removeValue(forKey: mealId)
+        foodVersions.removeValue(forKey: mealId)
+    }
+
+    func saveBodyMass(kg: Double, at date: Date, mealId: String) async throws {
+        bodyMassWrites.append((kg, date, mealId))
     }
 
     func samples(type: HKQuantityType, unit: HKUnit, from: Date, to: Date) async throws -> [BiosignalSample] {

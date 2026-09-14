@@ -151,6 +151,7 @@ final class LogMealViewModel {
                 )
             )
             onMealChanged()
+            await writeLoggedMealToHealth()
         } catch let error where snapshotPhoto == nil && !prompt.isEmpty && OfflineMealQueue.isOffline(error) {
             OfflineMealQueue.enqueue(.init(id: clientId, text: prompt, loggedAt: eatenAt))
             heldText = ""
@@ -224,6 +225,7 @@ final class LogMealViewModel {
                 )
             )
             onMealChanged()
+            await writeLoggedMealToHealth()
         } catch {
             backdate = snapshotBackdate
             submittedSlot = nil
@@ -281,6 +283,7 @@ final class LogMealViewModel {
                 )
             )
             onMealChanged()
+            await writeLoggedMealToHealth()
             await loadSavedMeals()
         } catch {
             backdate = snapshotBackdate
@@ -361,6 +364,7 @@ final class LogMealViewModel {
                 )
             )
             onMealChanged()
+            await writeLoggedMealToHealth()
         } catch {
             backdate = snapshotBackdate
             submittedSlot = nil
@@ -412,6 +416,7 @@ final class LogMealViewModel {
         defer { removing = false }
         do {
             try await api.delete("/api/meals/\(logged.mealId)")
+            await HealthKitManager.shared.deleteMealFromHealth(id: logged.mealId)
             text = heldText
             photo = submittedPhoto
             confirmingPhoto = false
@@ -462,6 +467,7 @@ final class LogMealViewModel {
                 )
             )
             onMealChanged()
+            await writeLoggedMealToHealth()
             return true
         } catch {
             actionError = UserFacingError.message(for: error, fallback: "Couldn't save. Try again.")
@@ -486,6 +492,12 @@ final class LogMealViewModel {
         actionError = nil
         submittedSlot = nil
         submittedLoggedAt = nil
+    }
+
+    private func writeLoggedMealToHealth() async {
+        if let meal = pendingMealSummary() {
+            await HealthKitManager.shared.writeMeal(meal)
+        }
     }
 
     /// Enough of a meal card to drop into Today before Home reloads.

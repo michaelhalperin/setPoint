@@ -34,6 +34,7 @@ final class HealthKitManager {
     static let lastSyncKey = "com.setpoint.app.health.lastSyncAt"
     static let bodyMassAnchorKey = "com.setpoint.app.health.anchor.bodyMass"
     static let lastModeKey = "com.setpoint.app.health.lastMode"
+    static let writePrefsKey = HealthWritePreferences.defaultsKey
 
     var api: APIClient?
     private(set) var state: HealthState
@@ -41,6 +42,8 @@ final class HealthKitManager {
     private(set) var lastSyncAt: Date?
     private(set) var connecting = false
     private(set) var lastError: String?
+    var writePreferences = HealthWritePreferences()
+    private(set) var todayWrittenKcal = 0
     var connected: Bool { state == .connected }
 
     private let source: HealthDataSource
@@ -71,7 +74,12 @@ final class HealthKitManager {
         self.clock = now
         self.lastSyncAt = defaults.object(forKey: Self.lastSyncKey) as? Date
         self.lastKnownMode = defaults.string(forKey: Self.lastModeKey)
+        if let data = defaults.data(forKey: Self.writePrefsKey),
+           let prefs = try? JSONDecoder().decode(HealthWritePreferences.self, from: data) {
+            self.writePreferences = prefs
+        }
         self.state = source.isAvailable ? .notConnected : .unavailable
+        refreshTodayWritten()
     }
 
     var isAvailable: Bool { source.isAvailable }
@@ -95,6 +103,114 @@ final class HealthKitManager {
          HKCharacteristicType(.dateOfBirth), HKCharacteristicType(.biologicalSex)]
     }
 
+    private var shareTypes: Set<HKSampleType> {
+        [
+            HKQuantityType(.dietaryEnergyConsumed),
+            HKQuantityType(.dietaryProtein),
+            HKQuantityType(.dietaryCarbohydrates),
+            HKQuantityType(.dietaryFatTotal),
+            bodyMassType,
+        ]
+    }
+
+    func persistWritePreferences() {
+        if let data = try? JSONEncoder().encode(writePreferences) {
+            defaults.set(data, forKey: Self.writePrefsKey)
+        }
+        Task { await pushWritePreferences() }
+    }
+
+    func applyServerWritePreferences(_ prefs: HealthWritePreferences) {
+        writePreferences = prefs
+        if let data = try? JSONEncoder().encode(prefs) {
+            defaults.set(data, forKey: Self.writePrefsKey)
+        }
+    }
+
+    func writeMeal(_ meal: MealSummary) async {
+        guard isAvailable, state == .connected, writePreferences.writesNutrition else { return }
+        let date = MealFormat.parse(meal.loggedAt) ?? clock()
+        do {
+            try await source.saveFood(
+                DietaryWrite(
+                    mealId: meal.id,
+                    kcal: Double(meal.kcal),
+                    proteinG: meal.proteinG,
+                    carbsG: meal.carbsG,
+                    fatG: meal.fatG,
+                    date: date
+                ),
+                types: writePreferences
+            )
+            rememberWritten(mealId: meal.id, kcal: meal.kcal, at: date)
+        } catch {
+            lastError = UserFacingError.message(for: error, fallback: "Couldn't write this meal to Health.")
+        }
+    }
+
+    func deleteMealFromHealth(id: String) async {
+        guard isAvailable, state == .connected else { return }
+        try? await source.deleteFood(mealId: id)
+        forgetWritten(mealId: id)
+    }
+
+    func writeWeighIn(kg: Double) async {
+        guard isAvailable, state == .connected, writePreferences.bodyMass else { return }
+        try? await source.saveBodyMass(kg: kg, at: clock(), mealId: "weight-\(UUID().uuidString)")
+    }
+
+    private static let writtenMealsKey = "com.setpoint.app.health.writtenMeals"
+
+    private struct WrittenMealRecord: Codable {
+        var kcal: Int
+        var at: TimeInterval
+    }
+
+    private func loadWritten() -> [String: WrittenMealRecord] {
+        guard let data = defaults.data(forKey: Self.writtenMealsKey),
+              let map = try? JSONDecoder().decode([String: WrittenMealRecord].self, from: data)
+        else { return [:] }
+        return map
+    }
+
+    private func saveWritten(_ map: [String: WrittenMealRecord]) {
+        if let data = try? JSONEncoder().encode(map) {
+            defaults.set(data, forKey: Self.writtenMealsKey)
+        }
+    }
+
+    private func rememberWritten(mealId: String, kcal: Int, at date: Date) {
+        var map = loadWritten()
+        map[mealId] = WrittenMealRecord(kcal: kcal, at: date.timeIntervalSince1970)
+        saveWritten(map)
+        refreshTodayWritten()
+    }
+
+    private func forgetWritten(mealId: String) {
+        var map = loadWritten()
+        map.removeValue(forKey: mealId)
+        saveWritten(map)
+        refreshTodayWritten()
+    }
+
+    func refreshTodayWritten() {
+        let start = Calendar.current.startOfDay(for: clock())
+        let end = Calendar.current.date(byAdding: .day, value: 1, to: start) ?? start.addingTimeInterval(86_400)
+        let lo = start.timeIntervalSince1970
+        let hi = end.timeIntervalSince1970
+        todayWrittenKcal = loadWritten().values
+            .filter { $0.at >= lo && $0.at < hi }
+            .reduce(0) { $0 + $1.kcal }
+    }
+
+    private func pushWritePreferences() async {
+        guard let api else { return }
+        try? await api.patch(
+            "/api/settings",
+            SettingsPatch(healthWrite: writePreferences.settingsPayload)
+        )
+    }
+
     /// Prompts for read access, then refreshes honest state, starts observers,
     /// and forces a sync. Errors leave `state` unchanged.
     @discardableResult
@@ -104,7 +220,7 @@ final class HealthKitManager {
         lastError = nil
         defer { connecting = false }
         do {
-            try await source.requestAuthorization(read: readTypes)
+            try await source.requestAuthorization(toShare: shareTypes, read: readTypes)
         } catch {
             lastError = Self.message(forConnect: error)
             return state
@@ -123,7 +239,7 @@ final class HealthKitManager {
             state = .unavailable
             return
         }
-        let status = await source.requestStatus(read: readTypes)
+        let status = await source.requestStatus(toShare: shareTypes, read: readTypes)
         state = status == .unnecessary ? .connected : .notConnected
         do {
             let to = clock()
