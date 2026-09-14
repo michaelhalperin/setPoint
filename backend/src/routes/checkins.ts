@@ -103,11 +103,15 @@ export async function checkInRoutes(app: FastifyInstance): Promise<void> {
   // band and falls back to the engine default.
   app.post('/:id/defer', async (req) => {
     const { id } = params.parse(req.params);
-    const { minutes } = z
-      .object({ minutes: z.number().int().min(15).max(360).optional() })
+    const { minutes, until } = z
+      .object({
+        minutes: z.number().int().min(15).max(360).optional(),
+        until: z.string().min(10).optional(),
+      })
       .parse(req.body ?? {});
-    const snoozeMs = (minutes ?? ENGINE_CONFIG.snoozeHours * 60) * 60_000;
-    const deferUntil = new Date(Date.now() + snoozeMs);
+    const deferUntil = until
+      ? new Date(until)
+      : new Date(Date.now() + (minutes ?? ENGINE_CONFIG.snoozeHours * 60) * 60_000);
     const result = await getPrisma().checkIn.updateMany({
       where: {
         id,

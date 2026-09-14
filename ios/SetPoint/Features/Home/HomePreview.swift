@@ -109,6 +109,24 @@ extension HomeResponse {
         )
     )
 
+    /// Lunch moved earlier for a 12–3 meeting block.
+    static var sampleBusy: HomeResponse {
+        var home = lateLunch(note: "Eat before the afternoon is locked.", checkIn: nil)
+        home.nextCheckIn = .init(slot: "lunch", mealMin: 780, dueMin: 675, overdue: false)
+        home.busyBlocks = [.init(startMin: 720, endMin: 900)]
+        home.movedSlots = [.init(slot: "lunch", fromMin: 780, toMin: 675)]
+        home.day = Day(
+            nowMin: 640,
+            slots: [
+                .init(slot: "breakfast", atMin: 480, state: "logged", mealIds: ["meal_oats", "meal_banana"], kcal: 600),
+                .init(slot: "lunch", atMin: 780, state: "upcoming", mealIds: [], kcal: 0),
+                .init(slot: "dinner", atMin: 1140, state: "upcoming", mealIds: [], kcal: 0),
+            ],
+            pace: lateLunchDay.pace
+        )
+        return home
+    }
+
     /// The same check-in, snoozed.
     static let sampleSnoozed = lateLunch(
         note: "There's a check-in waiting just below.",

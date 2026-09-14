@@ -27,6 +27,19 @@ struct HomeResponse: Decodable {
     var nextCheckIn: NextCheckIn? = nil
     /// Surface a weigh-in near the plan card when the last one is stale.
     var needsWeighIn: Bool? = nil
+    var busyBlocks: [BusyBlock]? = nil
+    var movedSlots: [MovedSlot]? = nil
+
+    struct BusyBlock: Decodable, Equatable {
+        let startMin: Int
+        let endMin: Int
+    }
+
+    struct MovedSlot: Decodable, Equatable {
+        let slot: String
+        let fromMin: Int
+        let toMin: Int
+    }
 
     struct NextCheckIn: Decodable, Equatable {
         let slot: String      // "breakfast" | "lunch" | "dinner"
@@ -546,6 +559,14 @@ enum WeekendDays {
     }
 }
 
+struct CalendarSettingsPayload: Codable, Equatable {
+    var enabled: Bool?
+    var leadMin: Int?
+    var minBlockMin: Int?
+    var workdaysOnly: Bool?
+    var includeAllDay: Bool?
+}
+
 struct HealthWritePayload: Codable, Equatable {
     var energy: Bool
     var protein: Bool
@@ -594,6 +615,7 @@ struct SettingsResponse: Decodable {
     var dislikedFoods: [String]? = nil
     var prepTimeMaxMin: Int? = nil
     var healthWrite: HealthWritePayload? = nil
+    var calendar: CalendarSettingsPayload? = nil
 
     struct Restriction: Decodable, Identifiable {
         var id: String { token }
@@ -621,6 +643,7 @@ struct SettingsPatch: Encodable {
     var dislikedFoods: [String]?
     var prepTimeMaxMin: Int?
     var healthWrite: HealthWritePayload?
+    var calendar: CalendarSettingsPayload?
 
     struct RestrictionInput: Encodable {
         let label: String

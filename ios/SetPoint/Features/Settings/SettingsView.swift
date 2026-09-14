@@ -5,6 +5,7 @@ struct SettingsView: View {
     @Environment(AppEnvironment.self) private var env
     @State private var model: SettingsViewModel?
     @AppStorage(MassUnit.storageKey) private var massUnit = MassUnit.localeDefault
+    @AppStorage("you.seen.calendar") private var seenCalendar = false
     #if DEBUG
     @State private var showingDevOnboarding = false
     @State private var showingDevMealConfirm = false
@@ -67,25 +68,43 @@ struct SettingsView: View {
                 checkInsCard(model)
                     .appearIn(1)
 
-                VStack(spacing: 0) {
-                    NavigationLink { GoalSettingsView(model: model) } label: {
-                        YouRow(symbol: "scope", title: "Goal and pace", value: goalSubtitle(model))
-                    }
-                    rowDivider
+                youSection("Your day") {
                     NavigationLink { RhythmSettingsView(model: model) } label: {
                         YouRow(symbol: "clock", title: "Meal times", value: mealTimesSubtitle(model))
+                    }
+                    rowDivider
+                    NavigationLink {
+                        CalendarSettingsView()
+                            .onAppear { seenCalendar = true }
+                    } label: {
+                        YouRow(
+                            symbol: "calendar",
+                            title: "Calendar",
+                            value: env.calendar.connected ? "Connected" : "Off",
+                            isNew: !seenCalendar
+                        )
+                    }
+                }
+                .appearIn(2)
+
+                youSection("Food") {
+                    NavigationLink { GoalSettingsView(model: model) } label: {
+                        YouRow(symbol: "scope", title: "Goal and pace", value: goalSubtitle(model))
                     }
                     rowDivider
                     NavigationLink { FoodsSettingsView(model: model) } label: {
                         YouRow(symbol: "nosign", title: "Foods I avoid", value: restrictionsSubtitle(model))
                     }
+                }
+                .appearIn(3)
+
+                youSection("Connected") {
                     if env.health.isAvailable {
-                        rowDivider
                         NavigationLink { HealthSettingsView() } label: {
                             YouRow(symbol: "heart", title: "Apple Health", value: healthRowValue)
                         }
+                        rowDivider
                     }
-                    rowDivider
                     NavigationLink { AccountSettingsView(model: model) } label: {
                         YouRow(symbol: "person", title: "Account", value: nil)
                     }
@@ -96,14 +115,7 @@ struct SettingsView: View {
                         YouRow(symbol: "scalemass", title: "Units", value: massUnit.title)
                     }
                 }
-                .buttonStyle(.plain)
-                .background {
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .fill(Palette.surface)
-                        .elevation(.resting)
-                        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(Palette.hairline))
-                }
-                .appearIn(2)
+                .appearIn(4)
 
                 if let error = model.error {
                     Text(error)
@@ -180,6 +192,20 @@ struct SettingsView: View {
         }
     }
     #endif
+
+    private func youSection<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title).sectionLabelStyle()
+            VStack(spacing: 0) { content() }
+                .buttonStyle(.plain)
+                .background {
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .fill(Palette.surface)
+                        .elevation(.resting)
+                        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(Palette.hairline))
+                }
+        }
+    }
 
     private var rowDivider: some View {
         Divider().overlay(Palette.hairline).padding(.leading, 66)
@@ -359,6 +385,7 @@ private struct YouRow: View {
     let symbol: String
     let title: String
     let value: String?
+    var isNew = false
 
     var body: some View {
         HStack(spacing: 14) {
@@ -370,6 +397,14 @@ private struct YouRow: View {
             Text(title)
                 .font(Typography.data(16, weight: .bold))
                 .foregroundStyle(Palette.ink)
+            if isNew {
+                Text("NEW")
+                    .font(Typography.data(10, weight: .heavy))
+                    .foregroundStyle(Palette.accentDeep)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Palette.accentTint, in: Capsule())
+            }
             Spacer(minLength: 8)
             if let value {
                 Text(value)
@@ -420,6 +455,19 @@ struct DestinationRow: View {
                 )
         }
     }
+}
+
+func formatBusyRange(_ startMin: Int, _ endMin: Int) -> String {
+    "\(clock12(startMin))–\(clock12(endMin))"
+}
+
+private func clock12(_ minutes: Int) -> String {
+    let wrapped = ((minutes % 1440) + 1440) % 1440
+    let h = wrapped / 60
+    let m = wrapped % 60
+    let hour12 = h % 12 == 0 ? 12 : h % 12
+    if m == 0 { return "\(hour12)" }
+    return "\(hour12):\(String(format: "%02d", m))"
 }
 
 func formatMinutes(_ minutes: Int) -> String {

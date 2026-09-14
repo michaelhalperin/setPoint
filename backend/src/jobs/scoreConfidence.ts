@@ -8,16 +8,22 @@ import {
   SCORE_CONFIG,
   decideEscalation,
   deriveHoursSinceMeal,
-  dueCheckIn,
   expectedGapHours,
   freshCheckInTier,
+  headsUpCopy,
   isBiosignalFresh,
   localDateISO,
   localWeekday,
   mealTimesOn,
   msSinceLocalMidnight,
+  prefsFromProfile,
+  slotNameOf,
   startOfLocalDay,
   TIER,
+  toMinuteBlocks,
+  upcomingCheckIn,
+  applyCalendarShift,
+  withOverdue,
   userInWearableCohort,
   wearableModifierKillSwitchOn,
   type EscalationDecision,
@@ -176,7 +182,7 @@ async function processUser(
   const { prisma } = deps;
   const dayStart = startOfLocalDay(now, user.timezone);
 
-  const [activeCheckIns, lastMeal, todayMeals, todayCheckIns, restrictions, usualForSlot] = await Promise.all([
+  const [activeCheckIns, lastMeal, todayMeals, todayCheckIns, restrictions, usualForSlot, busyRows] = await Promise.all([
     prisma.checkIn.findMany({
       where: { userId: user.id, status: { in: ['PENDING', 'DEFERRED'] } },
       orderBy: { createdAt: 'desc' },
@@ -188,12 +194,20 @@ async function processUser(
     }),
     prisma.checkIn.findMany({
       where: { userId: user.id, createdAt: { gte: dayStart } },
-      select: { createdAt: true, tier: true, episodeKey: true },
+      select: { createdAt: true, tier: true, episodeKey: true, slot: true },
     }),
     prisma.dietaryRestriction.findMany({ where: { userId: user.id, isHardExclusion: true } }),
     prisma.savedMeal.findMany({
       where: { userId: user.id, useInCheckIns: true },
       orderBy: [{ lastUsedAt: 'desc' }, { useCount: 'desc' }],
+    }),
+    prisma.calendarBusyBlock.findMany({
+      where: {
+        userId: user.id,
+        end: { gt: dayStart },
+        start: { lt: new Date(dayStart.getTime() + 86_400_000) },
+      },
+      select: { start: true, end: true },
     }),
   ]);
 
@@ -241,17 +255,27 @@ async function processUser(
   }
 
   const times = mealTimesOn(profile, localWeekday(now, user.timezone));
-  const due = dueCheckIn({
-    nowMin: localMinute(now, user.timezone),
+  const nowMin = localMinute(now, user.timezone);
+  const upcoming = upcomingCheckIn({
+    nowMin,
     times,
     mealMinutesToday: todayMeals.map((m) => localMinute(m.loggedAt, user.timezone)),
     checkedSlotsToday: todayCheckIns
       .filter((c) => c.tier < TIER.CONVERSATION)
-      .map((c) => checkInSlotAt(localMinute(c.createdAt, user.timezone), times))
+      .map((c) => slotNameOf(c.slot) ?? checkInSlotAt(localMinute(c.createdAt, user.timezone), times))
       .filter((slot): slot is SlotName => slot !== null),
     consumedKcal,
     targetKcal: profile.dailyKcalTarget,
   });
+  const calendarPrefs = prefsFromProfile(profile);
+  const todayBusy = toMinuteBlocks(busyRows, dayStart, user.timezone);
+  const shifted = upcoming
+    ? withOverdue(
+        applyCalendarShift(upcoming, times, todayBusy, calendarPrefs, localWeekday(now, user.timezone))!,
+        nowMin,
+      )
+    : null;
+  const due = shifted?.overdue ? shifted : null;
   summary.scored += 1;
   if (!due) {
     bump(summary, 'not_due');
@@ -352,15 +376,22 @@ async function processUser(
         })
       : null;
   const summaryLine = rx ? prescriptionSummary(rx) : null;
+  const isHeadsUp = due.movedFromMin != null && due.busy != null;
+  const message = isHeadsUp && due.busy
+    ? headsUpCopy(due.busy, due.slot)
+    : await checkInCopy(deps.voice, {
+        tier,
+        goal: profile.goal as Goal,
+        hoursSinceMeal,
+        kcalGap: target.targetKcal,
+        prescriptionSummary: summaryLine,
+        slot: due.slot,
+      });
 
-  const message = await checkInCopy(deps.voice, {
-    tier,
-    goal: profile.goal as Goal,
-    hoursSinceMeal,
-    kcalGap: target.targetKcal,
-    prescriptionSummary: summaryLine,
-    slot: due.slot,
-  });
+  const busyUntil =
+    isHeadsUp && due.busy
+      ? new Date(dayStart.getTime() + due.busy.endMin * 60_000)
+      : null;
 
   const checkIn = await prisma.checkIn.create({
     data: {
@@ -372,6 +403,9 @@ async function processUser(
       message,
       slot: due.slot,
       episodeKey,
+      kind: isHeadsUp ? 'HEADS_UP' : 'MEAL',
+      movedFromMin: due.movedFromMin,
+      busyUntil,
     },
   });
 
@@ -406,7 +440,7 @@ async function processUser(
     summary.prescriptionsCreated += 1;
   }
 
-  await markDelivered(deps, user.id, checkIn.id, tier, message, prescriptionId, now);
+  await markDelivered(deps, user.id, checkIn.id, tier, message, prescriptionId, now, isHeadsUp ? 'HEADS_UP' : 'CHECK_IN');
   await prisma.escalationState.upsert({
     where: { userId: user.id },
     create: { userId: user.id, lastCheckInAt: now, currentTier: tier },
@@ -539,12 +573,13 @@ async function markDelivered(
   body: string,
   prescriptionId: string | null,
   now: Date,
+  category: 'CHECK_IN' | 'HEADS_UP' = 'CHECK_IN',
 ): Promise<void> {
   const outcome = await deliverCheckIn({
     prisma: deps.prisma,
     push: deps.push,
     userId,
-    payload: { userId, checkInId, tier, title: 'SetPoint', body, prescriptionId },
+    payload: { userId, checkInId, tier, title: 'SetPoint', body, prescriptionId, category },
   });
   await deps.prisma.checkIn.update({
     where: { id: checkInId },

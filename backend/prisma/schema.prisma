@@ -168,6 +168,7 @@ model User {
   dayOutcomes             DayOutcome[]
   aiUsages                AiUsage[]
   targetReviews           WeightTargetReview[]
+  calendarBusyBlocks      CalendarBusyBlock[]
 }
 
 model PushToken {
@@ -251,6 +252,12 @@ model OnboardingProfile {
   writeHealthCarbs    Boolean @default(true)
   writeHealthFat      Boolean @default(true)
   writeHealthBodyMass Boolean @default(false)
+
+  calendarEnabled        Boolean @default(false)
+  calendarLeadMin        Int     @default(45)
+  calendarMinBlockMin    Int     @default(60)
+  calendarWorkdaysOnly   Boolean @default(true)
+  calendarIncludeAllDay  Boolean @default(false)
 
   completedAt DateTime?
   createdAt   DateTime  @default(now())
@@ -496,6 +503,23 @@ model ConfidenceScore {
 }
 
 // ---------------------------------------------------------------------------
+// Calendar busy blocks — start/end only; titles never leave the phone.
+// ---------------------------------------------------------------------------
+
+model CalendarBusyBlock {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  start DateTime
+  end   DateTime
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, start])
+}
+
+// ---------------------------------------------------------------------------
 // Check-ins + escalation (§2)
 // ---------------------------------------------------------------------------
 
@@ -516,6 +540,13 @@ model CheckIn {
 
   /// user + local date + slot (+ episode). Prevents duplicate check-ins.
   episodeKey String?
+
+  /// MEAL (default), HEADS_UP (calendar), REFUEL (training).
+  kind String @default("MEAL")
+  /// Original due minute when a calendar heads-up moved the check-in earlier.
+  movedFromMin Int?
+  /// End of the busy block — "After 15:00" snoozes until then.
+  busyUntil DateTime?
 
   deliveredAt    DateTime?
   lastPushError  String?

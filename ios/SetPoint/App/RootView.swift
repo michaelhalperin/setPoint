@@ -65,6 +65,8 @@ enum DebugPreviewStub {
     case settingsFoods
     case settingsHealth
     case settingsHealthWrite
+    case calendarSettings
+    case calendarConnect
     case settingsAccount
     case settingsDelete
 
@@ -109,6 +111,10 @@ enum DebugPreviewStub {
             NavigationStack { FoodsSettingsView(model: .previewed()) }
         case .settingsHealth, .settingsHealthWrite:
             NavigationStack { HealthSettingsView() }
+        case .calendarSettings:
+            NavigationStack { CalendarSettingsView() }
+        case .calendarConnect:
+            NavigationStack { CalendarConnectView() }
         case .settingsAccount:
             NavigationStack { AccountSettingsView(model: .previewed()) }
         case .settingsDelete:
@@ -160,6 +166,9 @@ enum DebugPreviewStub {
         case "saved-meal": return .savedMeal
         case "settings": return .settings
         case "you": return .settings
+        case "calendar-settings": return .calendarSettings
+        case "calendar-connect": return .calendarConnect
+        case "home-busy": return .home(.sampleBusy)
         case "settings-goal": return .settingsGoal
         case "settings-meal-times": return .settingsMealTimes
         case "settings-meal-times-weekends": return .settingsMealTimesWeekends

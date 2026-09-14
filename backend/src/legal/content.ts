@@ -89,6 +89,12 @@ never sell your data or use health data for advertising.</p>
 </ul>
 <p>We do not use your information for advertising or profiling, and we do not sell it.</p>
 
+<h2>Calendar</h2>
+<p>If you connect a calendar, SetPoint reads event times on your device and uploads
+only busy intervals (start and end). Event titles, locations, attendees and notes
+never leave your phone. Busy times may move a check-in earlier so you can eat
+before a block of meetings. You can disconnect the calendar at any time.</p>
+
 <h2>Apple Health (HealthKit)</h2>
 <p>Health data access is optional. With your permission, SetPoint:</p>
 <ul>

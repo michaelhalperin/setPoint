@@ -41,6 +41,13 @@ export type SettingsView = {
     fat: boolean;
     bodyMass: boolean;
   };
+  calendar: {
+    enabled: boolean;
+    leadMin: number;
+    minBlockMin: number;
+    workdaysOnly: boolean;
+    includeAllDay: boolean;
+  };
 };
 
 export type SettingsPatch = {
@@ -68,6 +75,13 @@ export type SettingsPatch = {
     carbs: boolean;
     fat: boolean;
     bodyMass: boolean;
+  };
+  calendar?: {
+    enabled?: boolean;
+    leadMin?: number;
+    minBlockMin?: number;
+    workdaysOnly?: boolean;
+    includeAllDay?: boolean;
   };
 };
 
@@ -205,6 +219,13 @@ export async function updateSettings(
       profileData.writeHealthFat = patch.healthWrite.fat;
       profileData.writeHealthBodyMass = patch.healthWrite.bodyMass;
     }
+    if (patch.calendar) {
+      if (patch.calendar.enabled != null) profileData.calendarEnabled = patch.calendar.enabled;
+      if (patch.calendar.leadMin != null) profileData.calendarLeadMin = patch.calendar.leadMin;
+      if (patch.calendar.minBlockMin != null) profileData.calendarMinBlockMin = patch.calendar.minBlockMin;
+      if (patch.calendar.workdaysOnly != null) profileData.calendarWorkdaysOnly = patch.calendar.workdaysOnly;
+      if (patch.calendar.includeAllDay != null) profileData.calendarIncludeAllDay = patch.calendar.includeAllDay;
+    }
     if (Object.keys(profileData).length > 0) {
       await tx.onboardingProfile.update({ where: { userId }, data: profileData });
     }
@@ -308,6 +329,13 @@ function toView(user: UserWithSettings, weekendSuggestion: WeekendBreakfastSugge
       carbs: p.writeHealthCarbs ?? true,
       fat: p.writeHealthFat ?? true,
       bodyMass: p.writeHealthBodyMass ?? false,
+    },
+    calendar: {
+      enabled: p.calendarEnabled ?? false,
+      leadMin: p.calendarLeadMin ?? 45,
+      minBlockMin: p.calendarMinBlockMin ?? 60,
+      workdaysOnly: p.calendarWorkdaysOnly ?? true,
+      includeAllDay: p.calendarIncludeAllDay ?? false,
     },
   };
 }

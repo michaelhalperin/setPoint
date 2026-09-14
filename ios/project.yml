@@ -49,6 +49,8 @@ targets:
           - Fraunces-Italic.ttf
         NSHealthShareUsageDescription: "SetPoint reads your height, weight, age and sex to set daily targets, and your body weight to track progress. Heart-rate variability and resting heart rate are optional: they may slightly adjust a check-in that is already due from a missed meal. They never diagnose under-fueling on their own."
         NSHealthUpdateUsageDescription: "SetPoint writes meals you log (calories, protein, carbs and fat) into Apple Health so they stay in one place. Weight you log in SetPoint can be written too if you turn that on."
+        NSCalendarsFullAccessUsageDescription: "SetPoint reads only when you are busy. Event titles, locations and who is invited never leave this phone."
+        NSCalendarsUsageDescription: "SetPoint reads only when you are busy. Event titles, locations and who is invited never leave this phone."
         LSApplicationQueriesSchemes: ["x-apple-health"]
         NSCameraUsageDescription: "Take a photo of a meal or scan a barcode to log it."
         NSPhotoLibraryUsageDescription: "Attach a photo of a meal to log it."
@@ -79,6 +81,7 @@ targets:
         embed: true
       - sdk: ActivityKit.framework
       - sdk: HealthKit.framework
+      - sdk: EventKit.framework
       - sdk: VisionKit.framework
       - package: Sentry
 

@@ -86,6 +86,15 @@ const settingsPatch = z
         bodyMass: z.boolean(),
       })
       .optional(),
+    calendar: z
+      .object({
+        enabled: z.boolean().optional(),
+        leadMin: z.union([z.literal(30), z.literal(45), z.literal(60)]).optional(),
+        minBlockMin: z.number().int().min(15).max(240).optional(),
+        workdaysOnly: z.boolean().optional(),
+        includeAllDay: z.boolean().optional(),
+      })
+      .optional(),
   })
   .refine((p) => Object.keys(p).length > 0, { message: 'no changes provided' });
 

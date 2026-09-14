@@ -1,18 +1,26 @@
 import type { PrismaClient } from '@prisma/client';
 import {
+  applyCalendarShift,
   checkInSlotAt,
   hoursBetween,
   isWithinQuietHours,
   localWeekday,
   mealTimesOn,
   msSinceLocalMidnight,
+  prefsFromProfile,
+  qualifyingBusyBlocks,
+  slotNameOf,
   startOfLocalDay,
   TIER,
+  toMinuteBlocks,
   upcomingCheckIn,
+  movedSlotsToday,
+  withOverdue,
   type Goal,
   type ScheduledCheckIn,
   type SlotName,
 } from '../engine/index.js';
+import { SCHEDULE_CONFIG } from '../engine/mealSchedule.js';
 import type { ManagerVoice } from '../managerVoice/types.js';
 import { toMealSummaries, type MealSummary } from '../meals/summary.js';
 import type { PhotoStore } from '../photos/store.js';
@@ -60,6 +68,8 @@ export type HomeView = {
    */
   nextCheckIn: ScheduledCheckIn | null;
   needsWeighIn: boolean;
+  busyBlocks: { startMin: number; endMin: number }[];
+  movedSlots: { slot: SlotName; fromMin: number; toMin: number }[];
   activeCheckIn: null | {
     id: string;
     tier: number;
@@ -94,7 +104,7 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
   const profile = user.onboarding;
   const dayStart = startOfLocalDay(now, user.timezone);
 
-  const [todayMeals, lastMeal, activeCheckIn, todayCheckIns, lastWeighIn] = await Promise.all([
+  const [todayMeals, lastMeal, activeCheckIn, todayCheckIns, lastWeighIn, busyRows] = await Promise.all([
     prisma.meal.findMany({
       where: { userId, loggedAt: { gte: dayStart } },
       orderBy: { loggedAt: 'asc' },
@@ -123,12 +133,16 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
     }),
     prisma.checkIn.findMany({
       where: { userId, createdAt: { gte: dayStart } },
-      select: { createdAt: true, tier: true },
+      select: { createdAt: true, tier: true, slot: true },
     }),
     prisma.weightEntry.findFirst({
       where: { userId },
       orderBy: { measuredAt: 'desc' },
       select: { measuredAt: true },
+    }),
+    prisma.calendarBusyBlock.findMany({
+      where: { userId, end: { gt: dayStart }, start: { lt: new Date(dayStart.getTime() + 86_400_000) } },
+      select: { start: true, end: true },
     }),
   ]);
 
@@ -161,7 +175,11 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
     enforcementEnabled,
   });
 
+  const calendarPrefs = prefsFromProfile(profile);
+  const todayBusy = toMinuteBlocks(busyRows, dayStart, user.timezone);
+  const weekday = localWeekday(now, user.timezone);
   const escalation = user.escalationState;
+
   const checksRunning =
     enforcementEnabled &&
     !escalation?.checkInsPaused &&
@@ -174,16 +192,26 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
         mealMinutesToday: todayMeals.map((m) => localMinute(m.loggedAt)),
         checkedSlotsToday: todayCheckIns
           .filter((c) => c.tier < TIER.CONVERSATION)
-          .map((c) => checkInSlotAt(localMinute(c.createdAt), times))
+          .map((c) => slotNameOf(c.slot) ?? checkInSlotAt(localMinute(c.createdAt), times))
           .filter((slot): slot is SlotName => slot !== null),
         consumedKcal,
         targetKcal,
       })
     : null;
+  const shifted = scheduled
+    ? withOverdue(applyCalendarShift(scheduled, times, todayBusy, calendarPrefs, weekday)!, mins)
+    : null;
   const nextCheckIn =
-    scheduled && !isWithinQuietHours(scheduled.dueMin, profile.quietHoursStartMin, profile.quietHoursEndMin)
-      ? scheduled
+    shifted && !isWithinQuietHours(shifted.dueMin, profile.quietHoursStartMin, profile.quietHoursEndMin)
+      ? { slot: shifted.slot, mealMin: shifted.mealMin, dueMin: shifted.dueMin, overdue: shifted.overdue }
       : null;
+  const busyBlocks = calendarPrefs.enabled
+    ? qualifyingBusyBlocks(todayBusy, calendarPrefs, weekday).map((b) => ({
+        startMin: b.startMin,
+        endMin: b.endMin,
+      }))
+    : [];
+  const movedSlots = movedSlotsToday(times, SCHEDULE_CONFIG.graceMin, todayBusy, calendarPrefs, weekday);
 
   const managerNote = await deps.voice.homeNote({
     goal,
@@ -227,6 +255,8 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
     quietHours: { startMin: profile.quietHoursStartMin, endMin: profile.quietHoursEndMin },
     day,
     nextCheckIn,
+    busyBlocks,
+    movedSlots,
     needsWeighIn:
       goal !== 'MAINTAIN' &&
       (!lastWeighIn || now.getTime() - lastWeighIn.measuredAt.getTime() > 7 * 24 * 3_600_000),
@@ -236,7 +266,8 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
           tier: activeCheckIn.tier,
           slot:
             activeCheckIn.tier < TIER.CONVERSATION
-              ? checkInSlotAt(localMinute(activeCheckIn.createdAt), profile)
+              ? slotNameOf(activeCheckIn.slot) ??
+                checkInSlotAt(localMinute(activeCheckIn.createdAt), times)
               : null,
           status: activeCheckIn.status,
           message: activeCheckIn.message,

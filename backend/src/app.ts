@@ -13,6 +13,7 @@ import { accountRoutes } from './routes/account.js';
 import { adminRoutes } from './routes/admin.js';
 import { authRoutes } from './routes/auth.js';
 import { biosignalRoutes } from './routes/biosignals.js';
+import { calendarRoutes } from './routes/calendar.js';
 import { checkInRoutes } from './routes/checkins.js';
 import { cronRoutes } from './routes/cron.js';
 import { dashboardRoutes } from './routes/dashboard.js';
@@ -116,6 +117,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   await app.register(mealRoutes, { prefix: '/api/meals' });
   await app.register(savedMealRoutes, { prefix: '/api/saved-meals' });
   await app.register(foodRoutes, { prefix: '/api/foods' });
+  await app.register(calendarRoutes, { prefix: '/api/calendar' });
   await app.register(checkInRoutes, { prefix: '/api/checkins' });
   await app.register(biosignalRoutes, { prefix: '/api/biosignals' });
   await app.register(pushTokenRoutes, { prefix: '/api/push-tokens' });

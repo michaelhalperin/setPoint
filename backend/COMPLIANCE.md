@@ -23,6 +23,12 @@ Apple requires in-app account deletion for any app with account creation.
 - [x] Backend never receives raw HRV/RHR — only a derived deviation.
 - [x] Health data is not used for advertising.
 
+## Calendar
+
+- [x] Event titles, locations and attendees never leave the device. Only busy
+      intervals (start/end) are uploaded, and only when the user connects a calendar.
+- [x] `NSCalendarsFullAccessUsageDescription` states that only busy times are used.
+
 ## Notifications
 
 - [x] Check-ins are `interruption-level: time-sensitive`, not critical alerts.

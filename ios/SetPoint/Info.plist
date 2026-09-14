@@ -35,6 +35,10 @@
 	<array>
 		<string>x-apple-health</string>
 	</array>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>SetPoint reads only when you are busy. Event titles, locations and who is invited never leave this phone.</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>SetPoint reads only when you are busy. Event titles, locations and who is invited never leave this phone.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Take a photo of a meal or scan a barcode to log it.</string>
 	<key>NSHealthShareUsageDescription</key>

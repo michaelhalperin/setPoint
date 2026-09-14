@@ -28,6 +28,7 @@ function fakePrisma(over: { user?: AnyRow | null; meals?: AnyRow[]; checkIn?: An
     },
     checkIn: { findFirst: async () => over.checkIn ?? null, findMany: async () => [] },
     weightEntry: { findFirst: async () => null },
+    calendarBusyBlock: { findMany: async () => [] },
   } as unknown as PrismaClient;
 }
 

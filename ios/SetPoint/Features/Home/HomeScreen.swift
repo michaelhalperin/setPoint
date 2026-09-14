@@ -204,6 +204,7 @@ struct HomeContent: View {
             guard phase == .active, isLoaded else { return }
             Task {
                 await env.push.syncAuthorizationStatus()
+                await env.calendar.uploadBusy()
                 await model.load(showSpinner: false)
             }
         }

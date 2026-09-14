@@ -1,6 +1,13 @@
 import SwiftUI
 import UIKit
 
+struct DialGhost: Equatable, Identifiable {
+    var id: String { slot.rawValue }
+    let slot: MealSlot
+    let minute: Int
+    var label: String? = nil
+}
+
 /// Today's live state on the dial: each meal's state, the day so far, and now.
 struct DialToday: Equatable {
     var states: [MealSlot: SlotState]
@@ -36,6 +43,10 @@ struct DayDial<Center: View>: View {
     var markersShown = true
     /// Live state for Today; nil draws the plain schedule (onboarding).
     var today: DialToday?
+    /// Hatched arcs just outside the ring — busy blocks for today.
+    var busyArcs: [ClosedRange<Int>] = []
+    /// Dashed knobs at a meal's usual time after calendar moved the live knob.
+    var ghostKnobs: [DialGhost] = []
     /// When set, knobs can be dragged around the ring. Onboarding leaves this nil.
     var onMove: ((MealSlot, Int) -> Void)? = nil
     @ViewBuilder var center: () -> Center
@@ -125,6 +136,20 @@ struct DayDial<Center: View>: View {
 
                 moonMark(size: max(15, ringWidth * 0.92), at: point(quietMidpoint, radius: r, center: c))
 
+                ForEach(Array(busyArcs.enumerated()), id: \.offset) { _, range in
+                    arc(
+                        from: range.lowerBound,
+                        to: range.upperBound,
+                        color: Palette.ink.opacity(0.28),
+                        width: max(4, ringWidth * 0.38),
+                        radius: r + ringWidth * 0.72,
+                        cap: .butt,
+                        dashes: [3, 3]
+                    )
+                    .position(c)
+                    .allowsHitTesting(false)
+                }
+
                 if showsHand {
                     LoopingPhase(period: 14, still: 0.54) { t in
                         Capsule()
@@ -166,6 +191,25 @@ struct DayDial<Center: View>: View {
                     }
                 }
 
+                ForEach(ghostKnobs) { ghost in
+                    Circle()
+                        .strokeBorder(Palette.ink.opacity(0.4), style: StrokeStyle(lineWidth: 2, dash: [4, 3]))
+                        .frame(width: knobSize * 0.7, height: knobSize * 0.7)
+                        .position(point(ghost.minute, radius: r, center: c))
+                        .allowsHitTesting(false)
+                    if let label = ghost.label {
+                        Text(label)
+                            .font(Typography.data(10, weight: .bold))
+                            .foregroundStyle(Palette.inkSoft)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 3)
+                            .background(Palette.surface, in: Capsule())
+                            .overlay(Capsule().strokeBorder(Palette.hairline))
+                            .position(point(ghost.minute, radius: r + knobSize * 0.7, center: c))
+                            .allowsHitTesting(false)
+                    }
+                }
+
                 if let nowMin = today?.nowMin {
                     nowMarker(nowMin: nowMin, radius: r, ringWidth: ringWidth, faceR: faceR, center: c, size: size)
                 }
@@ -189,11 +233,12 @@ struct DayDial<Center: View>: View {
         color: Color,
         width: CGFloat,
         radius r: CGFloat,
-        cap: CGLineCap
+        cap: CGLineCap,
+        dashes: [CGFloat]? = nil
     ) -> some View {
         let start = Double(((startMin % 1440) + 1440) % 1440) / 1440
         let end = Double(((endMin % 1440) + 1440) % 1440) / 1440
-        let style = StrokeStyle(lineWidth: width, lineCap: cap)
+        let style = StrokeStyle(lineWidth: width, lineCap: cap, dash: dashes ?? [])
         ZStack {
             if start <= end {
                 Circle().trim(from: start, to: end).stroke(color, style: style)

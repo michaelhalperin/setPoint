@@ -9,6 +9,7 @@ final class AppEnvironment {
     let api: APIClient
     let push = PushManager.shared
     let health = HealthKitManager.shared
+    let calendar = CalendarManager.shared
     let changes = AppDataChanges()
 
     init(tokenStore: TokenStore = SessionTokenStore()) {
@@ -26,6 +27,7 @@ final class AppEnvironment {
         )
         push.api = api
         health.api = api
+        calendar.api = api
     }
 
     static func preview() -> AppEnvironment {

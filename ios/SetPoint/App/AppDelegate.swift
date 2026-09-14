@@ -29,6 +29,11 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
             if HealthKitManager.shared.state == .connected {
                 await HealthKitManager.shared.startBackgroundObservers()
             }
+            CalendarManager.shared.start()
+            if CalendarManager.shared.api == nil {
+                CalendarManager.shared.api = HealthKitManager.shared.api
+            }
+            await CalendarManager.shared.uploadBusy()
         }
         return true
     }
