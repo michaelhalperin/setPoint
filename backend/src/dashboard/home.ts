@@ -18,6 +18,7 @@ import {
   withOverdue,
   appetiteShape,
   extraAppetiteSlots,
+  nextAppetitePlate,
   localDateISO,
   type Goal,
   type ScheduledCheckIn,
@@ -93,6 +94,8 @@ export type HomeView = {
     level: string;
     drinkableOk: boolean;
     suggestSmallerDefault: boolean;
+    answeredToday: boolean;
+    nextPlate: { slot: string; atMin: number; kcal: number } | null;
     extraSlots: { slot: string; atMin: number }[];
   };
   activeCheckIn: null | {
@@ -237,15 +240,16 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
     !escalation?.checkInsPaused &&
     !(escalation?.backedOffUntil && escalation.backedOffUntil > now) &&
     activeCheckIn === null;
+  const checkedSlotsToday = todayCheckIns
+    .filter((c) => c.tier < TIER.CONVERSATION && c.kind !== 'REFUEL' && c.kind !== 'PRE_WORKOUT')
+    .map((c) => slotNameOf(c.slot) ?? checkInSlotAt(localMinute(c.createdAt), times))
+    .filter((slot): slot is SlotName => slot !== null);
   const scheduled = checksRunning
     ? upcomingCheckIn({
         nowMin: mins,
         times,
         mealMinutesToday: todayMeals.map((m) => localMinute(m.loggedAt)),
-        checkedSlotsToday: todayCheckIns
-          .filter((c) => c.tier < TIER.CONVERSATION && c.kind !== 'REFUEL' && c.kind !== 'PRE_WORKOUT')
-          .map((c) => slotNameOf(c.slot) ?? checkInSlotAt(localMinute(c.createdAt), times))
-          .filter((slot): slot is SlotName => slot !== null),
+        checkedSlotsToday,
         consumedKcal,
         targetKcal,
         extraSlots,
@@ -272,6 +276,15 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
       firstSession.durationMin +
       REFUEL_WINDOW_MIN
     : null;
+
+  const nextPlate = nextAppetitePlate({
+    nowMin: mins,
+    times,
+    shape,
+    remainingKcal: Math.max(0, remainingKcal),
+    checked: checkedSlotsToday,
+    mealMinutesToday: todayMeals.map((m) => localMinute(m.loggedAt)),
+  });
 
   const managerNote = await deps.voice.homeNote({
     goal,
@@ -328,6 +341,8 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
       level: dayAppetite?.level ?? (shape === 'SMALL' ? 'LOW' : 'NORMAL'),
       drinkableOk: profile.drinkableOk ?? true,
       suggestSmallerDefault: smallerCount >= 2,
+      answeredToday: dayAppetite !== null,
+      nextPlate,
       extraSlots: extraSlots ? extraAppetiteSlots(times).map((s) => ({ slot: s.slot, atMin: s.mealMin })) : [],
     },
     needsWeighIn:

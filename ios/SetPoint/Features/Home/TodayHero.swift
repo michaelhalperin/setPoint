@@ -10,7 +10,6 @@ struct TodayHero: View {
     let home: HomeResponse
     let moment: TodayMoment
     let date: Date
-    var onAppetite: () -> Void = {}
 
     @Environment(AppEnvironment.self) private var env
 
@@ -32,7 +31,8 @@ struct TodayHero: View {
                 busyArcs: (home.busyBlocks ?? []).map { $0.startMin ... $0.endMin },
                 workoutArcs: workoutArcs,
                 refuelArcs: refuelArcs,
-                ghostKnobs: ghosts
+                ghostKnobs: ghosts,
+                snackKnobs: snackKnobs
             ) {
                 center
                     .contentTransition(.numericText())
@@ -104,6 +104,10 @@ struct TodayHero: View {
         }
     }
 
+    private var snackKnobs: [DialSnack] {
+        (home.appetite?.extraSlots ?? []).map { DialSnack(id: $0.slot, minute: $0.atMin) }
+    }
+
     private var dateLine: some View {
         HStack(spacing: 8) {
             Text(date.formatted(.dateTime.weekday(.wide).month(.abbreviated).day()))
@@ -134,15 +138,6 @@ struct TodayHero: View {
                 }
                 .buttonStyle(.plain)
             }
-            Button(action: onAppetite) {
-                Text("Appetite ›")
-                    .font(Typography.data(12, weight: .bold))
-                    .foregroundStyle(Palette.ink)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(Palette.surfaceSunk, in: Capsule())
-            }
-            .buttonStyle(.plain)
             Spacer(minLength: 0)
         }
     }
@@ -157,7 +152,7 @@ struct TodayHero: View {
                     .font(Typography.data(42, weight: .bold))
                     .monospacedDigit()
                     .foregroundStyle(Palette.ink)
-                Text(moved ? "before you're busy" : "if \(slot.title.lowercased()) isn’t logged")
+                Text(moved ? "before you're busy" : "if \(slotTitle(slot).lowercased()) isn’t logged")
                     .font(Typography.data(12, weight: .semibold))
                     .foregroundStyle(Palette.inkSoft)
             }
@@ -219,6 +214,10 @@ struct TodayHero: View {
     private var firedSlot: MealSlot? {
         if case .snoozed = moment { return home.activeCheckIn?.slot.flatMap(MealSlot.init(rawValue:)) }
         return nil
+    }
+
+    private func slotTitle(_ slot: String) -> String {
+        MealSlot(rawValue: slot)?.title ?? (slot.hasPrefix("snack") ? "Snack" : "Meal")
     }
 
     private func minuteOfDay(_ date: Date) -> Int {

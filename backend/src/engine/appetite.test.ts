@@ -3,6 +3,7 @@ import {
   appetiteMealTarget,
   appetiteShape,
   extraAppetiteSlots,
+  nextAppetitePlate,
   remainingSlotCount,
 } from './appetite.js';
 
@@ -42,5 +43,40 @@ describe('appetite.v1', () => {
         mealMinutesToday: [490],
       }),
     ).toBe(4);
+  });
+
+  it('names the next plate and its suggested kcal', () => {
+    expect(
+      nextAppetitePlate({
+        nowMin: 400,
+        times,
+        shape: 'SMALL',
+        remainingKcal: 3100,
+        checked: [],
+        mealMinutesToday: [],
+      }),
+    ).toEqual({ slot: 'breakfast', atMin: 480, kcal: 450 });
+
+    expect(
+      nextAppetitePlate({
+        nowMin: 700,
+        times,
+        shape: 'NORMAL',
+        remainingKcal: 1800,
+        checked: ['breakfast'],
+        mealMinutesToday: [490],
+      }),
+    ).toEqual({ slot: 'lunch', atMin: 780, kcal: 1800 });
+
+    expect(
+      nextAppetitePlate({
+        nowMin: 1300,
+        times,
+        shape: 'NORMAL',
+        remainingKcal: 400,
+        checked: ['breakfast', 'lunch', 'dinner'],
+        mealMinutesToday: [490, 800, 1150],
+      }),
+    ).toBeNull();
   });
 });

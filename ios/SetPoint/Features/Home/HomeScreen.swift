@@ -18,7 +18,6 @@ struct HomeContent: View {
     @State private var showingCheckIn = false
     @State private var selectedMeal: MealSummary?
     @State private var choosingSnooze = false
-    @State private var showingAppetite = false
     @State private var showingPaywall = false
     @State private var checkInBusy = false
     @State private var checkInError: String?
@@ -187,13 +186,6 @@ struct HomeContent: View {
             PaywallView()
                 .presentationDetents([.large])
         }
-        .sheet(isPresented: $showingAppetite) {
-            AppetitePickerSheet(
-                previewTarget: loadedHome?.ledger.targetKcal ?? 2500,
-                onPicked: { Task { await model.load(showSpinner: false) } }
-            )
-            .presentationDetents([.large])
-        }
         .toolbar(showingCheckIn || logger?.confirmingPhoto == true ? .hidden : .visible, for: .tabBar)
         .task {
             if logger == nil {
@@ -285,13 +277,7 @@ struct HomeContent: View {
                         if home.enforcementEnabled, env.push.authorizationStatus == .denied {
                             NotificationsOffBanner()
                         }
-                        TodayHero(home: home, moment: moment, date: now, onAppetite: {
-                            if env.subscription.entitled {
-                                showingAppetite = true
-                            } else {
-                                showingPaywall = true
-                            }
-                        })
+                        TodayHero(home: home, moment: moment, date: now)
                     }
                     .padding(.horizontal, Space.gutter)
                     .padding(.top, Space.sm)
@@ -299,6 +285,13 @@ struct HomeContent: View {
                 }
 
                 VStack(alignment: .leading, spacing: Space.lg) {
+                    if !moment.takesOver {
+                        AppetiteTodayLine(home: home) {
+                            Task { await model.load(showSpinner: false) }
+                        }
+                        .appearIn(0)
+                    }
+
                     FuelStrip(home: home, moment: moment)
                         .appearIn(1)
 

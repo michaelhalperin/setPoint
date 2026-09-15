@@ -57,7 +57,8 @@ enum TodayMoment: Equatable {
     /// A check-in the user snoozed, until this time.
     case snoozed(until: Date?)
     /// Watching a meal: the next check-in comes at `dueMin` if nothing's logged.
-    case watching(MealSlot, dueMin: Int, overdue: Bool)
+    /// `slot` is a schedule name (`breakfast` / `lunch` / `dinner` / `snack_am` / `snack_pm`).
+    case watching(slot: String, dueMin: Int, overdue: Bool)
     /// Under target with nothing scheduled (paused, or the meal times have passed).
     case toGo(kcal: Int)
     /// Target met or passed — nothing to push.
@@ -76,7 +77,7 @@ enum TodayMoment: Equatable {
         guard home.enforcementEnabled else { return .quiet }
         guard home.framing.state == "under" else { return .covered }
         if let next = home.nextCheckIn {
-            return .watching(MealSlot(rawValue: next.slot) ?? .lunch, dueMin: next.dueMin, overdue: next.overdue)
+            return .watching(slot: next.slot, dueMin: next.dueMin, overdue: next.overdue)
         }
         return .toGo(kcal: max(0, home.ledger.remainingKcal))
     }
@@ -91,12 +92,20 @@ enum TodayMoment: Equatable {
 }
 
 enum TodayCopy {
+    static func slotTitle(_ slot: String) -> String {
+        if let meal = MealSlot(rawValue: slot) { return meal.title }
+        if slot.hasPrefix("snack") { return "Snack" }
+        return "Meal"
+    }
+
     static func headline(_ moment: TodayMoment) -> String {
         switch moment {
         case let .checkIn(slot): return slot.map { "\($0.title) slipped." } ?? "Time to eat."
         case .conversation: return "Rough few days."
         case .snoozed: return "Snoozed."
-        case let .watching(slot, _, overdue): return overdue ? "\(slot.title) slipped." : "\(slot.title) is next."
+        case let .watching(slot, _, overdue):
+            let title = slotTitle(slot)
+            return overdue ? "\(title) slipped." : "\(title) is next."
         case let .toGo(kcal): return "\(kcal.formatted()) kcal to go."
         case .covered: return "Day covered."
         case .quiet: return "Here’s today."
@@ -112,7 +121,8 @@ enum TodayCopy {
         case let .snoozed(until):
             return until.map { "I’ll check again at \($0.formatted(date: .omitted, time: .shortened))." }
         case let .watching(_, _, overdue):
-            return overdue ? "Checking in now." : nil
+            if overdue { return "Checking in now." }
+            return smallAppetiteDetail(home)
         case .toGo:
             return "A snack or a late meal covers it."
         case .covered:
@@ -120,6 +130,34 @@ enum TodayCopy {
         case .quiet:
             return "Log when you like. No check-ins."
         }
+    }
+
+    /// Low / SMALL_FREQUENT: plate size + when the next snack lands.
+    static func smallAppetiteDetail(_ home: HomeResponse) -> String? {
+        guard let appetite = home.appetite else { return nil }
+        let small = appetite.level == "LOW" || appetite.mode == "SMALL_FREQUENT"
+        guard small, let plate = appetite.nextPlate else { return nil }
+        let nextSnack = appetite.extraSlots
+            .map(\.atMin)
+            .filter { $0 > plate.atMin }
+            .sorted()
+            .first
+        if let snackAt = nextSnack {
+            return "Something small now, about \(plate.kcal) kcal. A snack follows at \(formatMinutes(snackAt))."
+        }
+        return "Something small now, about \(plate.kcal) kcal."
+    }
+
+    /// "Today: 8:00 · 10:30 · …" when the empty meal log should show the five-slot day.
+    static func dayScheduleLine(_ home: HomeResponse) -> String? {
+        guard let appetite = home.appetite else { return nil }
+        let small = appetite.level == "LOW" || appetite.mode == "SMALL_FREQUENT" || !appetite.extraSlots.isEmpty
+        guard small else { return nil }
+        let times = home.resolvedMealTimes
+        var minutes = [times.breakfastMin, times.lunchMin, times.dinnerMin]
+        minutes.append(contentsOf: appetite.extraSlots.map(\.atMin))
+        let line = minutes.sorted().map(formatMinutes).joined(separator: " · ")
+        return "Today: \(line)"
     }
 
     /// "Nothing since 8:05." — when the last meal was today.

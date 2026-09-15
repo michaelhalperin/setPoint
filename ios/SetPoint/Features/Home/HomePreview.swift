@@ -145,6 +145,42 @@ extension HomeResponse {
             level: "LOW",
             drinkableOk: true,
             suggestSmallerDefault: true,
+            answeredToday: true,
+            nextPlate: .init(slot: "lunch", atMin: 780, kcal: 450),
+            extraSlots: [
+                .init(slot: "snack_am", atMin: 630),
+                .init(slot: "snack_pm", atMin: 960),
+            ]
+        )
+        home.nextCheckIn = .init(slot: "lunch", mealMin: 780, dueMin: 825, overdue: true)
+        return home
+    }
+
+    /// Morning ask — nothing logged, no day answer yet.
+    static var sampleAppetiteAsk: HomeResponse {
+        var home = sampleEmpty
+        home.appetite = .init(
+            mode: "NORMAL",
+            level: "NORMAL",
+            drinkableOk: true,
+            suggestSmallerDefault: false,
+            answeredToday: false,
+            nextPlate: .init(slot: "breakfast", atMin: 480, kcal: 3100),
+            extraSlots: []
+        )
+        return home
+    }
+
+    /// Low appetite answered — five slots on the dial, schedule line in the empty log.
+    static var sampleAppetiteLow: HomeResponse {
+        var home = sampleEmpty
+        home.appetite = .init(
+            mode: "NORMAL",
+            level: "LOW",
+            drinkableOk: true,
+            suggestSmallerDefault: true,
+            answeredToday: true,
+            nextPlate: .init(slot: "breakfast", atMin: 480, kcal: 420),
             extraSlots: [
                 .init(slot: "snack_am", atMin: 630),
                 .init(slot: "snack_pm", atMin: 960),

@@ -109,10 +109,17 @@ struct MealLog: View {
     }
 
     private var emptyHint: some View {
-        Text("Meals you log land here, under their meal time.")
-            .font(Typography.data(13))
-            .foregroundStyle(Palette.inkFaint)
-            .frame(maxWidth: .infinity, alignment: .leading)
+        if let schedule = TodayCopy.dayScheduleLine(home) {
+            Text(schedule)
+                .font(Typography.data(13))
+                .foregroundStyle(Palette.inkFaint)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        } else {
+            Text("Meals you log land here, under their meal time.")
+                .font(Typography.data(13))
+                .foregroundStyle(Palette.inkFaint)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
     }
 
     @ViewBuilder

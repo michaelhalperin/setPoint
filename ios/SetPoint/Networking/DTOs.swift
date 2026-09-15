@@ -64,12 +64,24 @@ struct HomeResponse: Decodable {
         var level: String
         var drinkableOk: Bool
         var suggestSmallerDefault: Bool
+        var answeredToday: Bool? = nil
+        var nextPlate: NextPlate? = nil
         var extraSlots: [ExtraSlot]
+        /// Profile preference; older payloads omit it (treated as true).
+        var askDaily: Bool? = nil
 
         struct ExtraSlot: Decodable, Equatable {
             let slot: String
             let atMin: Int
         }
+
+        struct NextPlate: Decodable, Equatable {
+            let slot: String
+            let atMin: Int
+            let kcal: Int
+        }
+
+        var didAnswerToday: Bool { answeredToday == true }
     }
 
     struct NextCheckIn: Decodable, Equatable {

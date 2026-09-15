@@ -69,7 +69,6 @@ enum DebugPreviewStub {
     case calendarConnect
     case training
     case refuel
-    case appetite
     case checkinSmaller
     case settingsAppetite
     case widgets
@@ -143,8 +142,6 @@ enum DebugPreviewStub {
                 onCoveredByDinner: {},
                 onDismiss: {}
             )
-        case .appetite:
-            AppetitePickerSheet(previewLevel: "LOW", previewTarget: 2500)
         case .checkinSmaller:
             if let checkIn = HomeResponse.sampleUnder.activeCheckIn {
                 PrescriptionView(
@@ -220,7 +217,8 @@ enum DebugPreviewStub {
         case "calendar-connect": return .calendarConnect
         case "home-busy": return .home(.sampleBusy)
         case "home-training": return .home(.sampleTraining)
-        case "home-appetite": return .home(.sampleAppetite)
+        case "home-appetite", "home-appetite-low": return .home(.sampleAppetiteLow)
+        case "home-appetite-ask": return .home(.sampleAppetiteAsk)
         case "training": return .training
         case "refuel": return .refuel
         case "checkin-smaller": return .checkinSmaller

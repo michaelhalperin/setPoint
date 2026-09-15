@@ -8,6 +8,12 @@ struct DialGhost: Equatable, Identifiable {
     var label: String? = nil
 }
 
+/// Extra mid-morning / afternoon snack knobs — not a `MealSlot`.
+struct DialSnack: Equatable, Identifiable {
+    let id: String
+    let minute: Int
+}
+
 /// Today's live state on the dial: each meal's state, the day so far, and now.
 struct DialToday: Equatable {
     var states: [MealSlot: SlotState]
@@ -51,6 +57,8 @@ struct DayDial<Center: View>: View {
     var refuelArcs: [ClosedRange<Int>] = []
     /// Dashed knobs at a meal's usual time after calendar moved the live knob.
     var ghostKnobs: [DialGhost] = []
+    /// Smaller cup knobs for appetite snack slots (not `MealSlot`s).
+    var snackKnobs: [DialSnack] = []
     /// When set, knobs can be dragged around the ring. Onboarding leaves this nil.
     var onMove: ((MealSlot, Int) -> Void)? = nil
     @ViewBuilder var center: () -> Center
@@ -225,6 +233,35 @@ struct DayDial<Center: View>: View {
                         .opacity(markersShown ? 1 : 0)
                         .animation(markerAnimation(index).delay(0.15), value: markersShown)
                         .position(point(CheckInSchedule.minute(afterMeal: minute), radius: r + size * 0.105, center: c))
+                    }
+                }
+
+                ForEach(Array(snackKnobs.enumerated()), id: \.element.id) { index, snack in
+                    let snackSize = knobSize * 0.72
+                    let snackBell = bellSize * 0.78
+                    Image(systemName: "cup.and.saucer.fill")
+                        .font(.system(size: snackSize * 0.36, weight: .semibold))
+                        .foregroundStyle(Palette.inkSoft)
+                        .frame(width: snackSize, height: snackSize)
+                        .background(Palette.surface, in: Circle())
+                        .overlay(Circle().strokeBorder(Palette.surfaceSunk, lineWidth: 1.5))
+                        .scaleEffect(markersShown ? 1 : 0.2)
+                        .opacity(markersShown ? 1 : 0)
+                        .animation(markerAnimation(index + 3), value: markersShown)
+                        .position(point(snack.minute, radius: r, center: c))
+                        .allowsHitTesting(false)
+                    if today?.showsBells != false {
+                        PingBell(
+                            fill: theme == .terra ? Palette.background : Palette.accentTint,
+                            stagger: Double(index + 3) * 0.8,
+                            fired: false,
+                            size: snackBell
+                        )
+                        .scaleEffect(markersShown ? 1 : 0.2)
+                        .opacity(markersShown ? 0.85 : 0)
+                        .animation(markerAnimation(index + 3).delay(0.15), value: markersShown)
+                        .position(point(CheckInSchedule.minute(afterMeal: snack.minute), radius: r + size * 0.105, center: c))
+                        .allowsHitTesting(false)
                     }
                 }
 

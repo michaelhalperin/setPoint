@@ -14,7 +14,12 @@ const voice: ManagerVoice = {
 
 type AnyRow = Record<string, unknown>;
 
-function fakePrisma(over: { user?: AnyRow | null; meals?: AnyRow[]; checkIn?: AnyRow | null } = {}) {
+function fakePrisma(over: {
+  user?: AnyRow | null;
+  meals?: AnyRow[];
+  checkIn?: AnyRow | null;
+  dayAppetite?: AnyRow | null;
+} = {}) {
   const meals = over.meals ?? [];
   return {
     user: { findUnique: async () => (over.user === undefined ? defaultUser : over.user) },
@@ -30,7 +35,7 @@ function fakePrisma(over: { user?: AnyRow | null; meals?: AnyRow[]; checkIn?: An
     weightEntry: { findFirst: async () => null },
     calendarBusyBlock: { findMany: async () => [] },
     workout: { findMany: async () => [] },
-    dayAppetite: { findUnique: async () => null },
+    dayAppetite: { findUnique: async () => over.dayAppetite ?? null },
   } as unknown as PrismaClient;
 }
 
@@ -196,5 +201,27 @@ describe('buildHome', () => {
     await expect(
       buildHome({ prisma: fakePrisma({ user: { id: 'u1', timezone: 'UTC', onboarding: null } }), voice, now: NOW }, 'u1'),
     ).rejects.toBeInstanceOf(OnboardingIncompleteError);
+  });
+
+  it('marks answeredToday and names nextPlate on appetite', async () => {
+    const unanswered = await buildHome({ prisma: fakePrisma(), voice, now: NOW }, 'u1');
+    expect(unanswered.appetite.answeredToday).toBe(false);
+    expect(unanswered.appetite.nextPlate).toEqual({ slot: 'dinner', atMin: 1140, kcal: 3000 });
+
+    const answered = await buildHome(
+      {
+        prisma: fakePrisma({
+          dayAppetite: { level: 'LOW', localDate: '2026-09-01' },
+        }),
+        voice,
+        now: NOW,
+      },
+      'u1',
+    );
+    expect(answered.appetite.answeredToday).toBe(true);
+    expect(answered.appetite.level).toBe('LOW');
+    expect(answered.appetite.extraSlots).toHaveLength(2);
+    expect(answered.appetite.nextPlate).toMatchObject({ slot: 'snack_pm', atMin: 960 });
+    expect(answered.appetite.nextPlate?.kcal).toBeGreaterThan(0);
   });
 });
