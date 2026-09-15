@@ -84,7 +84,7 @@ struct AppetiteTodayLine: View {
     private func answeredRow(_ level: String) -> some View {
         HStack(spacing: 8) {
             if level == "LOW" {
-                Image(systemName: "bowl.fill")
+                Image(systemName: "cup.and.saucer.fill")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(Palette.inkSoft)
             }

@@ -321,9 +321,7 @@ struct PrescriptionView: View {
 
     private func loadVariants() async {
         if previewVariants != nil {
-            if notHungry != (checkIn.variant == "smaller") {
-                await persistVariant(notHungry ? "smaller" : "full")
-            }
+            loaded = true
             return
         }
         struct Reply: Decodable {
@@ -346,6 +344,7 @@ struct PrescriptionView: View {
     }
 
     private func persistVariant(_ variant: String) async {
+        if previewVariants != nil { return }
         struct Body: Encodable { let variant: String }
         struct Reply: Decodable {
             let variant: String
