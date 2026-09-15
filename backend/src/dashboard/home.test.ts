@@ -206,6 +206,7 @@ describe('buildHome', () => {
   it('marks answeredToday and names nextPlate on appetite', async () => {
     const unanswered = await buildHome({ prisma: fakePrisma(), voice, now: NOW }, 'u1');
     expect(unanswered.appetite.answeredToday).toBe(false);
+    expect(unanswered.appetite.askDaily).toBe(true);
     expect(unanswered.appetite.nextPlate).toEqual({ slot: 'dinner', atMin: 1140, kcal: 3000 });
 
     const answered = await buildHome(

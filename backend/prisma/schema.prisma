@@ -273,6 +273,7 @@ model OnboardingProfile {
 
   appetiteMode           String  @default("NORMAL")
   drinkableOk            Boolean @default(true)
+  appetiteAskDaily       Boolean @default(true)
 
   completedAt DateTime?
   createdAt   DateTime  @default(now())

@@ -242,6 +242,18 @@ final class TodayTests: XCTestCase {
         )
     }
 
+    func testAppetiteLineHidesWhenAskDailyIsOff() {
+        let unanswered = HomeResponse.Appetite(
+            mode: "NORMAL", level: "NORMAL", drinkableOk: true,
+            suggestSmallerDefault: false, answeredToday: false, nextPlate: nil, extraSlots: [],
+            askDaily: false
+        )
+        XCTAssertEqual(
+            AppetiteTodayVisibility.resolve(enforcementEnabled: true, appetite: unanswered, mealsToday: 0),
+            .hidden
+        )
+    }
+
     func testSmallAppetiteDetailNamesTheNextSnack() {
         var response = home(next: next("breakfast", due: 525))
         response.appetite = HomeResponse.Appetite(

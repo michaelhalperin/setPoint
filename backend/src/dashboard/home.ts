@@ -95,6 +95,7 @@ export type HomeView = {
     drinkableOk: boolean;
     suggestSmallerDefault: boolean;
     answeredToday: boolean;
+    askDaily: boolean;
     nextPlate: { slot: string; atMin: number; kcal: number } | null;
     extraSlots: { slot: string; atMin: number }[];
   };
@@ -342,6 +343,7 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
       drinkableOk: profile.drinkableOk ?? true,
       suggestSmallerDefault: smallerCount >= 2,
       answeredToday: dayAppetite !== null,
+      askDaily: profile.appetiteAskDaily ?? true,
       nextPlate,
       extraSlots: extraSlots ? extraAppetiteSlots(times).map((s) => ({ slot: s.slot, atMin: s.mealMin })) : [],
     },

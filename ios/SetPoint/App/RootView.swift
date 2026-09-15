@@ -167,7 +167,7 @@ enum DebugPreviewStub {
                 )
             }
         case .settingsAppetite:
-            NavigationStack { AppetiteSettingsView(previewMode: "SMALL_FREQUENT") }
+            NavigationStack { AppetiteSettingsView(previewHistory: .sample, previewMode: "SMALL_FREQUENT") }
         case .widgets:
             WidgetsStubHost()
         case .burn:
@@ -234,7 +234,7 @@ enum DebugPreviewStub {
         case "training": return .training
         case "refuel": return .refuel
         case "checkin-smaller", "checkin-not-hungry": return .checkinSmaller
-        case "settings-appetite": return .settingsAppetite
+        case "settings-appetite", "appetite-record": return .settingsAppetite
         case "widgets": return .widgets
         case "burn": return .burn
         case "paywall": return .paywall
