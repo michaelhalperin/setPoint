@@ -64,12 +64,24 @@ struct HomeResponse: Decodable {
         var level: String
         var drinkableOk: Bool
         var suggestSmallerDefault: Bool
+        var answeredToday: Bool? = nil
+        var nextPlate: NextPlate? = nil
         var extraSlots: [ExtraSlot]
+        /// Profile preference; older payloads omit it (treated as true).
+        var askDaily: Bool? = nil
 
         struct ExtraSlot: Decodable, Equatable {
             let slot: String
             let atMin: Int
         }
+
+        struct NextPlate: Decodable, Equatable {
+            let slot: String
+            let atMin: Int
+            let kcal: Int
+        }
+
+        var didAnswerToday: Bool { answeredToday == true }
     }
 
     struct NextCheckIn: Decodable, Equatable {
@@ -668,6 +680,42 @@ struct TrainingSettingsPayload: Codable, Equatable {
 struct AppetiteSettingsPayload: Codable, Equatable {
     var mode: String?
     var drinkableOk: Bool?
+    var askDaily: Bool?
+}
+
+struct AppetiteHistoryResponse: Decodable, Equatable {
+    var days: [Day]
+    var percentEatenNormal: Int
+    var percentEatenLow: Int
+    var percentEatenLowBefore: Int?
+    var patterns: [Pattern]
+    var lowDayFoods: [LowDayFood]
+
+    struct Day: Decodable, Equatable, Identifiable {
+        var id: String { date }
+        let date: String
+        let level: String?
+    }
+
+    struct Pattern: Decodable, Equatable, Identifiable {
+        var id: String
+        var title: String
+        var body: String
+        var action: Action?
+
+        struct Action: Decodable, Equatable {
+            var label: String
+            var dinnerMin: Int?
+        }
+    }
+
+    struct LowDayFood: Decodable, Equatable, Identifiable {
+        var id: String { name }
+        var name: String
+        var tag: String
+        var eaten: Int
+        var offered: Int
+    }
 }
 
 struct WorkoutSyncPayload: Encodable {

@@ -63,7 +63,7 @@ final class TodayTests: XCTestCase {
     }
 
     func testUnderTargetWatchesTheNextCheckIn() {
-        XCTAssertEqual(TodayMoment.resolve(home(next: next())), .watching(.lunch, dueMin: 825, overdue: false))
+        XCTAssertEqual(TodayMoment.resolve(home(next: next())), .watching(slot: "lunch", dueMin: 825, overdue: false))
         XCTAssertEqual(TodayMoment.resolve(home(heroKcal: 450)), .toGo(kcal: 450)) // nothing scheduled
     }
 
@@ -76,10 +76,11 @@ final class TodayTests: XCTestCase {
     // MARK: Copy
 
     func testHeadlinesStayShort() {
-        XCTAssertEqual(TodayCopy.headline(.watching(.lunch, dueMin: 825, overdue: false)), "Lunch is next.")
+        XCTAssertEqual(TodayCopy.headline(.watching(slot: "lunch", dueMin: 825, overdue: false)), "Lunch is next.")
         XCTAssertEqual(TodayCopy.headline(.checkIn(.dinner)), "Dinner slipped.")
         XCTAssertEqual(TodayCopy.headline(.checkIn(nil)), "Time to eat.")
         XCTAssertEqual(TodayCopy.headline(.covered), "Day covered.")
+        XCTAssertEqual(TodayCopy.headline(.watching(slot: "snack_am", dueMin: 675, overdue: false)), "Snack is next.")
     }
 
     func testSinceLastMealOnlyCountsToday() {
@@ -194,5 +195,94 @@ final class TodayTests: XCTestCase {
             meal("d", "2026-09-14T13:00:00Z", nil),
         ])
         XCTAssertEqual(recents.map(\.id), ["c", "b"])
+    }
+
+    // MARK: Appetite today line
+
+    func testAppetiteLineAsksBeforeAnythingIsLogged() {
+        let appetite = HomeResponse.Appetite(
+            mode: "NORMAL", level: "NORMAL", drinkableOk: true,
+            suggestSmallerDefault: false, answeredToday: false, nextPlate: nil, extraSlots: []
+        )
+        XCTAssertEqual(
+            AppetiteTodayVisibility.resolve(enforcementEnabled: true, appetite: appetite, mealsToday: 0),
+            .ask
+        )
+    }
+
+    func testAppetiteLineHidesInQuietModeAndAfterLoggingWithoutAnswer() {
+        let unanswered = HomeResponse.Appetite(
+            mode: "NORMAL", level: "NORMAL", drinkableOk: true,
+            suggestSmallerDefault: false, answeredToday: false, nextPlate: nil, extraSlots: []
+        )
+        XCTAssertEqual(
+            AppetiteTodayVisibility.resolve(enforcementEnabled: false, appetite: unanswered, mealsToday: 0),
+            .hidden
+        )
+        XCTAssertEqual(
+            AppetiteTodayVisibility.resolve(enforcementEnabled: true, appetite: unanswered, mealsToday: 1),
+            .hidden
+        )
+    }
+
+    func testAppetiteLineShowsAnswerAndChangeReturnsToAsk() {
+        let answered = HomeResponse.Appetite(
+            mode: "NORMAL", level: "LOW", drinkableOk: true,
+            suggestSmallerDefault: false, answeredToday: true,
+            nextPlate: .init(slot: "breakfast", atMin: 480, kcal: 420),
+            extraSlots: [.init(slot: "snack_am", atMin: 630), .init(slot: "snack_pm", atMin: 960)]
+        )
+        XCTAssertEqual(
+            AppetiteTodayVisibility.resolve(enforcementEnabled: true, appetite: answered, mealsToday: 0),
+            .answered(level: "LOW")
+        )
+        XCTAssertEqual(
+            AppetiteTodayVisibility.resolve(enforcementEnabled: true, appetite: answered, mealsToday: 2, changing: true),
+            .ask
+        )
+    }
+
+    func testAppetiteLineOptimisticPickShowsAnswerImmediately() {
+        let unanswered = HomeResponse.Appetite(
+            mode: "NORMAL", level: "NORMAL", drinkableOk: true,
+            suggestSmallerDefault: false, answeredToday: false, nextPlate: nil, extraSlots: []
+        )
+        XCTAssertEqual(
+            AppetiteTodayVisibility.resolve(
+                enforcementEnabled: true, appetite: unanswered, mealsToday: 0, optimisticLevel: "LOW"
+            ),
+            .answered(level: "LOW")
+        )
+        XCTAssertEqual(
+            AppetiteTodayVisibility.resolve(
+                enforcementEnabled: true, appetite: unanswered, mealsToday: 0,
+                changing: true, optimisticLevel: "LOW"
+            ),
+            .ask
+        )
+    }
+
+    func testAppetiteLineHidesWhenAskDailyIsOff() {
+        let unanswered = HomeResponse.Appetite(
+            mode: "NORMAL", level: "NORMAL", drinkableOk: true,
+            suggestSmallerDefault: false, answeredToday: false, nextPlate: nil, extraSlots: [],
+            askDaily: false
+        )
+        XCTAssertEqual(
+            AppetiteTodayVisibility.resolve(enforcementEnabled: true, appetite: unanswered, mealsToday: 0),
+            .hidden
+        )
+    }
+
+    func testSmallAppetiteDetailNamesTheNextSnack() {
+        var response = home(next: next("breakfast", due: 525))
+        response.appetite = HomeResponse.Appetite(
+            mode: "SMALL_FREQUENT", level: "LOW", drinkableOk: true,
+            suggestSmallerDefault: true, answeredToday: true,
+            nextPlate: .init(slot: "breakfast", atMin: 480, kcal: 420),
+            extraSlots: [.init(slot: "snack_am", atMin: 630), .init(slot: "snack_pm", atMin: 960)]
+        )
+        let detail = TodayCopy.detail(.watching(slot: "breakfast", dueMin: 525, overdue: false), home: response)
+        XCTAssertEqual(detail, "Something small now, about 420 kcal. A snack follows at \(formatMinutes(630)).")
     }
 }

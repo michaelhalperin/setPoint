@@ -4,6 +4,7 @@ import { requireAuth, type AuthedRequest } from '../auth/index.js';
 import { getPrisma } from '../db/client.js';
 import { requireEntitlement } from '../subscription/requireEntitlement.js';
 import { localDateISO } from '../engine/time.js';
+import { loadAppetiteHistory } from '../appetite/loadHistory.js';
 
 const body = z.object({
   level: z.enum(['HUNGRY', 'NORMAL', 'LOW']),
@@ -26,5 +27,11 @@ export async function appetiteRoutes(app: FastifyInstance): Promise<void> {
       update: { level },
     });
     return { date: row.localDate, level: row.level };
+  });
+
+  // Read-only — not entitlement-gated.
+  app.get('/history', async (req) => {
+    const userId = (req as AuthedRequest).userId;
+    return loadAppetiteHistory(getPrisma(), userId);
   });
 }

@@ -55,6 +55,7 @@ export type SettingsView = {
   appetite: {
     mode: 'NORMAL' | 'SMALL_FREQUENT';
     drinkableOk: boolean;
+    askDaily: boolean;
   };
 };
 
@@ -98,6 +99,7 @@ export type SettingsPatch = {
   appetite?: {
     mode?: 'NORMAL' | 'SMALL_FREQUENT';
     drinkableOk?: boolean;
+    askDaily?: boolean;
   };
 };
 
@@ -252,6 +254,7 @@ export async function updateSettings(
     if (patch.appetite) {
       if (patch.appetite.mode != null) profileData.appetiteMode = patch.appetite.mode;
       if (patch.appetite.drinkableOk != null) profileData.drinkableOk = patch.appetite.drinkableOk;
+      if (patch.appetite.askDaily != null) profileData.appetiteAskDaily = patch.appetite.askDaily;
     }
     if (Object.keys(profileData).length > 0) {
       await tx.onboardingProfile.update({ where: { userId }, data: profileData });
@@ -371,6 +374,7 @@ function toView(user: UserWithSettings, weekendSuggestion: WeekendBreakfastSugge
     appetite: {
       mode: (p.appetiteMode as 'NORMAL' | 'SMALL_FREQUENT') ?? 'NORMAL',
       drinkableOk: p.drinkableOk ?? true,
+      askDaily: p.appetiteAskDaily ?? true,
     },
   };
 }

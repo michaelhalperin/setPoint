@@ -74,8 +74,51 @@ export function appetiteMealTarget(input: {
   const remaining = Math.max(0, input.remainingKcal);
   if (input.shape === 'NORMAL') return remaining;
   const split = remaining / Math.max(1, input.remainingSlots);
-  if (input.shape === 'SMALL') return Math.min(450, Math.max(200, Math.round(split / 10) * 10));
+  // SMALL: equal share of what's left, floored at 200 — no upper cap so five
+  // plates can still sum to a ~3,100 day.
+  if (input.shape === 'SMALL') return Math.max(200, Math.round(split / 10) * 10);
   return Math.min(900, Math.max(400, Math.round(split / 10) * 10));
+}
+
+export type NextPlate = { slot: string; atMin: number; kcal: number };
+
+/** The next meal or snack still to come, with the kcal this plate would suggest. */
+export function nextAppetitePlate(input: {
+  nowMin: number;
+  times: MealTimes;
+  shape: AppetiteShape;
+  remainingKcal: number;
+  checked: string[];
+  mealMinutesToday: number[];
+}): NextPlate | null {
+  const extra = input.shape === 'SMALL';
+  const slots = extra
+    ? [
+        { slot: 'breakfast', mealMin: input.times.breakfastMin },
+        ...extraAppetiteSlots(input.times),
+        { slot: 'lunch', mealMin: input.times.lunchMin },
+        { slot: 'dinner', mealMin: input.times.dinnerMin },
+      ]
+    : [
+        { slot: 'breakfast', mealMin: input.times.breakfastMin },
+        { slot: 'lunch', mealMin: input.times.lunchMin },
+        { slot: 'dinner', mealMin: input.times.dinnerMin },
+      ];
+  const remaining = slots.filter(
+    (s) => s.mealMin + 45 > input.nowMin && !input.checked.includes(s.slot),
+  );
+  const next = remaining[0];
+  if (!next) return null;
+  const remainingSlots = remaining.length || 1;
+  return {
+    slot: next.slot,
+    atMin: next.mealMin,
+    kcal: appetiteMealTarget({
+      remainingKcal: input.remainingKcal,
+      remainingSlots,
+      shape: input.shape,
+    }),
+  };
 }
 
 export function dayStaysAboveFloor(dailyTarget: number): number {

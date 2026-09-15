@@ -105,6 +105,7 @@ const settingsPatch = z
       .object({
         mode: z.enum(['NORMAL', 'SMALL_FREQUENT']).optional(),
         drinkableOk: z.boolean().optional(),
+        askDaily: z.boolean().optional(),
       })
       .optional(),
   })

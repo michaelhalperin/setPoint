@@ -3,6 +3,7 @@ import {
   appetiteMealTarget,
   appetiteShape,
   extraAppetiteSlots,
+  nextAppetitePlate,
   remainingSlotCount,
 } from './appetite.js';
 
@@ -32,6 +33,19 @@ describe('appetite.v1', () => {
     expect(small * 4).toBeLessThanOrEqual(remaining);
   });
 
+  it('lets five SMALL plates cover a ~3100 day without a 450 cap', () => {
+    const target = 3100;
+    const slots = 5;
+    const plate = appetiteMealTarget({ remainingKcal: target, remainingSlots: slots, shape: 'SMALL' });
+    expect(plate).toBe(620);
+    expect(plate * slots).toBe(3100);
+    expect(plate).toBeGreaterThan(450);
+  });
+
+  it('still floors SMALL plates at 200 kcal', () => {
+    expect(appetiteMealTarget({ remainingKcal: 500, remainingSlots: 5, shape: 'SMALL' })).toBe(200);
+  });
+
   it('counts remaining slots including extra ones', () => {
     expect(
       remainingSlotCount({
@@ -42,5 +56,40 @@ describe('appetite.v1', () => {
         mealMinutesToday: [490],
       }),
     ).toBe(4);
+  });
+
+  it('names the next plate and its suggested kcal', () => {
+    expect(
+      nextAppetitePlate({
+        nowMin: 400,
+        times,
+        shape: 'SMALL',
+        remainingKcal: 3100,
+        checked: [],
+        mealMinutesToday: [],
+      }),
+    ).toEqual({ slot: 'breakfast', atMin: 480, kcal: 620 });
+
+    expect(
+      nextAppetitePlate({
+        nowMin: 700,
+        times,
+        shape: 'NORMAL',
+        remainingKcal: 1800,
+        checked: ['breakfast'],
+        mealMinutesToday: [490],
+      }),
+    ).toEqual({ slot: 'lunch', atMin: 780, kcal: 1800 });
+
+    expect(
+      nextAppetitePlate({
+        nowMin: 1300,
+        times,
+        shape: 'NORMAL',
+        remainingKcal: 400,
+        checked: ['breakfast', 'lunch', 'dinner'],
+        mealMinutesToday: [490, 800, 1150],
+      }),
+    ).toBeNull();
   });
 });

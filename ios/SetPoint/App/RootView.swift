@@ -69,7 +69,6 @@ enum DebugPreviewStub {
     case calendarConnect
     case training
     case refuel
-    case appetite
     case checkinSmaller
     case settingsAppetite
     case widgets
@@ -143,10 +142,18 @@ enum DebugPreviewStub {
                 onCoveredByDinner: {},
                 onDismiss: {}
             )
-        case .appetite:
-            AppetitePickerSheet(previewLevel: "LOW", previewTarget: 2500)
         case .checkinSmaller:
             if let checkIn = HomeResponse.sampleUnder.activeCheckIn {
+                let full = checkIn.prescription!
+                let smaller = HomeResponse.ActiveCheckIn.Prescription(
+                    id: full.id,
+                    totalKcal: full.totalKcal,
+                    totalProteinG: full.totalProteinG,
+                    items: [
+                        .init(name: "Protein smoothie", quantity: 1, kcal: 420, proteinG: 32),
+                        .init(name: "Peanut butter toast", quantity: 1, kcal: 250, proteinG: 12),
+                    ]
+                )
                 PrescriptionView(
                     checkIn: checkIn,
                     headline: "Lunch slipped.",
@@ -154,11 +161,13 @@ enum DebugPreviewStub {
                     onDismiss: {},
                     onResolved: {},
                     onAlreadyAte: {},
-                    suggestSmallerDefault: true
+                    suggestSmallerDefault: true,
+                    appetiteLevel: "LOW",
+                    previewVariants: .init(full: full, smaller: smaller)
                 )
             }
         case .settingsAppetite:
-            NavigationStack { AppetiteSettingsView(previewMode: "SMALL_FREQUENT") }
+            NavigationStack { AppetiteSettingsView(previewHistory: .sample, previewMode: "SMALL_FREQUENT") }
         case .widgets:
             WidgetsStubHost()
         case .burn:
@@ -220,11 +229,12 @@ enum DebugPreviewStub {
         case "calendar-connect": return .calendarConnect
         case "home-busy": return .home(.sampleBusy)
         case "home-training": return .home(.sampleTraining)
-        case "home-appetite": return .home(.sampleAppetite)
+        case "home-appetite", "home-appetite-low": return .home(.sampleAppetiteLow)
+        case "home-appetite-ask": return .home(.sampleAppetiteAsk)
         case "training": return .training
         case "refuel": return .refuel
-        case "checkin-smaller": return .checkinSmaller
-        case "settings-appetite": return .settingsAppetite
+        case "checkin-smaller", "checkin-not-hungry": return .checkinSmaller
+        case "settings-appetite", "appetite-record": return .settingsAppetite
         case "widgets": return .widgets
         case "burn": return .burn
         case "paywall": return .paywall
