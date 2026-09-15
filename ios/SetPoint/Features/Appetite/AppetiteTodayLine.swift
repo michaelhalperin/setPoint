@@ -10,9 +10,13 @@ enum AppetiteTodayVisibility: Equatable {
         enforcementEnabled: Bool,
         appetite: HomeResponse.Appetite?,
         mealsToday: Int,
-        changing: Bool = false
+        changing: Bool = false,
+        optimisticLevel: String? = nil
     ) -> AppetiteTodayVisibility {
         guard enforcementEnabled, let appetite else { return .hidden }
+        if let optimisticLevel {
+            return changing ? .ask : .answered(level: optimisticLevel)
+        }
         if appetite.didAnswerToday {
             return changing ? .ask : .answered(level: appetite.level)
         }
@@ -22,12 +26,17 @@ enum AppetiteTodayVisibility: Equatable {
         return .ask
     }
 
-    static func resolve(home: HomeResponse, changing: Bool = false) -> AppetiteTodayVisibility {
+    static func resolve(
+        home: HomeResponse,
+        changing: Bool = false,
+        optimisticLevel: String? = nil
+    ) -> AppetiteTodayVisibility {
         resolve(
             enforcementEnabled: home.enforcementEnabled,
             appetite: home.appetite,
             mealsToday: home.ledger.mealsToday,
-            changing: changing
+            changing: changing,
+            optimisticLevel: optimisticLevel
         )
     }
 }
@@ -38,18 +47,30 @@ struct AppetiteTodayLine: View {
     var onChanged: () -> Void = {}
 
     @Environment(AppEnvironment.self) private var env
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var changing = false
+    @State private var optimisticLevel: String?
     @State private var busy = false
 
     var body: some View {
-        switch AppetiteTodayVisibility.resolve(home: home, changing: changing) {
-        case .hidden:
-            EmptyView()
-        case .ask:
-            askRow
-        case let .answered(level):
-            answeredRow(level)
+        Group {
+            switch AppetiteTodayVisibility.resolve(
+                home: home,
+                changing: changing,
+                optimisticLevel: optimisticLevel
+            ) {
+            case .hidden:
+                EmptyView()
+            case .ask:
+                askRow
+            case let .answered(level):
+                answeredRow(level)
+            }
         }
+        .animation(Motion.adaptive(Motion.snappy, reduceMotion: reduceMotion), value: optimisticLevel)
+        .animation(Motion.adaptive(Motion.snappy, reduceMotion: reduceMotion), value: changing)
+        .onChange(of: home.appetite?.level) { _, _ in clearOptimisticIfSynced() }
+        .onChange(of: home.appetite?.answeredToday) { _, _ in clearOptimisticIfSynced() }
     }
 
     private var askRow: some View {
@@ -61,7 +82,7 @@ struct AppetiteTodayLine: View {
             HStack(spacing: 6) {
                 ForEach([("HUNGRY", "Hungry"), ("NORMAL", "Normal"), ("LOW", "Low")], id: \.0) { id, title in
                     Button {
-                        Task { await pick(id) }
+                        pick(id)
                     } label: {
                         Text(title)
                             .font(Typography.data(12, weight: .bold))
@@ -113,16 +134,28 @@ struct AppetiteTodayLine: View {
         }
     }
 
-    private func pick(_ level: String) async {
-        struct Body: Encodable { let level: String }
+    /// Flip the capsule immediately, then save + reload home in the background.
+    private func pick(_ level: String) {
+        optimisticLevel = level
+        changing = false
         busy = true
-        defer { busy = false }
-        do {
-            try await env.api.put("/api/appetite/today", Body(level: level))
-            changing = false
-            onChanged()
-        } catch {
-            changing = false
+        Task {
+            struct Body: Encodable { let level: String }
+            do {
+                try await env.api.put("/api/appetite/today", Body(level: level))
+                onChanged()
+            } catch {
+                optimisticLevel = nil
+                changing = true
+            }
+            busy = false
+        }
+    }
+
+    private func clearOptimisticIfSynced() {
+        guard let optimisticLevel, let appetite = home.appetite, appetite.didAnswerToday else { return }
+        if appetite.level == optimisticLevel {
+            self.optimisticLevel = nil
         }
     }
 }

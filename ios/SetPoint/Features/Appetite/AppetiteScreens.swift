@@ -11,7 +11,7 @@ struct AppetiteSettingsView: View {
     @State private var drinkableOk = true
     @State private var askDaily = true
     @State private var mealTimes = MealTimesPayload.standard
-    @State private var busy = false
+    @State private var loading = true
 
     var body: some View {
         SettingsScreen(
@@ -27,17 +27,20 @@ struct AppetiteSettingsView: View {
                 if !history.lowDayFoods.isEmpty {
                     lowFoodsSection(history.lowDayFoods)
                 }
-            } else if previewHistory == nil {
-                ProgressView()
-                    .frame(maxWidth: .infinity, minHeight: 80)
+                whenLowSection
+            } else if loading {
+                AppetiteSkeletonView()
+            } else {
+                whenLowSection
             }
-
-            whenLowSection
         }
         .task { await load() }
         .onAppear {
             if let previewMode { mode = previewMode }
-            if let previewHistory { history = previewHistory }
+            if let previewHistory {
+                history = previewHistory
+                loading = false
+            }
         }
     }
 
@@ -274,19 +277,14 @@ struct AppetiteSettingsView: View {
                 .tracking(0.6)
             SettingsCard(padding: 0) {
                 VStack(spacing: 0) {
-                    Button {
-                        mode = mode == "SMALL_FREQUENT" ? "NORMAL" : "SMALL_FREQUENT"
-                        Task { await savePrefs() }
-                    } label: {
-                        settingsRow(
-                            title: "Plate size",
-                            subtitle: "Smaller plates, 5 check-ins",
-                            trailing: Text(mode == "SMALL_FREQUENT" ? "Smaller" : "Usual")
-                                .font(Typography.data(14, weight: .bold))
-                                .foregroundStyle(Palette.inkSoft)
-                        )
-                    }
-                    .buttonStyle(.plain)
+                    settingsRow(
+                        title: "Plate size",
+                        subtitle: mode == "SMALL_FREQUENT"
+                            ? "Smaller plates, 5 check-ins"
+                            : "Usual 3 meals, 3 check-ins",
+                        trailing: plateSizeSwitch
+                    )
+                    .padding(.vertical, 4)
                     Divider().overlay(Palette.hairline)
                     Toggle(isOn: Binding(
                         get: { drinkableOk },
@@ -323,8 +321,46 @@ struct AppetiteSettingsView: View {
                     .padding(.vertical, 12)
                 }
             }
-            .disabled(busy)
         }
+    }
+
+    private var plateSizeSwitch: some View {
+        let smaller = mode == "SMALL_FREQUENT"
+        return HStack(spacing: 0) {
+            plateSizeOption("Usual", selected: !smaller) {
+                setMode("NORMAL")
+            }
+            plateSizeOption("Smaller", selected: smaller) {
+                setMode("SMALL_FREQUENT")
+            }
+        }
+        .padding(3)
+        .background(Palette.surfaceSunk, in: Capsule())
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Plate size")
+    }
+
+    private func plateSizeOption(_ title: String, selected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(Typography.data(12, weight: .bold))
+                .foregroundStyle(selected ? Palette.ink : Palette.inkSoft)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 7)
+                .background {
+                    if selected {
+                        Capsule().fill(Palette.surface)
+                    }
+                }
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+
+    private func setMode(_ next: String) {
+        guard mode != next else { return }
+        mode = next
+        Task { await savePrefs() }
     }
 
     private func settingsRow<Trailing: View>(title: String, subtitle: String, trailing: Trailing) -> some View {
@@ -337,7 +373,7 @@ struct AppetiteSettingsView: View {
                     .font(Typography.data(13))
                     .foregroundStyle(Palette.inkSoft)
             }
-            Spacer()
+            Spacer(minLength: 8)
             trailing
         }
         .padding(.horizontal, 16)
@@ -352,7 +388,11 @@ struct AppetiteSettingsView: View {
     // MARK: Networking
 
     private func load() async {
-        if previewHistory != nil { return }
+        if previewHistory != nil {
+            loading = false
+            return
+        }
+        defer { loading = false }
         async let hist: AppetiteHistoryResponse? = try? await env.api.get("/api/appetite/history")
         async let settings: SettingsResponse? = try? await env.api.get("/api/settings")
         history = await hist
@@ -365,8 +405,6 @@ struct AppetiteSettingsView: View {
     }
 
     private func savePrefs() async {
-        busy = true
-        defer { busy = false }
         _ = try? await env.api.patch(
             "/api/settings",
             SettingsPatch(appetite: .init(mode: mode, drinkableOk: drinkableOk, askDaily: askDaily))
@@ -374,8 +412,6 @@ struct AppetiteSettingsView: View {
     }
 
     private func moveDinner(_ dinnerMin: Int) async {
-        busy = true
-        defer { busy = false }
         var times = mealTimes
         times.dinnerMin = dinnerMin
         mealTimes = times
@@ -425,6 +461,147 @@ extension AppetiteHistoryResponse {
                 .init(name: "White rice", tag: "Dense", eaten: 2, offered: 5),
             ]
         )
+    }
+}
+#endif
+
+/// Mirrors the Appetite record layout while history + settings load.
+private struct AppetiteSkeletonView: View {
+    private let cols = Array(repeating: GridItem(.flexible(), spacing: 6), count: 7)
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            weeksCard
+            tiles
+            noticed
+            foods
+            whenLow
+        }
+        .skeletonLoading()
+    }
+
+    private var weeksCard: some View {
+        SettingsCard {
+            VStack(alignment: .leading, spacing: 14) {
+                SkeletonBlock(width: 96, height: 10)
+                SkeletonBlock(width: 210, height: 28, radius: 8)
+                LazyVGrid(columns: cols, spacing: 6) {
+                    ForEach(0..<7, id: \.self) { _ in
+                        SkeletonBlock(height: 10)
+                    }
+                }
+                LazyVGrid(columns: cols, spacing: 6) {
+                    ForEach(0..<28, id: \.self) { i in
+                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .fill(i % 5 == 0 ? Palette.surfaceSunk.opacity(0.7) : Palette.surfaceSunk)
+                            .aspectRatio(1, contentMode: .fit)
+                    }
+                }
+                HStack(spacing: 14) {
+                    SkeletonBlock(width: 64, height: 12)
+                    SkeletonBlock(width: 58, height: 12)
+                    SkeletonBlock(width: 44, height: 12)
+                }
+                .padding(.top, 4)
+            }
+        }
+    }
+
+    private var tiles: some View {
+        HStack(spacing: 10) {
+            tile
+            tile
+        }
+    }
+
+    private var tile: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            SkeletonBlock(width: 88, height: 10)
+            SkeletonBlock(width: 72, height: 28, radius: 8)
+            SkeletonBlock(width: 110, height: 12)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Palette.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Palette.hairline))
+    }
+
+    private var noticed: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            SkeletonBlock(width: 112, height: 10)
+            SettingsCard {
+                HStack(alignment: .top, spacing: 12) {
+                    Circle().fill(Palette.surfaceSunk).frame(width: 36, height: 36)
+                    VStack(alignment: .leading, spacing: 8) {
+                        SkeletonBlock(width: 180, height: 16)
+                        SkeletonBlock(height: 13)
+                        SkeletonBlock(width: 220, height: 13)
+                        SkeletonBlock(width: 148, height: 28, radius: Radius.pill)
+                            .padding(.top, 2)
+                    }
+                }
+            }
+        }
+    }
+
+    private var foods: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            SkeletonBlock(width: 196, height: 10)
+            SettingsCard(padding: 0) {
+                VStack(spacing: 0) {
+                    ForEach(0..<3, id: \.self) { index in
+                        if index > 0 { Divider().overlay(Palette.hairline) }
+                        HStack {
+                            VStack(alignment: .leading, spacing: 6) {
+                                SkeletonBlock(width: index == 1 ? 140 : 118, height: 15)
+                                SkeletonBlock(width: 64, height: 11)
+                            }
+                            Spacer()
+                            VStack(alignment: .trailing, spacing: 6) {
+                                Capsule().fill(Palette.surfaceSunk).frame(width: 56, height: 6)
+                                SkeletonBlock(width: 28, height: 11)
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 14)
+                    }
+                }
+            }
+        }
+    }
+
+    private var whenLow: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            SkeletonBlock(width: 148, height: 10)
+            SettingsCard(padding: 0) {
+                VStack(spacing: 0) {
+                    ForEach(0..<3, id: \.self) { index in
+                        if index > 0 { Divider().overlay(Palette.hairline) }
+                        HStack {
+                            VStack(alignment: .leading, spacing: 6) {
+                                SkeletonBlock(width: index == 2 ? 148 : 92, height: 15)
+                                SkeletonBlock(width: index == 0 ? 168 : 140, height: 12)
+                            }
+                            Spacer()
+                            if index == 0 {
+                                SkeletonBlock(width: 52, height: 14)
+                            } else {
+                                Capsule().fill(Palette.surfaceSunk).frame(width: 48, height: 28)
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 14)
+                    }
+                }
+            }
+        }
+    }
+}
+
+#if DEBUG
+#Preview("Appetite skeleton") {
+    SettingsScreen(title: "Appetite", subtitle: "How hungry you've been, and what still got eaten.") {
+        AppetiteSkeletonView()
     }
 }
 #endif

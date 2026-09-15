@@ -242,6 +242,26 @@ final class TodayTests: XCTestCase {
         )
     }
 
+    func testAppetiteLineOptimisticPickShowsAnswerImmediately() {
+        let unanswered = HomeResponse.Appetite(
+            mode: "NORMAL", level: "NORMAL", drinkableOk: true,
+            suggestSmallerDefault: false, answeredToday: false, nextPlate: nil, extraSlots: []
+        )
+        XCTAssertEqual(
+            AppetiteTodayVisibility.resolve(
+                enforcementEnabled: true, appetite: unanswered, mealsToday: 0, optimisticLevel: "LOW"
+            ),
+            .answered(level: "LOW")
+        )
+        XCTAssertEqual(
+            AppetiteTodayVisibility.resolve(
+                enforcementEnabled: true, appetite: unanswered, mealsToday: 0,
+                changing: true, optimisticLevel: "LOW"
+            ),
+            .ask
+        )
+    }
+
     func testAppetiteLineHidesWhenAskDailyIsOff() {
         let unanswered = HomeResponse.Appetite(
             mode: "NORMAL", level: "NORMAL", drinkableOk: true,
