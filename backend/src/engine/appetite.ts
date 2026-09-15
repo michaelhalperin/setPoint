@@ -74,7 +74,9 @@ export function appetiteMealTarget(input: {
   const remaining = Math.max(0, input.remainingKcal);
   if (input.shape === 'NORMAL') return remaining;
   const split = remaining / Math.max(1, input.remainingSlots);
-  if (input.shape === 'SMALL') return Math.min(450, Math.max(200, Math.round(split / 10) * 10));
+  // SMALL: equal share of what's left, floored at 200 — no upper cap so five
+  // plates can still sum to a ~3,100 day.
+  if (input.shape === 'SMALL') return Math.max(200, Math.round(split / 10) * 10);
   return Math.min(900, Math.max(400, Math.round(split / 10) * 10));
 }
 

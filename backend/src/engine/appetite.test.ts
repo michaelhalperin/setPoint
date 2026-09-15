@@ -33,6 +33,19 @@ describe('appetite.v1', () => {
     expect(small * 4).toBeLessThanOrEqual(remaining);
   });
 
+  it('lets five SMALL plates cover a ~3100 day without a 450 cap', () => {
+    const target = 3100;
+    const slots = 5;
+    const plate = appetiteMealTarget({ remainingKcal: target, remainingSlots: slots, shape: 'SMALL' });
+    expect(plate).toBe(620);
+    expect(plate * slots).toBe(3100);
+    expect(plate).toBeGreaterThan(450);
+  });
+
+  it('still floors SMALL plates at 200 kcal', () => {
+    expect(appetiteMealTarget({ remainingKcal: 500, remainingSlots: 5, shape: 'SMALL' })).toBe(200);
+  });
+
   it('counts remaining slots including extra ones', () => {
     expect(
       remainingSlotCount({
@@ -55,7 +68,7 @@ describe('appetite.v1', () => {
         checked: [],
         mealMinutesToday: [],
       }),
-    ).toEqual({ slot: 'breakfast', atMin: 480, kcal: 450 });
+    ).toEqual({ slot: 'breakfast', atMin: 480, kcal: 620 });
 
     expect(
       nextAppetitePlate({
