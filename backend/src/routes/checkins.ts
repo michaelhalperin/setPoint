@@ -13,7 +13,8 @@ import { getPrisma } from '../db/client.js';
 import { applyPlanProposal, ProposalNotApplicableError } from '../checkins/applyProposal.js';
 import { proposalFromOutcome } from '../checkins/proposals.js';
 import { startTalk } from '../checkins/startTalk.js';
-import { excludedTokensFor, loadStapleFoods, prescribe } from '../solver/index.js';
+import { excludedTokensFor, loadStapleFoods } from '../solver/index.js';
+import { publicPrescription, solveCheckInVariant } from '../checkins/variants.js';
 import { ENGINE_CONFIG, type Goal } from '../engine/index.js';
 import { env, isProd } from '../env.js';
 
@@ -207,35 +208,18 @@ export async function checkInRoutes(app: FastifyInstance): Promise<void> {
       excludedTokensFor(prisma, userId, profile?.dislikedFoods),
     ]);
 
-    // Both sizes come from the solver, so allergens, diets and dislikes are always honoured.
-    // "Smaller" keeps the calories but favours dense, drinkable, no-prep foods.
-    const smaller = variant === 'smaller';
-    const rx = prescribe(solverFoods, {
+    const solved = solveCheckInVariant({
+      foods: solverFoods,
+      foodIdBySlug,
       targetKcal,
       targetProteinG: checkIn.prescription.targetProteinG,
       excludedTokens,
       pantryTokens: profile?.pantryTokens ?? [],
       prepTimeMaxMin: profile?.prepTimeMaxMin ?? null,
-      preferLowFriction: smaller,
-      preferCalorieDense: smaller,
-      preferDrinkable: smaller && (profile?.drinkableOk ?? true),
+      drinkableOk: profile?.drinkableOk ?? true,
+      variant,
     });
-    if (!rx) throw app.httpErrors.conflict('no option fits your food restrictions');
-    const items = rx.items.map((i) => ({
-      foodItemId: foodIdBySlug.get(i.slug) ?? null,
-      name: i.name,
-      quantity: i.quantity,
-      kcal: i.kcal,
-      proteinG: i.proteinG,
-      carbsG: i.carbsG,
-      fatG: i.fatG,
-    }));
-    const totals = {
-      kcal: rx.totalKcal,
-      proteinG: rx.totalProteinG,
-      carbsG: rx.totalCarbsG,
-      fatG: rx.totalFatG,
-    };
+    if (!solved) throw app.httpErrors.conflict('no option fits your food restrictions');
 
     await prisma.$transaction([
       prisma.checkIn.update({ where: { id: checkIn.id }, data: { variant } }),
@@ -243,23 +227,66 @@ export async function checkInRoutes(app: FastifyInstance): Promise<void> {
       prisma.prescription.update({
         where: { id: checkIn.prescription.id },
         data: {
-          totalKcal: totals.kcal,
-          totalProteinG: totals.proteinG,
-          totalCarbsG: totals.carbsG,
-          totalFatG: totals.fatG,
-          items: { create: items.map((i) => ({ ...i, unit: 'serving' })) },
+          totalKcal: solved.totals.kcal,
+          totalProteinG: solved.totals.proteinG,
+          totalCarbsG: solved.totals.carbsG,
+          totalFatG: solved.totals.fatG,
+          items: {
+            create: solved.items.map((i) => ({
+              foodItemId: i.foodItemId,
+              name: i.name,
+              quantity: i.quantity,
+              kcal: i.kcal,
+              proteinG: i.proteinG,
+              carbsG: i.carbsG,
+              fatG: i.fatG,
+              unit: 'serving',
+            })),
+          },
         },
       }),
     ]);
 
     return {
       variant,
-      prescription: {
-        id: checkIn.prescription.id,
-        totalKcal: totals.kcal,
-        totalProteinG: totals.proteinG,
-        items: items.map((i) => ({ name: i.name, quantity: i.quantity, kcal: i.kcal, proteinG: i.proteinG })),
-      },
+      prescription: publicPrescription(solved, checkIn.prescription.id),
+    };
+  });
+
+  // Preview both plate sizes without saving — Today fetches this to show the cards.
+  app.get('/:id/variants', async (req) => {
+    const { id } = params.parse(req.params);
+    const userId = (req as AuthedRequest).userId;
+    const prisma = getPrisma();
+    const checkIn = await prisma.checkIn.findFirst({
+      where: { id, userId, status: { in: ['PENDING', 'DEFERRED'] } },
+      include: { prescription: true },
+    });
+    if (!checkIn?.prescription) throw app.httpErrors.notFound('no active check-in with that id');
+    const profile = await prisma.onboardingProfile.findUnique({
+      where: { userId },
+      select: { dislikedFoods: true, pantryTokens: true, prepTimeMaxMin: true, drinkableOk: true },
+    });
+    const [{ solverFoods, foodIdBySlug }, excludedTokens] = await Promise.all([
+      loadStapleFoods(prisma),
+      excludedTokensFor(prisma, userId, profile?.dislikedFoods),
+    ]);
+    const shared = {
+      foods: solverFoods,
+      foodIdBySlug,
+      targetKcal: checkIn.prescription.targetKcal,
+      targetProteinG: checkIn.prescription.targetProteinG,
+      excludedTokens,
+      pantryTokens: profile?.pantryTokens ?? [],
+      prepTimeMaxMin: profile?.prepTimeMaxMin ?? null,
+      drinkableOk: profile?.drinkableOk ?? true,
+    };
+    const full = solveCheckInVariant({ ...shared, variant: 'full' });
+    const smaller = solveCheckInVariant({ ...shared, variant: 'smaller' });
+    if (!full || !smaller) throw app.httpErrors.conflict('no option fits your food restrictions');
+    return {
+      full: publicPrescription(full, checkIn.prescription.id),
+      smaller: publicPrescription(smaller, checkIn.prescription.id),
     };
   });
 

@@ -102,7 +102,8 @@ struct HomeContent: View {
                                 closeCheckIn()
                                 offerQuickLog(for: checkIn)
                             },
-                            suggestSmallerDefault: home.appetite?.suggestSmallerDefault == true
+                            suggestSmallerDefault: home.appetite?.suggestSmallerDefault == true,
+                            appetiteLevel: home.appetite?.level
                         )
                         .transition(.move(edge: .bottom))
                     }

@@ -144,6 +144,16 @@ enum DebugPreviewStub {
             )
         case .checkinSmaller:
             if let checkIn = HomeResponse.sampleUnder.activeCheckIn {
+                let full = checkIn.prescription!
+                let smaller = HomeResponse.ActiveCheckIn.Prescription(
+                    id: full.id,
+                    totalKcal: full.totalKcal,
+                    totalProteinG: full.totalProteinG,
+                    items: [
+                        .init(name: "Protein smoothie", quantity: 1, kcal: 420, proteinG: 32),
+                        .init(name: "Peanut butter toast", quantity: 1, kcal: 250, proteinG: 12),
+                    ]
+                )
                 PrescriptionView(
                     checkIn: checkIn,
                     headline: "Lunch slipped.",
@@ -151,7 +161,9 @@ enum DebugPreviewStub {
                     onDismiss: {},
                     onResolved: {},
                     onAlreadyAte: {},
-                    suggestSmallerDefault: true
+                    suggestSmallerDefault: true,
+                    appetiteLevel: "LOW",
+                    previewVariants: .init(full: full, smaller: smaller)
                 )
             }
         case .settingsAppetite:
@@ -221,7 +233,7 @@ enum DebugPreviewStub {
         case "home-appetite-ask": return .home(.sampleAppetiteAsk)
         case "training": return .training
         case "refuel": return .refuel
-        case "checkin-smaller": return .checkinSmaller
+        case "checkin-smaller", "checkin-not-hungry": return .checkinSmaller
         case "settings-appetite": return .settingsAppetite
         case "widgets": return .widgets
         case "burn": return .burn

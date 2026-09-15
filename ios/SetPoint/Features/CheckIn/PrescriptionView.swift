@@ -1,15 +1,14 @@
 import SwiftUI
 
-/// The full check-in, rising as a sheet over a dimmed Today: what slipped, why
-/// now, the suggested meal, and every answer on one screen — "I ate this",
-/// "I already ate", or a snooze length. A drag down dismisses it.
+/// The full check-in sheet: Full plate | Not hungry, both prescriptions as
+/// cards, then "I'll have {first item}" with snooze / already-ate underneath.
 struct PrescriptionView: View {
     let checkIn: HomeResponse.ActiveCheckIn
     /// "Lunch slipped."
     var headline = "Time to eat."
     /// "Usually 13:00 · nothing since 8:05"
     var whyNow: String?
-    /// Minutes until the user's next meal time — powers the "After 19:00" snooze.
+    /// Minutes until the user's next meal time — unused for the single 30-min snooze.
     var nextMealMinutes: Int? = nil
     /// Close without answering.
     let onDismiss: () -> Void
@@ -18,6 +17,10 @@ struct PrescriptionView: View {
     /// "I already ate": closed without a log — offer a quick one.
     let onAlreadyAte: () -> Void
     var suggestSmallerDefault = false
+    /// Today's appetite level — LOW also opens on "Not hungry".
+    var appetiteLevel: String? = nil
+    /// Preview both plates without hitting the network (uiStub).
+    var previewVariants: VariantsPayload? = nil
 
     @Environment(AppEnvironment.self) private var env
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -26,8 +29,49 @@ struct PrescriptionView: View {
     @State private var error: String?
     @State private var rated: Bool?
     @State private var drag: CGFloat = 0
-    @State private var variant = "full"
-    @State private var shownPrescription: HomeResponse.ActiveCheckIn.Prescription?
+    @State private var notHungry: Bool
+    @State private var fullPlate: HomeResponse.ActiveCheckIn.Prescription?
+    @State private var smallerPlate: HomeResponse.ActiveCheckIn.Prescription?
+    @State private var loaded = false
+
+    init(
+        checkIn: HomeResponse.ActiveCheckIn,
+        headline: String = "Time to eat.",
+        whyNow: String? = nil,
+        nextMealMinutes: Int? = nil,
+        onDismiss: @escaping () -> Void,
+        onResolved: @escaping () -> Void,
+        onAlreadyAte: @escaping () -> Void,
+        suggestSmallerDefault: Bool = false,
+        appetiteLevel: String? = nil,
+        previewVariants: VariantsPayload? = nil
+    ) {
+        self.checkIn = checkIn
+        self.headline = headline
+        self.whyNow = whyNow
+        self.nextMealMinutes = nextMealMinutes
+        self.onDismiss = onDismiss
+        self.onResolved = onResolved
+        self.onAlreadyAte = onAlreadyAte
+        self.suggestSmallerDefault = suggestSmallerDefault
+        self.appetiteLevel = appetiteLevel
+        self.previewVariants = previewVariants
+        let preferSmaller = suggestSmallerDefault || appetiteLevel == "LOW" || checkIn.variant == "smaller"
+        _notHungry = State(initialValue: preferSmaller)
+        if let preview = previewVariants {
+            _fullPlate = State(initialValue: preview.full)
+            _smallerPlate = State(initialValue: preview.smaller)
+            _loaded = State(initialValue: true)
+        } else if let rx = checkIn.prescription {
+            _fullPlate = State(initialValue: preferSmaller ? nil : rx)
+            _smallerPlate = State(initialValue: preferSmaller ? rx : nil)
+        }
+    }
+
+    struct VariantsPayload {
+        var full: HomeResponse.ActiveCheckIn.Prescription
+        var smaller: HomeResponse.ActiveCheckIn.Prescription
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: Space.md) {
@@ -64,55 +108,16 @@ struct PrescriptionView: View {
                     .background(Palette.surfaceSunk, in: Capsule())
             }
 
-            if let rx = checkIn.prescription {
-                if checkIn.tier < 3 {
-                    Picker("Size", selection: $variant) {
-                        Text("Full meal · \(fullKcal)").tag("full")
-                        Text("Smaller · \(smallerKcal) in 3 bites").tag("smaller")
-                    }
-                    .pickerStyle(.segmented)
-                    .onChange(of: variant) { _, next in
-                        Task { await swapVariant(next) }
-                    }
-                }
-                if suggestSmallerDefault, variant == "full" {
-                    Text("Make smaller your default?")
-                        .font(Typography.data(13, weight: .semibold))
-                        .foregroundStyle(Palette.accentDeep)
-                }
-                PrescriptionCard(prescription: shownPrescription ?? rx, roomy: true)
+            if checkIn.prescription != nil {
+                sizeControl
+                plateCards
+                primaryActions
             } else if let message = checkIn.message {
                 Text(message)
                     .font(Typography.voice(20))
                     .foregroundStyle(Palette.ink)
-            }
-
-            VStack(spacing: Space.xs) {
-                if checkIn.prescription != nil {
-                    ActionButton(title: "I ate this", busy: busy, busyTitle: "Logging") { run(eatThis) }
-                }
                 ActionButton(title: "I already ate", kind: .secondary) { run(alreadyAte, then: onAlreadyAte) }
             }
-            .disabled(busy)
-
-            HStack(spacing: 8) {
-                Text("Later")
-                    .font(Typography.data(13, weight: .bold))
-                    .foregroundStyle(Palette.inkFaint)
-                ForEach(CheckInActions.snoozeChoices(nextMealMinutes: nextMealMinutes)) { choice in
-                    Button { run { try await snooze(choice.minutes) } } label: {
-                        Text(choice.title)
-                            .font(Typography.data(14, weight: .bold))
-                            .foregroundStyle(Palette.ink)
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 9)
-                            .background(Palette.surface, in: Capsule())
-                            .overlay(Capsule().strokeBorder(Palette.hairline))
-                    }
-                    .buttonStyle(PressableCard())
-                }
-            }
-            .disabled(busy)
 
             if let error {
                 Text(error)
@@ -144,6 +149,144 @@ struct PrescriptionView: View {
         .padding(.top, Space.xl)
         .offset(y: drag)
         .gesture(dismissDrag)
+        .task { await loadVariants() }
+    }
+
+    private var sizeControl: some View {
+        HStack(spacing: 0) {
+            segment("Full plate", selected: !notHungry) { select(notHungry: false) }
+            segment("Not hungry", selected: notHungry) { select(notHungry: true) }
+        }
+        .padding(4)
+        .background(Palette.surfaceSunk, in: Capsule())
+    }
+
+    private func segment(_ title: String, selected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(Typography.data(14, weight: .bold))
+                .foregroundStyle(selected ? Palette.ink : Palette.inkSoft)
+                .frame(maxWidth: .infinity, minHeight: 36)
+                .background {
+                    if selected {
+                        Capsule().fill(Palette.surface)
+                    }
+                }
+        }
+        .buttonStyle(.plain)
+        .disabled(busy)
+    }
+
+    @ViewBuilder
+    private var plateCards: some View {
+        let chosen = notHungry ? smallerPlate : fullPlate
+        let other = notHungry ? fullPlate : smallerPlate
+        VStack(spacing: 10) {
+            if let chosen {
+                plateCard(
+                    label: notHungry ? "EASIER TO GET DOWN" : "FULL PLATE",
+                    prescription: chosen,
+                    emphasized: true
+                )
+            } else if !loaded {
+                ProgressView().frame(maxWidth: .infinity, minHeight: 80)
+            }
+            if let other {
+                plateCard(
+                    label: notHungry ? "FULL PLATE" : "EASIER TO GET DOWN",
+                    prescription: other,
+                    emphasized: false
+                )
+            }
+        }
+    }
+
+    private func plateCard(
+        label: String,
+        prescription: HomeResponse.ActiveCheckIn.Prescription,
+        emphasized: Bool
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text(label)
+                    .font(Typography.data(11, weight: .heavy))
+                    .foregroundStyle(emphasized ? Palette.accent : Palette.inkFaint)
+                    .tracking(0.6)
+                Spacer()
+                Text("\(prescription.totalKcal.formatted()) kcal")
+                    .font(Typography.data(13, weight: .bold))
+                    .foregroundStyle(Palette.ink)
+                    .monospacedDigit()
+            }
+            ForEach(prescription.items) { item in
+                HStack(spacing: 10) {
+                    Text(item.quantity > 1 ? "\(Int(item.quantity))× \(item.name)" : item.name)
+                        .font(Typography.data(15, weight: .semibold))
+                        .foregroundStyle(Palette.ink)
+                    Spacer(minLength: 8)
+                    Text("\(item.kcal)")
+                        .font(Typography.data(13))
+                        .foregroundStyle(Palette.inkFaint)
+                        .monospacedDigit()
+                }
+            }
+        }
+        .padding(14)
+        .background {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Palette.surface)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .strokeBorder(
+                            emphasized ? Palette.accent : Palette.hairline,
+                            lineWidth: emphasized ? 2 : 1
+                        )
+                )
+        }
+    }
+
+    private var primaryActions: some View {
+        VStack(spacing: Space.sm) {
+            ActionButton(title: primaryTitle, busy: busy, busyTitle: "Logging") {
+                run(eatThis)
+            }
+            HStack {
+                Button { run { try await snooze(30) } } label: {
+                    Text("Snooze 30 min")
+                        .font(Typography.data(14, weight: .bold))
+                        .foregroundStyle(Palette.inkSoft)
+                }
+                .buttonStyle(.plain)
+                Spacer()
+                Button { run(alreadyAte, then: onAlreadyAte) } label: {
+                    Text("I already ate")
+                        .font(Typography.data(14, weight: .bold))
+                        .foregroundStyle(Palette.inkSoft)
+                }
+                .buttonStyle(.plain)
+            }
+            .disabled(busy)
+            .padding(.horizontal, 4)
+        }
+    }
+
+    private var primaryTitle: String {
+        let plate = notHungry ? smallerPlate : fullPlate
+        if let name = plate?.items.first?.name {
+            let short = name.split(separator: " ").prefix(3).joined(separator: " ").lowercased()
+            return "I'll have the \(short)"
+        }
+        return "I'll have this"
+    }
+
+    private var activePrescription: HomeResponse.ActiveCheckIn.Prescription? {
+        notHungry ? smallerPlate : fullPlate
+    }
+
+    private func select(notHungry next: Bool) {
+        guard next != notHungry else { return }
+        notHungry = next
+        Task { await persistVariant(next ? "smaller" : "full") }
     }
 
     private func feedbackButton(systemName: String, positive: Bool) -> some View {
@@ -176,29 +319,55 @@ struct PrescriptionView: View {
         }
     }
 
-    private func eatThis() async throws {
-        guard let rx = shownPrescription ?? checkIn.prescription else { return }
-        try await CheckInActions.eat(prescriptionID: rx.id, api: env.api)
-        Haptics.landed()
-        env.changes.mealsChanged()
+    private func loadVariants() async {
+        if previewVariants != nil {
+            if notHungry != (checkIn.variant == "smaller") {
+                await persistVariant(notHungry ? "smaller" : "full")
+            }
+            return
+        }
+        struct Reply: Decodable {
+            let full: HomeResponse.ActiveCheckIn.Prescription
+            let smaller: HomeResponse.ActiveCheckIn.Prescription
+        }
+        do {
+            let reply: Reply = try await env.api.get("/api/checkins/\(checkIn.id)/variants")
+            fullPlate = reply.full
+            smallerPlate = reply.smaller
+            loaded = true
+            let want = notHungry ? "smaller" : "full"
+            if checkIn.variant != want {
+                await persistVariant(want)
+            }
+        } catch {
+            loaded = true
+            self.error = UserFacingError.message(for: error)
+        }
     }
 
-    private var fullKcal: Int { checkIn.prescription?.totalKcal ?? 0 }
-    private var smallerKcal: Int { max(150, Int((Double(fullKcal) / 3.0).rounded() * 3)) }
-
-    private func swapVariant(_ next: String) async {
+    private func persistVariant(_ variant: String) async {
         struct Body: Encodable { let variant: String }
         struct Reply: Decodable {
             let variant: String
             let prescription: HomeResponse.ActiveCheckIn.Prescription
         }
         do {
-            let reply: Reply = try await env.api.post("/api/checkins/\(checkIn.id)/variant", Body(variant: next))
-            shownPrescription = reply.prescription
-            variant = reply.variant
+            let reply: Reply = try await env.api.post("/api/checkins/\(checkIn.id)/variant", Body(variant: variant))
+            if reply.variant == "smaller" {
+                smallerPlate = reply.prescription
+            } else {
+                fullPlate = reply.prescription
+            }
         } catch {
             self.error = UserFacingError.message(for: error)
         }
+    }
+
+    private func eatThis() async throws {
+        guard let rx = activePrescription else { return }
+        try await CheckInActions.eat(prescriptionID: rx.id, api: env.api)
+        Haptics.landed()
+        env.changes.mealsChanged()
     }
 
     private func alreadyAte() async throws {
@@ -218,7 +387,7 @@ struct PrescriptionView: View {
         DragGesture(minimumDistance: 8)
             .onChanged { value in
                 let y = value.translation.height
-                drag = y > 0 ? y : y * 0.12 // 1:1 down, heavy resistance up
+                drag = y > 0 ? y : y * 0.12
             }
             .onEnded { value in
                 if value.translation.height > 110 || value.predictedEndTranslation.height > 260 {
