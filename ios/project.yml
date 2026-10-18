@@ -43,10 +43,7 @@ targets:
         ITSAppUsesNonExemptEncryption: false
         NSSupportsLiveActivities: true
         UIBackgroundModes: [remote-notification]
-        UIAppFonts:
-          - Fraunces-Regular.ttf
-          - Fraunces-Medium.ttf
-          - Fraunces-Italic.ttf
+        UIUserInterfaceStyle: Dark
         NSHealthShareUsageDescription: "SetPoint reads your height, weight, age and sex to set daily targets, and your body weight to track progress. Heart-rate variability and resting heart rate are optional: they may slightly adjust a check-in that is already due from a missed meal. They never diagnose under-fueling on their own."
         NSHealthUpdateUsageDescription: "SetPoint writes meals you log (calories, protein, carbs and fat) into Apple Health so they stay in one place. Weight you log in SetPoint can be written too if you turn that on."
         NSCalendarsFullAccessUsageDescription: "SetPoint reads only when you are busy. Event titles, locations and who is invited never leave this phone."

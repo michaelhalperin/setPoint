@@ -1,47 +1,93 @@
 import SwiftUI
-import UIKit
 
-/// Plan §6: warm, grounded, quietly confident. One accent — terracotta — reserved
-/// for the manager's voice and under-eating urgency. Dark mode keeps the same
-/// hierarchy on a deep paper ground.
+/// Design v2: cinematic dark. A near-black ground, glass surfaces, bone text and
+/// bone primary buttons. Two lights carry meaning: **ember** (orange) is food,
+/// **haze** (indigo) is training. Nothing else gets a colour.
+///
+/// The app runs dark only (`UIUserInterfaceStyle = Dark`), so every token is a
+/// single value. The older names (`ink`, `surface`, `accent`…) are kept and
+/// mapped onto the new palette so every screen picks it up.
 enum Palette {
-    static let background = Color(uiColor: .setPointPaper)
-    static let surface = Color(uiColor: .setPointSurface)
-    static let surfaceRaised = Color(uiColor: .setPointSurfaceRaised)
-    static let surfaceSunk = Color(uiColor: .setPointSurfaceSunk)
+    // MARK: Ground and surfaces
 
-    static let scrim = Color(uiColor: .setPointScrim)
-    static let hairline = Color(uiColor: .setPointHairline)
+    /// The ground — #09090B.
+    static let background = Color(hex: 0x09090B)
+    /// An opaque glass tone, for surfaces that must hide what's under them.
+    static let surface = Color(hex: 0x131316)
+    /// Sheets and raised panels — #141417 with a touch more lift.
+    static let surfaceRaised = Color(hex: 0x18181B)
+    /// Recessed fills: secondary buttons, chips, tracks, skeletons.
+    static let surfaceSunk = Color(hex: 0x1A1A1D)
+    /// The bottom sheet ground.
+    static let sheet = Color(hex: 0x141417)
 
-    static let ink = Color(uiColor: .setPointInk)
-    static let inkSoft = Color(uiColor: .setPointInkSoft)
-    static let inkFaint = Color(uiColor: .setPointInkFaint)
+    /// Translucent glass — white at 4.5% over whatever is behind.
+    static let glass = Color.white.opacity(0.045)
+    /// Glass, one step brighter (pressed / selected).
+    static let glassHi = Color.white.opacity(0.08)
+    /// The 9% white border every glass surface carries.
+    static let hairline = Color.white.opacity(0.09)
+    /// A stronger border for selected controls.
+    static let hairlineHi = Color.white.opacity(0.16)
 
-    static let accentTint = Color(uiColor: .setPointAccentTint)
-    static let accentSoft = Color(uiColor: .setPointAccentSoft)
-    static let accent = Color(hex: 0xD5613A)
-    static let accentDeep = Color(uiColor: .setPointAccentDeep)
+    static let scrim = Color(hex: 0x09090B, opacity: 0.6)
 
-    // Accents drawn on an ink card (which turns light in dark mode).
-    static let onInkHeart = Color(uiColor: .setPointOnInkHeart)
-    static let onInkPositive = Color(uiColor: .setPointOnInkPositive)
-    /// The italic second voice on a terracotta card.
-    static let onAccentVoice = Color(uiColor: .setPointOnAccentVoice)
+    // MARK: Text
+
+    /// Bone — text and primary buttons.
+    static let ink = Color(hex: 0xF5F5F4)
+    /// Secondary text.
+    static let inkSoft = Color(hex: 0xA1A1AA)
+    /// Labels, the dim tail of a headline, meta.
+    static let inkFaint = Color(hex: 0x8B8B94)
+    /// Text on a bone button.
+    static let onBone = Color(hex: 0x09090B)
+
+    // MARK: Ember — food
+
+    static let ember = Color(hex: 0xFF7A3D)
+    static let amber = Color(hex: 0xFFB86B)
+    static let emberDeep = Color(hex: 0xF06A2E)
+    /// Text on an ember surface.
+    static let onEmber = Color(hex: 0x1A0A04)
+
+    static let accent = ember
+    /// Accent used as *text* on the dark ground: amber reads better than ember.
+    static let accentDeep = amber
+    static let accentTint = Color(hex: 0x271711)
+    static let accentSoft = Color(hex: 0x3A2015)
+
+    // MARK: Haze — training
+
+    static let haze = Color(hex: 0x818CF8)
+    static let hazeSoft = Color(hex: 0xC7D2FE)
+    static let hazeTint = Color(hex: 0x15152A)
+
+    // MARK: Status
+
+    static let positive = Color(hex: 0x86EFAC)
+    static let danger = Color(hex: 0xF87171)
+
+    // Accents drawn on a bone card.
+    static let onInkHeart = Color(hex: 0xD2501A)
+    static let onInkPositive = Color(hex: 0x2F7A45)
+    /// The second voice on an ember card.
+    static let onAccentVoice = Color(hex: 0x1A0A04, opacity: 0.68)
 
     // Quiet decorative strokes and fills.
-    static let idleRing = Color(uiColor: .setPointIdleRing)
-    static let quietArc = Color(uiColor: .setPointQuietArc)
-    static let stackedCardNear = Color(uiColor: .setPointStackedCardNear)
-    static let stackedCardFar = Color(uiColor: .setPointStackedCardFar)
+    static let idleRing = Color.white.opacity(0.08)
+    static let quietArc = Color.white.opacity(0.18)
+    static let stackedCardNear = Color(hex: 0x18181B)
+    static let stackedCardFar = Color(hex: 0x111113)
 
-    /// Illustrations of the system lock screen stay dark in both appearances.
-    static let lockScreenInk = Color(hex: 0x2B2622)
-    static let lockScreenText = Color(hex: 0xFBF6F0)
+    /// Illustrations of the system lock screen.
+    static let lockScreenInk = Color(hex: 0x141417)
+    static let lockScreenText = Color(hex: 0xF5F5F4)
 
-    static let dayOnTrack = Color(hex: 0x6E8A67)
-    static let dayUnder = accent
-    static let dayOver = Color(uiColor: .setPointDayOver)
-    static let dayMissed = Color(uiColor: .setPointDayMissed)
+    static let dayOnTrack = positive
+    static let dayUnder = ember
+    static let dayOver = amber
+    static let dayMissed = Color.white.opacity(0.14)
 
     static func day(_ kind: String) -> Color {
         switch kind {
@@ -63,41 +109,4 @@ extension Color {
             opacity: opacity
         )
     }
-}
-
-private extension UIColor {
-    static func adaptive(light: UInt32, dark: UInt32, lightAlpha: CGFloat = 1, darkAlpha: CGFloat = 1) -> UIColor {
-        UIColor { trait in
-            let hex = trait.userInterfaceStyle == .dark ? dark : light
-            let alpha = trait.userInterfaceStyle == .dark ? darkAlpha : lightAlpha
-            return UIColor(
-                red: CGFloat((hex >> 16) & 0xFF) / 255,
-                green: CGFloat((hex >> 8) & 0xFF) / 255,
-                blue: CGFloat(hex & 0xFF) / 255,
-                alpha: alpha
-            )
-        }
-    }
-
-    static let setPointPaper = adaptive(light: 0xFBF6F0, dark: 0x1C1814)
-    static let setPointSurface = adaptive(light: 0xFFFFFF, dark: 0x2A241F)
-    static let setPointSurfaceRaised = adaptive(light: 0xFFFDFB, dark: 0x322B25)
-    static let setPointSurfaceSunk = adaptive(light: 0xF2EADF, dark: 0x241F1B)
-    static let setPointScrim = adaptive(light: 0x2B2622, dark: 0x000000, lightAlpha: 0.28, darkAlpha: 0.45)
-    static let setPointHairline = adaptive(light: 0x2B2622, dark: 0xFBF6F0, lightAlpha: 0.06, darkAlpha: 0.12)
-    static let setPointInk = adaptive(light: 0x2B2622, dark: 0xF4EDE4)
-    static let setPointInkSoft = adaptive(light: 0x6C6259, dark: 0xB8AFA4)
-    static let setPointInkFaint = adaptive(light: 0xAAA093, dark: 0x8A8176)
-    static let setPointAccentTint = adaptive(light: 0xFBEDE4, dark: 0x3A2A22)
-    static let setPointAccentSoft = adaptive(light: 0xF4DACE, dark: 0x4A3228)
-    static let setPointAccentDeep = adaptive(light: 0x9E4023, dark: 0xE08A6A)
-    static let setPointDayOver = adaptive(light: 0xC3B8A8, dark: 0x6E655A)
-    static let setPointDayMissed = adaptive(light: 0xD8CFC2, dark: 0x4A433C)
-    static let setPointOnInkHeart = adaptive(light: 0xFF8A73, dark: 0xD5613A)
-    static let setPointOnInkPositive = adaptive(light: 0xB9D3B1, dark: 0x4F7A47)
-    static let setPointOnAccentVoice = adaptive(light: 0xFFE3D3, dark: 0x4A2418)
-    static let setPointIdleRing = adaptive(light: 0xE4D9CA, dark: 0x4A433C)
-    static let setPointQuietArc = adaptive(light: 0xCDBFAE, dark: 0x5A5148)
-    static let setPointStackedCardNear = adaptive(light: 0xF1E8DC, dark: 0x3A332D)
-    static let setPointStackedCardFar = adaptive(light: 0xE9DFD1, dark: 0x302A25)
 }

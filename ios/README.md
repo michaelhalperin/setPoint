@@ -155,23 +155,35 @@ one-time "you hit your target" alert.
 (backend upserts on user + measuredAt). Raw HRV / resting heart rate never leave
 the phone; only z-scores go to `/api/biosignals`.
 
-## Design system (Pass 0 — foundation)
+## Design system (design v2 — cinematic dark)
 
-- **`Typography.swift`** — the manager's voice is **Fraunces** (bundled static
-  cuts in `Resources/Fonts/`, SIL OFL, instantiated soft / un-wonky at opsz 40:
-  Regular, Medium, Italic). `voice()` / `voiceItalic()` / `display()` use it;
-  `data()` / `hero` stay on SF Rounded. Registered via `UIAppFonts` in
-  `project.yml`.
-- **`Spacing.swift`** — one `Space` scale (4/8/12/20/32/52) + `Radius` set.
-- **`Elevation.swift`** — `.elevation(_:)` stacked soft ink-tinted shadows
-  (`resting` / `floating` / `lifted`); `Card` lifts off the paper ground.
-- **`Palette.swift`** — added `surfaceRaised`, `scrim`, `hairline`, `accentTint`,
-  `accentDeep`.
-- **`Motion.swift`** — role-named springs (`enter` / `exit` / `morph` / `nudge` /
-  `settle`), `Motion.stagger(index:)`, and `.appearIn(_:)` (fade + rise, staggered).
+The app runs dark only (`UIUserInterfaceStyle = Dark` in `project.yml`). The
+reference is the design-v2 prototype artboard.
 
-Screen-level polish (onboarding journey, check-in morph, parse reveal, Week tab)
-lands in later passes on top of this vocabulary.
+- **`Palette.swift`**: a #09090B ground, glass surfaces (white at 4.5% with a 9%
+  border), and bone (#F5F5F4) for text and primary buttons. Two lights carry
+  meaning: **ember** (#FF7A3D → amber #FFB86B) is food, and **haze** (#818CF8 /
+  #C7D2FE) is training. The older token names (`ink`, `surface`, `accent`…) map
+  onto the new palette.
+- **`Typography.swift`**: system sans with **light** display lines and mono
+  (`Typography.mono`) for numbers, times and labels. `data()` never goes heavier
+  than medium, and 24pt+ numbers are always light.
+- **`Atmosphere.swift`**: the signature pieces.
+  - `FuelOrb`: a breathing ember sphere (`haze: true` gives the training orb).
+  - `OrbRing` and `FuelOrbDial`: the orb with its progress ring, as on Today.
+  - `AmbientGlow`: the coloured light behind a screen.
+  - `.glass()` / `GlassCard`: the glass surfaces.
+  - `Headline`: a light headline with a dim tail.
+  - `RoundIconButton`, `StatusPill`, `StepBars`, `EmberBall`.
+- **`Components.swift`**: `ActionButton(.primary)` is a bone capsule with the
+  ember ball on the right, used once per screen. `.secondary` is a glass capsule.
+- **Shell**: `MainTabView` keeps the four tabs alive in a ZStack under a
+  floating glass nav (`FloatingNav`) with the ember "+" in the middle. The "+"
+  opens Today's log panel (`LogDock`) through `AppChrome`.
+- **`Spacing.swift`**: one `Space` scale (4/8/12/20/32/52) plus a `Radius` set
+  (cards are 26).
+- **`Elevation.swift`**: glass doesn't cast shadows. Only floating things (the
+  nav, sheets) get a soft black one.
 
 ## Motion system (plan §5a)
 

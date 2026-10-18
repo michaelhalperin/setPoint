@@ -102,7 +102,7 @@ private struct Shimmer: ViewModifier {
                 if running {
                     GeometryReader { geo in
                         LinearGradient(
-                            colors: [.clear, Palette.surface.opacity(0.6), .clear],
+                            colors: [.clear, Color.white.opacity(0.10), .clear],
                             startPoint: .leading, endPoint: .trailing
                         )
                         .frame(width: geo.size.width * 0.55)

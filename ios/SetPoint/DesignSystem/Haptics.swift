@@ -13,4 +13,9 @@ enum Haptics {
     static func landed() {
         UINotificationFeedbackGenerator().notificationOccurred(.success)
     }
+
+    /// A tick — switching tabs or picking an option.
+    static func select() {
+        UISelectionFeedbackGenerator().selectionChanged()
+    }
 }
