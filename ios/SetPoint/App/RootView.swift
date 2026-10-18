@@ -47,12 +47,23 @@ struct RootView: View {
 }
 
 #if DEBUG
+/// The floating nav for stubbed screens, hidden when Today asks.
+private struct StubNav: View {
+    @Environment(AppEnvironment.self) private var env
+
+    var body: some View {
+        if !env.chrome.navHidden {
+            FloatingNav(selection: .today, onSelect: { _ in }, onLog: { env.chrome.requestLog() })
+        }
+    }
+}
+
 /// Renders a specific screen with sample data via a launch argument, for
 /// screenshots and manual review: `-uiStub home` / `-uiStub home-over`.
 @MainActor
 enum DebugPreviewStub {
     case home(HomeResponse)
-    case welcome(page: Int)
+    case welcome
     case onboarding(OnboardingViewModel.Step)
     case prescription
     case conversation(resolved: Bool)
@@ -89,9 +100,15 @@ enum DebugPreviewStub {
     var view: some View {
         switch self {
         case let .home(response):
-            HomeContent(model: .previewed(.loaded(response)))
-        case let .welcome(page):
-            WelcomeView(initialPage: page)
+            NavigationStack {
+                HomeContent(model: .previewed(.loaded(response)))
+                    .toolbar(.hidden, for: .navigationBar)
+                    .safeAreaInset(edge: .bottom, spacing: 0) {
+                        StubNav()
+                    }
+            }
+        case .welcome:
+            WelcomeView()
         case let .onboarding(step):
             OnboardingFlow(model: .previewed(at: step))
                 .background(Palette.background)
@@ -220,10 +237,7 @@ enum DebugPreviewStub {
         case "home-topup": return .home(.sampleTopUp)
         case "home-light": return .home(.sampleLightCheckIn)
         case "home-close": return .home(.sampleClose)
-        case "welcome": return .welcome(page: 0)
-        case "welcome-notice": return .welcome(page: 1)
-        case "welcome-plan": return .welcome(page: 2)
-        case "welcome-quiet": return .welcome(page: 3)
+        case "welcome", "welcome-notice", "welcome-plan", "welcome-quiet": return .welcome
         case "onboarding", "onboarding-goal": return .onboarding(.goal)
         case "onboarding-about": return .onboarding(.about)
         case "onboarding-target": return .onboarding(.target)
@@ -305,12 +319,16 @@ private struct WidgetsStubHost: View {
                     .foregroundStyle(Palette.ink)
                 widgetCard(title: "Small") {
                     TodayWidgetSmallView(snapshot: .preview)
+                        .padding(16)
                         .frame(width: 158, height: 158)
+                        .background(WidgetChrome.background)
                         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
                 }
                 widgetCard(title: "Medium") {
                     TodayWidgetMediumView(snapshot: .preview)
+                        .padding(16)
                         .frame(width: 338, height: 158)
+                        .background(WidgetChrome.background)
                         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
                 }
                 widgetCard(title: "Lock Screen") {
@@ -376,7 +394,7 @@ private struct LogScanStubHost: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            Palette.ink.ignoresSafeArea()
+            Color.black.ignoresSafeArea()
             VStack(spacing: Space.sm) {
                 Image(systemName: "barcode.viewfinder")
                     .font(.system(size: 44, weight: .medium))

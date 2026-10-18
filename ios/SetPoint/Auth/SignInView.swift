@@ -5,17 +5,19 @@ import SwiftUI
 /// continuing is agreeing.
 struct SignInSheet: View {
     @Environment(AppEnvironment.self) private var env
-    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         VStack(alignment: .leading, spacing: Space.md) {
-            VStack(alignment: .leading, spacing: Space.xs) {
-                Text("Let’s build your plan.")
-                    .font(Typography.display(30))
-                    .foregroundStyle(Palette.ink)
-                Text("Continue with Apple to save it. No password.")
-                    .font(Typography.data(16))
+            FuelOrb(size: 72, glow: 0.5)
+                .frame(maxWidth: .infinity)
+                .padding(.bottom, 4)
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Save your plan").sectionLabelStyle()
+                Headline("One tap.", tail: "No password.", size: 36)
+                Text("Your plan and history follow you to a new phone. Nothing is shared.")
+                    .font(Typography.data(15, weight: .regular))
                     .foregroundStyle(Palette.inkSoft)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             SignInWithAppleButton(.continue) { request in
@@ -23,14 +25,14 @@ struct SignInSheet: View {
             } onCompletion: { result in
                 Task { await env.auth.completeSignInWithApple(result) }
             }
-            .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
-            .frame(height: 54)
-            .clipShape(RoundedRectangle(cornerRadius: Radius.md, style: .continuous))
+            .signInWithAppleButtonStyle(.white)
+            .frame(height: 58)
+            .clipShape(Capsule())
             .overlay {
                 if env.auth.signingIn {
-                    RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
+                    Capsule()
                         .fill(Palette.ink)
-                        .overlay(ProgressView().tint(.white))
+                        .overlay(BusyDots(tint: Palette.onBone))
                 }
             }
 
@@ -38,15 +40,15 @@ struct SignInSheet: View {
                 Button("Developer sign-in") {
                     Task { await env.auth.developerSignIn() }
                 }
-                .font(Typography.data(14, weight: .semibold))
+                .font(Typography.data(14, weight: .regular))
                 .foregroundStyle(Palette.inkSoft)
-                .frame(maxWidth: .infinity)
+                .frame(maxWidth: .infinity, minHeight: 36)
             }
 
             if let error = env.auth.lastError {
                 Text(error)
-                    .font(Typography.data(13, weight: .semibold))
-                    .foregroundStyle(Palette.accentDeep)
+                    .font(Typography.data(13, weight: .regular))
+                    .foregroundStyle(Palette.danger)
             }
 
             (
@@ -54,28 +56,31 @@ struct SignInSheet: View {
                     + Text("[Privacy Policy](\(APIConfig.baseURL.appending(path: "privacy").absoluteString))")
                     + Text(" and ")
                     + Text("[Terms](\(APIConfig.baseURL.appending(path: "terms").absoluteString))")
-                    + Text(".")
+                    + Text(". Health data never leaves your phone.")
             )
-            .font(Typography.data(12))
-            .tint(Palette.accent)
+            .font(Typography.data(12, weight: .regular))
+            .tint(Palette.ink)
             .foregroundStyle(Palette.inkFaint)
             .fixedSize(horizontal: false, vertical: true)
         }
         .padding(.horizontal, Space.gutter)
         .padding(.top, Space.lg)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .presentationDetents([.height(APIConfig.allowDevSignIn ? 380 : 340)])
+        .background(alignment: .top) {
+            AmbientGlow(tone: .ember, strength: 0.8, height: 300).offset(y: -60)
+        }
+        .presentationDetents([.height(APIConfig.allowDevSignIn ? 520 : 480)])
         .presentationDragIndicator(.visible)
-        .presentationBackground(Palette.background)
-        .presentationCornerRadius(28)
+        .presentationBackground(Palette.sheet)
+        .presentationCornerRadius(32)
     }
 }
 
 /// Shown while the session is being restored with no token on hand — the
-/// pitch's terracotta, so launch doesn't flash a different screen.
+/// welcome's dark ground, so launch doesn't flash a different screen.
 struct SignInSkeletonView: View {
     var body: some View {
-        Palette.accent
+        Palette.background
             .ignoresSafeArea()
     }
 }

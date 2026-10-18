@@ -16,7 +16,7 @@ struct ChoiceCard: View {
             HStack(alignment: blurb == nil ? .center : .top, spacing: Space.sm) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(title)
-                        .font(Typography.data(18, weight: .semibold))
+                        .font(Typography.data(17, weight: .medium))
                         .foregroundStyle(Palette.ink)
                     if let blurb {
                         Text(blurb)
@@ -28,28 +28,24 @@ struct ChoiceCard: View {
                 Spacer(minLength: 0)
                 ZStack {
                     Circle()
-                        .strokeBorder(selected ? Palette.accent : Palette.inkFaint.opacity(0.5), lineWidth: 1.5)
+                        .strokeBorder(selected ? Palette.ink : Color.white.opacity(0.2), lineWidth: 1.5)
                         .frame(width: 22, height: 22)
                     if selected {
-                        Circle().fill(Palette.accent).frame(width: 22, height: 22)
+                        Circle().fill(Palette.ink).frame(width: 22, height: 22)
                         Image(systemName: "checkmark")
                             .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(Palette.onBone)
                     }
                 }
                 .transaction { if reduceMotion { $0.animation = nil } }
             }
-            .padding(Space.md - 2)
+            .padding(18)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background {
-                RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
-                    .fill(selected ? Palette.accentTint : Palette.surface)
-                    .elevation(selected ? .floating : .resting)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
-                            .strokeBorder(selected ? Palette.accent.opacity(0.4) : Palette.hairline, lineWidth: 1)
-                    )
-            }
+            .glass(
+                radius: Radius.lg,
+                fill: selected ? Color.white.opacity(0.09) : Palette.glass,
+                stroke: selected ? Color.white.opacity(0.32) : Palette.hairline
+            )
             .scaleEffect(selected ? 1 : 0.985)
             .animation(Motion.adaptive(Motion.settle, reduceMotion: reduceMotion), value: selected)
         }
@@ -81,12 +77,13 @@ struct RulerPicker: View {
         VStack(spacing: Space.md) {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text(value.formatted(.number.precision(.fractionLength(fractionDigits))))
-                    .font(Typography.data(52, weight: .semibold))
+                    .font(Typography.data(56, weight: .light))
+                    .tracking(-2)
                     .foregroundStyle(Palette.ink)
                     .monospacedDigit()
                     .contentTransition(.numericText(value: value))
                 Text(unit)
-                    .font(Typography.data(18, weight: .medium))
+                    .font(Typography.mono(15))
                     .foregroundStyle(Palette.inkFaint)
             }
             .animation(Motion.adaptive(Motion.settle, reduceMotion: reduceMotion), value: value)
@@ -115,8 +112,9 @@ struct RulerPicker: View {
                 .clipped()
                 .overlay {
                     Capsule()
-                        .fill(Palette.accent)
+                        .fill(Palette.amber)
                         .frame(width: 3, height: 40)
+                        .shadow(color: Palette.amber.opacity(0.6), radius: 6)
                 }
                 .contentShape(Rectangle())
                 .gesture(drag)
@@ -137,7 +135,7 @@ struct RulerPicker: View {
                         .fill(isMajor ? Palette.inkSoft : Palette.inkFaint.opacity(0.45))
                         .frame(width: isMajor ? 2 : 1, height: isMajor ? 26 : 14)
                     Text(isMajor ? String(Int(v.rounded())) : "")
-                        .font(Typography.data(10, weight: .medium))
+                        .font(Typography.mono(10))
                         .foregroundStyle(Palette.inkFaint)
                         .fixedSize()
                         .frame(height: 12)
@@ -222,12 +220,14 @@ struct StepHeadline: View {
         VStack(alignment: .leading, spacing: Space.xs) {
             Text(text)
                 .font(Typography.display(38))
+                .displayTracking(38)
                 .foregroundStyle(Palette.ink)
                 .fixedSize(horizontal: false, vertical: true)
-                .appearIn(0)
+                .appearIn(0, rise: 16)
             if let detail {
                 Text(detail)
-                    .font(Typography.data(16))
+                    .font(Typography.data(15, weight: .regular))
+                    .lineSpacing(3)
                     .foregroundStyle(Palette.inkSoft)
                     .fixedSize(horizontal: false, vertical: true)
                     .appearIn(1)
@@ -235,66 +235,6 @@ struct StepHeadline: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityAddTraits(.isHeader)
-    }
-}
-
-/// The round Next button. Onboarding progress lives in the ring around it
-/// instead of a step bar across the top.
-struct RingNextButton: View {
-    let progress: Double
-    var enabled = true
-    var busy = false
-    let action: () -> Void
-
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    var body: some View {
-        Button(action: action) {
-            ZStack {
-                Circle()
-                    .stroke(Palette.surfaceSunk, lineWidth: 3)
-                Circle()
-                    .trim(from: 0, to: progress)
-                    .stroke(Palette.accent, style: StrokeStyle(lineWidth: 3, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
-                    .animation(Motion.adaptive(Motion.enter, reduceMotion: reduceMotion), value: progress)
-                Circle()
-                    .fill(Palette.accent)
-                    .padding(8)
-                    .elevation(enabled ? .resting : .flat)
-                if busy {
-                    ProgressView().tint(.white)
-                } else {
-                    Image(systemName: "arrow.right")
-                        .font(.system(size: 22, weight: .semibold))
-                        .foregroundStyle(.white)
-                }
-            }
-            .frame(width: 78, height: 78)
-            .opacity(enabled ? 1 : 0.45)
-            .animation(Motion.adaptive(Motion.settle, reduceMotion: reduceMotion), value: enabled)
-        }
-        .buttonStyle(PressableCard())
-        .disabled(!enabled || busy)
-        .accessibilityLabel("Next")
-        .accessibilityValue("\(Int((progress * 100).rounded())) percent done")
-    }
-}
-
-/// The quiet circular Back button that pairs with `RingNextButton`.
-struct CircleBackButton: View {
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Image(systemName: "chevron.left")
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(Palette.ink)
-                .frame(width: 52, height: 52)
-                .background(Palette.surfaceSunk, in: Circle())
-        }
-        .buttonStyle(PressableCard())
-        .accessibilityLabel("Back")
     }
 }
 
@@ -317,21 +257,20 @@ struct SegmentedPills<Option: Hashable>: View {
                 } label: {
                     VStack(spacing: 2) {
                         Text(title(option))
-                            .font(Typography.data(16, weight: .bold))
-                            .foregroundStyle(on ? Palette.ink : Palette.inkSoft)
+                            .font(Typography.data(14, weight: on ? .medium : .regular))
+                            .foregroundStyle(on ? Palette.onBone : Palette.inkSoft)
                         if let detail {
                             Text(detail(option))
-                                .font(Typography.data(12, weight: .medium))
-                                .foregroundStyle(on ? Palette.inkSoft : Palette.inkFaint)
+                                .font(Typography.data(11, weight: .regular))
+                                .foregroundStyle(on ? Palette.onBone.opacity(0.6) : Palette.inkFaint)
                         }
                     }
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, detail == nil ? 13 : 11)
+                    .padding(.vertical, detail == nil ? 11 : 10)
                     .background {
                         if on {
                             RoundedRectangle(cornerRadius: detail == nil ? 999 : 17, style: .continuous)
-                                .fill(Palette.surface)
-                                .elevation(.resting)
+                                .fill(Palette.ink)
                                 .matchedGeometryEffect(id: "segment", in: ns)
                         }
                     }
@@ -341,8 +280,8 @@ struct SegmentedPills<Option: Hashable>: View {
                 .accessibilityAddTraits(on ? .isSelected : [])
             }
         }
-        .padding(5)
-        .background(Palette.surfaceSunk, in: RoundedRectangle(cornerRadius: detail == nil ? 999 : 22, style: .continuous))
+        .padding(4)
+        .glass(radius: detail == nil ? 999 : 22, fill: Color.white.opacity(0.05), stroke: Color.white.opacity(0.08))
     }
 }
 
@@ -357,13 +296,13 @@ struct WeeksStepper: View {
             Spacer()
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text("\(weeks)")
-                    .font(Typography.data(large ? 64 : 48, weight: .heavy))
+                    .font(Typography.data(large ? 64 : 48, weight: .light))
                     .tracking(large ? -2 : -1)
                     .monospacedDigit()
                     .foregroundStyle(Palette.ink)
                     .contentTransition(.numericText(value: Double(weeks)))
                 Text("weeks")
-                    .font(Typography.data(large ? 22 : 18, weight: .semibold))
+                    .font(Typography.mono(large ? 16 : 14))
                     .foregroundStyle(Palette.inkFaint)
             }
             .accessibilityElement(children: .combine)
@@ -386,7 +325,8 @@ struct WeeksStepper: View {
                 .font(.system(size: 20, weight: .semibold))
                 .foregroundStyle(Palette.ink)
                 .frame(width: large ? 56 : 48, height: large ? 56 : 48)
-                .background(Palette.surfaceSunk, in: Circle())
+                .background(Circle().fill(Color.white.opacity(0.06)))
+                .overlay(Circle().strokeBorder(Color.white.opacity(0.10)))
         }
         .buttonStyle(PressableCard())
         .accessibilityLabel(delta > 0 ? "Increase duration" : "Decrease duration")
@@ -421,13 +361,12 @@ struct FlowChips: View {
                         }
                         Text(option)
                     }
-                    .font(Typography.data(16, weight: .semibold))
-                    .foregroundStyle(isOn ? Palette.background : Palette.ink)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
-                    .background(isOn ? Palette.ink : Palette.surface, in: Capsule())
+                    .font(Typography.data(14, weight: .regular))
+                    .foregroundStyle(isOn ? Palette.onBone : Palette.ink)
+                    .padding(.horizontal, 14)
+                    .frame(height: 42)
+                    .background(isOn ? Palette.ink : Palette.glass, in: Capsule())
                     .overlay(Capsule().strokeBorder(isOn ? Color.clear : Palette.hairline))
-                    .elevation(isOn ? .flat : .resting)
                 }
                 .buttonStyle(.plain)
                 .accessibilityAddTraits(isOn ? .isSelected : [])

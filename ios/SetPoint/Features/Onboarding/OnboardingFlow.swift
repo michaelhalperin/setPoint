@@ -1,19 +1,16 @@
 import SwiftUI
 
-/// Setup after sign-in. Each step is one screen; the round Next button carries
-/// progress in its ring. The last two steps (notifications, the payoff) bring
-/// their own actions.
+/// Setup after sign-in. Each step is one screen under a header of step bars;
+/// one bone Continue button at the bottom. The last two steps (notifications,
+/// the payoff) bring their own actions.
 struct OnboardingFlow: View {
     @Bindable var model: OnboardingViewModel
     @Environment(AppEnvironment.self) private var env
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private var terracotta: Bool { model.step == .covered && model.enforcementEnabled }
-
     var body: some View {
         ZStack {
-            (terracotta ? Palette.accent : Palette.background)
-                .ignoresSafeArea()
+            Palette.background.ignoresSafeArea()
 
             content
                 .id(model.step)
@@ -49,7 +46,16 @@ struct OnboardingFlow: View {
             }
             .scrollDismissesKeyboard(.interactively)
             .scrollBounceBehavior(.basedOnSize)
+            .safeAreaInset(edge: .top, spacing: 0) { header }
             .safeAreaInset(edge: .bottom, spacing: 0) { navBar }
+            .background(alignment: .topTrailing) {
+                RadialGradient(colors: [Palette.ember.opacity(0.28), .clear], center: .center, startRadius: 0, endRadius: 170)
+                    .frame(width: 340, height: 340)
+                    .blur(radius: 20)
+                    .offset(x: 120, y: -80)
+                    .ignoresSafeArea()
+                    .allowsHitTesting(false)
+            }
         }
     }
 
@@ -66,28 +72,54 @@ struct OnboardingFlow: View {
         }
     }
 
+    private var stepNumber: Int {
+        (model.progressSteps.firstIndex(of: model.step) ?? 0) + 1
+    }
+
+    private var header: some View {
+        HStack {
+            Group {
+                if model.canGoBack {
+                    RoundIconButton("chevron.left", label: "Back") { model.goBack() }
+                        .transition(.opacity)
+                } else {
+                    Color.clear
+                }
+            }
+            .frame(width: 40, height: 40)
+            Spacer()
+            StepBars(step: stepNumber, total: model.progressSteps.count)
+            Spacer()
+            Text("\(stepNumber)/\(model.progressSteps.count)")
+                .font(Typography.mono(12))
+                .foregroundStyle(Palette.inkFaint)
+                .frame(width: 40, alignment: .trailing)
+        }
+        .padding(.horizontal, Space.gutter)
+        .padding(.vertical, 8)
+        .background {
+            LinearGradient(colors: [Palette.background.opacity(0.9), Palette.background.opacity(0)], startPoint: .top, endPoint: .bottom)
+                .ignoresSafeArea(edges: .top)
+        }
+        .animation(Motion.adaptive(Motion.settle, reduceMotion: reduceMotion), value: model.canGoBack)
+    }
+
     private var navBar: some View {
         VStack(spacing: Space.xs) {
             if let error = model.error {
                 Text(error)
-                    .font(Typography.data(13, weight: .semibold))
-                    .foregroundStyle(Palette.accentDeep)
+                    .font(Typography.data(13, weight: .regular))
+                    .foregroundStyle(Palette.danger)
                     .transition(.opacity)
             }
-            HStack {
-                if model.canGoBack {
-                    CircleBackButton { model.goBack() }
-                        .transition(.opacity)
-                }
-                Spacer()
-                RingNextButton(
-                    progress: model.progress,
-                    enabled: model.canAdvance,
-                    busy: model.submitting
-                ) { model.advance() }
-            }
+            ActionButton(
+                title: model.step == .safety ? "Build my plan" : "Continue",
+                busy: model.submitting,
+                busyTitle: "Building your plan"
+            ) { model.advance() }
+            .disabled(!model.canAdvance)
         }
-        .padding(.horizontal, 24)
+        .padding(.horizontal, Space.gutter)
         .padding(.top, Space.sm)
         .padding(.bottom, Space.xxs)
         .background(alignment: .top) {
@@ -98,7 +130,6 @@ struct OnboardingFlow: View {
             }
             .ignoresSafeArea()
         }
-        .animation(Motion.adaptive(Motion.settle, reduceMotion: reduceMotion), value: model.canGoBack)
         .animation(Motion.adaptive(Motion.settle, reduceMotion: reduceMotion), value: model.error)
     }
 }

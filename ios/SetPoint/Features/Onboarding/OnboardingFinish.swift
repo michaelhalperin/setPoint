@@ -1,7 +1,7 @@
 import SwiftUI
 
 // After the plan is saved: ask for notifications (check-ins are the product),
-// then the payoff — the day dial as the user's plan.
+// then the payoff — tomorrow as a list of plates.
 
 // MARK: - Notifications
 
@@ -55,7 +55,7 @@ private struct LockScreenPreview: View {
         ZStack(alignment: .top) {
             RoundedRectangle(cornerRadius: 48, style: .continuous)
                 .fill(RadialGradient(
-                    colors: [Color(hex: 0xB5532F), Color(hex: 0x5A3A2C), Palette.lockScreenInk],
+                    colors: [Color(hex: 0x6E2A12), Color(hex: 0x24141A), Palette.lockScreenInk],
                     center: UnitPoint(x: 0.2, y: 0), startRadius: 0, endRadius: 440
                 ))
                 .elevation(.lifted)
@@ -66,7 +66,7 @@ private struct LockScreenPreview: View {
                     .foregroundStyle(Palette.lockScreenText.opacity(0.75))
                     .padding(.top, 40)
                 Text(String(format: "%d:%02d", minute / 60, minute % 60))
-                    .font(Typography.data(80, weight: .bold))
+                    .font(Typography.data(80, weight: .light))
                     .monospacedDigit()
                     .foregroundStyle(Palette.lockScreenText)
                     .minimumScaleFactor(0.6)
@@ -88,11 +88,8 @@ private struct LockScreenPreview: View {
 
     private var notification: some View {
         HStack(spacing: 10) {
-            Image(systemName: "fork.knife")
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(Palette.background)
-                .frame(width: 38, height: 38)
-                .background(Palette.accent, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+            FuelOrb(size: 38, breathing: false, glow: 0.2)
+                .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
             VStack(alignment: .leading, spacing: 1) {
                 HStack {
                     Text("Lunch slipped")
@@ -109,7 +106,8 @@ private struct LockScreenPreview: View {
             }
         }
         .padding(12)
-        .background(Palette.background.opacity(0.94), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Palette.hairline))
     }
 }
 
@@ -119,9 +117,7 @@ struct CoveredStep: View {
     @Bindable var model: OnboardingViewModel
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    @State private var ring: Double = 0
     @State private var markers = false
-    @State private var shownKcal = 0
     @State private var showingPaywall = false
 
     var body: some View {
@@ -142,86 +138,93 @@ struct CoveredStep: View {
     private var covered: some View {
         let d = model.draft
         let meals = [("Breakfast", d.breakfastMin), ("Lunch", d.lunchMin), ("Dinner", d.dinnerMin)]
-        return VStack(alignment: .leading, spacing: Space.xs) {
-            Text("Here’s tomorrow.")
-                .font(Typography.display(44))
-                .foregroundStyle(Palette.background)
-                .appearIn(0)
-            Text("Three plates. I only speak up if one slips or runs light.")
-                .font(Typography.data(17))
-                .foregroundStyle(Palette.background.opacity(0.82))
-                .fixedSize(horizontal: false, vertical: true)
-                .appearIn(1)
-
-            Spacer(minLength: Space.sm)
-
-            DayDial(
-                breakfastMin: d.breakfastMin, lunchMin: d.lunchMin, dinnerMin: d.dinnerMin,
-                quietStartMin: d.quietStartMin, quietEndMin: d.quietEndMin,
-                theme: .terra, showsHourLabels: false, ringProgress: ring, markersShown: markers
-            ) {
-                VStack(spacing: 2) {
-                    Text(shownKcal.formatted())
-                        .font(Typography.data(40, weight: .bold))
-                        .monospacedDigit()
-                        .contentTransition(.numericText(value: Double(shownKcal)))
-                        .foregroundStyle(Palette.background)
-                    Text("kcal a plate")
-                        .font(Typography.data(13, weight: .semibold))
-                        .foregroundStyle(Palette.background.opacity(0.7))
-                }
-                .accessibilityElement(children: .combine)
+        let plate = model.result.map { plateKcal($0.dailyKcalTarget) }
+        return VStack(alignment: .leading, spacing: Space.md) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Your plan is ready")
+                    .font(Typography.data(12, weight: .regular))
+                    .foregroundStyle(Palette.inkSoft)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .overlay(Capsule().strokeBorder(Color.white.opacity(0.12)))
+                Headline("Three plates.", tail: "That’s the whole job.", size: 36)
+                Text("I only speak up if one slips or runs light.")
+                    .font(Typography.data(15, weight: .regular))
+                    .foregroundStyle(Palette.inkSoft)
             }
-            .frame(maxWidth: 300)
-            .frame(maxWidth: .infinity)
-
-            Spacer(minLength: Space.sm)
+            .appearIn(0, rise: 16)
 
             VStack(spacing: 0) {
                 ForEach(Array(meals.enumerated()), id: \.offset) { index, meal in
-                    if index > 0 {
-                        Rectangle().fill(Palette.background.opacity(0.18)).frame(height: 1)
-                    }
-                    HStack(alignment: .firstTextBaseline) {
+                    HStack(spacing: 14) {
                         Text(formatMinutes(meal.1))
-                            .font(Typography.data(15, weight: .bold))
-                            .monospacedDigit()
-                            .frame(width: 56, alignment: .leading)
-                        Text(meal.0)
-                            .font(Typography.data(15, weight: .bold))
-                        Spacer(minLength: Space.xs)
-                        Label(formatMinutes(CheckInSchedule.minute(afterMeal: meal.1)), systemImage: "bell.fill")
-                            .font(Typography.data(13, weight: .semibold))
-                            .opacity(0.75)
+                            .font(Typography.mono(13))
+                            .foregroundStyle(Palette.inkSoft)
+                            .frame(width: 48, alignment: .leading)
+                        Circle()
+                            .fill(Palette.amber)
+                            .frame(width: 8, height: 8)
+                            .shadow(color: Palette.amber.opacity(0.6), radius: 5)
+                        (Text(meal.0).foregroundColor(Palette.ink)
+                            + Text("  check-in \(formatMinutes(CheckInSchedule.minute(afterMeal: meal.1)))").font(Typography.data(13, weight: .regular)).foregroundColor(Palette.inkFaint))
+                            .font(Typography.data(16, weight: .regular))
+                        Spacer(minLength: 8)
+                        if let plate {
+                            Text("~\(plate.formatted())")
+                                .font(Typography.mono(14))
+                                .foregroundStyle(Palette.ink)
+                        }
                     }
-                    .foregroundStyle(Palette.background)
-                    .padding(.vertical, 10)
+                    .padding(.vertical, 13)
+                    .overlay(alignment: .bottom) {
+                        Rectangle().fill(Color.white.opacity(0.07)).frame(height: 1)
+                    }
+                    .staggerReveal(markers, index: index + 1, rise: 14)
                 }
             }
-            .opacity(markers ? 1 : 0)
-            .animation(Motion.adaptive(Motion.enter, reduceMotion: reduceMotion).delay(0.5), value: markers)
             .accessibilityElement(children: .combine)
             .accessibilityLabel(planAccessibilityLabel(meals))
 
-            if let total = model.result?.dailyKcalTarget {
-                Text(totalLine(total))
-                    .font(Typography.data(13, weight: .semibold))
-                    .foregroundStyle(Palette.background.opacity(0.7))
-                    .opacity(markers ? 1 : 0)
+            if let result = model.result {
+                HStack(spacing: 10) {
+                    stat("A day", value: result.dailyKcalTarget.formatted(), unit: "kcal", note: "Short at night? I’ll help close it.")
+                    if let protein = result.dailyProteinTargetG {
+                        stat("Protein", value: "\(protein)", unit: "g", note: "Spread over the plates")
+                    }
+                }
+                .staggerReveal(markers, index: 5, rise: 14)
             }
 
             Spacer(minLength: Space.md)
 
-            Button { showingPaywall = true } label: {
-                Text("Start")
-                    .font(Typography.data(17, weight: .bold))
-                    .foregroundStyle(Palette.accentDeep)
-                    .frame(maxWidth: .infinity, minHeight: 58)
-                    .background(Palette.background, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-            }
-            .buttonStyle(PressableCard())
+            ActionButton(title: "Start my day") { showingPaywall = true }
+                .staggerReveal(markers, index: 6, rise: 14)
+        }
+        .background(alignment: .topLeading) {
+            RadialGradient(colors: [Palette.ember.opacity(0.22), .clear], center: .center, startRadius: 0, endRadius: 210)
+                .frame(width: 420, height: 420)
+                .blur(radius: 30)
+                .offset(x: -120, y: 100)
+                .allowsHitTesting(false)
         }
         .onAppear(perform: reveal)
+    }
+
+    private func stat(_ label: String, value: String, unit: String, note: String) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(label).font(Typography.mono(10)).tracking(1.2).textCase(.uppercase).foregroundStyle(Palette.inkFaint)
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                Text(value).font(Typography.data(21, weight: .light)).foregroundStyle(Palette.ink)
+                Text(unit).font(Typography.data(12, weight: .regular)).foregroundStyle(Palette.inkSoft)
+            }
+            Text(note)
+                .font(Typography.data(12, weight: .regular))
+                .foregroundStyle(Palette.inkSoft)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glass(radius: 18)
     }
 
     private func plateKcal(_ total: Int) -> Int {
@@ -240,9 +243,9 @@ struct CoveredStep: View {
 
     private var quiet: some View {
         VStack(alignment: .leading, spacing: Space.md) {
-            Text("Quiet mode is on.")
-                .font(Typography.display(40))
-                .foregroundStyle(Palette.ink)
+            FuelOrb(size: 64, dimmed: true)
+                .appearIn(0)
+            Headline("Quiet mode is on.", tail: "No check-ins.", size: 40)
                 .appearIn(0)
             Text(quietCopy)
                 .font(Typography.data(17))
@@ -266,17 +269,11 @@ struct CoveredStep: View {
     }
 
     private func reveal() {
-        guard let total = model.result?.dailyKcalTarget else { return }
-        let target = plateKcal(total)
         guard !reduceMotion else {
-            ring = 1
             markers = true
-            shownKcal = target
             return
         }
-        withAnimation(.easeInOut(duration: 1.6).delay(0.3)) { ring = 1 }
-        withAnimation(Motion.nudge.delay(0.9)) { markers = true }
-        withAnimation(.easeOut(duration: 1.0).delay(1.1)) { shownKcal = target }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.1) { Haptics.landed() }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { markers = true }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) { Haptics.landed() }
     }
 }

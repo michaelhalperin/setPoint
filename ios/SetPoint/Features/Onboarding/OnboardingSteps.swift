@@ -46,15 +46,16 @@ private struct GoalTile: View {
             HStack(spacing: 18) {
                 GoalSparkline(goal: goal)
                     .trim(from: 0, to: drawn)
-                    .stroke(selected ? Palette.accent : Palette.inkSoft,
+                    .stroke(selected ? Palette.amber : Palette.inkSoft,
                             style: StrokeStyle(lineWidth: 3.5, lineCap: .round))
                     .frame(width: 72, height: 50)
                     .frame(width: 100, height: 80)
-                    .background(selected ? Palette.accentTint : Palette.surfaceSunk,
+                    .background(selected ? Palette.ember.opacity(0.12) : Color.white.opacity(0.05),
                                 in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    .shadow(color: selected ? Palette.amber.opacity(0.35) : .clear, radius: 10)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(goal.title)
-                        .font(Typography.data(23, weight: .bold))
+                        .font(Typography.data(22, weight: .regular))
                         .foregroundStyle(Palette.ink)
                     Text(goal.tagline)
                         .font(Typography.data(15))
@@ -64,22 +65,18 @@ private struct GoalTile: View {
             }
             .padding(.horizontal, Space.md)
             .frame(height: 132)
-            .background {
-                RoundedRectangle(cornerRadius: 28, style: .continuous)
-                    .fill(selected ? Palette.surfaceRaised : Palette.surface)
-                    .elevation(selected ? .floating : .resting)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 28, style: .continuous)
-                            .strokeBorder(selected ? Palette.accent : Palette.hairline, lineWidth: selected ? 2 : 1)
-                    )
-            }
+            .glass(
+                radius: 28,
+                fill: selected ? Color.white.opacity(0.09) : Palette.glass,
+                stroke: selected ? Color.white.opacity(0.32) : Palette.hairline
+            )
             .overlay(alignment: .topTrailing) {
                 if selected {
                     Image(systemName: "checkmark")
                         .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(.white)
-                        .frame(width: 28, height: 28)
-                        .background(Palette.accent, in: Circle())
+                        .foregroundStyle(Palette.onBone)
+                        .frame(width: 26, height: 26)
+                        .background(Palette.ink, in: Circle())
                         .padding(16)
                         .transition(.scale.combined(with: .opacity))
                 }
@@ -152,8 +149,8 @@ struct AboutStep: View {
         .sheet(item: $editing) { field in
             editor(for: field)
                 .presentationDragIndicator(.visible)
-                .presentationBackground(Palette.background)
-                .presentationCornerRadius(28)
+                .presentationBackground(Palette.sheet)
+                .presentationCornerRadius(32)
         }
     }
 
@@ -404,12 +401,7 @@ struct AboutStep: View {
 
 private struct TileBackground: ViewModifier {
     func body(content: Content) -> some View {
-        content.background {
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(Palette.surface)
-                .elevation(.resting)
-                .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Palette.hairline))
-        }
+        content.glass(radius: 22)
     }
 }
 
@@ -612,8 +604,8 @@ struct RhythmStep: View {
             CustomTimesSheet(model: model)
                 .presentationDetents([.height(400)])
                 .presentationDragIndicator(.visible)
-                .presentationBackground(Palette.background)
-                .presentationCornerRadius(28)
+                .presentationBackground(Palette.sheet)
+                .presentationCornerRadius(32)
         }
     }
 

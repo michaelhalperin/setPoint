@@ -111,7 +111,6 @@
 		CAA8B17AE6962508FADEE2B7 /* SetPointIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5408A9946A1C2F6DE77028BA /* SetPointIntents.swift */; };
 		CAC007323963F4E1B4BF8A57 /* CalendarWeekScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = C108AC56B67475DD086B29E2 /* CalendarWeekScreen.swift */; };
 		CD97BE2E6AED6E4C564D3C9E /* SignOutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFCE2AAFE928FE8981D26647 /* SignOutTests.swift */; };
-		CDDDDC3BA1A8B7FEC50BEF32 /* WelcomePages.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD2EBDC48EFD63B56EDFD00C /* WelcomePages.swift */; };
 		CE801C7A791C3513C5DC44E0 /* AppetiteTodayLine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0502A37CD529AFC3FD7679CE /* AppetiteTodayLine.swift */; };
 		CEEE82880732D8BC516472AF /* SettingsScreensTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 810A93EE79A7E473253E6BF2 /* SettingsScreensTests.swift */; };
 		D4936AF39D9B12A642403907 /* OfflineMealQueueTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E386E3A32DE63D1A145C81BA /* OfflineMealQueueTests.swift */; };
@@ -264,7 +263,6 @@
 		B975D8AD90E038FB0E7082D6 /* ConversationViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationViewModel.swift; sourceTree = "<group>"; };
 		BB13CC4FBF4F06DB57E2DFAD /* TodaySnapshotSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodaySnapshotSync.swift; sourceTree = "<group>"; };
 		BB96C65DA68F91752A1E6E8E /* SetPointTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = SetPointTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		BD2EBDC48EFD63B56EDFD00C /* WelcomePages.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomePages.swift; sourceTree = "<group>"; };
 		C108AC56B67475DD086B29E2 /* CalendarWeekScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarWeekScreen.swift; sourceTree = "<group>"; };
 		C5E63844186AB1D0640274A4 /* CalendarSamples.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarSamples.swift; sourceTree = "<group>"; };
 		CA1CDC6F08B711EAF47371AB /* CalendarManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarManager.swift; sourceTree = "<group>"; };
@@ -498,7 +496,6 @@
 		9042145BFF361930E8CBD6FA /* Welcome */ = {
 			isa = PBXGroup;
 			children = (
-				BD2EBDC48EFD63B56EDFD00C /* WelcomePages.swift */,
 				AD9BC7612AD72C12B458596D /* WelcomeView.swift */,
 			);
 			path = Welcome;
@@ -920,7 +917,6 @@
 				C7E6BD3F022C447E43FE1584 /* UserFacingError.swift in Sources */,
 				E696712411D5085DB4BF7A86 /* WeekStation.swift in Sources */,
 				DB15457EFAA8BB5DC1F7943C /* WeekViews.swift in Sources */,
-				CDDDDC3BA1A8B7FEC50BEF32 /* WelcomePages.swift in Sources */,
 				BBE8017B8523475AEC566B26 /* WelcomeView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
