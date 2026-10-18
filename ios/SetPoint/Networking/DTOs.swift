@@ -31,6 +31,39 @@ struct HomeResponse: Decodable {
     var movedSlots: [MovedSlot]? = nil
     var training: Training? = nil
     var appetite: Appetite? = nil
+    /// After a light meal: calorie-dense add-ons that bring the day back toward
+    /// pace, ready to log in one tap. Nil when on pace or in quiet mode.
+    var topUp: TopUp? = nil
+    /// The evening close-the-gap check-in, if the day is still short then.
+    var closeCheckIn: CloseCheckIn? = nil
+
+    struct TopUp: Decodable, Equatable {
+        let slot: String
+        let behindKcal: Int
+        let totalKcal: Int
+        let totalProteinG: Double
+        /// What gets logged when the user taps Add.
+        let logText: String
+        let items: [Item]
+
+        struct Item: Decodable, Equatable, Hashable {
+            let name: String
+            let servingDesc: String
+            let quantity: Int
+            let kcal: Int
+            let proteinG: Double
+            let carbsG: Double
+            let fatG: Double
+        }
+
+        var totalCarbsG: Double { items.reduce(0) { $0 + $1.carbsG } }
+        var totalFatG: Double { items.reduce(0) { $0 + $1.fatG } }
+    }
+
+    struct CloseCheckIn: Decodable, Equatable {
+        let dueMin: Int
+        let gapKcal: Int
+    }
 
     struct BusyBlock: Decodable, Equatable {
         let startMin: Int
@@ -89,6 +122,8 @@ struct HomeResponse: Decodable {
         let mealMin: Int
         let dueMin: Int
         let overdue: Bool
+        /// Something was logged for this meal, but too little for where the day should be.
+        var light: Bool? = nil
     }
 
     var resolvedMealTimes: MealTimesPayload { mealTimes ?? .standard }
@@ -270,9 +305,17 @@ struct SettlementResponse: Decodable {
     let today: Today
     let weekSummary: String
     let weightGoal: WeightGoal?
+    /// Settled days that reached their target, and how short the rest ran. Older payloads omit it.
+    var gap: Gap? = nil
     /// How each meal went this week. Older payloads omit it.
     var record: Record? = nil
     var targetReview: TargetReview? = nil
+
+    struct Gap: Decodable, Equatable {
+        let closedDays: Int
+        let totalDays: Int
+        let avgShortfallKcal: Int?
+    }
 
     struct TargetReview: Decodable {
         let previousKcal: Int
@@ -785,6 +828,7 @@ struct CalendarSettingsPayload: Codable, Equatable {
     var minBlockMin: Int?
     var workdaysOnly: Bool?
     var includeAllDay: Bool?
+    var countFree: Bool?
 }
 
 struct HealthWritePayload: Codable, Equatable {
@@ -828,7 +872,6 @@ struct SettingsResponse: Decodable {
     let restrictions: [Restriction]
     let enforcementEnabled: Bool
     let enforcementDisabledReason: String?
-    var countFree: Bool?
     var heightCm: Double? = nil
     /// Lowest diet target the backend accepts for this height (BMI 18.5).
     var minHealthyWeightKg: Double? = nil

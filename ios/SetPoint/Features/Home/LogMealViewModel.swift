@@ -194,9 +194,34 @@ final class LogMealViewModel {
 
     /// Log a recent meal again with its exact numbers — no parse, no AI quota.
     func logAgain(_ meal: MealSummary) async {
+        await logMacros(
+            summary: meal.summary ?? "Logged",
+            kcal: meal.kcal,
+            proteinG: meal.proteinG,
+            carbsG: meal.carbsG,
+            fatG: meal.fatG,
+            source: meal.source
+        )
+    }
+
+    /// "About a normal lunch": a rough, honest estimate for a meal eaten but
+    /// not logged — better than nothing, and never AI-parsed.
+    func logEstimate(slot: MealSlot, kcal: Int) async {
+        await logMacros(summary: "\(slot.title) (rough estimate)", kcal: kcal, proteinG: nil, carbsG: nil, fatG: nil)
+    }
+
+    /// Logs known macros as-is (a repeat, a top-up, an estimate). Never AI-parsed.
+    func logMacros(
+        summary: String,
+        kcal: Int,
+        proteinG: Double?,
+        carbsG: Double?,
+        fatG: Double?,
+        source: String = "TEXT"
+    ) async {
         guard phase != .parsing else { return }
         let snapshotBackdate = backdate
-        submittedPrompt = meal.summary ?? "Logged"
+        submittedPrompt = summary
         submittedSlot = snapshotBackdate?.slot
         submittedLoggedAt = snapshotBackdate?.at ?? Date()
         backdate = nil
@@ -205,9 +230,10 @@ final class LogMealViewModel {
             let res: LogMealResponse = try await api.post(
                 "/api/meals",
                 LogMealRequest(
-                    text: meal.summary,
-                    macros: .init(kcal: meal.kcal, proteinG: meal.proteinG, carbsG: meal.carbsG, fatG: meal.fatG),
-                    loggedAt: snapshotBackdate.map { ISO8601DateFormatter().string(from: $0.at) }
+                    text: summary,
+                    macros: .init(kcal: kcal, proteinG: proteinG, carbsG: carbsG, fatG: fatG),
+                    loggedAt: snapshotBackdate.map { ISO8601DateFormatter().string(from: $0.at) },
+                    clientId: UUID().uuidString
                 )
             )
             phase = .logged(
@@ -215,13 +241,13 @@ final class LogMealViewModel {
                     mealId: res.meal.id,
                     kcal: res.meal.kcal,
                     proteinG: res.meal.proteinG,
-                    summary: meal.summary,
+                    summary: summary,
                     notes: nil,
                     confidence: nil,
                     items: [],
                     fromPhoto: false,
                     resolvedCheckIn: res.resolvedCheckInId != nil,
-                    source: meal.source
+                    source: source
                 )
             )
             onMealChanged()

@@ -199,6 +199,7 @@ extension SettlementResponse {
             lastWeighInAt: "2026-09-05T08:00:00.000Z",
             needsWeighIn: false
         ),
+        gap: .init(closedDays: 4, totalDays: 6, avgShortfallKcal: 1870),
         record: .init(
             days: [
                 .init(date: "2026-09-02", slots: ["on_time", "after_check_in", "on_time"]),

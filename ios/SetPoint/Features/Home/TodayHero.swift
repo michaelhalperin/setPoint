@@ -145,14 +145,14 @@ struct TodayHero: View {
     @ViewBuilder
     private var center: some View {
         switch moment {
-        case let .watching(slot, dueMin, overdue):
+        case let .watching(slot, dueMin, overdue, light):
             VStack(spacing: 1) {
                 Text(overdue ? "Checking in" : "Next check-in").sectionLabelStyle()
                 Text(formatMinutes(dueMin))
                     .font(Typography.data(42, weight: .bold))
                     .monospacedDigit()
                     .foregroundStyle(Palette.ink)
-                Text(moved ? "before you're busy" : "if \(slotTitle(slot).lowercased()) isn’t logged")
+                Text(light ? "unless you top up" : moved ? "before you're busy" : "if \(slotTitle(slot).lowercased()) isn’t logged")
                     .font(Typography.data(12, weight: .semibold))
                     .foregroundStyle(Palette.inkSoft)
             }

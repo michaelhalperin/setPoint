@@ -21,6 +21,8 @@ struct HomeContent: View {
     @State private var showingPaywall = false
     @State private var checkInBusy = false
     @State private var checkInError: String?
+    @State private var topUpBusy = false
+    @AppStorage("topUpDismissed") private var topUpDismissed = ""
     @FocusState private var composerFocused: Bool
     @Namespace private var photoLogNamespace
 
@@ -279,11 +281,11 @@ struct HomeContent: View {
                     .transition(.opacity)
                 } else {
                     VStack(alignment: .leading, spacing: Space.md) {
-                        if home.enforcementEnabled, env.push.authorizationStatus == .denied {
-                            NotificationsOffBanner()
                         if let since = model.staleSince {
                             StaleBanner(since: since) { Task { await model.load(showSpinner: false) } }
                         }
+                        if home.enforcementEnabled, env.push.authorizationStatus == .denied {
+                            NotificationsOffBanner()
                         }
                         TodayHero(home: home, moment: moment, date: now)
                     }
@@ -298,6 +300,16 @@ struct HomeContent: View {
                             Task { await model.load(showSpinner: false) }
                         }
                         .appearIn(0)
+
+                        if let topUp = home.topUp, topUpDismissed != TopUpDismissal.key(for: topUp, now: now) {
+                            TopUpCard(
+                                topUp: topUp,
+                                busy: topUpBusy,
+                                onAdd: { addTopUp(topUp) },
+                                onDismiss: { topUpDismissed = TopUpDismissal.key(for: topUp, now: now) }
+                            )
+                            .transition(.opacity.combined(with: .move(edge: .top)))
+                        }
                     }
 
                     FuelStrip(home: home, moment: moment)
@@ -332,6 +344,7 @@ struct HomeContent: View {
                 LogDock(
                     logger: logger,
                     focused: $composerFocused,
+                    estimateKcal: estimateKcal(for: home),
                     photoNamespace: photoLogNamespace,
                     photoGeometryID: Self.photoImageID
                 ) {
@@ -399,6 +412,30 @@ struct HomeContent: View {
             }
             checkInBusy = false
         }
+    }
+
+    private func addTopUp(_ topUp: HomeResponse.TopUp) {
+        guard let logger, !topUpBusy else { return }
+        topUpBusy = true
+        Task {
+            await logger.logMacros(
+                summary: topUp.logText,
+                kcal: topUp.totalKcal,
+                proteinG: topUp.totalProteinG,
+                carbsG: topUp.totalCarbsG,
+                fatG: topUp.totalFatG
+            )
+            topUpBusy = false
+        }
+    }
+
+    /// A usual-size meal for "About a normal lunch": the day's target split
+    /// across the meals the user eats.
+    private func estimateKcal(for home: HomeResponse) -> Int? {
+        guard home.ledger.targetKcal > 0 else { return nil }
+        let meals = 3 + (home.appetite?.extraSlots.count ?? 0)
+        let share = Double(home.ledger.targetKcal) / Double(meals)
+        return max(200, Int((share / 50).rounded()) * 50)
     }
 
     private func logMissed(_ slot: HomeResponse.Day.Slot) {

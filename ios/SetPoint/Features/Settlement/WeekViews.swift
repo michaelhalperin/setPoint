@@ -103,25 +103,32 @@ struct MiniDayDial: View {
 
 // MARK: - The record
 
-struct RecordCard: View {
-    let record: SettlementResponse.Record
+/// The week's headline for someone who can't eat enough: how many days
+/// actually reached the target. Check-ins are the means; this is the end.
+struct GapCard: View {
+    let gap: SettlementResponse.Gap
 
     var body: some View {
         VStack(alignment: .leading, spacing: Space.md) {
             VStack(alignment: .leading, spacing: 0) {
-                Text(record.checkIns == 0 ? "No check-ins this week." : "Check-ins: \(record.checkIns).")
-                    .font(Typography.display(28))
+                Text(headline)
+                    .font(Typography.display(30))
                     .foregroundStyle(Palette.background)
-                Text(record.checkIns == 0 ? "You kept your own rhythm." : "You logged after \(record.afterCheckIn) of them.")
-                    .font(Typography.voiceItalic(28))
+                Text(subline)
+                    .font(Typography.voiceItalic(24))
                     .foregroundStyle(Palette.onAccentVoice)
             }
             .fixedSize(horizontal: false, vertical: true)
 
-            HStack(spacing: Space.sm) {
-                stat(record.onTime, "on time")
-                stat(record.afterCheckIn, "saved")
-                stat(record.missed, "missed")
+            if gap.totalDays > 0 {
+                HStack(spacing: 6) {
+                    ForEach(0 ..< gap.totalDays, id: \.self) { index in
+                        Capsule()
+                            .fill(index < gap.closedDays ? Palette.background : Palette.background.opacity(0.3))
+                            .frame(height: 8)
+                    }
+                }
+                .accessibilityHidden(true)
             }
         }
         .padding(22)
@@ -134,16 +141,66 @@ struct RecordCard: View {
         .accessibilityElement(children: .combine)
     }
 
+    private var headline: String {
+        guard gap.totalDays > 0 else { return "Week one." }
+        return "\(gap.closedDays) of \(gap.totalDays) days closed."
+    }
+
+    private var subline: String {
+        guard gap.totalDays > 0 else { return "Your first day settles tonight." }
+        if gap.closedDays == gap.totalDays { return "Every day reached its target." }
+        if let short = gap.avgShortfallKcal {
+            return "Short days ran \(short.formatted()) kcal under."
+        }
+        return "Keep closing the gap."
+    }
+}
+
+struct RecordCard: View {
+    let record: SettlementResponse.Record
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Space.md) {
+            VStack(alignment: .leading, spacing: 0) {
+                Text(record.checkIns == 0 ? "No check-ins this week." : "Check-ins: \(record.checkIns).")
+                    .font(Typography.display(22))
+                    .foregroundStyle(Palette.ink)
+                Text(record.checkIns == 0 ? "You kept your own rhythm." : "You ate after \(record.afterCheckIn) of them.")
+                    .font(Typography.voiceItalic(22))
+                    .foregroundStyle(Palette.accentDeep)
+            }
+            .fixedSize(horizontal: false, vertical: true)
+
+            HStack(spacing: Space.sm) {
+                stat(record.onTime, "on time")
+                stat(record.afterCheckIn, "saved")
+                stat(record.missed, "missed")
+            }
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background {
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(Palette.surface)
+                .elevation(.resting)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .strokeBorder(Palette.hairline, lineWidth: 1)
+                )
+        }
+        .accessibilityElement(children: .combine)
+    }
+
     private func stat(_ value: Int, _ label: String) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text("\(value)")
-                .font(Typography.data(34, weight: .heavy))
-                .foregroundStyle(Palette.background)
+                .font(Typography.data(28, weight: .heavy))
+                .foregroundStyle(Palette.ink)
                 .monospacedDigit()
                 .contentTransition(.numericText(value: Double(value)))
             Text(label)
                 .font(Typography.data(12, weight: .semibold))
-                .foregroundStyle(Palette.background.opacity(0.75))
+                .foregroundStyle(Palette.inkSoft)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }

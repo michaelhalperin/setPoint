@@ -65,6 +65,36 @@ struct SettlementView: View {
                         .appearIn(0)
                 }
 
+                if let since = model.staleSince {
+                    StaleBanner(since: since) { Task { await model.load() } }
+                }
+
+                if let gap = s.gap {
+                    GapCard(gap: gap)
+                        .appearIn(1)
+                }
+
+                if let goal = s.weightGoal {
+                    WeightTrendCard(goal: goal, entries: model.weights, busy: model.loggingWeight) {
+                        showingWeighIn = true
+                    }
+                    .appearIn(3)
+                    if let err = model.weighInError {
+                        Text(err)
+                            .font(Typography.data(13, weight: .semibold))
+                            .foregroundStyle(Palette.accentDeep)
+                    }
+                }
+
+                if let review = s.targetReview {
+                    TargetReviewCard(review: review, busy: model.applyingTargetReview) {
+                        Task { await model.acceptTargetReview(review) }
+                    } onLater: {
+                        Task { await model.dismissTargetReview() }
+                    }
+                    .appearIn(4)
+                }
+
                 WeekDials(stations: stations, record: s.record) { selectedStation = $0 }
                     .padding(.bottom, Space.xs)
 
@@ -92,27 +122,6 @@ struct SettlementView: View {
                         .transition(.opacity.combined(with: .scale(scale: 0.97)))
                         .appearIn(2)
                     }
-                }
-
-                if let goal = s.weightGoal {
-                    WeightTrendCard(goal: goal, entries: model.weights, busy: model.loggingWeight) {
-                        showingWeighIn = true
-                    }
-                    .appearIn(3)
-                    if let err = model.weighInError {
-                        Text(err)
-                            .font(Typography.data(13, weight: .semibold))
-                            .foregroundStyle(Palette.accentDeep)
-                    }
-                }
-
-                if let review = s.targetReview {
-                    TargetReviewCard(review: review, busy: model.applyingTargetReview) {
-                        Task { await model.acceptTargetReview(review) }
-                    } onLater: {
-                        Task { await model.dismissTargetReview() }
-                    }
-                    .appearIn(4)
                 }
 
                 IntakeStrip(stations: stations)

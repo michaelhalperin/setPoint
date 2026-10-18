@@ -250,6 +250,8 @@ struct TodayMealRow: View {
 struct LogDock: View {
     @Bindable var logger: LogMealViewModel
     var focused: FocusState<Bool>.Binding
+    /// A usual-size meal for the "About a normal lunch" estimate; nil hides it.
+    var estimateKcal: Int? = nil
     let photoNamespace: Namespace.ID
     let photoGeometryID: String
     let onSubmit: () -> Void
@@ -298,6 +300,10 @@ struct LogDock: View {
 
     private var quickLog: some View {
         VStack(alignment: .leading, spacing: Space.sm) {
+            if let backdate = logger.backdate, let kcal = estimateKcal {
+                estimateChip(slot: backdate.slot, kcal: kcal)
+            }
+
             SegmentedPills(
                 options: LogMealViewModel.Mode.allCases,
                 selection: modeBinding,
@@ -325,6 +331,31 @@ struct LogDock: View {
                 recentsRow
             }
         }
+    }
+
+    /// Ate but don't remember the details? A rough number keeps the day honest.
+    private func estimateChip(slot: MealSlot, kcal: Int) -> some View {
+        Button {
+            focused.wrappedValue = false
+            Task { await logger.logEstimate(slot: slot, kcal: kcal) }
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(Palette.accent)
+                Text("About a normal \(slot.title.lowercased())")
+                    .foregroundStyle(Palette.ink)
+                Text("~\(kcal) kcal")
+                    .foregroundStyle(Palette.inkFaint)
+                    .monospacedDigit()
+            }
+            .font(Typography.data(14, weight: .bold))
+            .padding(.horizontal, 14)
+            .padding(.vertical, 9)
+            .background(Palette.surface, in: Capsule())
+            .overlay(Capsule().strokeBorder(Palette.hairline))
+        }
+        .buttonStyle(PressableCard())
+        .accessibilityLabel("Log about a normal \(slot.title.lowercased()), roughly \(kcal) calories")
     }
 
     private var modeBinding: Binding<LogMealViewModel.Mode> {
