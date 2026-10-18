@@ -8,7 +8,7 @@ struct BurnScreen: View {
     @State private var error: String?
 
     var body: some View {
-        SettingsScreen(title: "Your burn", subtitle: "What you really spend, from intake and the scale.") {
+        SettingsScreen(title: "Your burn", subtitle: "From what you eat and the scale.", headline: "What you really burn.") {
             if let insight {
                 content(insight)
             } else if let error {
@@ -93,9 +93,14 @@ struct BurnChart: View {
     var body: some View {
         let maxKcal = max(weeks.map(\.intakeKcal).max() ?? 1, weeks.compactMap(\.burnHigh).max() ?? 1, 1)
         VStack(alignment: .leading, spacing: 10) {
-            Text("Intake vs burn")
-                .font(Typography.data(13, weight: .bold))
-                .foregroundStyle(Palette.inkFaint)
+            HStack {
+                Text("Intake vs burn").sectionLabelStyle()
+                Spacer()
+                HStack(spacing: 6) {
+                    Rectangle().fill(Palette.ink.opacity(0.6)).frame(width: 12, height: 1.5)
+                    Text("burn").font(Typography.mono(10)).foregroundStyle(Palette.inkFaint)
+                }
+            }
             GeometryReader { geo in
                 let w = geo.size.width
                 let h = geo.size.height
@@ -107,15 +112,16 @@ struct BurnChart: View {
                         let yLow = h * CGFloat(low) / CGFloat(maxKcal)
                         let yHigh = h * CGFloat(high) / CGFloat(maxKcal)
                         Rectangle()
-                            .fill(Palette.accent.opacity(0.16))
+                            .fill(Palette.ember.opacity(0.16))
                             .frame(width: w, height: max(4, yHigh - yLow))
                             .offset(y: -(yLow))
                     }
                     HStack(alignment: .bottom, spacing: gap) {
                         ForEach(weeks) { week in
-                            Capsule()
-                                .fill(Palette.amber.opacity(0.85))
-                                .frame(width: barW, height: max(4, h * CGFloat(week.intakeKcal) / CGFloat(maxKcal)))
+                            RoundedRectangle(cornerRadius: 5, style: .continuous)
+                                .fill(LinearGradient(colors: [Palette.amber, Palette.ember], startPoint: .top, endPoint: .bottom))
+                                .frame(width: min(barW, 28), height: max(4, h * CGFloat(week.intakeKcal) / CGFloat(maxKcal)))
+                                .frame(width: barW)
                         }
                     }
                     if let burn = weeks.first?.burnKcal {
@@ -130,6 +136,6 @@ struct BurnChart: View {
             .frame(height: 140)
         }
         .padding(18)
-        .background(Palette.surface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .glass(radius: 24)
     }
 }

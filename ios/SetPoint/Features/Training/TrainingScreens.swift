@@ -12,9 +12,16 @@ struct TrainingScreen: View {
     @State private var newKind = "STRENGTH"
     @State private var newDuration = 60
     @State private var newStart = Calendar.current.date(bySettingHour: 17, minute: 0, second: 0, of: Date()) ?? Date()
+    @State private var openDay: String?
 
     var body: some View {
-        SettingsScreen(title: "Train", subtitle: "Eat around the session. Calories follow the work.", showsBack: !isTabRoot, glow: .haze) {
+        SettingsScreen(
+            title: "Train",
+            subtitle: "· this week",
+            accessory: AnyView(RoundIconButton("plus", label: "Add a session") { adding = true }),
+            showsBack: !isTabRoot,
+            glow: .haze
+        ) {
             if let week {
                 content(week)
             } else if let error {
@@ -31,158 +38,212 @@ struct TrainingScreen: View {
 
     @ViewBuilder
     private func content(_ week: TrainingWeekResponse) -> some View {
-        weekStrip(week).appearIn(2)
-        todayCard(week).appearIn(3)
-        fuelTimeline(week).appearIn(4)
-        howItWorks(week).appearIn(5)
-        if week.fueledWell.total > 0 {
-            Text("Fueled well on \(week.fueledWell.good) of your last \(week.fueledWell.total) training days")
-                .font(Typography.data(14, weight: .semibold))
-                .foregroundStyle(Palette.inkSoft)
-                .appearIn(6)
+        HStack(spacing: 10) {
+            statTile("Fueled", value: "\(week.fueledWell.good)", unit: "of \(week.fueledWell.total) sessions")
+            statTile("Extra food earned", value: "+\(week.days.reduce(0) { $0 + $1.bumpKcal }.formatted())", unit: "kcal")
         }
-        ActionButton(title: "Add a session", kind: .secondary) { adding = true }
-            .appearIn(7)
+        .appearIn(1, rise: 14)
+
+        VStack(spacing: 6) {
+            ForEach(Array(week.days.enumerated()), id: \.element.id) { index, day in
+                dayRow(day, week: week)
+                    .appearIn(2 + index, rise: 10)
+            }
+        }
+
+        howItWorks(week).appearIn(9, rise: 14)
     }
 
-    private func weekStrip(_ week: TrainingWeekResponse) -> some View {
-        HStack(spacing: 6) {
-            ForEach(week.days) { day in
-                VStack(spacing: 6) {
-                    Text(weekdayLetter(day.date))
+    private func statTile(_ label: String, value: String, unit: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label)
+                .font(Typography.mono(10))
+                .tracking(1.2)
+                .textCase(.uppercase)
+                .foregroundStyle(Palette.inkFaint)
+            HStack(alignment: .firstTextBaseline, spacing: 5) {
+                Text(value)
+                    .font(Typography.data(24, weight: .light))
+                    .foregroundStyle(Palette.ink)
+                Text(unit)
+                    .font(Typography.data(13, weight: .regular))
+                    .foregroundStyle(Palette.inkSoft)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glass(radius: 20)
+    }
+
+    /// One row per day: the session (or rest) and what it adds. Today opens to
+    /// show the fuel around the session.
+    private func dayRow(_ day: TrainingWeekResponse.Day, week: TrainingWeekResponse) -> some View {
+        let isToday = day.date == todayISO
+        let open = openDay == day.date || (openDay == nil && isToday && !day.rest)
+        return Button {
+            withAnimation(Motion.settle) { openDay = open ? "" : day.date }
+        } label: {
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(spacing: 12) {
+                    Text(weekdayShort(day.date))
                         .font(Typography.mono(11))
-                        .foregroundStyle(Palette.inkFaint)
-                    ZStack {
-                        Circle()
-                            .fill(day.rest ? Color.white.opacity(0.05) : Palette.haze.opacity(0.22))
-                            .overlay(Circle().strokeBorder(day.rest ? Palette.hairline : Palette.haze.opacity(0.6)))
-                            .frame(width: 36, height: 36)
-                            .shadow(color: day.rest ? .clear : Palette.haze.opacity(0.45), radius: 8)
-                        if day.rest {
-                            Text("–")
-                                .font(Typography.mono(11))
-                                .foregroundStyle(Palette.inkFaint)
-                        } else {
-                            Image(systemName: "dumbbell.fill")
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundStyle(Palette.hazeSoft)
-                        }
-                    }
-                    Text(day.rest ? "rest" : "+\(day.bumpKcal)")
-                        .font(Typography.mono(10))
+                        .foregroundStyle(isToday ? Palette.hazeSoft : Palette.inkFaint)
+                        .frame(width: 34, alignment: .leading)
+                    Text(dayTitle(day))
+                        .font(Typography.data(15, weight: .regular))
+                        .foregroundStyle(day.rest ? Palette.inkSoft : Palette.ink)
+                    Spacer(minLength: 8)
+                    Text(day.rest ? "rest" : "+\(day.bumpKcal) kcal")
+                        .font(Typography.data(12, weight: .regular))
                         .foregroundStyle(day.rest ? Palette.inkFaint : Palette.hazeSoft)
                 }
-                .frame(maxWidth: .infinity)
-            }
-        }
-    }
-
-    private func todayCard(_ week: TrainingWeekResponse) -> some View {
-        let t = week.today
-        return VStack(alignment: .leading, spacing: 8) {
-            Text("Today").sectionLabelStyle(Palette.hazeSoft)
-            Headline(sessionTitle(t), size: 28)
-            Text("\(t.targetKcal.formatted()) kcal = \(t.baseKcal.formatted()) + \(t.bumpKcal)")
-                .font(Typography.mono(13))
-                .foregroundStyle(Palette.hazeSoft)
-        }
-        .padding(20)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .glass(radius: Radius.xl, fill: Palette.haze.opacity(0.10), stroke: Palette.haze.opacity(0.35))
-    }
-
-    private func fuelTimeline(_ week: TrainingWeekResponse) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Today's fuel").sectionLabelStyle()
-            SettingsCard {
-                VStack(alignment: .leading, spacing: 14) {
-                    ForEach(week.today.timeline) { event in
-                        HStack(spacing: 12) {
-                            Circle()
-                                .fill(event.kind == "workout" ? Palette.haze : event.kind == "refuel" ? Palette.hazeSoft : Palette.amber)
-                                .frame(width: 10, height: 10)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(event.label)
-                                    .font(Typography.data(15, weight: .regular))
-                                    .foregroundStyle(Palette.ink)
+                if open, isToday {
+                    VStack(alignment: .leading, spacing: 10) {
+                        ForEach(week.today.timeline) { event in
+                            HStack(spacing: 10) {
+                                Circle()
+                                    .fill(event.kind == "workout" ? Palette.haze : event.kind == "refuel" ? Palette.hazeSoft : Palette.amber)
+                                    .frame(width: 7, height: 7)
                                 Text(formatMinutes(event.atMin))
-                                    .font(Typography.mono(12))
+                                    .font(Typography.mono(11))
                                     .foregroundStyle(Palette.inkSoft)
-                            }
-                            Spacer()
-                            if event.nudge == true {
-                                Text("Nudge")
-                                    .font(Typography.mono(10))
-                                    .foregroundStyle(Palette.hazeSoft)
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 3)
-                                    .background(Palette.haze.opacity(0.16), in: Capsule())
+                                    .frame(width: 44, alignment: .leading)
+                                Text(event.label)
+                                    .font(Typography.data(14, weight: .regular))
+                                    .foregroundStyle(Palette.ink)
+                                Spacer(minLength: 0)
+                                if event.nudge == true {
+                                    Text("nudge")
+                                        .font(Typography.mono(10))
+                                        .foregroundStyle(Palette.hazeSoft)
+                                }
                             }
                         }
+                        Text("\(week.today.targetKcal.formatted()) kcal today = \(week.today.baseKcal.formatted()) + \(week.today.bumpKcal)")
+                            .font(Typography.mono(11))
+                            .foregroundStyle(Palette.inkFaint)
+                            .padding(.top, 2)
                     }
+                    .padding(.leading, 46)
+                    .padding(.top, 12)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
                 }
             }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .glass(
+                radius: 20,
+                fill: isToday ? Palette.haze.opacity(0.08) : (day.rest ? Color.white.opacity(0.025) : Palette.glass),
+                stroke: isToday ? Palette.haze.opacity(0.35) : Palette.hairline
+            )
+            .contentShape(Rectangle())
         }
+        .buttonStyle(PressableCard())
+        .accessibilityLabel("\(weekdayShort(day.date)), \(dayTitle(day)), \(day.rest ? "rest" : "plus \(day.bumpKcal) calories")")
+    }
+
+    private var todayISO: String {
+        let f = DateFormatter()
+        f.calendar = Calendar(identifier: .gregorian)
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "yyyy-MM-dd"
+        return f.string(from: .now)
+    }
+
+    private func dayTitle(_ day: TrainingWeekResponse.Day) -> String {
+        guard let first = day.workouts.first else { return day.rest ? "Rest" : "Training" }
+        let kind: String
+        switch first.kind {
+        case "CARDIO": kind = "Cardio"
+        case "MIXED": kind = "Mixed"
+        default: kind = "Strength"
+        }
+        return "\(kind) · \(formatMinutes(first.startMin))"
     }
 
     private func howItWorks(_ week: TrainingWeekResponse) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("How it works").sectionLabelStyle()
-            SettingsCard(padding: 0) {
+            GlassList {
                 Toggle(isOn: addCaloriesBinding(week)) {
                     Text("Add calories on training days")
-                        .font(Typography.data(15, weight: .bold))
+                        .font(Typography.data(15, weight: .regular))
                         .foregroundStyle(Palette.ink)
                 }
                 .tint(Palette.haze)
-                .padding(16)
-                Divider().overlay(Palette.hairline).padding(.leading, 16)
+                .padding(.vertical, 14)
+                ListDivider()
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Pre-workout nudge")
-                        .font(Typography.data(15, weight: .bold))
+                    Text("Nudge before a session if you haven’t eaten")
+                        .font(Typography.data(15, weight: .regular))
                         .foregroundStyle(Palette.ink)
-                    Picker("Nudge", selection: nudgeBinding(week)) {
-                        Text("Off").tag(0)
-                        Text("60 min").tag(60)
-                        Text("90 min").tag(90)
-                        Text("2 hours").tag(120)
-                    }
-                    .pickerStyle(.segmented)
+                    SegmentedPills(
+                        options: [0, 60, 90, 120],
+                        selection: nudgeBinding(week),
+                        title: { $0 == 0 ? "Off" : $0 == 120 ? "2 h" : "\($0) min" }
+                    )
                 }
-                .padding(16)
-                Divider().overlay(Palette.hairline).padding(.leading, 16)
-                SettingsRow(symbol: "heart.fill", title: "Apple Health workouts", value: env.health.connected ? "On" : "Off")
+                .padding(.vertical, 14)
+                ListDivider()
+                HStack {
+                    Text("Apple Health workouts")
+                        .font(Typography.data(15, weight: .regular))
+                        .foregroundStyle(Palette.ink)
+                    Spacer()
+                    Text(env.health.connected ? "On" : "Off")
+                        .font(Typography.data(13, weight: .regular))
+                        .foregroundStyle(env.health.connected ? Palette.positive : Palette.inkSoft)
+                }
+                .frame(minHeight: 50)
             }
         }
     }
 
     private var addSheet: some View {
-        NavigationStack {
-            VStack(alignment: .leading, spacing: 18) {
-                Picker("Kind", selection: $newKind) {
-                    Text("Strength").tag("STRENGTH")
-                    Text("Cardio").tag("CARDIO")
-                    Text("Mixed").tag("MIXED")
+        VStack(alignment: .leading, spacing: 16) {
+            Headline("Add a session.", tail: "I’ll plan food around it.", size: 30)
+            SegmentedPills(
+                options: ["STRENGTH", "CARDIO", "MIXED"],
+                selection: $newKind,
+                title: { $0 == "CARDIO" ? "Cardio" : $0 == "MIXED" ? "Mixed" : "Strength" }
+            )
+            GlassList {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(newStart.formatted(.dateTime.weekday(.wide)))
+                            .font(Typography.mono(10))
+                            .tracking(1.2)
+                            .textCase(.uppercase)
+                            .foregroundStyle(Palette.inkFaint)
+                        Text("Starts at")
+                            .font(Typography.data(15, weight: .regular))
+                            .foregroundStyle(Palette.ink)
+                    }
+                    Spacer()
+                    DatePicker("", selection: $newStart, displayedComponents: [.date, .hourAndMinute])
+                        .labelsHidden()
+                        .tint(Palette.hazeSoft)
                 }
-                .pickerStyle(.segmented)
-                DatePicker("Starts", selection: $newStart, displayedComponents: [.date, .hourAndMinute])
-                Stepper("\(newDuration) min", value: $newDuration, in: 20...180, step: 5)
-                ActionButton(title: "Save session", kind: .primary) {
-                    Task { await addPlanned() }
-                }
-                Spacer()
+                .padding(.vertical, 10)
             }
-            .padding(Space.gutter)
-            .background(Palette.background.ignoresSafeArea())
-            .navigationTitle("Add a session")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { adding = false }
-                }
+            SegmentedPills(
+                options: [30, 45, 60, 90],
+                selection: $newDuration,
+                title: { "\($0) min" }
+            )
+            ActionButton(title: "Add session", kind: .primary, symbol: "plus") {
+                Task { await addPlanned() }
             }
         }
-        .presentationDetents([.medium])
+        .padding(Space.gutter)
+        .padding(.top, Space.xs)
+        .presentationDetents([.height(440)])
+        .presentationDragIndicator(.visible)
+        .presentationBackground(Palette.sheet)
+        .presentationCornerRadius(32)
     }
 
     private func addCaloriesBinding(_ week: TrainingWeekResponse) -> Binding<Bool> {
@@ -241,16 +302,7 @@ struct TrainingScreen: View {
         }
     }
 
-    private func sessionTitle(_ today: TrainingWeekResponse.Today) -> String {
-        guard let first = today.workouts.first else { return "Rest day" }
-        switch first.kind {
-        case "CARDIO": return "Cardio"
-        case "MIXED": return "Mixed"
-        default: return "Strength"
-        }
-    }
-
-    private func weekdayLetter(_ iso: String) -> String {
+    private func weekdayShort(_ iso: String) -> String {
         let parts = iso.split(separator: "-")
         guard parts.count == 3,
               let y = Int(parts[0]), let m = Int(parts[1]), let d = Int(parts[2])
@@ -260,7 +312,7 @@ struct TrainingScreen: View {
         comps.month = m
         comps.day = d
         guard let date = Calendar.current.date(from: comps) else { return "·" }
-        return date.formatted(.dateTime.weekday(.narrow))
+        return date.formatted(.dateTime.weekday(.abbreviated))
     }
 }
 
@@ -269,7 +321,7 @@ struct TrainingLockedView: View {
     @State private var showingPaywall = false
 
     var body: some View {
-        SettingsScreen(title: "Train", subtitle: "Meal check-ins stay free. Pro adds the training side.", showsBack: false, glow: .haze) {
+        SettingsScreen(title: "Train", subtitle: "· with Pro", showsBack: false, glow: .haze) {
             VStack(alignment: .leading, spacing: Space.md) {
                 lockedRow("figure.strengthtraining.traditional", "Training days get more food", "Your target rises with the session, so the extra burn doesn’t widen the gap.")
                 lockedRow("bolt.heart", "Refuel right after", "When Apple Health saves a workout, a refuel check-in follows within minutes.")
