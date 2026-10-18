@@ -287,3 +287,31 @@ extension View {
             .accessibilityLabel("Loading")
     }
 }
+
+/// A refresh failed but the screen still shows the last good data: say how old
+/// it is and offer a retry, instead of replacing everything with an error.
+struct StaleBanner: View {
+    let since: Date
+    let retry: () -> Void
+
+    var body: some View {
+        HStack(spacing: Space.sm) {
+            Image(systemName: "wifi.slash")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(Palette.inkSoft)
+            Text("Couldn’t refresh · showing \(since.formatted(date: .omitted, time: .shortened))")
+                .font(Typography.data(13, weight: .semibold))
+                .foregroundStyle(Palette.inkSoft)
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
+            Spacer(minLength: 0)
+            Button("Retry", action: retry)
+                .font(Typography.data(13, weight: .bold))
+                .foregroundStyle(Palette.accentDeep)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(Palette.surfaceSunk, in: Capsule())
+        .accessibilityElement(children: .combine)
+    }
+}

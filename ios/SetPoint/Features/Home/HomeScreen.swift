@@ -281,6 +281,9 @@ struct HomeContent: View {
                     VStack(alignment: .leading, spacing: Space.md) {
                         if home.enforcementEnabled, env.push.authorizationStatus == .denied {
                             NotificationsOffBanner()
+                        if let since = model.staleSince {
+                            StaleBanner(since: since) { Task { await model.load(showSpinner: false) } }
+                        }
                         }
                         TodayHero(home: home, moment: moment, date: now)
                     }

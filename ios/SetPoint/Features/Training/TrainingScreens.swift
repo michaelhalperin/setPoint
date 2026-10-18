@@ -223,7 +223,7 @@ struct TrainingScreen: View {
             error = nil
             await env.health.uploadWorkouts()
         } catch {
-            self.error = UserFacingError.message(for: error)
+            self.error = UserFacingError.message(for: error, fallback: "Couldn’t load your training week.")
         }
     }
 
@@ -238,7 +238,7 @@ struct TrainingScreen: View {
             adding = false
             await load()
         } catch {
-            self.error = UserFacingError.message(for: error)
+            self.error = UserFacingError.message(for: error, fallback: "Couldn’t add that session. Try again.")
         }
     }
 

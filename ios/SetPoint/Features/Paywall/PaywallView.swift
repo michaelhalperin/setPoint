@@ -76,6 +76,7 @@ struct PaywallView: View {
                         }
                     }
                     .disabled(store.selectedProduct == nil)
+                    .opacity(store.selectedProduct == nil ? 0.45 : 1)
 
                     Text(renewalDisclosure)
                         .font(Typography.data(12))
@@ -140,7 +141,7 @@ struct PaywallView: View {
     }
 
     private func priceLine(_ product: Product?, unit: String) -> String {
-        guard let product else { return "—" }
+        guard let product else { return "…" }
         return "\(product.displayPrice)/\(unit)"
     }
 

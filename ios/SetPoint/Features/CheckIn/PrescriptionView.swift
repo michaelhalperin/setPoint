@@ -356,7 +356,7 @@ struct PrescriptionView: View {
             }
         } catch {
             loaded = true
-            self.error = UserFacingError.message(for: error)
+            self.error = UserFacingError.message(for: error, fallback: "Couldn’t load the other plate. The one above still works.")
         }
     }
 
@@ -375,7 +375,7 @@ struct PrescriptionView: View {
                 fullPlate = reply.prescription
             }
         } catch {
-            self.error = UserFacingError.message(for: error)
+            self.error = UserFacingError.message(for: error, fallback: "Couldn’t switch plates. Try again.")
         }
     }
 

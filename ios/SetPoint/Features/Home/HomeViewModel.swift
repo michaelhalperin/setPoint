@@ -12,6 +12,12 @@ final class HomeViewModel {
     }
 
     private(set) var phase: Phase = .loading
+    /// A background refresh failed while Today was already showing: keep the
+    /// last good data on screen and say when it's from, instead of wiping it.
+    private(set) var staleSince: Date?
+    private var loadedAt: Date?
+    /// Debug previews show sample data and never touch the network.
+    private var isPreview = false
 
     private let api: APIClient
     private let onUnauthorized: @MainActor () -> Void
@@ -28,11 +34,14 @@ final class HomeViewModel {
     }
 
     func load(showSpinner: Bool = true) async {
+        if isPreview { return }
         if showSpinner { phase = .loading }
         do {
             await OfflineMealQueue.flush(using: api)
             let home: HomeResponse = try await api.get("/api/home")
             phase = .loaded(home)
+            loadedAt = Date()
+            staleSince = nil
             LiveActivityController.shared.sync(activeCheckIn: home.activeCheckIn)
             TodaySnapshotSync.write(home: home)
             await HealthKitManager.shared.reconcileToday(home.meals)
@@ -41,7 +50,11 @@ final class HomeViewModel {
         } catch let APIError.http(status, _) where status == 409 {
             phase = .needsOnboarding
         } catch {
-            phase = .failed(message(for: error))
+            if !showSpinner, case .loaded = phase {
+                staleSince = loadedAt ?? Date()
+            } else {
+                phase = .failed(message(for: error))
+            }
         }
     }
 
@@ -65,7 +78,7 @@ final class HomeViewModel {
     }
 
     private func message(for error: Error) -> String {
-        UserFacingError.message(for: error, fallback: "Couldn't load. Try again.")
+        UserFacingError.message(for: error, fallback: "Couldn’t load today.")
     }
 
     #if DEBUG
@@ -73,6 +86,7 @@ final class HomeViewModel {
         let env = AppEnvironment.preview()
         let vm = HomeViewModel(api: env.api, onUnauthorized: {})
         vm.phase = phase
+        vm.isPreview = true
         return vm
     }
     #endif
