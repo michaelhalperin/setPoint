@@ -10,6 +10,8 @@ struct SearchComposer: View {
     var photoNamespace: Namespace.ID?
     var photoGeometryID = "photo-log-image"
     var prompt = "What did you eat?"
+    /// Typing on its own: the words are the big text on the sheet.
+    var large = false
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var pickerItem: PhotosPickerItem?
@@ -34,7 +36,8 @@ struct SearchComposer: View {
             HStack(alignment: .bottom, spacing: 8) {
                 HStack(spacing: 8) {
                     TextField(prompt, text: $model.text, axis: .vertical)
-                        .font(Typography.data(16))
+                        .font(large ? Typography.display(26) : Typography.data(16))
+                        .tracking(large ? -0.7 : 0)
                         .lineLimit(1 ... 4)
                         .focused(focused)
                         .submitLabel(.send)

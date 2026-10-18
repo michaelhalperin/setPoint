@@ -261,7 +261,7 @@ struct HomeContent: View {
         case .loading:
             HomeSkeletonView()
         case let .failed(message):
-            RetryState(message: message) { Task { await model.load() } }
+            RetryState(message: message, retry: { Task { await model.load() } }, onLog: { openLog(focus: true) })
         case .needsOnboarding:
             HomeSkeletonView() // onboarding is presented by MainTabView
         case let .loaded(home):
@@ -379,7 +379,7 @@ struct HomeContent: View {
                     }
                     .transition(.move(edge: .bottom))
                 } else {
-                    LogStatusToast(logger: logger)
+                    LogStatusToast(logger: logger, onRetry: { openLog(focus: true) })
                         .padding(.bottom, 8)
                         .frame(maxWidth: .infinity)
                 }
@@ -663,59 +663,166 @@ struct HomeContent: View {
     }
 }
 
+/// Today couldn't load: an unlit orb in a broken ring, and what still works
+/// without a connection.
 private struct RetryState: View {
     let message: String
     let retry: () -> Void
+    var onLog: (() -> Void)? = nil
 
     var body: some View {
-        VStack(spacing: 14) {
-            Text(message)
-                .font(Typography.data(15))
-                .foregroundStyle(Palette.inkSoft)
-                .multilineTextAlignment(.center)
-            ActionButton(title: "Try again", kind: .secondary, action: retry)
-                .frame(maxWidth: 200)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                ZStack {
+                    Circle()
+                        .stroke(Color.white.opacity(0.14), style: StrokeStyle(lineWidth: 3, lineCap: .round, dash: [60, 22]))
+                        .rotationEffect(.degrees(-90))
+                    FuelOrb(size: 160, dimmed: true, glow: 0)
+                    Image(systemName: "icloud.slash")
+                        .font(.system(size: 18, weight: .regular))
+                        .foregroundStyle(Palette.hazeSoft)
+                        .frame(width: 46, height: 46)
+                        .background(Circle().fill(Palette.sheet))
+                        .overlay(Circle().strokeBorder(Palette.hazeSoft.opacity(0.4)))
+                        .shadow(color: Palette.haze.opacity(0.35), radius: 10)
+                        .offset(x: 62, y: 62)
+                }
+                .frame(width: 240, height: 240)
+                .frame(maxWidth: .infinity)
+                .padding(.top, 30)
+                .accessibilityHidden(true)
+
+                Text("No connection")
+                    .font(Typography.mono(11))
+                    .tracking(1.3)
+                    .textCase(.uppercase)
+                    .foregroundStyle(Palette.inkFaint)
+                    .frame(maxWidth: .infinity)
+
+                Headline("Couldn’t load today.", tail: "You can still log.", size: 38)
+
+                Text(message)
+                    .font(Typography.data(13, weight: .regular))
+                    .foregroundStyle(Palette.inkSoft)
+
+                HStack(spacing: 8) {
+                    tile("Log a meal", "Saved here, sent later")
+                    tile("Check-ins", "Run on this phone")
+                    tile("Your plan", "From last time")
+                }
+                .fixedSize(horizontal: false, vertical: true)
+
+                VStack(spacing: 4) {
+                    ActionButton(title: "Try again", action: retry)
+                    if let onLog {
+                        Button("Log something anyway", action: onLog)
+                            .font(Typography.data(14, weight: .regular))
+                            .foregroundStyle(Palette.inkSoft)
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                    }
+                }
+                .padding(.top, 8)
+            }
+            .padding(.horizontal, Space.gutter)
+            .padding(.bottom, 120)
         }
-        .padding(28)
+        .background(alignment: .top) {
+            AmbientGlow(tone: .haze, strength: 0.4).offset(y: -40).ignoresSafeArea()
+        }
+    }
+
+    private func tile(_ title: String, _ note: String) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Image(systemName: "checkmark")
+                .font(.system(size: 9, weight: .heavy))
+                .foregroundStyle(Palette.positive)
+                .frame(width: 18, height: 18)
+                .background(Palette.positive.opacity(0.14), in: Circle())
+            Text(title)
+                .font(Typography.data(13, weight: .regular))
+                .foregroundStyle(Palette.ink)
+            Text(note)
+                .font(Typography.data(11, weight: .regular))
+                .foregroundStyle(Palette.inkFaint)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .glass(radius: 18, fill: Color.white.opacity(0.035))
+        .accessibilityElement(children: .combine)
     }
 }
 
+/// Today while it loads: the day and date (the phone knows those), a dim orb
+/// warming up inside a turning amber arc, and the meal dots pulsing.
 struct HomeSkeletonView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var body: some View {
         VStack(spacing: Space.md) {
             HStack {
-                VStack(alignment: .leading, spacing: 6) {
-                    SkeletonBlock(width: 110, height: 20, radius: 6)
-                    SkeletonBlock(width: 60, height: 10)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(Date.now.formatted(.dateTime.weekday(.wide)))
+                        .font(Typography.data(20, weight: .regular))
+                        .foregroundStyle(Palette.ink)
+                    Text("\(Date.now.formatted(.dateTime.day().month(.abbreviated))) · warming up")
+                        .font(Typography.mono(11))
+                        .tracking(1.2)
+                        .textCase(.uppercase)
+                        .foregroundStyle(Palette.inkFaint)
                 }
                 Spacer()
             }
             ZStack {
-                Circle().stroke(Palette.idleRing, lineWidth: 4)
-                Circle().fill(Palette.surfaceSunk).padding(30)
-                VStack(spacing: 8) {
-                    SkeletonBlock(width: 96, height: 40, radius: 10)
-                    SkeletonBlock(width: 80, height: 10)
+                Circle().stroke(Color.white.opacity(0.07), lineWidth: 4)
+                TimelineView(.animation(paused: reduceMotion)) { ctx in
+                    let t = ctx.date.timeIntervalSinceReferenceDate
+                    Circle()
+                        .trim(from: 0, to: 0.15)
+                        .stroke(Palette.amber, style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                        .shadow(color: Palette.amber.opacity(0.7), radius: 8)
+                        .rotationEffect(.degrees(reduceMotion ? -90 : t.truncatingRemainder(dividingBy: 2.4) / 2.4 * 360))
+                }
+                FuelOrb(size: 180, glow: 0.2)
+                    .opacity(0.32)
+                VStack(spacing: 10) {
+                    SkeletonBlock(width: 110, height: 38, radius: 12)
+                    Text("of your day")
+                        .font(Typography.mono(11))
+                        .foregroundStyle(Color(hex: 0xFDE6CF).opacity(0.7))
                 }
             }
             .frame(width: 240, height: 240)
             .padding(.top, Space.xs)
-            SkeletonBlock(width: 170, height: 34, radius: 17)
-            SkeletonCard(height: 150) {
-                VStack(alignment: .leading, spacing: 12) {
-                    SkeletonBlock(width: 140, height: 10)
-                    SkeletonBlock(width: 220, height: 26, radius: 8)
-                    SkeletonBlock(width: 180, height: 14)
-                }
+            HStack(spacing: 8) {
+                Circle().fill(Palette.amber).frame(width: 6, height: 6)
+                Text("Pulling in today’s plan")
+                    .font(Typography.mono(11))
+                    .tracking(1.1)
+                    .textCase(.uppercase)
+                    .foregroundStyle(Palette.inkFaint)
             }
-            .padding(.top, Space.xs)
+            VStack(alignment: .leading, spacing: 12) {
+                SkeletonBlock(width: 150, height: 10)
+                SkeletonBlock(width: 220, height: 22, radius: 8)
+                SkeletonBlock(height: 50, radius: 16)
+                SkeletonBlock(height: 50, radius: 16).opacity(0.6)
+            }
+            .padding(18)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .glass(radius: 26)
+            .shimmering()
             Spacer(minLength: 0)
         }
         .padding(.horizontal, Space.gutter)
         .padding(.top, Space.xs)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background(alignment: .top) {
+            AmbientGlow(tone: .ember, strength: 0.5).offset(y: -40).ignoresSafeArea()
+        }
         .background(Palette.background.ignoresSafeArea())
-        .skeletonLoading()
+        .accessibilityElement()
+        .accessibilityLabel("Loading today")
     }
 }
 

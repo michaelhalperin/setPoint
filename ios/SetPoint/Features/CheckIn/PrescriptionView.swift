@@ -95,10 +95,7 @@ struct PrescriptionView: View {
                 .accessibilityLabel("Close")
             }
 
-            Text(headline)
-                .font(Typography.display(40))
-                .foregroundStyle(Palette.ink)
-                .accessibilityAddTraits(.isHeader)
+            Headline(headline, tail: notHungry ? "Two ways to get it in." : nil, size: 40)
 
             if let whyNow {
                 Label(whyNow, systemImage: "clock")
@@ -110,8 +107,8 @@ struct PrescriptionView: View {
             }
 
             if checkIn.prescription != nil {
-                sizeControl
-                plateCards
+                plateTiles
+                Spacer(minLength: 0)
                 primaryActions
             } else if let message = checkIn.message {
                 Text(message)
@@ -125,8 +122,6 @@ struct PrescriptionView: View {
                     .font(Typography.data(13, weight: .semibold))
                     .foregroundStyle(Palette.amber)
             }
-
-            Spacer(minLength: 0)
 
             HStack(spacing: Space.sm) {
                 Text("Right time?")
@@ -144,6 +139,11 @@ struct PrescriptionView: View {
         .background {
             UnevenRoundedRectangle(topLeadingRadius: 32, topTrailingRadius: 32, style: .continuous)
                 .fill(Palette.background)
+                .overlay(alignment: .top) {
+                    AmbientGlow(tone: .ember, strength: 0.8, height: 360)
+                        .offset(y: -120)
+                        .clipShape(UnevenRoundedRectangle(topLeadingRadius: 32, topTrailingRadius: 32, style: .continuous))
+                }
                 .shadow(color: Palette.ink.opacity(0.12), radius: 20, y: -6)
                 .ignoresSafeArea(edges: .bottom)
         }
@@ -163,87 +163,84 @@ struct PrescriptionView: View {
         }
     }
 
-    private var sizeControl: some View {
-        HStack(spacing: 0) {
-            segment("Full plate", selected: !notHungry) { select(notHungry: false) }
-            segment("Not hungry", selected: notHungry) { select(notHungry: true) }
-        }
-        .padding(4)
-        .glassCapsule(fill: Color.white.opacity(0.05), stroke: Color.white.opacity(0.08))
-    }
-
-    private func segment(_ title: String, selected: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(title)
-                .font(Typography.data(14, weight: selected ? .medium : .regular))
-                .foregroundStyle(selected ? Palette.onBone : Palette.inkSoft)
-                .frame(maxWidth: .infinity, minHeight: 40)
-                .background {
-                    if selected {
-                        Capsule().fill(Palette.ink)
+    /// The two plates side by side as pictures: a full plate to chew, or a glass and
+    /// a banana to drink. The chosen one lights; its foods sit underneath.
+    private var plateTiles: some View {
+        VStack(spacing: 12) {
+            HStack(spacing: 10) {
+                plateTile(smaller: false, plate: fullPlate)
+                plateTile(smaller: true, plate: smallerPlate)
+            }
+            .fixedSize(horizontal: false, vertical: true)
+            if let plate = activePrescription {
+                FlexWrap(spacing: 8, lineSpacing: 8) {
+                    ForEach(plate.items) { item in
+                        HStack(spacing: 8) {
+                            Text(item.quantity > 1 ? "\(Int(item.quantity))× \(item.name)" : item.name)
+                                .font(Typography.data(13, weight: .regular))
+                                .foregroundStyle(Palette.ink)
+                            Text("\(item.kcal)")
+                                .font(Typography.mono(11))
+                                .foregroundStyle(Palette.amber)
+                        }
+                        .padding(.horizontal, 14)
+                        .frame(height: 34)
+                        .glassCapsule()
                     }
                 }
+                .frame(maxWidth: .infinity)
+                .id(notHungry)
+                .transition(.opacity)
+            } else if !loaded {
+                ProgressView().frame(maxWidth: .infinity, minHeight: 40)
+            }
+        }
+        .animation(Motion.adaptive(Motion.settle, reduceMotion: reduceMotion), value: notHungry)
+    }
+
+    private func plateTile(smaller: Bool, plate: HomeResponse.ActiveCheckIn.Prescription?) -> some View {
+        let on = notHungry == smaller
+        return Button { select(notHungry: smaller) } label: {
+            VStack(spacing: 4) {
+                Group {
+                    if smaller { DrinkPicture() } else { PlatePicture() }
+                }
+                .frame(height: 150)
+                Text(smaller ? "Drink · 2 min" : "Chew · 15 min")
+                    .sectionLabelStyle(on ? Palette.amber : Palette.inkFaint)
+                Text(smaller ? "Easier to get down" : "Full plate")
+                    .font(Typography.data(16, weight: .medium))
+                    .foregroundStyle(Palette.ink)
+                    .multilineTextAlignment(.center)
+                if let plate {
+                    Text("\(plate.totalKcal.formatted()) kcal")
+                        .font(Typography.mono(12))
+                        .foregroundStyle(Palette.inkSoft)
+                    Text("\(Int(plate.totalProteinG.rounded())) g protein")
+                        .font(Typography.data(11, weight: .regular))
+                        .foregroundStyle(Palette.inkFaint)
+                }
+            }
+            .padding(.horizontal, 8)
+            .padding(.top, 8)
+            .padding(.bottom, 16)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .background {
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    .fill(on
+                          ? AnyShapeStyle(LinearGradient(colors: [Palette.ember.opacity(0.13), Palette.ember.opacity(0.03)], startPoint: .top, endPoint: .bottom))
+                          : AnyShapeStyle(Color.white.opacity(0.02)))
+            }
+            .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous).strokeBorder(on ? Color(hex: 0xFF8A50, opacity: 0.55) : Color.white.opacity(0.07)))
+            .shadow(color: Palette.ember.opacity(on ? 0.16 : 0), radius: 20)
+            .scaleEffect(on ? 1 : 0.94)
+            .opacity(on ? 1 : 0.5)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .disabled(busy)
-    }
-
-    @ViewBuilder
-    private var plateCards: some View {
-        let chosen = notHungry ? smallerPlate : fullPlate
-        let other = notHungry ? fullPlate : smallerPlate
-        VStack(spacing: 10) {
-            if let chosen {
-                plateCard(
-                    label: notHungry ? "EASIER TO GET DOWN" : "FULL PLATE",
-                    prescription: chosen,
-                    emphasized: true
-                )
-            } else if !loaded {
-                ProgressView().frame(maxWidth: .infinity, minHeight: 80)
-            }
-            if let other {
-                plateCard(
-                    label: notHungry ? "FULL PLATE" : "EASIER TO GET DOWN",
-                    prescription: other,
-                    emphasized: false
-                )
-            }
-        }
-    }
-
-    private func plateCard(
-        label: String,
-        prescription: HomeResponse.ActiveCheckIn.Prescription,
-        emphasized: Bool
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text(label)
-                    .sectionLabelStyle(emphasized ? Palette.amber : Palette.inkFaint)
-                Spacer()
-                Text("\(prescription.totalKcal.formatted()) kcal")
-                    .font(Typography.mono(13))
-                    .foregroundStyle(Palette.ink)
-            }
-            ForEach(prescription.items) { item in
-                HStack(spacing: 10) {
-                    Text(item.quantity > 1 ? "\(Int(item.quantity))× \(item.name)" : item.name)
-                        .font(Typography.data(15, weight: .regular))
-                        .foregroundStyle(Palette.ink)
-                    Spacer(minLength: 8)
-                    Text("\(item.kcal)")
-                        .font(Typography.mono(13))
-                        .foregroundStyle(Palette.inkSoft)
-                }
-            }
-        }
-        .padding(16)
-        .glass(
-            radius: 22,
-            fill: emphasized ? Palette.ember.opacity(0.07) : Palette.glass,
-            stroke: emphasized ? Palette.amber.opacity(0.45) : Palette.hairline
-        )
+        .accessibilityLabel((smaller ? "Easier to get down" : "Full plate") + (plate.map { ", \($0.totalKcal) calories" } ?? ""))
+        .accessibilityAddTraits(on ? .isSelected : [])
     }
 
     private var primaryActions: some View {
@@ -407,4 +404,61 @@ struct PrescriptionView: View {
 
 private struct FeedbackBody: Encodable {
     let positive: Bool
+}
+
+/// A full plate, drawn: rice, chicken and greens on a dark plate.
+struct PlatePicture: View {
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(RadialGradient(stops: [
+                    .init(color: Color(hex: 0x2A2723), location: 0.58), .init(color: Color(hex: 0x3A3631), location: 0.6),
+                    .init(color: Color(hex: 0x3A3631), location: 0.66), .init(color: Color(hex: 0x1B1917), location: 0.68),
+                ], center: .center, startRadius: 0, endRadius: 70))
+                .frame(width: 140, height: 140)
+                .shadow(color: .black.opacity(0.7), radius: 25, y: 18)
+            blob(Color(hex: 0xE7D7B4), Color(hex: 0xB79B6A), w: 62, h: 52, x: -19, y: -22)
+            blob(Color(hex: 0xD97A45), Color(hex: 0x8E3D1C), w: 58, h: 50, x: 25, y: -2)
+            blob(Color(hex: 0x5E7A3E), Color(hex: 0x2F4420), w: 56, h: 34, x: -6, y: 31)
+        }
+        .accessibilityHidden(true)
+    }
+
+    private func blob(_ a: Color, _ b: Color, w: CGFloat, h: CGFloat, x: CGFloat, y: CGFloat) -> some View {
+        Ellipse()
+            .fill(RadialGradient(colors: [a, b], center: UnitPoint(x: 0.4, y: 0.4), startRadius: 0, endRadius: w * 0.6))
+            .frame(width: w, height: h)
+            .blur(radius: 1.2)
+            .offset(x: x, y: y)
+    }
+}
+
+/// The easier plate, drawn: a shake with a straw and a banana.
+struct DrinkPicture: View {
+    var body: some View {
+        ZStack {
+            UnevenRoundedRectangle(topLeadingRadius: 10, bottomLeadingRadius: 18, bottomTrailingRadius: 18, topTrailingRadius: 10, style: .continuous)
+                .fill(LinearGradient(stops: [
+                    .init(color: .clear, location: 0), .init(color: .clear, location: 0.22),
+                    .init(color: Color(hex: 0xFDE6CF), location: 0.22), .init(color: Palette.amber, location: 0.62), .init(color: Palette.emberDeep, location: 1),
+                ], startPoint: .top, endPoint: .bottom))
+                .overlay(
+                    UnevenRoundedRectangle(topLeadingRadius: 10, bottomLeadingRadius: 18, bottomTrailingRadius: 18, topTrailingRadius: 10, style: .continuous)
+                        .strokeBorder(Color.white.opacity(0.28), lineWidth: 1.5)
+                )
+                .frame(width: 52, height: 112)
+                .shadow(color: Palette.ember.opacity(0.35), radius: 22)
+                .offset(x: -20, y: 6)
+            Capsule().fill(Palette.ink).frame(width: 4, height: 44)
+                .rotationEffect(.degrees(14))
+                .offset(x: -24, y: -48)
+            UnevenRoundedRectangle(bottomLeadingRadius: 60, bottomTrailingRadius: 60, style: .continuous)
+                .fill(LinearGradient(colors: [Color(hex: 0xFCD34D), Color(hex: 0xCA8A04)], startPoint: .top, endPoint: .bottom))
+                .frame(width: 72, height: 26)
+                .rotationEffect(.degrees(-18))
+                .shadow(color: .black.opacity(0.4), radius: 9, y: 6)
+                .offset(x: 30, y: 44)
+        }
+        .accessibilityHidden(true)
+    }
 }

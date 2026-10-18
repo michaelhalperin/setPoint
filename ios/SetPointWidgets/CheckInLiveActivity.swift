@@ -63,12 +63,16 @@ private struct Bell: View {
     }
 }
 
+/// A breathing ember orb, the manager's line and the plate, with an "Eat" pill.
 private struct LockScreenView: View {
     let state: CheckInActivityAttributes.ContentState
 
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
-            Bell(size: 38)
+            Circle()
+                .fill(RadialGradient(colors: [Color(red: 1, green: 0.878, blue: 0.722), ember], center: UnitPoint(x: 0.35, y: 0.3), startRadius: 0, endRadius: 26))
+                .frame(width: 42, height: 42)
+                .shadow(color: ember.opacity(0.6), radius: 10)
             VStack(alignment: .leading, spacing: 3) {
                 Text(state.title)
                     .font(.system(.subheadline).weight(.medium))
@@ -82,12 +86,15 @@ private struct LockScreenView: View {
                 }
             }
             Spacer(minLength: 0)
-            Image(systemName: "chevron.right")
-                .font(.system(size: 13, weight: .bold))
-                .foregroundStyle(bone.opacity(0.5))
+            Text("Eat")
+                .font(.system(.caption, design: .monospaced).weight(.medium))
+                .foregroundStyle(WidgetChrome.onEmber)
+                .padding(.horizontal, 12)
+                .frame(height: 28)
+                .background(WidgetChrome.amber, in: Capsule())
         }
         .padding(16)
-        .activityBackgroundTint(WidgetChrome.ground.opacity(0.88))
+        .activityBackgroundTint(WidgetChrome.ground.opacity(0.85))
         .activitySystemActionForegroundColor(bone)
     }
 }

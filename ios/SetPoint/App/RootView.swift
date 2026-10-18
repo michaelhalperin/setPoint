@@ -63,12 +63,15 @@ private struct StubNav: View {
 @MainActor
 enum DebugPreviewStub {
     case home(HomeResponse)
+    case homeModel(HomeViewModel)
     case welcome
     case onboarding(OnboardingViewModel.Step)
     case prescription
     case conversation(resolved: Bool)
     case logMeal(LogMealStubState)
     case savedMeal
+    case fixMeal
+    case snooze
     case settings
     case settingsGoal
     case settingsMealTimes
@@ -93,12 +96,21 @@ enum DebugPreviewStub {
     case settingsAccount
     case settingsDelete
 
-    enum LogMealStubState { case compose, parsing, result, quick, scan }
+    enum LogMealStubState { case compose, parsing, result, quick, scan, typing, working, offline, failed }
     case settlement(SettlementResponse)
+    case settlementLoading
 
     @ViewBuilder
     var view: some View {
         switch self {
+        case let .homeModel(model):
+            NavigationStack {
+                HomeContent(model: model)
+                    .toolbar(.hidden, for: .navigationBar)
+                    .safeAreaInset(edge: .bottom, spacing: 0) {
+                        StubNav()
+                    }
+            }
         case let .home(response):
             NavigationStack {
                 HomeContent(model: .previewed(.loaded(response)))
@@ -123,6 +135,17 @@ enum DebugPreviewStub {
             )
         case let .logMeal(state):
             LogMealStubHost(state: state)
+        case .fixMeal:
+            FixMealStubHost()
+        case .snooze:
+            ZStack(alignment: .bottom) {
+                PrescriptionStubHost()
+                Palette.scrim.ignoresSafeArea()
+                SnoozeSheet(choices: CheckInActions.snoozeChoices(nextMealMinutes: 150)) { _ in }
+                    .frame(height: SnoozeSheet.height(for: 3))
+                    .background(Palette.sheet, in: UnevenRoundedRectangle(topLeadingRadius: 32, topTrailingRadius: 32, style: .continuous))
+            }
+            .ignoresSafeArea(edges: .bottom)
         case .savedMeal:
             SavedMealEditorView(
                 draft: SavedMealDraft(from: SavedMeal.samples[0]),
@@ -135,7 +158,7 @@ enum DebugPreviewStub {
         case .settingsMealTimes:
             NavigationStack { RhythmSettingsView(model: .previewed()) }
         case .settingsMealTimesWeekends:
-            NavigationStack { RhythmSettingsView(model: .previewedWeekends()) }
+            NavigationStack { RhythmSettingsView(model: .previewedWeekends(), startOnWeekends: true) }
         case .settingsFoods:
             NavigationStack { FoodsSettingsView(model: .previewed()) }
         case .settingsHealth, .settingsHealthWrite:
@@ -212,6 +235,8 @@ enum DebugPreviewStub {
             NavigationStack { AccountSettingsView(model: .previewed(), startDeleting: true) }
         case let .settlement(response):
             SettlementView(previewModel: .previewed(response))
+        case .settlementLoading:
+            SettlementView(previewModel: .previewedLoading())
         }
     }
 
@@ -228,6 +253,9 @@ enum DebugPreviewStub {
         switch CommandLine.arguments[index + 1] {
         case "home": return .home(.sampleUnder)
         case "home-over": return .home(.sampleOver)
+        case "home-loading": return .homeModel(.previewed(.loading))
+        case "home-error": return .homeModel(.previewed(.failed("Your phone is offline. I’ll catch up when you’re back.")))
+        case "home-stale": return .homeModel(.previewedStale(.sampleOnPace))
         case "home-empty": return .home(.sampleEmpty)
         case "home-snoozed": return .home(.sampleSnoozed)
         case "home-talk": return .home(.sampleTalk)
@@ -238,9 +266,8 @@ enum DebugPreviewStub {
         case "home-light": return .home(.sampleLightCheckIn)
         case "home-close": return .home(.sampleClose)
         case "welcome", "welcome-notice", "welcome-plan", "welcome-quiet": return .welcome
-        case "onboarding", "onboarding-goal": return .onboarding(.goal)
-        case "onboarding-about": return .onboarding(.about)
-        case "onboarding-target": return .onboarding(.target)
+        case "onboarding-goal", "onboarding-target": return .onboarding(.goal)
+        case "onboarding", "onboarding-about": return .onboarding(.about)
         case "onboarding-rhythm": return .onboarding(.rhythm)
         case "onboarding-restrictions": return .onboarding(.restrictions)
         case "onboarding-safety": return .onboarding(.safety)
@@ -254,7 +281,13 @@ enum DebugPreviewStub {
         case "log-meal-result": return .logMeal(.result)
         case "log-quick": return .logMeal(.quick)
         case "log-scan": return .logMeal(.scan)
+        case "log-typing": return .logMeal(.typing)
+        case "log-working": return .logMeal(.working)
+        case "log-offline": return .logMeal(.offline)
+        case "log-failed": return .logMeal(.failed)
         case "saved-meal": return .savedMeal
+        case "fix-meal": return .fixMeal
+        case "snooze": return .snooze
         case "settings": return .settings
         case "you": return .settings
         case "calendar-settings":
@@ -304,7 +337,8 @@ enum DebugPreviewStub {
         case "settings-delete": return .settingsDelete
         case "settlement": return .settlement(.sample)
         case "settlement-weigh-in": return .settlement(.sampleNeedsWeighIn)
-        case "settlement-empty": return .settlement(.sampleEmpty)
+        case "settlement-empty", "week-one": return .settlement(.sampleEmpty)
+        case "settlement-loading": return .settlementLoading
         default: return nil
         }
     }
@@ -332,14 +366,34 @@ private struct WidgetsStubHost: View {
                         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
                 }
                 widgetCard(title: "Lock Screen") {
-                    HStack(spacing: Space.md) {
-                        TodayLockCircularView(snapshot: .preview)
-                            .frame(width: 72, height: 72)
-                        TodayLockRectangularView(snapshot: .preview)
-                            .frame(maxWidth: .infinity, minHeight: 72, alignment: .leading)
+                    VStack(spacing: 6) {
+                        TodayLockInlineView(snapshot: .preview)
+                            .font(.system(size: 15))
+                            .foregroundStyle(Palette.ink.opacity(0.85))
+                        Text(Date.now.formatted(date: .omitted, time: .shortened))
+                            .font(.system(size: 80, weight: .light))
+                            .foregroundStyle(Palette.ink)
+                        HStack(spacing: 10) {
+                            TodayLockCircularView(snapshot: .preview)
+                                .frame(width: 74, height: 74)
+                                .background(.ultraThinMaterial, in: Circle())
+                            TodayLockRectangularView(snapshot: .preview)
+                                .padding(.horizontal, 12)
+                                .frame(width: 172, height: 74)
+                                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                        }
+                        .foregroundStyle(Palette.ink)
                     }
-                    .padding(14)
-                    .background(Palette.lockScreenInk, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                    .padding(.vertical, 24)
+                    .frame(maxWidth: .infinity)
+                    .background {
+                        ZStack {
+                            Color(hex: 0x0B0B10)
+                            RadialGradient(colors: [Palette.ember.opacity(0.42), .clear], center: UnitPoint(x: 0.3, y: 0.9), startRadius: 0, endRadius: 260)
+                            RadialGradient(colors: [Palette.haze.opacity(0.3), .clear], center: UnitPoint(x: 0.75, y: 0.2), startRadius: 0, endRadius: 220)
+                        }
+                    }
+                    .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
                 }
             }
             .padding(Space.lg)
@@ -375,6 +429,27 @@ private struct LogMealStubHost: View {
             )
         case .scan:
             LogScanStubHost()
+        case .typing:
+            HomeContent(
+                model: .previewed(.loaded(.sampleUnder)),
+                previewLogger: .previewed(.compose, text: "two eggs, toast and a ba"),
+                startComposerExpanded: true
+            )
+        case .working:
+            HomeContent(
+                model: .previewed(.loaded(.sampleUnder)),
+                previewLogger: .previewed(.parsing, submittedPrompt: "two eggs, toast and a banana")
+            )
+        case .offline:
+            HomeContent(
+                model: .previewed(.loaded(.sampleUnder)),
+                previewLogger: .previewed(.queued("Kept on this phone — I’ll log it when you’re back online."), submittedPrompt: "two eggs, toast and a banana")
+            )
+        case .failed:
+            HomeContent(
+                model: .previewed(.loaded(.sampleUnder)),
+                previewLogger: .previewed(.failed("Try the foods, like “eggs on toast”."), submittedPrompt: "brekky thing")
+            )
         case .parsing:
             HomeContent(
                 model: .previewed(.loaded(.sampleEmpty)),
@@ -386,6 +461,15 @@ private struct LogMealStubHost: View {
                 previewLogger: .samplePhotoConfirm
             )
         }
+    }
+}
+
+private struct FixMealStubHost: View {
+    @State private var model = LogMealViewModel.samplePhotoConfirm
+    @Namespace private var ns
+
+    var body: some View {
+        PhotoParseConfirm(model: model, namespace: ns, imageID: "fix-image", cardID: "fix-card", startEditing: true, onKeep: {})
     }
 }
 

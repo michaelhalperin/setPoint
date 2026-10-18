@@ -142,46 +142,71 @@ struct TodayLockCircularView: View {
 
     var body: some View {
         ZStack {
-            WidgetRing(progress: snapshot.progress, size: 54, line: 5)
+            WidgetRing(progress: snapshot.progress, size: 56, line: 5)
             VStack(spacing: 0) {
-                Text("\(max(0, snapshot.remainingKcal))")
-                    .font(.system(size: 12, weight: .medium))
+                Text(max(0, snapshot.remainingKcal).formatted())
+                    .font(.system(size: 13, weight: .medium))
                     .minimumScaleFactor(0.6)
                     .lineLimit(1)
-                Text("left")
+                Text("LEFT")
                     .font(.system(size: 8, weight: .regular, design: .monospaced))
                     .opacity(0.7)
             }
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(max(0, snapshot.remainingKcal)) calories left today")
     }
 }
 
+/// The next meal and, when you've tagged one, your usual for it; a thin bar of the day.
 struct TodayLockRectangularView: View {
     let snapshot: TodaySnapshot
 
+    private var usual: TodaySnapshot.Saved? {
+        guard let slot = snapshot.nextSlot?.lowercased() else { return nil }
+        return snapshot.savedMeals.first { $0.suggestSlot?.lowercased() == slot }
+    }
+
     var body: some View {
-        HStack(spacing: 10) {
-            WidgetRing(progress: snapshot.progress, size: 34, line: 4)
-            VStack(alignment: .leading, spacing: 2) {
-                if let slot = snapshot.nextSlotTitle, let time = snapshot.nextCheckIn {
-                    Text("\(slot) check-in \(time)")
-                        .font(.system(size: 13, weight: .medium))
-                        .lineLimit(1)
-                    Text("only if nothing's logged")
-                        .font(.system(size: 11, weight: .regular))
-                        .opacity(0.72)
-                        .lineLimit(1)
-                } else {
-                    Text("\(max(0, snapshot.remainingKcal)) kcal left")
-                        .font(.system(size: 13, weight: .medium))
-                        .lineLimit(1)
-                    Text("Nothing due")
-                        .font(.system(size: 11, weight: .regular))
-                        .opacity(0.72)
-                }
+        VStack(alignment: .leading, spacing: 3) {
+            if let slot = snapshot.nextSlotTitle, let time = snapshot.nextCheckIn {
+                Text("\(slot) · check-in \(time)")
+                    .font(.system(size: 13, weight: .semibold))
+                    .lineLimit(1)
+                Text(usual.map { "\($0.name) · ~\($0.kcal)" } ?? "Only if nothing’s logged")
+                    .font(.system(size: 11, weight: .regular))
+                    .opacity(0.75)
+                    .lineLimit(1)
+            } else {
+                Text("\(max(0, snapshot.remainingKcal).formatted()) kcal left")
+                    .font(.system(size: 13, weight: .semibold))
+                    .lineLimit(1)
+                Text("Nothing due")
+                    .font(.system(size: 11, weight: .regular))
+                    .opacity(0.75)
             }
-            Spacer(minLength: 0)
+            GeometryReader { geo in
+                Capsule().fill(Color.primary.opacity(0.25))
+                    .overlay(alignment: .leading) {
+                        Capsule().fill(Color.primary)
+                            .frame(width: max(4, geo.size.width * snapshot.progress))
+                    }
+            }
+            .frame(height: 4)
+            .padding(.top, 3)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// One line above the clock: "◔ 1,240 left · lunch 13:45".
+struct TodayLockInlineView: View {
+    let snapshot: TodaySnapshot
+
+    var body: some View {
+        let next = snapshot.nextSlotTitle.flatMap { slot in snapshot.nextCheckIn.map { " · \(slot.lowercased()) \($0)" } } ?? ""
+        Label("\(max(0, snapshot.remainingKcal).formatted()) left\(next)", systemImage: "circle.lefthalf.filled")
     }
 }
 

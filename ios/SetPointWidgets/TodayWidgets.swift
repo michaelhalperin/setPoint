@@ -42,7 +42,7 @@ struct SetPointLockWidget: Widget {
         }
         .configurationDisplayName("Check-in")
         .description("The next check-in on the Lock Screen.")
-        .supportedFamilies([.accessoryCircular, .accessoryRectangular])
+        .supportedFamilies([.accessoryCircular, .accessoryRectangular, .accessoryInline])
     }
 }
 
@@ -68,6 +68,8 @@ struct SetPointLockWidgetView: View {
         switch family {
         case .accessoryRectangular:
             TodayLockRectangularView(snapshot: entry.snapshot)
+        case .accessoryInline:
+            TodayLockInlineView(snapshot: entry.snapshot)
         default:
             TodayLockCircularView(snapshot: entry.snapshot)
         }

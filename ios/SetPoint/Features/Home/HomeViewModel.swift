@@ -82,6 +82,12 @@ final class HomeViewModel {
     }
 
     #if DEBUG
+    static func previewedStale(_ home: HomeResponse) -> HomeViewModel {
+        let vm = previewed(.loaded(home))
+        vm.staleSince = Calendar.current.date(byAdding: .minute, value: -48, to: .now)
+        return vm
+    }
+
     static func previewed(_ phase: Phase) -> HomeViewModel {
         let env = AppEnvironment.preview()
         let vm = HomeViewModel(api: env.api, onUnauthorized: {})

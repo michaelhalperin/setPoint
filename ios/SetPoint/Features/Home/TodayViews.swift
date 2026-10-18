@@ -107,18 +107,70 @@ struct MealLog: View {
         }
     }
 
+    /// Nothing logged yet: an empty plate and the day's meal times on a line, the next one lit.
     private var emptyHint: some View {
-        if let schedule = TodayCopy.dayScheduleLine(home) {
-            Text(schedule)
-                .font(Typography.data(13))
-                .foregroundStyle(Palette.inkFaint)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        } else {
-            Text("Meals you log land here, under their meal time.")
-                .font(Typography.data(13))
-                .foregroundStyle(Palette.inkFaint)
-                .frame(maxWidth: .infinity, alignment: .leading)
+        let slots = home.day?.slots ?? []
+        let next = slots.first { $0.slotState == .now || $0.slotState == .upcoming }
+        let tail = next.map { "\($0.meal.title) is next at \(formatMinutes($0.atMin))." }
+            ?? TodayCopy.dayScheduleLine(home)
+            ?? "Meals you log land here, under their meal time."
+        return VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 16) {
+                ZStack {
+                    Circle()
+                        .fill(RadialGradient(stops: [
+                            .init(color: Color(hex: 0x1C1B19), location: 0.58), .init(color: Color(hex: 0x2A2723), location: 0.6),
+                            .init(color: Color(hex: 0x2A2723), location: 0.66), .init(color: Color(hex: 0x121110), location: 0.68),
+                        ], center: .center, startRadius: 0, endRadius: 32))
+                        .frame(width: 64, height: 64)
+                        .shadow(color: .black.opacity(0.6), radius: 12, y: 8)
+                    EmberDot(size: 14, glow: 0.5).opacity(0.6)
+                }
+                .accessibilityHidden(true)
+                Headline("Clean plate so far.", tail: tail, size: 20)
+            }
+            if !slots.isEmpty {
+                GeometryReader { geo in
+                    let w = geo.size.width
+                    let first = slots.map(\.atMin).min() ?? 480
+                    let last = max(first + 60, slots.map(\.atMin).max() ?? 1140)
+                    let x = { (m: Int) in 8 + CGFloat(m - first) / CGFloat(last - first) * (w - 16) }
+                    ZStack(alignment: .topLeading) {
+                        Capsule().fill(Color.white.opacity(0.08)).frame(height: 2).offset(y: 8)
+                        ForEach(slots) { slot in
+                            let isNext = slot.id == next?.id
+                            VStack(spacing: 7) {
+                                Group {
+                                    if isNext {
+                                        Circle().strokeBorder(Palette.amber, lineWidth: 2)
+                                            .background(Circle().fill(Palette.background))
+                                            .frame(width: 18, height: 18)
+                                            .shadow(color: Palette.amber.opacity(0.6), radius: 6)
+                                    } else if slot.slotState == .missed {
+                                        GhostRing(size: 10)
+                                    } else {
+                                        Circle().strokeBorder(Color.white.opacity(0.25), lineWidth: 1.5)
+                                            .background(Circle().fill(Palette.background))
+                                            .frame(width: 10, height: 10)
+                                    }
+                                }
+                                .frame(height: 18)
+                                Text(formatMinutes(slot.atMin))
+                                    .font(Typography.mono(9))
+                                    .foregroundStyle(isNext ? Palette.amber : Color(hex: 0x52525B))
+                                    .fixedSize()
+                            }
+                            .position(x: x(slot.atMin), y: 18)
+                        }
+                    }
+                }
+                .frame(height: 40)
+                .accessibilityHidden(true)
+            }
         }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glass(radius: 24, fill: Color.white.opacity(0.03))
     }
 
     @ViewBuilder
@@ -288,10 +340,12 @@ struct LogDock: View {
                 onSubmit: onSubmit,
                 photoNamespace: photoNamespace,
                 photoGeometryID: photoGeometryID,
-                prompt: "“Two eggs, toast and a latte”"
+                prompt: "“Two eggs, toast and a latte”",
+                large: typing && logger.photo == nil
             )
 
             if typing {
+                if !tokens.isEmpty { tokenRow }
                 if logger.text.isEmpty, !logger.recents.isEmpty { recentsRow }
             } else {
                 modeTiles
@@ -315,6 +369,39 @@ struct LogDock: View {
         }
         .animation(Motion.adaptive(Motion.snappy, reduceMotion: reduceMotion), value: typing)
         .animation(Motion.adaptive(Motion.snappy, reduceMotion: reduceMotion), value: logger.backdate)
+    }
+
+    /// The foods in what's typed so far — "two eggs, toast and a banana" → three chips.
+    private var tokens: [String] {
+        logger.text
+            .replacingOccurrences(of: " and ", with: ",")
+            .replacingOccurrences(of: " with ", with: ",")
+            .replacingOccurrences(of: " + ", with: ",")
+            .split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { $0.count > 1 }
+    }
+
+    private var tokenRow: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("I’ll look up").sectionLabelStyle()
+            FlexWrap(spacing: 8, lineSpacing: 8) {
+                ForEach(Array(tokens.enumerated()), id: \.offset) { index, token in
+                    let last = index == tokens.count - 1 && !logger.text.hasSuffix(" ") && !logger.text.hasSuffix(",")
+                    Text(last ? "\(token)…" : token)
+                        .font(Typography.data(13, weight: .regular))
+                        .foregroundStyle(last ? Color(hex: 0xD4D4D8) : Palette.ink)
+                        .padding(.horizontal, 12)
+                        .frame(height: 32)
+                        .background(Capsule().fill(last ? .clear : Palette.ember.opacity(0.12)))
+                        .overlay(Capsule().strokeBorder(last ? Palette.amber.opacity(0.5) : Color(hex: 0xFF8A50, opacity: 0.45), style: StrokeStyle(lineWidth: 1, dash: last ? [4, 3] : [])))
+                }
+            }
+            Text("Rough is fine — I’ll tidy it up.")
+                .font(Typography.data(12, weight: .regular))
+                .foregroundStyle(Palette.inkFaint)
+        }
+        .transition(.opacity)
     }
 
     private var typing: Bool {
@@ -498,22 +585,58 @@ struct LogDock: View {
 }
 
 /// What the logger is doing, floating above the nav once the panel has closed:
-/// working it out, queued offline, or logged.
+/// working it out, saved offline, couldn't read it, or logged.
 struct LogStatusToast: View {
     @Bindable var logger: LogMealViewModel
+    var onRetry: (() -> Void)? = nil
 
     var body: some View {
         Group {
             switch logger.phase {
             case .parsing:
-                line(symbol: nil, text: logger.submittedPrompt.isEmpty ? "Working it out…" : "Working out “\(logger.submittedPrompt)”…", working: true)
+                working
             case let .queued(message):
-                line(symbol: "icloud.slash", text: message, working: false)
+                card(stroke: Palette.hazeSoft.opacity(0.30)) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "icloud.slash")
+                            .font(.system(size: 15, weight: .regular))
+                            .foregroundStyle(Palette.hazeSoft)
+                            .frame(width: 38, height: 38)
+                            .background(Palette.haze.opacity(0.14), in: Circle())
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("No signal. Saved here.")
+                                .font(Typography.data(14, weight: .regular))
+                                .foregroundStyle(Palette.ink)
+                            Text(message)
+                                .font(Typography.data(12, weight: .regular))
+                                .foregroundStyle(Palette.inkSoft)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        Spacer(minLength: 0)
+                    }
+                }
+            case let .failed(message):
+                card(stroke: Palette.danger.opacity(0.35)) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack(spacing: 10) {
+                            Circle().fill(Palette.danger).frame(width: 8, height: 8).shadow(color: Palette.danger, radius: 4)
+                            (Text(logger.submittedPrompt.isEmpty ? "" : "“\(logger.submittedPrompt)”? ").foregroundColor(Palette.ink)
+                                + Text("Didn’t catch that.").foregroundColor(Palette.inkFaint))
+                                .font(Typography.data(14, weight: .regular))
+                                .lineLimit(2)
+                        }
+                        Text(message)
+                            .font(Typography.data(12, weight: .regular))
+                            .foregroundStyle(Palette.inkSoft)
+                        if let onRetry {
+                            BonePill(title: "Say it again", action: onRetry)
+                        }
+                    }
+                }
             case let .logged(logged) where !logger.confirmingPhoto:
                 line(
                     symbol: "checkmark",
-                    text: "Logged · \(logged.kcal) kcal" + (logged.resolvedCheckIn ? " · check-in answered" : ""),
-                    working: false
+                    text: "Logged · \(logged.kcal) kcal" + (logged.resolvedCheckIn ? " · check-in answered" : "")
                 )
             default:
                 EmptyView()
@@ -521,15 +644,71 @@ struct LogStatusToast: View {
         }
     }
 
-    private func line(symbol: String?, text: String, working: Bool) -> some View {
-        HStack(spacing: 8) {
-            if working {
-                BusyDots(tint: Palette.amber)
-            } else if let symbol {
-                Image(systemName: symbol)
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(Palette.amber)
+    private var tokens: [String] {
+        logger.submittedPrompt
+            .replacingOccurrences(of: " and ", with: ",")
+            .split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { $0.count > 1 }
+    }
+
+    private var working: some View {
+        card(stroke: Palette.amber.opacity(0.25)) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 12) {
+                    SpinningOrb()
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Working it out")
+                            .font(Typography.data(14, weight: .regular))
+                            .foregroundStyle(Palette.ink)
+                        if !logger.submittedPrompt.isEmpty {
+                            Text("“\(logger.submittedPrompt)”")
+                                .font(Typography.data(12, weight: .regular))
+                                .foregroundStyle(Palette.inkFaint)
+                                .lineLimit(1)
+                        }
+                    }
+                    Spacer(minLength: 0)
+                }
+                if tokens.count > 1 {
+                    HStack(spacing: 6) {
+                        ForEach(Array(tokens.prefix(4).enumerated()), id: \.offset) { _, token in
+                            Text(token)
+                                .font(Typography.data(12, weight: .regular))
+                                .foregroundStyle(Palette.ink)
+                                .lineLimit(1)
+                                .padding(.horizontal, 10)
+                                .frame(height: 28)
+                                .overlay(Capsule().strokeBorder(Color.white.opacity(0.10)))
+                                .shimmering()
+                        }
+                    }
+                }
             }
+        }
+    }
+
+    private func card<Content: View>(stroke: Color, @ViewBuilder content: () -> Content) -> some View {
+        content()
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background {
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(.ultraThinMaterial)
+                    .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(Color(hex: 0x141417, opacity: 0.9)))
+                    .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(stroke))
+                    .shadow(color: .black.opacity(0.55), radius: 20, y: 14)
+            }
+            .padding(.horizontal, 16)
+            .transition(.move(edge: .bottom).combined(with: .opacity))
+            .accessibilityElement(children: .combine)
+    }
+
+    private func line(symbol: String, text: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: symbol)
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(Palette.amber)
             Text(text)
                 .font(Typography.data(13, weight: .regular))
                 .foregroundStyle(Palette.ink)
@@ -545,5 +724,24 @@ struct LogStatusToast: View {
         }
         .transition(.move(edge: .bottom).combined(with: .opacity))
         .accessibilityElement(children: .combine)
+    }
+}
+
+/// A lit ball inside a turning dashed ring — something is being worked out.
+struct SpinningOrb: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        TimelineView(.animation(paused: reduceMotion)) { ctx in
+            let t = ctx.date.timeIntervalSinceReferenceDate
+            ZStack {
+                Circle()
+                    .strokeBorder(Palette.amber.opacity(0.8), style: StrokeStyle(lineWidth: 1.5, dash: [3, 3]))
+                    .rotationEffect(.degrees(reduceMotion ? 0 : t.truncatingRemainder(dividingBy: 2.4) / 2.4 * 360))
+                EmberDot(size: 16)
+            }
+        }
+        .frame(width: 30, height: 30)
+        .accessibilityHidden(true)
     }
 }

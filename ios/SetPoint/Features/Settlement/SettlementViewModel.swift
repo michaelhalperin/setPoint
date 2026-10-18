@@ -148,6 +148,13 @@ final class SettlementViewModel {
     }
 
     #if DEBUG
+    static func previewedLoading() -> SettlementViewModel {
+        let vm = SettlementViewModel(api: AppEnvironment.preview().api, onUnauthorized: {})
+        vm.phase = .loading
+        vm.isPreview = true
+        return vm
+    }
+
     static func previewed(_ response: SettlementResponse) -> SettlementViewModel {
         let vm = SettlementViewModel(api: AppEnvironment.preview().api, onUnauthorized: {})
         vm.phase = .loaded(response)

@@ -302,23 +302,32 @@ struct StaleBanner: View {
     let retry: () -> Void
 
     var body: some View {
-        HStack(spacing: Space.sm) {
+        HStack(spacing: 8) {
             Image(systemName: "wifi.slash")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(Palette.inkSoft)
-            Text("Couldn’t refresh · showing \(since.formatted(date: .omitted, time: .shortened))")
-                .font(Typography.data(13, weight: .semibold))
-                .foregroundStyle(Palette.inkSoft)
+                .font(.system(size: 13, weight: .regular))
+                .foregroundStyle(Palette.hazeSoft)
+            (Text("As of ") + Text(since.formatted(date: .omitted, time: .shortened)).font(Typography.mono(13)).foregroundColor(Palette.hazeSoft))
+                .font(Typography.data(13, weight: .regular))
+                .foregroundStyle(Palette.ink)
                 .lineLimit(1)
-                .minimumScaleFactor(0.85)
-            Spacer(minLength: 0)
-            Button("Retry", action: retry)
-                .font(Typography.data(13, weight: .bold))
-                .foregroundStyle(Palette.accentDeep)
+            Button(action: retry) {
+                Label("Refresh", systemImage: "arrow.clockwise")
+                    .font(Typography.data(12, weight: .regular))
+                    .foregroundStyle(Color(hex: 0xE0E7FF))
+                    .padding(.horizontal, 12)
+                    .frame(height: 28)
+                    .background(Palette.haze.opacity(0.18), in: Capsule())
+            }
+            .buttonStyle(PressableCard())
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-        .glassCapsule()
+        .padding(.leading, 14)
+        .padding(.trailing, 6)
+        .frame(height: 40)
+        .background(Capsule().fill(Color(hex: 0x151518)))
+        .overlay(Capsule().strokeBorder(Palette.hazeSoft.opacity(0.35)))
+        .shadow(color: Palette.haze.opacity(0.18), radius: 12)
+        .frame(maxWidth: .infinity)
         .accessibilityElement(children: .combine)
+        .accessibilityLabel("Couldn’t refresh. Showing \(since.formatted(date: .omitted, time: .shortened)). Refresh")
     }
 }

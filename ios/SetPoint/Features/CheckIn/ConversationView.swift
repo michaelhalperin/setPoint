@@ -89,41 +89,28 @@ struct ConversationView: View {
     private func conversation(_ model: ConversationViewModel) -> some View {
         ScrollViewReader { proxy in
             ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: 16) {
                     HStack {
-                        Text("Let’s talk").sectionLabelStyle()
+                        HStack(spacing: 8) {
+                            Circle().fill(Palette.haze).frame(width: 7, height: 7).shadow(color: Palette.haze, radius: 4)
+                            Text("Let’s talk").sectionLabelStyle(Palette.hazeSoft)
+                        }
                         Spacer()
                         RoundIconButton("xmark", label: "Close", action: onDismiss)
                     }
 
-                    Headline("Rough few days.", tail: "A few check-ins didn’t land.", size: 42)
+                    Headline("Rough few days.", tail: "Let’s fix the plan, not you.", size: 40)
                         .appearIn(0, rise: 16)
 
                     if let opener = model.messages.first, opener.role == "assistant" {
                         Text(opener.content)
-                            .font(Typography.data(15, weight: .regular))
+                            .font(Typography.display(24))
+                            .tracking(-0.6)
                             .foregroundStyle(Color(hex: 0xD4D4D8))
-                            .lineSpacing(2)
+                            .lineSpacing(1)
                             .fixedSize(horizontal: false, vertical: true)
                             .id(opener.id)
                             .appearIn(1)
-                    }
-
-                    if model.messages.count == 1, !model.resolved, !model.sending {
-                        VStack(spacing: 10) {
-                            ForEach(Array(QuickFix.all.enumerated()), id: \.element.title) { index, fix in
-                                Button {
-                                    model.draft = fix.message
-                                    Task { await model.send() }
-                                } label: {
-                                    QuickFixCard(fix: fix)
-                                }
-                                .buttonStyle(PressableCard())
-                                .appearIn(2 + index)
-                            }
-                        }
-                        .padding(.top, 4)
-                        .transition(.opacity)
                     }
 
                     ForEach(Array(model.messages.dropFirst().enumerated()), id: \.element.id) { index, message in
@@ -133,52 +120,81 @@ struct ConversationView: View {
                     }
 
                     if model.sending {
-                        MessageBubble(message: ConversationMessage(role: "assistant", content: "…", at: nil))
-                            .redacted(reason: .placeholder)
-                            .id("typing")
+                        HStack(spacing: 8) {
+                            BusyDots(tint: Palette.hazeSoft)
+                            Text("Thinking it over")
+                                .font(Typography.data(13, weight: .regular))
+                                .foregroundStyle(Palette.inkFaint)
+                        }
+                        .id("typing")
                     }
 
                     if let err = model.sendError {
                         Text(err)
-                            .font(Typography.data(13, weight: .semibold))
+                            .font(Typography.data(13, weight: .regular))
                             .foregroundStyle(Palette.amber)
                     }
 
                     if let proposal = model.pendingProposal, !model.resolved {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(proposal.title)
-                                .font(Typography.data(16, weight: .medium))
-                                .foregroundStyle(Palette.ink)
+                        CalloutCard(haze: true, spacing: 12) {
+                            Text("What I’d change").sectionLabelStyle(Palette.hazeSoft)
+                            Headline(proposal.title, size: 24)
                             Text(proposal.summary)
-                                .font(Typography.data(14))
+                                .font(Typography.data(14, weight: .regular))
                                 .foregroundStyle(Palette.inkSoft)
-                            ActionButton(title: "Apply this", busy: model.confirming) {
-                                Task { await model.confirmProposal() }
+                                .fixedSize(horizontal: false, vertical: true)
+                            HStack(spacing: 8) {
+                                Button {
+                                    Task { await model.confirmProposal() }
+                                } label: {
+                                    BusyLabel(title: "Do it", busy: model.confirming, tint: Palette.onBone)
+                                        .font(Typography.data(15, weight: .medium))
+                                        .foregroundStyle(Palette.onBone)
+                                        .frame(maxWidth: .infinity, minHeight: 46)
+                                        .background(Palette.ink, in: Capsule())
+                                }
+                                .buttonStyle(PressableCard())
+                                .disabled(model.confirming)
+                                Button { composerFocused = true } label: {
+                                    Text("Something else")
+                                        .font(Typography.data(14, weight: .regular))
+                                        .foregroundStyle(Palette.ink)
+                                        .frame(maxWidth: .infinity, minHeight: 46)
+                                        .glassCapsule(fill: Color.white.opacity(0.06), stroke: Color.white.opacity(0.10))
+                                }
+                                .buttonStyle(PressableCard())
                             }
                         }
-                        .padding(16)
-                        .glass(radius: 22)
                         .id("proposal")
+                        .appearIn()
                     }
 
                     if model.resolved, let summary = model.outcomeSummary {
-                        HStack(alignment: .top, spacing: 10) {
-                            Image(systemName: model.outcomeIcon)
-                                .font(.system(size: 16, weight: .medium))
-                                .foregroundStyle(Palette.hazeSoft)
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(model.outcomeTitle)
-                                    .font(Typography.data(16, weight: .medium))
-                                    .foregroundStyle(Palette.ink)
-                                Text(summary)
-                                    .font(Typography.data(14))
-                                    .foregroundStyle(Palette.ink)
-                                    .fixedSize(horizontal: false, vertical: true)
+                        VStack(spacing: 12) {
+                            ZStack {
+                                FuelOrb(size: 54, glow: 0.6, haze: true)
+                                Image(systemName: model.outcomeIcon)
+                                    .font(.system(size: 20, weight: .semibold))
+                                    .foregroundStyle(Color(hex: 0x0F0E2A))
                             }
+                            Text(model.outcomeTitle)
+                                .font(Typography.display(22))
+                                .foregroundStyle(Palette.ink)
+                                .multilineTextAlignment(.center)
+                            Text(summary)
+                                .font(Typography.data(14, weight: .regular))
+                                .foregroundStyle(Palette.inkSoft)
+                                .multilineTextAlignment(.center)
+                                .fixedSize(horizontal: false, vertical: true)
                         }
-                        .padding(20)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .glass(radius: 24, fill: Color(hex: 0xA5B4FC, opacity: 0.08), stroke: Color(hex: 0xA5B4FC, opacity: 0.25))
+                        .padding(.vertical, 22)
+                        .padding(.horizontal, 16)
+                        .frame(maxWidth: .infinity)
+                        .background {
+                            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                .fill(LinearGradient(colors: [Palette.haze.opacity(0.12), Palette.haze.opacity(0.02)], startPoint: .top, endPoint: .bottom))
+                        }
+                        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(Palette.hazeSoft.opacity(0.30)))
                         .padding(.top, 8)
                         .appearIn()
                         .id("outcome")
@@ -202,8 +218,36 @@ struct ConversationView: View {
                     .padding(.bottom, 12)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             } else {
-                composer(model)
-                    .transition(.opacity)
+                VStack(alignment: .leading, spacing: 10) {
+                    if model.messages.count == 1, !model.sending {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                ForEach(QuickFix.all, id: \.title) { fix in
+                                    Button {
+                                        model.draft = fix.message
+                                        Task { await model.send() }
+                                    } label: {
+                                        HStack(spacing: 6) {
+                                            Image(systemName: fix.symbol).font(.system(size: 12, weight: .regular))
+                                            Text(fix.title).font(Typography.data(13, weight: .regular))
+                                        }
+                                        .foregroundStyle(Palette.hazeSoft)
+                                        .padding(.horizontal, 14)
+                                        .frame(height: 36)
+                                        .overlay(Capsule().strokeBorder(Palette.hazeSoft.opacity(0.35)))
+                                        .contentShape(Capsule())
+                                    }
+                                    .buttonStyle(PressableCard())
+                                    .accessibilityHint(fix.detail)
+                                }
+                            }
+                            .padding(.horizontal, 20)
+                        }
+                        .transition(.opacity)
+                    }
+                    composer(model)
+                }
+                .transition(.opacity)
             }
         }
         .animation(Motion.adaptive(Motion.morph, reduceMotion: reduceMotion), value: model.resolved)
@@ -337,57 +381,32 @@ private struct QuickFix {
     ]
 }
 
-private struct QuickFixCard: View {
-    let fix: QuickFix
-
-    var body: some View {
-        HStack(spacing: 14) {
-            Image(systemName: fix.symbol)
-                .font(.system(size: 16, weight: .regular))
-                .foregroundStyle(Palette.hazeSoft)
-                .frame(width: 40, height: 40)
-                .background(Palette.haze.opacity(0.12), in: Circle())
-            VStack(alignment: .leading, spacing: 3) {
-                Text(fix.title)
-                    .font(Typography.data(16, weight: .medium))
-                    .foregroundStyle(Palette.ink)
-                Text(fix.detail)
-                    .font(Typography.data(13))
-                    .foregroundStyle(Palette.inkSoft)
-            }
-            Spacer(minLength: 0)
-            Image(systemName: "chevron.right")
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(Palette.inkFaint)
-        }
-        .padding(16)
-        .glass(radius: 22)
-    }
-}
-
 private struct MessageBubble: View {
     let message: ConversationMessage
 
     private var isUser: Bool { message.role == "user" }
 
+    /// The manager speaks in big light lines; your reply is a small haze bubble.
     var body: some View {
-        HStack {
-            if isUser { Spacer(minLength: 40) }
+        if isUser {
+            HStack {
+                Spacer(minLength: 60)
+                Text(message.content)
+                    .font(Typography.data(14, weight: .regular))
+                    .foregroundStyle(Palette.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(Palette.haze.opacity(0.16), in: UnevenRoundedRectangle(topLeadingRadius: 18, bottomLeadingRadius: 18, bottomTrailingRadius: 6, topTrailingRadius: 18, style: .continuous))
+                    .overlay(UnevenRoundedRectangle(topLeadingRadius: 18, bottomLeadingRadius: 18, bottomTrailingRadius: 6, topTrailingRadius: 18, style: .continuous).strokeBorder(Palette.hazeSoft.opacity(0.30)))
+            }
+        } else {
             Text(message.content)
-                .font(Typography.data(15, weight: .regular))
+                .font(Typography.display(22))
+                .tracking(-0.5)
                 .foregroundStyle(Palette.ink)
                 .fixedSize(horizontal: false, vertical: true)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(
-                    isUser ? Palette.haze.opacity(0.18) : Palette.glass,
-                    in: RoundedRectangle(cornerRadius: 18, style: .continuous)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .strokeBorder(isUser ? Palette.haze.opacity(0.3) : Palette.hairline)
-                )
-            if !isUser { Spacer(minLength: 40) }
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 }

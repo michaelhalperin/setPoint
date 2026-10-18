@@ -63,8 +63,13 @@ struct SettlementView: View {
                     StaleBanner(since: since) { Task { await model.load() } }
                 }
 
-                DaysClosedCard(gap: s.gap, stations: stations) { selectedStation = $0 }
-                    .appearIn(1, rise: 14)
+                if s.days.count < 3 {
+                    WeekOneCard(settledDays: s.days.count, today: s.today, needsWeighIn: s.weightGoal?.needsWeighIn ?? model.weights.isEmpty)
+                        .appearIn(1, rise: 14)
+                } else {
+                    DaysClosedCard(gap: s.gap, stations: stations) { selectedStation = $0 }
+                        .appearIn(1, rise: 14)
+                }
 
                 if let goal = s.weightGoal {
                     WeightTrendCard(goal: goal, entries: model.weights, busy: model.loggingWeight) {
@@ -174,40 +179,161 @@ struct SettlementView: View {
     }
 }
 
+/// Progress while it loads: the real title, ghost bars rising and falling, a
+/// line drawing itself where the weight goes.
 private struct SettlementSkeletonView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var body: some View {
-        VStack(alignment: .leading, spacing: Space.md) {
-            SkeletonBlock(width: 200, height: 34, radius: 8)
-            SkeletonCard(height: 190) {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline) {
+                Headline("Progress", size: 36)
+                Spacer()
+                HStack(spacing: 6) {
+                    Circle().fill(Palette.amber).frame(width: 6, height: 6)
+                    Text("COUNTING").font(Typography.mono(10)).tracking(1.1).foregroundStyle(Palette.inkFaint)
+                }
+            }
+            TimelineView(.animation(paused: reduceMotion)) { ctx in
+                let t = ctx.date.timeIntervalSinceReferenceDate
                 VStack(alignment: .leading, spacing: 14) {
-                    SkeletonBlock(width: 220, height: 24, radius: 8)
+                    SkeletonBlock(width: 210, height: 24, radius: 8)
                     HStack(alignment: .bottom, spacing: 10) {
-                        ForEach([50, 64, 30, 70, 58, 20, 40], id: \.self) { h in
-                            RoundedRectangle(cornerRadius: 5).fill(Palette.surfaceSunk)
-                                .frame(height: CGFloat(h))
+                        ForEach(Array([50, 64, 40, 70, 58, 30, 44].enumerated()), id: \.offset) { i, h in
+                            let wave = reduceMotion ? 1 : 0.35 + 0.65 * (1 + sin(t * 2 * .pi / 1.6 - Double(i) * 0.7)) / 2
+                            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                                .fill(LinearGradient(colors: [Palette.amber.opacity(0.28), Palette.amber.opacity(0.06)], startPoint: .top, endPoint: .bottom))
+                                .frame(maxWidth: 34)
+                                .frame(height: CGFloat(h) * wave)
                                 .frame(maxWidth: .infinity)
                         }
                     }
                     .frame(height: 76, alignment: .bottom)
                 }
+                .padding(18)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .glass(radius: 26)
             }
-            SkeletonCard(height: 88) {
-                HStack {
-                    SkeletonBlock(width: 80, height: 28, radius: 8)
-                    Spacer()
-                    SkeletonBlock(width: 140, height: 20, radius: 8)
-                }
+            HStack(spacing: 14) {
+                SkeletonBlock(width: 80, height: 28, radius: 8)
+                Spacer()
+                SkeletonBlock(width: 140, height: 20, radius: 8)
             }
-            SkeletonCard(height: 96) {
-                SkeletonBlock(width: 180, height: 14)
+            .padding(18)
+            .glass(radius: 24)
+            .shimmering()
+            VStack(alignment: .leading, spacing: 10) {
+                SkeletonBlock(width: 200, height: 14)
+                SkeletonBlock(height: 10).opacity(0.6)
             }
+            .padding(18)
+            .glass(radius: 24)
+            .shimmering()
             Spacer(minLength: 0)
         }
         .padding(.horizontal, Space.gutter)
         .padding(.top, Space.sm)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background(alignment: .top) { AmbientGlow(tone: .ember, strength: 0.4).offset(y: -140).ignoresSafeArea() }
         .background(Palette.background.ignoresSafeArea())
-        .skeletonLoading()
+        .accessibilityElement()
+        .accessibilityLabel("Loading progress")
+    }
+}
+
+/// The first days, before there's a week to read: day N of 7, and what unlocks when.
+private struct WeekOneCard: View {
+    let settledDays: Int
+    let today: SettlementResponse.Today
+    let needsWeighIn: Bool
+
+    private var fraction: Double {
+        guard today.kcalTarget > 0 else { return 0 }
+        return min(1, Double(today.kcalConsumed) / Double(today.kcalTarget))
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Headline("Day \(settledDays + 1) of 7.", tail: "Patterns need a week.", size: 32)
+            HStack(spacing: 0) {
+                ForEach(0..<7, id: \.self) { i in
+                    VStack(spacing: 6) {
+                        if i < settledDays {
+                            Circle().fill(Palette.amber).frame(width: 14, height: 14)
+                                .frame(width: 42, height: 42)
+                        } else if i == settledDays {
+                            ZStack {
+                                Circle().fill(AngularGradient(colors: [Palette.amber, Palette.amber], center: .center, startAngle: .degrees(0), endAngle: .degrees(360 * fraction)))
+                                Circle().trim(from: fraction, to: 1).stroke(Color.white.opacity(0.08), lineWidth: 4).rotationEffect(.degrees(-90))
+                                FuelOrb(size: 34, breathing: false, glow: 0.3)
+                            }
+                            .frame(width: 42, height: 42)
+                            .shadow(color: Palette.amber.opacity(0.35), radius: 10)
+                        } else {
+                            Circle().strokeBorder(Color.white.opacity(0.16), style: StrokeStyle(lineWidth: 1.5, dash: [3, 3]))
+                                .frame(width: 32, height: 32)
+                                .frame(width: 42, height: 42)
+                        }
+                        Text(i == settledDays ? "TODAY" : label(i))
+                            .font(Typography.mono(10))
+                            .foregroundStyle(i == settledDays ? Palette.amber : Color(hex: 0x52525B))
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+            }
+            .accessibilityElement()
+            .accessibilityLabel("Day \(settledDays + 1) of 7")
+
+            VStack(alignment: .leading, spacing: 0) {
+                step(when: "Tonight", title: "Today closes", note: "You’ll see how close you got. \(today.kcalConsumed.formatted()) of \(today.kcalTarget.formatted()) so far.", lit: true, last: false)
+                step(when: needsWeighIn ? "This week" : "Sunday", title: needsWeighIn ? "First weigh-in" : "Next weigh-in", note: "Starts your weight line. One a week is enough.", lit: false, last: false)
+                step(when: "After 7 days", title: "One thing to fix", note: "Late meals, light breakfasts, what works on low days.", lit: false, last: true)
+            }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .glass(radius: 24)
+        }
+    }
+
+    private func label(_ i: Int) -> String {
+        let date = Calendar.current.date(byAdding: .day, value: i - settledDays, to: .now) ?? .now
+        return String(date.formatted(.dateTime.weekday(.narrow)))
+    }
+
+    private func step(when: String, title: String, note: String, lit: Bool, last: Bool) -> some View {
+        HStack(alignment: .top, spacing: 14) {
+            VStack(spacing: 4) {
+                Group {
+                    if lit {
+                        EmberDot(size: 12)
+                    } else {
+                        Circle().strokeBorder(Color.white.opacity(0.3), lineWidth: 1.5).frame(width: 12, height: 12)
+                    }
+                }
+                .padding(.top, 2)
+                if !last {
+                    Rectangle().fill(Color.white.opacity(0.14)).frame(width: 1.5)
+                        .mask(VStack(spacing: 3) { ForEach(0..<20, id: \.self) { _ in Rectangle().frame(height: 3) } })
+                }
+            }
+            .frame(width: 14)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(when.uppercased())
+                    .font(Typography.mono(10))
+                    .tracking(1)
+                    .foregroundStyle(lit ? Palette.amber : Palette.inkFaint)
+                Text(title)
+                    .font(Typography.data(15, weight: .regular))
+                    .foregroundStyle(Palette.ink)
+                Text(note)
+                    .font(Typography.data(12, weight: .regular))
+                    .foregroundStyle(Palette.inkSoft)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.bottom, last ? 0 : 16)
+        }
+        .accessibilityElement(children: .combine)
     }
 }
 
