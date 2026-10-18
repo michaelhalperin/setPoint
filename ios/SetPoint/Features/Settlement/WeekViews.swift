@@ -109,35 +109,32 @@ struct GapCard: View {
     let gap: SettlementResponse.Gap
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Space.md) {
-            VStack(alignment: .leading, spacing: 0) {
-                Text(headline)
-                    .font(Typography.display(30))
-                    .foregroundStyle(Palette.background)
-                Text(subline)
-                    .font(Typography.voiceItalic(24))
-                    .foregroundStyle(Palette.onAccentVoice)
-            }
-            .fixedSize(horizontal: false, vertical: true)
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Days closed").sectionLabelStyle()
+            Headline(headline, tail: subline, size: 26)
 
             if gap.totalDays > 0 {
-                HStack(spacing: 6) {
+                HStack(alignment: .bottom, spacing: 8) {
                     ForEach(0 ..< gap.totalDays, id: \.self) { index in
-                        Capsule()
-                            .fill(index < gap.closedDays ? Palette.background : Palette.background.opacity(0.3))
-                            .frame(height: 8)
+                        let closed = index < gap.closedDays
+                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .fill(closed
+                                  ? AnyShapeStyle(LinearGradient(colors: [Palette.amber, Palette.ember], startPoint: .top, endPoint: .bottom))
+                                  : AnyShapeStyle(Color.white.opacity(0.10)))
+                            .frame(maxWidth: 28)
+                            .frame(height: closed ? 56 : 22)
+                            .frame(maxWidth: .infinity)
+                            .shadow(color: closed ? Palette.ember.opacity(0.35) : .clear, radius: 8)
+                            .appearIn(index, rise: 10)
                     }
                 }
+                .frame(height: 60, alignment: .bottom)
                 .accessibilityHidden(true)
             }
         }
-        .padding(22)
+        .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background {
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .fill(Palette.accent)
-                .elevation(.floating)
-        }
+        .glass(radius: Radius.xl)
         .accessibilityElement(children: .combine)
     }
 
@@ -167,7 +164,7 @@ struct RecordCard: View {
                     .foregroundStyle(Palette.ink)
                 Text(record.checkIns == 0 ? "You kept your own rhythm." : "You ate after \(record.afterCheckIn) of them.")
                     .font(Typography.voiceItalic(22))
-                    .foregroundStyle(Palette.accentDeep)
+                    .foregroundStyle(Palette.inkFaint)
             }
             .fixedSize(horizontal: false, vertical: true)
 
@@ -552,8 +549,8 @@ struct WeighInSheet: View {
         .frame(maxWidth: .infinity)
         .presentationDetents([.height(lastKg == nil ? 330 : 380)])
         .presentationDragIndicator(.visible)
-        .presentationBackground(Palette.background)
-        .presentationCornerRadius(28)
+        .presentationBackground(Palette.sheet)
+        .presentationCornerRadius(32)
     }
 
     private func save() {

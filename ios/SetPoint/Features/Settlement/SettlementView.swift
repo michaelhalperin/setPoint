@@ -21,7 +21,6 @@ struct SettlementView: View {
             }
         }
         .toolbar(.hidden, for: .navigationBar)
-        .toolbar(.visible, for: .tabBar)
         .task {
             if model == nil {
                 let vm = SettlementViewModel(api: env.api, onUnauthorized: { env.auth.handleUnauthorized() })
@@ -57,13 +56,8 @@ struct SettlementView: View {
         let stations = s.weekStations
         return ScrollView {
             VStack(alignment: .leading, spacing: Space.md) {
-                if let range = dateRange(stations) {
-                    Text(range)
-                        .font(Typography.data(13, weight: .bold))
-                        .foregroundStyle(Palette.inkFaint)
-                        .accessibilityAddTraits(.isHeader)
-                        .appearIn(0)
-                }
+                Headline("Progress", tail: dateRange(stations).map { "· \($0)" }, size: 36)
+                    .appearIn(0)
 
                 if let since = model.staleSince {
                     StaleBanner(since: since) { Task { await model.load() } }
@@ -151,11 +145,12 @@ struct SettlementView: View {
                 .appearIn(5)
             }
             .padding(.horizontal, Space.gutter)
-            .padding(.top, Space.md)
+            .padding(.top, Space.sm)
             .padding(.bottom, Space.xl)
         }
         .scrollBounceBehavior(.basedOnSize)
         .refreshable { await model.load() }
+        .background(alignment: .top) { AmbientGlow(tone: .ember, strength: 0.6).offset(y: -140).ignoresSafeArea() }
         .background(Palette.background.ignoresSafeArea())
         .sheet(item: $selectedStation) { station in
             DayMealsSheet(station: station, model: model)
@@ -187,8 +182,8 @@ struct SettlementView: View {
 }
 
 private struct SettlementSkeletonView: View {
-    private let wash = Palette.background.opacity(0.28)
-    private let washStrong = Palette.background.opacity(0.42)
+    private let wash = Color.white.opacity(0.06)
+    private let washStrong = Color.white.opacity(0.1)
 
     var body: some View {
         ScrollView {
@@ -203,7 +198,7 @@ private struct SettlementSkeletonView: View {
                 intake
             }
             .padding(.horizontal, Space.gutter)
-            .padding(.top, Space.md)
+            .padding(.top, Space.sm)
             .padding(.bottom, Space.xl)
         }
         .scrollBounceBehavior(.basedOnSize)
@@ -239,7 +234,7 @@ private struct SettlementSkeletonView: View {
         }
         .padding(22)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Palette.accent, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .glass(radius: 28)
     }
 
     private var recordStat: some View {
@@ -384,7 +379,7 @@ private struct DayMealsSheet: View {
         .background(Palette.background.ignoresSafeArea())
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
-        .presentationBackground(Palette.background)
+        .presentationBackground(Palette.sheet)
         .task {
             meals = await model.meals(on: station.date)
             loading = false

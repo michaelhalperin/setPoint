@@ -275,8 +275,8 @@ struct GoalSettingsView: View {
         DailyTargetSheet(field: field, model: model)
             .presentationDetents([.height(320)])
             .presentationDragIndicator(.visible)
-            .presentationBackground(Palette.background)
-            .presentationCornerRadius(28)
+            .presentationBackground(Palette.sheet)
+            .presentationCornerRadius(32)
     }
 
     private var targetKg: Double {
@@ -1197,8 +1197,8 @@ struct AccountSettingsView: View {
             DeleteAccountConfirmation(model: model)
                 .presentationDetents([.height(500)])
                 .presentationDragIndicator(.visible)
-                .presentationBackground(Palette.background)
-                .presentationCornerRadius(28)
+                .presentationBackground(Palette.sheet)
+                .presentationCornerRadius(32)
                 .interactiveDismissDisabled(model.deleting)
         }
         .task { await env.push.syncAuthorizationStatus() }

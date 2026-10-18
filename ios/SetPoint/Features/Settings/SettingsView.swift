@@ -70,6 +70,9 @@ struct SettingsView: View {
     private func profile(_ model: SettingsViewModel) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Space.md) {
+                Headline("You", size: 36)
+                    .appearIn(0)
+
                 planCard(model)
                     .appearIn(0)
 
@@ -143,11 +146,11 @@ struct SettingsView: View {
 
                 if let error = model.error {
                     Text(error)
-                        .font(Typography.data(13))
-                        .foregroundStyle(Palette.accentDeep)
+                        .font(Typography.data(13, weight: .regular))
+                        .foregroundStyle(Palette.danger)
                         .padding(Space.sm)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Palette.accentTint, in: RoundedRectangle(cornerRadius: Radius.sm))
+                        .glass(radius: Radius.sm, fill: Palette.danger.opacity(0.08))
                 }
 
                 #if DEBUG
@@ -156,6 +159,7 @@ struct SettingsView: View {
             }
             .padding(Space.gutter)
         }
+        .background(alignment: .top) { AmbientGlow(tone: .mixed, strength: 0.5).offset(y: -170).ignoresSafeArea() }
         .background(Palette.background.ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
         #if DEBUG
@@ -233,17 +237,12 @@ struct SettingsView: View {
             Text(title).sectionLabelStyle()
             VStack(spacing: 0) { content() }
                 .buttonStyle(.plain)
-                .background {
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .fill(Palette.surface)
-                        .elevation(.resting)
-                        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(Palette.hairline))
-                }
+                .glass(radius: 24)
         }
     }
 
     private var rowDivider: some View {
-        Divider().overlay(Palette.hairline).padding(.leading, 66)
+        Rectangle().fill(Color.white.opacity(0.07)).frame(height: 1).padding(.leading, 64)
     }
 
     private var healthRowValue: String {
@@ -259,34 +258,36 @@ struct SettingsView: View {
         NavigationLink {
             GoalSettingsView(model: model)
         } label: {
-            VStack(alignment: .leading, spacing: Space.md) {
-                HStack {
-                    Text("Your plan")
-                        .sectionLabelStyle(Palette.background.opacity(0.75))
-                    Spacer()
-                    Text("Edit")
-                        .font(Typography.data(13, weight: .bold))
-                        .foregroundStyle(Palette.background)
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(spacing: 14) {
+                    FuelOrb(size: 48, breathing: false, glow: 0.35)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(planTitle(model))
+                            .font(Typography.data(20, weight: .regular))
+                            .foregroundStyle(Palette.ink)
+                        Text("Your plan")
+                            .font(Typography.data(13, weight: .regular))
+                            .foregroundStyle(Palette.inkSoft)
+                    }
+                    Spacer(minLength: 8)
+                    Text("Edit plan")
+                        .font(Typography.data(13, weight: .regular))
+                        .foregroundStyle(Palette.ink)
+                        .padding(.horizontal, 14)
+                        .frame(height: 36)
+                        .glassCapsule(fill: Color.white.opacity(0.06), stroke: Color.white.opacity(0.10))
                 }
-
-                Text(planTitle(model))
-                    .font(Typography.display(30))
-                    .foregroundStyle(Palette.background)
 
                 if let progress = planProgress(model) {
                     GeometryReader { box in
                         ZStack(alignment: .leading) {
-                            Capsule().fill(Palette.background.opacity(0.22))
-                            Capsule().fill(Palette.background)
-                                .frame(width: box.size.width * progress)
-                            Circle()
-                                .fill(Palette.background)
-                                .overlay(Circle().strokeBorder(Palette.accent, lineWidth: 4))
-                                .frame(width: 18, height: 18)
-                                .offset(x: box.size.width * progress - 9)
+                            Capsule().fill(Color.white.opacity(0.08))
+                            Capsule()
+                                .fill(LinearGradient(colors: [Palette.ember, Palette.amber], startPoint: .leading, endPoint: .trailing))
+                                .frame(width: max(6, box.size.width * progress))
                         }
                     }
-                    .frame(height: 18)
+                    .frame(height: 6)
                 }
 
                 HStack(spacing: Space.md) {
@@ -300,83 +301,53 @@ struct SettingsView: View {
                     Spacer(minLength: 0)
                 }
             }
-            .padding(22)
+            .padding(18)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background {
-                RoundedRectangle(cornerRadius: 28, style: .continuous)
-                    .fill(Palette.accent)
-                    .elevation(.floating)
-            }
+            .glass(radius: Radius.xl)
         }
         .buttonStyle(PressableCard())
     }
 
     private func planMetric(_ value: String, label: String) -> some View {
-        VStack(alignment: .leading, spacing: 1) {
+        VStack(alignment: .leading, spacing: 2) {
             Text(value)
-                .font(Typography.data(24, weight: .heavy))
-                .foregroundStyle(Palette.background)
-                .monospacedDigit()
+                .font(Typography.data(22, weight: .light))
+                .foregroundStyle(Palette.ink)
             Text(label)
-                .font(Typography.data(12))
-                .foregroundStyle(Palette.background.opacity(0.75))
+                .font(Typography.mono(11))
+                .foregroundStyle(Palette.inkFaint)
         }
     }
 
     /// The manager's switch: when check-ins come, on or off, and quiet hours.
     private func checkInsCard(_ model: SettingsViewModel) -> some View {
-        HStack(spacing: Space.sm) {
-            DayDial(
-                breakfastMin: model.mealTimes.breakfastMin,
-                lunchMin: model.mealTimes.lunchMin,
-                dinnerMin: model.mealTimes.dinnerMin,
-                quietStartMin: model.quietHours.startMin,
-                quietEndMin: model.quietHours.endMin,
-                showsHourLabels: false,
-                today: DialToday(
-                    states: [.breakfast: .upcoming, .lunch: .upcoming, .dinner: .upcoming],
-                    nowMin: nil,
-                    showsBells: model.enforcementEnabled && !model.checkInsPaused
-                )
-            ) { EmptyView() }
-                .frame(width: 124, height: 124)
-                .allowsHitTesting(false)
-
-            VStack(alignment: .leading, spacing: Space.xs) {
-                HStack {
-                    Text("Check-ins")
-                        .font(Typography.data(18, weight: .heavy))
-                        .foregroundStyle(Palette.ink)
-                    Spacer()
-                    if model.enforcementEnabled {
-                        Toggle("Check-ins", isOn: Binding(
-                            get: { !model.checkInsPaused },
-                            set: { on in Task { await model.setCheckInsPaused(!on) } }
-                        ))
-                        .labelsHidden()
-                        .tint(Palette.accent)
-                        .disabled(model.saving)
-                    }
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("Check-ins")
+                    .font(Typography.data(16, weight: .medium))
+                    .foregroundStyle(Palette.ink)
+                Spacer()
+                Text("Quiet \(formatMinutes(model.quietHours.startMin))–\(formatMinutes(model.quietHours.endMin))")
+                    .font(Typography.mono(11))
+                    .textCase(.uppercase)
+                    .foregroundStyle(Palette.inkFaint)
+                if model.enforcementEnabled {
+                    Toggle("Check-ins", isOn: Binding(
+                        get: { !model.checkInsPaused },
+                        set: { on in Task { await model.setCheckInsPaused(!on) } }
+                    ))
+                    .labelsHidden()
+                    .tint(Palette.ember)
+                    .disabled(model.saving)
                 }
-                Text(checkInsDetail(model))
-                    .font(Typography.data(13))
-                    .foregroundStyle(Palette.inkSoft)
-                    .fixedSize(horizontal: false, vertical: true)
-                Label("Quiet \(formatMinutes(model.quietHours.startMin))–\(formatMinutes(model.quietHours.endMin))", systemImage: "moon.fill")
-                    .font(Typography.data(12, weight: .bold))
-                    .foregroundStyle(Palette.inkSoft)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(Palette.surfaceSunk, in: Capsule())
             }
+            Text(checkInsDetail(model))
+                .font(Typography.data(13, weight: .regular))
+                .foregroundStyle(Palette.inkSoft)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(16)
-        .background {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(Palette.surface)
-                .elevation(.resting)
-                .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(Palette.hairline))
-        }
+        .glass(radius: 24)
     }
 
     private func checkInsDetail(_ model: SettingsViewModel) -> String {
@@ -425,34 +396,34 @@ private struct YouRow: View {
     var body: some View {
         HStack(spacing: 14) {
             Image(systemName: symbol)
-                .font(.system(size: 15, weight: .semibold))
+                .font(.system(size: 15, weight: .regular))
                 .foregroundStyle(Palette.ink)
-                .frame(width: 36, height: 36)
-                .background(Palette.surfaceSunk, in: Circle())
+                .frame(width: 34, height: 34)
+                .background(Color.white.opacity(0.06), in: Circle())
             Text(title)
-                .font(Typography.data(16, weight: .bold))
+                .font(Typography.data(15, weight: .regular))
                 .foregroundStyle(Palette.ink)
             if isNew {
                 Text("NEW")
-                    .font(Typography.data(10, weight: .heavy))
-                    .foregroundStyle(Palette.accentDeep)
+                    .font(Typography.mono(9, weight: .medium))
+                    .foregroundStyle(Palette.onEmber)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
-                    .background(Palette.accentTint, in: Capsule())
+                    .background(Palette.amber, in: Capsule())
             }
             Spacer(minLength: 8)
             if let value {
                 Text(value)
-                    .font(Typography.data(14))
+                    .font(Typography.data(13, weight: .regular))
                     .foregroundStyle(Palette.inkFaint)
                     .lineLimit(1)
             }
             Image(systemName: "chevron.right")
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(Palette.inkFaint)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(Color(hex: 0x52525B))
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.vertical, 10)
         .contentShape(Rectangle())
     }
 }
@@ -480,15 +451,7 @@ struct DestinationRow: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background {
-            RoundedRectangle(cornerRadius: Radius.lg, style: .continuous)
-                .fill(Palette.surface)
-                .elevation(.resting)
-                .overlay(
-                    RoundedRectangle(cornerRadius: Radius.lg, style: .continuous)
-                        .strokeBorder(Palette.hairline)
-                )
-        }
+        .glass(radius: Radius.lg)
     }
 }
 
@@ -529,8 +492,8 @@ func enforcementNote(_ reason: String?) -> String {
 }
 
 private struct SettingsSkeletonView: View {
-    private let wash = Palette.background.opacity(0.28)
-    private let washStrong = Palette.background.opacity(0.42)
+    private let wash = Color.white.opacity(0.06)
+    private let washStrong = Color.white.opacity(0.1)
 
     var body: some View {
         ScrollView {
@@ -564,7 +527,7 @@ private struct SettingsSkeletonView: View {
         }
         .padding(22)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Palette.accent, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .glass(radius: 28)
     }
 
     private func planMetric(width: CGFloat) -> some View {

@@ -15,7 +15,7 @@ struct BurnScreen: View {
                 SettingsErrorBanner(message: error)
                 ActionButton(title: "Try again", kind: .secondary) { Task { await load() } }
             } else {
-                ProgressView().tint(Palette.accent)
+                BusyDots(tint: Palette.amber)
                     .frame(maxWidth: .infinity, minHeight: 120)
             }
         }
@@ -26,16 +26,11 @@ struct BurnScreen: View {
     private func content(_ insight: BurnInsightResponse) -> some View {
         if insight.ready, let burn = insight.burnKcal, let low = insight.rangeLow, let high = insight.rangeHigh {
             VStack(alignment: .leading, spacing: 8) {
-                Text("You really burn about \(burn.formatted()) kcal a day")
-                    .font(Typography.voice(22))
-                    .foregroundStyle(Palette.background)
-                Text("likely \(low.formatted())–\(high.formatted())")
-                    .font(Typography.data(15, weight: .semibold))
-                    .foregroundStyle(Palette.onAccentVoice)
+                Headline("You burn about \(burn.formatted()) kcal a day.", tail: "Likely \(low.formatted())–\(high.formatted()).", size: 26)
             }
             .padding(20)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Palette.accent, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .glass(radius: Radius.xl)
             .appearIn(2)
 
             BurnChart(weeks: insight.weeks)
@@ -119,14 +114,14 @@ struct BurnChart: View {
                     HStack(alignment: .bottom, spacing: gap) {
                         ForEach(weeks) { week in
                             Capsule()
-                                .fill(Palette.ink.opacity(0.78))
+                                .fill(Palette.amber.opacity(0.85))
                                 .frame(width: barW, height: max(4, h * CGFloat(week.intakeKcal) / CGFloat(maxKcal)))
                         }
                     }
                     if let burn = weeks.first?.burnKcal {
                         Rectangle()
-                            .fill(Palette.accent)
-                            .frame(width: w, height: 2)
+                            .fill(Palette.ink.opacity(0.6))
+                            .frame(width: w, height: 1.5)
                             .offset(y: -(h * CGFloat(burn) / CGFloat(maxKcal)))
                     }
                 }

@@ -1,7 +1,7 @@
 import SwiftUI
 import UIKit
 
-/// Shared chrome for Settings inner screens: round back, big serif title, cards, rows, save bar.
+/// Shared chrome for inner screens: round glass back, a light title, glass cards, rows, save bar.
 struct SettingsScreen<Content: View>: View {
     let title: String
     var subtitle: String? = nil
@@ -9,6 +9,8 @@ struct SettingsScreen<Content: View>: View {
     var accessory: AnyView? = nil
     /// False when the screen is a tab's root — there's nowhere to go back to.
     var showsBack: Bool = true
+    /// The light behind the title — haze for training screens.
+    var glow: AmbientGlow.Tone = .ember
     @ViewBuilder var content: Content
 
     @Environment(\.dismiss) private var dismiss
@@ -20,17 +22,7 @@ struct SettingsScreen<Content: View>: View {
                     if showsBack || accessory != nil {
                         HStack {
                             if showsBack {
-                                Button {
-                                    dismiss()
-                                } label: {
-                                    Image(systemName: "chevron.left")
-                                        .font(.system(size: 18, weight: .semibold))
-                                        .foregroundStyle(Palette.ink)
-                                        .frame(width: 44, height: 44)
-                                        .background(Palette.surfaceSunk, in: Circle())
-                                }
-                                .buttonStyle(.plain)
-                                .accessibilityLabel("Back")
+                                RoundIconButton("chevron.left", label: "Back") { dismiss() }
                             }
                             Spacer(minLength: 0)
                             if let accessory { accessory }
@@ -39,14 +31,15 @@ struct SettingsScreen<Content: View>: View {
 
                     VStack(alignment: .leading, spacing: 4) {
                         Text(title)
-                            .font(Typography.display(38))
+                            .font(Typography.display(36))
+                            .displayTracking(36)
                             .foregroundStyle(Palette.ink)
                             .fixedSize(horizontal: false, vertical: true)
                             .accessibilityAddTraits(.isHeader)
                             .appearIn(0)
                         if let subtitle {
                             Text(subtitle)
-                                .font(Typography.data(16))
+                                .font(Typography.data(15, weight: .regular))
                                 .foregroundStyle(Palette.inkSoft)
                                 .fixedSize(horizontal: false, vertical: true)
                                 .appearIn(1)
@@ -66,6 +59,11 @@ struct SettingsScreen<Content: View>: View {
         // Screenshots of the lower half of a stub: `-uiStub calendar-week -stubScrollBottom`.
         .defaultScrollAnchor(CommandLine.arguments.contains("-stubScrollBottom") ? .bottom : .top)
         #endif
+        .background(alignment: .top) {
+            AmbientGlow(tone: glow, strength: 0.55)
+                .offset(y: -170)
+                .ignoresSafeArea()
+        }
         .background(Palette.background.ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
         .navigationBarBackButtonHidden(true)
@@ -80,15 +78,7 @@ struct SettingsCard<Content: View>: View {
         content
             .padding(padding)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background {
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(Palette.surface)
-                    .elevation(.resting)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 24, style: .continuous)
-                            .strokeBorder(Palette.hairline, lineWidth: 1)
-                    )
-            }
+            .glass(radius: 24)
     }
 }
 
@@ -101,12 +91,12 @@ struct SettingsRow: View {
     var body: some View {
         HStack(spacing: 14) {
             Image(systemName: symbol)
-                .font(.system(size: 15, weight: .semibold))
+                .font(.system(size: 15, weight: .regular))
                 .foregroundStyle(Palette.ink)
                 .frame(width: 36, height: 36)
-                .background(Palette.surfaceSunk, in: Circle())
+                .background(Color.white.opacity(0.06), in: Circle())
             Text(title)
-                .font(Typography.data(16, weight: .bold))
+                .font(Typography.data(16, weight: .regular))
                 .foregroundStyle(Palette.ink)
             Spacer(minLength: 8)
             if let value {
@@ -170,11 +160,11 @@ struct SettingsErrorBanner: View {
 
     var body: some View {
         Text(message)
-            .font(Typography.data(13))
-            .foregroundStyle(Palette.accentDeep)
+            .font(Typography.data(13, weight: .regular))
+            .foregroundStyle(Palette.danger)
             .padding(Space.sm)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Palette.accentTint, in: RoundedRectangle(cornerRadius: Radius.sm, style: .continuous))
+            .glass(radius: Radius.sm, fill: Palette.danger.opacity(0.08), stroke: Palette.danger.opacity(0.25))
     }
 }
 

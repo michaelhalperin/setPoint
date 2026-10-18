@@ -14,14 +14,14 @@ struct TrainingScreen: View {
     @State private var newStart = Calendar.current.date(bySettingHour: 17, minute: 0, second: 0, of: Date()) ?? Date()
 
     var body: some View {
-        SettingsScreen(title: "Training", subtitle: "Eat around the session. Calories follow the work.", showsBack: !isTabRoot) {
+        SettingsScreen(title: "Train", subtitle: "Eat around the session. Calories follow the work.", showsBack: !isTabRoot, glow: .haze) {
             if let week {
                 content(week)
             } else if let error {
                 SettingsErrorBanner(message: error)
                 ActionButton(title: "Try again", kind: .secondary) { Task { await load() } }
             } else {
-                ProgressView().tint(Palette.accent)
+                BusyDots(tint: Palette.hazeSoft)
                     .frame(maxWidth: .infinity, minHeight: 120)
             }
         }
@@ -50,26 +50,27 @@ struct TrainingScreen: View {
             ForEach(week.days) { day in
                 VStack(spacing: 6) {
                     Text(weekdayLetter(day.date))
-                        .font(Typography.data(11, weight: .bold))
+                        .font(Typography.mono(11))
                         .foregroundStyle(Palette.inkFaint)
                     ZStack {
                         Circle()
-                            .fill(day.rest ? Palette.surfaceSunk : Palette.ink)
+                            .fill(day.rest ? Color.white.opacity(0.05) : Palette.haze.opacity(0.22))
+                            .overlay(Circle().strokeBorder(day.rest ? Palette.hairline : Palette.haze.opacity(0.6)))
                             .frame(width: 36, height: 36)
+                            .shadow(color: day.rest ? .clear : Palette.haze.opacity(0.45), radius: 8)
                         if day.rest {
-                            Text("R")
-                                .font(Typography.data(11, weight: .heavy))
-                                .foregroundStyle(Palette.inkSoft)
+                            Text("–")
+                                .font(Typography.mono(11))
+                                .foregroundStyle(Palette.inkFaint)
                         } else {
                             Image(systemName: "dumbbell.fill")
-                                .font(.system(size: 12, weight: .bold))
-                                .foregroundStyle(Palette.background)
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundStyle(Palette.hazeSoft)
                         }
                     }
                     Text(day.rest ? "rest" : "+\(day.bumpKcal)")
-                        .font(Typography.data(10, weight: .bold))
-                        .foregroundStyle(Palette.inkSoft)
-                        .monospacedDigit()
+                        .font(Typography.mono(10))
+                        .foregroundStyle(day.rest ? Palette.inkFaint : Palette.hazeSoft)
                 }
                 .frame(maxWidth: .infinity)
             }
@@ -79,18 +80,15 @@ struct TrainingScreen: View {
     private func todayCard(_ week: TrainingWeekResponse) -> some View {
         let t = week.today
         return VStack(alignment: .leading, spacing: 8) {
-            Text("Today").sectionLabelStyle(Palette.background.opacity(0.8))
-            Text(sessionTitle(t))
-                .font(Typography.display(28))
-                .foregroundStyle(Palette.background)
+            Text("Today").sectionLabelStyle(Palette.hazeSoft)
+            Headline(sessionTitle(t), size: 28)
             Text("\(t.targetKcal.formatted()) kcal = \(t.baseKcal.formatted()) + \(t.bumpKcal)")
-                .font(Typography.data(15, weight: .bold))
-                .foregroundStyle(Palette.background.opacity(0.85))
-                .monospacedDigit()
+                .font(Typography.mono(13))
+                .foregroundStyle(Palette.hazeSoft)
         }
         .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Palette.accent, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .glass(radius: Radius.xl, fill: Palette.haze.opacity(0.10), stroke: Palette.haze.opacity(0.35))
     }
 
     private func fuelTimeline(_ week: TrainingWeekResponse) -> some View {
@@ -101,25 +99,24 @@ struct TrainingScreen: View {
                     ForEach(week.today.timeline) { event in
                         HStack(spacing: 12) {
                             Circle()
-                                .fill(event.kind == "workout" ? Palette.ink : Palette.accent)
+                                .fill(event.kind == "workout" ? Palette.haze : event.kind == "refuel" ? Palette.hazeSoft : Palette.amber)
                                 .frame(width: 10, height: 10)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(event.label)
-                                    .font(Typography.data(15, weight: .bold))
+                                    .font(Typography.data(15, weight: .regular))
                                     .foregroundStyle(Palette.ink)
                                 Text(formatMinutes(event.atMin))
-                                    .font(Typography.data(13))
+                                    .font(Typography.mono(12))
                                     .foregroundStyle(Palette.inkSoft)
-                                    .monospacedDigit()
                             }
                             Spacer()
                             if event.nudge == true {
                                 Text("Nudge")
-                                    .font(Typography.data(10, weight: .heavy))
-                                    .foregroundStyle(Palette.accentDeep)
+                                    .font(Typography.mono(10))
+                                    .foregroundStyle(Palette.hazeSoft)
                                     .padding(.horizontal, 8)
                                     .padding(.vertical, 3)
-                                    .background(Palette.accentTint, in: Capsule())
+                                    .background(Palette.haze.opacity(0.16), in: Capsule())
                             }
                         }
                     }
@@ -137,7 +134,7 @@ struct TrainingScreen: View {
                         .font(Typography.data(15, weight: .bold))
                         .foregroundStyle(Palette.ink)
                 }
-                .tint(Palette.accent)
+                .tint(Palette.haze)
                 .padding(16)
                 Divider().overlay(Palette.hairline).padding(.leading, 16)
                 VStack(alignment: .leading, spacing: 8) {
@@ -272,14 +269,14 @@ struct TrainingLockedView: View {
     @State private var showingPaywall = false
 
     var body: some View {
-        SettingsScreen(title: "Training", subtitle: "Eat around the session. Calories follow the work.", showsBack: false) {
+        SettingsScreen(title: "Train", subtitle: "Meal check-ins stay free. Pro adds the training side.", showsBack: false, glow: .haze) {
             VStack(alignment: .leading, spacing: Space.md) {
                 lockedRow("figure.strengthtraining.traditional", "Training days get more food", "Your target rises with the session, so the extra burn doesn’t widen the gap.")
                 lockedRow("bolt.heart", "Refuel right after", "When Apple Health saves a workout, a refuel check-in follows within minutes.")
                 lockedRow("fork.knife", "Eat before you train", "A nudge before a planned session if you haven’t eaten.")
             }
             .appearIn(2)
-            ActionButton(title: "See plans") { showingPaywall = true }
+            ActionButton(title: "See Pro") { showingPaywall = true }
                 .appearIn(3)
             Text("Meal check-ins, top-ups and the evening close stay free.")
                 .font(Typography.data(13))
@@ -294,13 +291,13 @@ struct TrainingLockedView: View {
     private func lockedRow(_ symbol: String, _ title: String, _ detail: String) -> some View {
         HStack(alignment: .top, spacing: Space.sm) {
             Image(systemName: symbol)
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(Palette.accent)
-                .frame(width: 36, height: 36)
-                .background(Palette.accentTint, in: Circle())
+                .font(.system(size: 16, weight: .regular))
+                .foregroundStyle(Palette.hazeSoft)
+                .frame(width: 38, height: 38)
+                .background(Palette.haze.opacity(0.14), in: Circle())
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
-                    .font(Typography.data(16, weight: .bold))
+                    .font(Typography.data(15, weight: .medium))
                     .foregroundStyle(Palette.ink)
                 Text(detail)
                     .font(Typography.data(14))
@@ -322,17 +319,16 @@ struct RefuelSheet: View {
     var body: some View {
         VStack(spacing: 22) {
             Capsule()
-                .fill(Palette.inkFaint)
+                .fill(Color.white.opacity(0.18))
                 .frame(width: 40, height: 5)
                 .padding(.top, 10)
 
             ZStack {
                 Circle()
-                    .stroke(Palette.surfaceSunk, lineWidth: 10)
-                Circle()
-                    .trim(from: 0, to: ringProgress)
-                    .stroke(Palette.accent, style: StrokeStyle(lineWidth: 10, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
+                    .fill(RadialGradient(colors: [Palette.haze.opacity(0.35), .clear], center: .center, startRadius: 0, endRadius: 110))
+                    .frame(width: 220, height: 220)
+                OrbRing(progress: ringProgress, lineWidth: 5, tint: Palette.hazeSoft)
+                    .frame(width: 168, height: 168)
                 VStack(spacing: 2) {
                     Text(clock)
                         .font(Typography.data(36, weight: .bold))
@@ -343,29 +339,16 @@ struct RefuelSheet: View {
                         .foregroundStyle(Palette.inkSoft)
                 }
             }
-            .frame(width: 168, height: 168)
+            .frame(width: 200, height: 200)
 
-            Text("You trained. Eat something now.")
-                .font(Typography.display(28))
-                .foregroundStyle(Palette.ink)
-                .multilineTextAlignment(.center)
+            Headline("You trained.", tail: "Eat something now.", size: 30, alignment: .center)
 
             if let rx = checkIn.prescription {
                 PrescriptionCard(prescription: rx)
             }
 
             ActionButton(title: "I had this", kind: .primary, action: onHadThis)
-            Button(action: onCoveredByDinner) {
-                Text("Dinner at \(formatMinutes(dinnerMin)) covers it")
-                    .font(Typography.data(16, weight: .bold))
-                    .foregroundStyle(Palette.ink)
-                    .frame(maxWidth: .infinity, minHeight: 52)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .strokeBorder(Palette.hairline, lineWidth: 1.5)
-                    )
-            }
-            .buttonStyle(PressableCard())
+            ActionButton(title: "Dinner at \(formatMinutes(dinnerMin)) covers it", kind: .secondary, action: onCoveredByDinner)
 
             Button("Not now", action: onDismiss)
                 .font(Typography.data(15, weight: .bold))
@@ -374,7 +357,7 @@ struct RefuelSheet: View {
         .padding(.horizontal, Space.gutter)
         .padding(.bottom, Space.lg)
         .frame(maxWidth: .infinity)
-        .background(Palette.background.ignoresSafeArea())
+        .background(Palette.sheet.ignoresSafeArea())
     }
 
     private var ringProgress: CGFloat {
