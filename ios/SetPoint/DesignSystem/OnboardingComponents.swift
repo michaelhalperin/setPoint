@@ -66,6 +66,8 @@ struct RulerPicker: View {
     var majorStep: Double = 10
     /// Decimal places in the big number (a 0.1 kg weigh-in shows one).
     var fractionDigits = 0
+    /// False when the screen shows the number itself.
+    var showsValue = true
 
     @State private var dragStartValue: Double?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -75,25 +77,27 @@ struct RulerPicker: View {
 
     var body: some View {
         VStack(spacing: Space.md) {
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text(value.formatted(.number.precision(.fractionLength(fractionDigits))))
-                    .font(Typography.data(56, weight: .light))
-                    .tracking(-2)
-                    .foregroundStyle(Palette.ink)
-                    .monospacedDigit()
-                    .contentTransition(.numericText(value: value))
-                Text(unit)
-                    .font(Typography.mono(15))
-                    .foregroundStyle(Palette.inkFaint)
-            }
-            .animation(Motion.adaptive(Motion.settle, reduceMotion: reduceMotion), value: value)
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel("\(value.formatted(.number.precision(.fractionLength(fractionDigits)))) \(unit)")
-            .accessibilityAdjustableAction { direction in
-                switch direction {
-                case .increment: setValue(min(range.upperBound, value + step))
-                case .decrement: setValue(max(range.lowerBound, value - step))
-                @unknown default: break
+            if showsValue {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(value.formatted(.number.precision(.fractionLength(fractionDigits))))
+                        .font(Typography.data(56, weight: .light))
+                        .tracking(-2)
+                        .foregroundStyle(Palette.ink)
+                        .monospacedDigit()
+                        .contentTransition(.numericText(value: value))
+                    Text(unit)
+                        .font(Typography.mono(15))
+                        .foregroundStyle(Palette.inkFaint)
+                }
+                .animation(Motion.adaptive(Motion.settle, reduceMotion: reduceMotion), value: value)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("\(value.formatted(.number.precision(.fractionLength(fractionDigits)))) \(unit)")
+                .accessibilityAdjustableAction { direction in
+                    switch direction {
+                    case .increment: setValue(min(range.upperBound, value + step))
+                    case .decrement: setValue(max(range.lowerBound, value - step))
+                    @unknown default: break
+                    }
                 }
             }
 

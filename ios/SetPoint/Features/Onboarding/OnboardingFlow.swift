@@ -112,12 +112,11 @@ struct OnboardingFlow: View {
                     .foregroundStyle(Palette.danger)
                     .transition(.opacity)
             }
-            ActionButton(
-                title: model.step == .safety ? "Build my plan" : "Continue",
-                busy: model.submitting,
-                busyTitle: "Building your plan"
-            ) { model.advance() }
-            .disabled(!model.canAdvance)
+            // Safety builds the plan from its last answer — no button.
+            if model.step != .safety {
+                ActionButton(title: "Continue") { model.advance() }
+                    .disabled(!model.canAdvance)
+            }
         }
         .padding(.horizontal, Space.gutter)
         .padding(.top, Space.sm)

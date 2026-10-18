@@ -11,18 +11,26 @@ struct ReachStep: View {
     @State private var asking = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Space.lg) {
-            StepHeadline(text: "Let me reach you.")
-
+        VStack(alignment: .leading, spacing: 18) {
             LockScreenPreview(minute: CheckInSchedule.minute(afterMeal: model.draft.lunchMin))
-                .frame(maxWidth: 300, maxHeight: 400)
-                .frame(maxWidth: .infinity)
-                .appearIn(1)
+                .frame(height: 290)
+                .padding(.top, 6)
+                .appearIn(0, rise: 0)
+
+            Headline("Let me reach you.", tail: "Only when a meal slips.", size: 36)
+                .appearIn(1, rise: 16)
+
+            DotLines(lines: [
+                "At most 4 a day, and only if a plate slips",
+                "Never between \(formatMinutes(model.draft.quietStartMin)) and \(formatMinutes(model.draft.quietEndMin))",
+                "Answer from the lock screen in one tap",
+            ])
+            .appearIn(2, rise: 16)
 
             Spacer(minLength: 0)
 
-            VStack(spacing: Space.xxs) {
-                ActionButton(title: "Turn on check-ins", busy: asking, busyTitle: "One moment") {
+            VStack(spacing: 4) {
+                ActionButton(title: "Allow notifications", busy: asking, busyTitle: "One moment") {
                     guard !asking else { return }
                     asking = true
                     Task {
@@ -31,13 +39,23 @@ struct ReachStep: View {
                         model.advance()
                     }
                 }
-                Button("Not now") { model.advance() }
-                    .font(Typography.data(15, weight: .semibold))
+                Button("Not now · check-ins won’t reach you") { model.advance() }
+                    .font(Typography.data(14, weight: .regular))
                     .foregroundStyle(Palette.inkSoft)
-                    .padding(.vertical, 12)
+                    .frame(maxWidth: .infinity, minHeight: 44)
                     .disabled(asking)
             }
-            .appearIn(2)
+            .appearIn(3, rise: 16)
+        }
+        .background(alignment: .top) {
+            ZStack {
+                RadialGradient(colors: [Palette.ember.opacity(0.28), .clear], center: .center, startRadius: 0, endRadius: 220)
+                RadialGradient(colors: [Palette.haze.opacity(0.2), .clear], center: UnitPoint(x: 0.8, y: 0.3), startRadius: 0, endRadius: 200)
+            }
+            .frame(width: 510, height: 420)
+            .blur(radius: 30)
+            .offset(y: 20)
+            .allowsHitTesting(false)
         }
     }
 }
@@ -53,61 +71,60 @@ private struct LockScreenPreview: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            RoundedRectangle(cornerRadius: 48, style: .continuous)
-                .fill(RadialGradient(
-                    colors: [Color(hex: 0x6E2A12), Color(hex: 0x24141A), Palette.lockScreenInk],
-                    center: UnitPoint(x: 0.2, y: 0), startRadius: 0, endRadius: 440
-                ))
-                .elevation(.lifted)
+            RoundedRectangle(cornerRadius: 30, style: .continuous)
+                .fill(LinearGradient(colors: [Color(hex: 0x1A1420), Color(hex: 0x0E0E12)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                .overlay(RoundedRectangle(cornerRadius: 30, style: .continuous).strokeBorder(Color.white.opacity(0.08)))
 
             VStack(spacing: 0) {
                 Text(dateLine)
-                    .font(Typography.data(15, weight: .semibold))
-                    .foregroundStyle(Palette.lockScreenText.opacity(0.75))
-                    .padding(.top, 40)
-                Text(String(format: "%d:%02d", minute / 60, minute % 60))
-                    .font(Typography.data(80, weight: .light))
-                    .monospacedDigit()
-                    .foregroundStyle(Palette.lockScreenText)
-                    .minimumScaleFactor(0.6)
-                    .lineLimit(1)
-
-                LoopingPhase(period: 6, still: 0.75) { t in
-                    let shown = Phase.window(t, 0.45, 0.55, 0.9, 0.97)
-                    notification
-                        .opacity(shown)
-                        .offset(y: -26 * (1 - Phase.ramp(t, 0.45, 0.55)))
-                }
-                .padding(.horizontal, 14)
-                .padding(.top, 28)
+                    .font(Typography.data(13, weight: .regular))
+                    .foregroundStyle(Palette.ink.opacity(0.8))
+                Text(formatMinutes(minute))
+                    .font(.system(size: 64, weight: .light))
+                    .tracking(-2.5)
+                    .foregroundStyle(Palette.ink)
             }
+            .padding(.top, 26)
+
+            LoopingPhase(period: 6, still: 0.75) { t in
+                let shown = Phase.window(t, 0.25, 0.35, 0.9, 0.97)
+                notification
+                    .opacity(shown)
+                    .offset(y: -30 * (1 - Phase.ramp(t, 0.25, 0.35)))
+            }
+            .padding(.horizontal, 12)
+            .frame(maxHeight: .infinity, alignment: .bottom)
+            .padding(.bottom, 18)
         }
+        .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("A check-in notification on your lock screen: lunch slipped, nothing logged since breakfast.")
+        .accessibilityLabel("A check-in notification on your lock screen: lunch slipped, with a plate you can get down.")
     }
 
     private var notification: some View {
-        HStack(spacing: 10) {
-            FuelOrb(size: 38, breathing: false, glow: 0.2)
-                .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-            VStack(alignment: .leading, spacing: 1) {
+        HStack(alignment: .top, spacing: 10) {
+            FuelOrb(size: 18, breathing: false, glow: 0)
+                .frame(width: 34, height: 34)
+                .background(Palette.background, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+            VStack(alignment: .leading, spacing: 2) {
                 HStack {
                     Text("Lunch slipped")
-                        .font(Typography.data(14, weight: .bold))
+                        .font(Typography.data(14, weight: .semibold))
                         .foregroundStyle(Palette.ink)
                     Spacer()
                     Text("now")
-                        .font(Typography.data(11))
+                        .font(Typography.data(11, weight: .regular))
                         .foregroundStyle(Palette.inkSoft)
                 }
-                Text("Nothing logged since breakfast.")
-                    .font(Typography.data(13))
-                    .foregroundStyle(Palette.inkSoft)
+                Text("Here’s 680 kcal you can get down in 5 minutes.")
+                    .font(Typography.data(13, weight: .regular))
+                    .foregroundStyle(Color(hex: 0xD4D4D8))
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .padding(12)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Palette.hairline))
+        .background(Color(hex: 0x28282E, opacity: 0.85), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Color.white.opacity(0.12)))
     }
 }
 
@@ -242,27 +259,49 @@ struct CoveredStep: View {
     }
 
     private var quiet: some View {
-        VStack(alignment: .leading, spacing: Space.md) {
-            FuelOrb(size: 64, dimmed: true)
-                .appearIn(0)
-            Headline("Quiet mode is on.", tail: "No check-ins.", size: 40)
-                .appearIn(0)
+        VStack(alignment: .leading, spacing: 18) {
+            Spacer(minLength: 0)
+            Circle()
+                .fill(RadialGradient(
+                    stops: [
+                        .init(color: Color(hex: 0xF4F4F5), location: 0),
+                        .init(color: Color(hex: 0xA1A1AA), location: 0.3),
+                        .init(color: Color(hex: 0x3F3F46), location: 0.7),
+                        .init(color: Color(hex: 0x18181B), location: 1),
+                    ],
+                    center: UnitPoint(x: 0.34, y: 0.28), startRadius: 0, endRadius: 125
+                ))
+                .frame(width: 160, height: 160)
+                .shadow(color: Color(hex: 0xA1A1AA, opacity: 0.25), radius: 30)
+                .opacity(0.8)
+                .frame(maxWidth: .infinity)
+                .accessibilityHidden(true)
+            Spacer(minLength: 0)
+            Text("Quiet mode").sectionLabelStyle()
+                .appearIn(1, rise: 16)
+            Headline("No check-ins.", tail: "Log when you like.", size: 40)
+                .appearIn(2, rise: 16)
             Text(quietCopy)
-                .font(Typography.data(17))
-                .foregroundStyle(Palette.inkSoft)
-                .lineSpacing(3)
+                .font(Typography.data(15, weight: .regular))
+                .foregroundStyle(Color(hex: 0xD4D4D8))
+                .lineSpacing(4)
                 .fixedSize(horizontal: false, vertical: true)
-                .appearIn(1)
-            Spacer()
+                .appearIn(3, rise: 16)
+            Text("You can still log meals and see your week. No targets, no reminders.")
+                .font(Typography.data(13, weight: .regular))
+                .foregroundStyle(Palette.inkSoft)
+                .appearIn(4, rise: 16)
             // No upsell here: someone in quiet mode was flagged by the safety screen.
             ActionButton(title: "Start") { model.advance() }
+                .padding(.top, 8)
+                .appearIn(5, rise: 16)
         }
     }
 
     private var quietCopy: String {
         switch model.result?.enforcementDisabledReason {
         case "EATING_DISORDER_SCREEN":
-            return "I won’t push you to eat. If eating feels hard right now, a qualified healthcare professional or local eating-disorder service can offer support that an app can’t."
+            return "From your answers, I won’t push you to eat. If eating feels hard right now, a doctor or an eating-disorder service can help in a way an app can’t."
         default:
             return "I won’t push you to eat — that’s your care team’s call, not an app’s. This isn’t a substitute for their plan."
         }
