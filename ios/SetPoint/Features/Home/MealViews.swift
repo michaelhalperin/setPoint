@@ -54,9 +54,9 @@ struct SearchComposer: View {
                             .accessibilityHidden(true)
                     }
                 }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(Palette.surfaceSunk, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                .glass(radius: 25, fill: Color.white.opacity(0.05), stroke: Color.white.opacity(0.10))
 
                 cameraButton
 
@@ -69,7 +69,7 @@ struct SearchComposer: View {
             if case let .failed(message) = model.phase {
                 Text(message)
                     .font(Typography.data(13))
-                    .foregroundStyle(Palette.accent)
+                    .foregroundStyle(Palette.danger)
                     .padding(.leading, 14)
             }
         }
@@ -122,10 +122,11 @@ struct SearchComposer: View {
     private var cameraButton: some View {
         PhotosPicker(selection: $pickerItem, matching: .images, photoLibrary: .shared()) {
             Image(systemName: "camera")
-                .font(.system(size: 15, weight: .semibold))
+                .font(.system(size: 17, weight: .regular))
                 .foregroundStyle(Palette.ink)
-                .frame(width: 34, height: 34)
-                .background(Palette.surfaceSunk, in: Circle())
+                .frame(width: 50, height: 50)
+                .background(Circle().fill(Color.white.opacity(0.05)))
+                .overlay(Circle().strokeBorder(Color.white.opacity(0.10)))
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
@@ -135,12 +136,11 @@ struct SearchComposer: View {
 
     private var sendButton: some View {
         Button(action: submit) {
-            Image(systemName: "arrow.up")
-                .font(.system(size: 14, weight: .bold))
-                .foregroundStyle(.white)
-                .frame(width: 34, height: 34)
-                .background(Palette.accent, in: Circle())
-                .contentShape(Circle())
+            EmberBall(size: 50, glow: true) {
+                Image(systemName: "arrow.up")
+                    .font(.system(size: 17, weight: .semibold))
+            }
+            .contentShape(Circle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Log")
@@ -225,7 +225,7 @@ struct MealDetailSheet: View {
         .background(Palette.background.ignoresSafeArea())
         .presentationDetents([.medium, .large], selection: $detent)
         .presentationDragIndicator(.visible)
-        .presentationBackground(Palette.background)
+        .presentationBackground(Palette.sheet)
         .animation(Motion.adaptive(Motion.sheet, reduceMotion: reduceMotion), value: expanded)
         .task { photo = await MealPhotoCache.shared.image(for: meal) }
     }

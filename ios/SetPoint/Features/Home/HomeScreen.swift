@@ -1,9 +1,9 @@
 import SwiftUI
 
-/// Today (§5.2): the day dial as hero — what's logged, what's due, and when the
-/// next check-in comes — or, when a check-in fires, a terracotta takeover with the
-/// meal to eat. Calories and protein sit in a strip below, then the meal log.
-/// Logging lives in `LogDock`, pinned above the tab bar in every state.
+/// Today: the fuel orb as hero — how much of the day's food is in, what's next,
+/// and the day's plates — or, when a check-in fires, the check-in itself with the
+/// plate to eat. Calories and protein sit in a strip below, then the meal log.
+/// Logging rises from the nav's "+" as `LogDock`.
 struct HomeContent: View {
     @Bindable var model: HomeViewModel
     var deepLinkCheckInID: Binding<String?> = .constant(nil)
@@ -22,6 +22,7 @@ struct HomeContent: View {
     @State private var checkInBusy = false
     @State private var checkInError: String?
     @State private var topUpBusy = false
+    @State private var logOpen = false
     @AppStorage("topUpDismissed") private var topUpDismissed = ""
     @FocusState private var composerFocused: Bool
     @Namespace private var photoLogNamespace
@@ -127,6 +128,7 @@ struct HomeContent: View {
             }
         }
         .animation(Motion.adaptive(Motion.morph, reduceMotion: reduceMotion), value: logger?.confirmingPhoto == true)
+        .animation(Motion.adaptive(Motion.sheet, reduceMotion: reduceMotion), value: logOpen)
         .sheet(item: $selectedMeal) { meal in
             MealDetailSheet(
                 meal: meal,
@@ -186,14 +188,19 @@ struct HomeContent: View {
             }
             .presentationDetents([.height(SnoozeSheet.height(for: choices.count))])
             .presentationDragIndicator(.visible)
-            .presentationBackground(Palette.background)
-            .presentationCornerRadius(28)
+            .presentationBackground(Palette.sheet)
+            .presentationCornerRadius(32)
         }
         .sheet(isPresented: $showingPaywall) {
             PaywallView()
                 .presentationDetents([.large])
         }
-        .toolbar(showingCheckIn || logger?.confirmingPhoto == true ? .hidden : .visible, for: .tabBar)
+        .onChange(of: hidesNav, initial: true) { _, hidden in
+            env.chrome.navHidden = hidden
+        }
+        .onChange(of: env.chrome.logRequest) { _, _ in
+            openLog()
+        }
         .task {
             if logger == nil {
                 logger = previewLogger ?? LogMealViewModel(
@@ -202,13 +209,13 @@ struct HomeContent: View {
                 )
             }
             if startComposerExpanded {
-                composerFocused = true
+                openLog(focus: true)
             }
 
             await env.push.syncAuthorizationStatus()
         }
-        .onChange(of: composerFocused) { _, isFocused in
-            guard isFocused, let meals = loadedHome?.meals else { return }
+        .onChange(of: logOpen) { _, open in
+            guard open, let meals = loadedHome?.meals else { return }
             Task {
                 await logger?.loadRecents(today: meals)
                 if previewLogger == nil {
@@ -226,9 +233,9 @@ struct HomeContent: View {
         .onChange(of: env.changes.pendingLogPhoto) { _, pending in
             guard pending else { return }
             env.changes.pendingLogPhoto = false
+            openLog()
             logger?.mode = .photo
             logger?.showPhotoPicker = true
-            composerFocused = true
         }
         .onChange(of: scenePhase) { _, phase in
             guard phase == .active, isLoaded else { return }
@@ -287,19 +294,23 @@ struct HomeContent: View {
                         if home.enforcementEnabled, env.push.authorizationStatus == .denied {
                             NotificationsOffBanner()
                         }
-                        TodayHero(home: home, moment: moment, date: now)
+                        TodayHero(home: home, moment: moment, date: now) {
+                            Task { await model.load(showSpinner: false) }
+                        }
                     }
                     .padding(.horizontal, Space.gutter)
-                    .padding(.top, Space.sm)
+                    .padding(.top, Space.xs)
                     .transition(.opacity)
                 }
 
                 VStack(alignment: .leading, spacing: Space.lg) {
                     if !moment.takesOver {
-                        AppetiteTodayLine(home: home) {
-                            Task { await model.load(showSpinner: false) }
+                        if AppetiteTodayVisibility.resolve(home: home) != .ask {
+                            AppetiteTodayLine(home: home) {
+                                Task { await model.load(showSpinner: false) }
+                            }
+                            .appearIn(0)
                         }
-                        .appearIn(0)
 
                         if let topUp = home.topUp, topUpDismissed != TopUpDismissal.key(for: topUp, now: now) {
                             TopUpCard(
@@ -321,7 +332,6 @@ struct HomeContent: View {
                         landingNamespace: photoLogNamespace,
                         landingCardID: photoLandingCardID,
                         onOpenMeal: { meal in
-                            composerFocused = false
                             selectedMeal = meal
                         },
                         onLogMissed: logMissed
@@ -332,23 +342,46 @@ struct HomeContent: View {
             }
             .padding(.bottom, Space.lg)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .contentShape(Rectangle())
-            .simultaneousGesture(TapGesture().onEnded { composerFocused = false })
+            .background(alignment: .top) {
+                if !moment.takesOver {
+                    AmbientGlow(tone: moment == .quiet ? .quiet : .mixed)
+                        .offset(y: 20)
+                }
+            }
             .animation(Motion.adaptive(Motion.morph, reduceMotion: reduceMotion), value: moment.takesOver)
         }
         .scrollBounceBehavior(.basedOnSize)
         .scrollDismissesKeyboard(.interactively)
         .refreshable { await model.load(showSpinner: false) }
+        .overlay {
+            if logOpen {
+                Palette.scrim
+                    .ignoresSafeArea()
+                    .onTapGesture(perform: closeLog)
+                    .transition(.opacity)
+                    .accessibilityLabel("Close")
+                    .accessibilityAddTraits(.isButton)
+            }
+        }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if let logger {
-                LogDock(
-                    logger: logger,
-                    focused: $composerFocused,
-                    estimateKcal: estimateKcal(for: home),
-                    photoNamespace: photoLogNamespace,
-                    photoGeometryID: Self.photoImageID
-                ) {
-                    Task { await logger.submit() }
+                if logOpen {
+                    LogDock(
+                        logger: logger,
+                        focused: $composerFocused,
+                        estimateKcal: estimateKcal(for: home),
+                        currentSlot: TodayLayout.slot(forMinute: home.day?.nowMin ?? TodayLayout.minuteOfDay(from: now), times: home.resolvedMealTimes),
+                        photoNamespace: photoLogNamespace,
+                        photoGeometryID: Self.photoImageID,
+                        onClose: closeLog
+                    ) {
+                        Task { await logger.submit() }
+                    }
+                    .transition(.move(edge: .bottom))
+                } else {
+                    LogStatusToast(logger: logger)
+                        .padding(.bottom, 8)
+                        .frame(maxWidth: .infinity)
                 }
             }
         }
@@ -356,9 +389,28 @@ struct HomeContent: View {
 
     // MARK: Actions
 
+    private func openLog(focus: Bool = false) {
+        guard !showingCheckIn else { return }
+        withAnimation(Motion.adaptive(Motion.sheet, reduceMotion: reduceMotion)) { logOpen = true }
+        if focus {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { composerFocused = true }
+        }
+    }
+
+    private func closeLog() {
+        composerFocused = false
+        logger?.backdate = nil
+        withAnimation(Motion.adaptive(Motion.sheet, reduceMotion: reduceMotion)) { logOpen = false }
+    }
+
+    private var hidesNav: Bool {
+        showingCheckIn || logOpen || logger?.confirmingPhoto == true
+    }
+
     private func openCheckIn() {
         Haptics.nudge()
         composerFocused = false
+        logOpen = false
         withAnimation(springForCheckIn) { showingCheckIn = true }
     }
 
@@ -396,7 +448,7 @@ struct HomeContent: View {
             let at = slot == .breakfast ? times.breakfastMin : slot == .lunch ? times.lunchMin : times.dinnerMin
             logger?.backdate = .init(slot: slot, at: TodayLayout.today(atMin: at, now: now))
         }
-        DispatchQueue.main.async { composerFocused = true }
+        openLog()
     }
 
     private func alreadyAte() {
@@ -440,7 +492,7 @@ struct HomeContent: View {
 
     private func logMissed(_ slot: HomeResponse.Day.Slot) {
         logger?.backdate = .init(slot: slot.meal, at: TodayLayout.today(atMin: slot.atMin, now: now))
-        Task { composerFocused = true }
+        openLog()
     }
 
     private func ateThis() {
@@ -480,12 +532,15 @@ struct HomeContent: View {
         switch phase {
         case .parsing:
             composerFocused = false
+            withAnimation(Motion.adaptive(Motion.sheet, reduceMotion: reduceMotion)) { logOpen = false }
         case .failed:
-            composerFocused = true
+            openLog(focus: true)
         case .queued:
             composerFocused = false
+            withAnimation(Motion.adaptive(Motion.sheet, reduceMotion: reduceMotion)) { logOpen = false }
         case let .logged(logged):
             composerFocused = false
+            withAnimation(Motion.adaptive(Motion.sheet, reduceMotion: reduceMotion)) { logOpen = false }
             Haptics.landed()
             if logged.fromPhoto { return }
             landLoggedMeal()
@@ -627,151 +682,40 @@ private struct RetryState: View {
 
 struct HomeSkeletonView: View {
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: Space.lg) {
-                VStack(alignment: .leading, spacing: Space.md) {
-                    dial
-                    VStack(alignment: .leading, spacing: 8) {
-                        SkeletonBlock(width: 220, height: 34, radius: 8)
-                        SkeletonBlock(width: 168, height: 16, radius: 6)
-                    }
+        VStack(spacing: Space.md) {
+            HStack {
+                VStack(alignment: .leading, spacing: 6) {
+                    SkeletonBlock(width: 110, height: 20, radius: 6)
+                    SkeletonBlock(width: 60, height: 10)
                 }
-                .padding(.horizontal, Space.gutter)
-                .padding(.top, Space.sm)
-
-                VStack(alignment: .leading, spacing: Space.lg) {
-                    fuel
-                    meals
-                }
-                .padding(.horizontal, Space.gutter)
+                Spacer()
             }
-            .padding(.bottom, Space.lg)
-        }
-        .scrollBounceBehavior(.basedOnSize)
-        .scrollDisabled(true)
-        .background(Palette.background.ignoresSafeArea())
-        .safeAreaInset(edge: .bottom, spacing: 0) { dock }
-        .skeletonLoading()
-    }
-
-    /// Muted stand-in for the day dial: ring, three meal knobs, a number in the middle.
-    private var dial: some View {
-        GeometryReader { geo in
-            let size = min(geo.size.width, geo.size.height)
-            let r = size * 0.33
-            let ringWidth = size * 0.076
-            let knob = min(44, max(18, size * 0.13))
-            let c = CGPoint(x: geo.size.width / 2, y: geo.size.height / 2)
-
             ZStack {
-                Circle()
-                    .stroke(Palette.surfaceSunk, lineWidth: ringWidth)
-                    .frame(width: r * 2, height: r * 2)
-                    .position(c)
-
-                ForEach([480, 780, 1140], id: \.self) { minute in
-                    Circle()
-                        .fill(Palette.surface)
-                        .overlay(Circle().strokeBorder(Palette.hairline, lineWidth: 2))
-                        .frame(width: knob, height: knob)
-                        .position(dialPoint(minute, radius: r, center: c))
-                }
-
+                Circle().stroke(Palette.idleRing, lineWidth: 4)
+                Circle().fill(Palette.surfaceSunk).padding(30)
                 VStack(spacing: 8) {
-                    SkeletonBlock(width: size * 0.28, height: size * 0.11, radius: 10)
-                    SkeletonBlock(width: size * 0.2, height: 10)
+                    SkeletonBlock(width: 96, height: 40, radius: 10)
+                    SkeletonBlock(width: 80, height: 10)
                 }
-                .fixedSize()
-                .position(c)
             }
-        }
-        .aspectRatio(1, contentMode: .fit)
-        .frame(maxWidth: 320)
-        .frame(maxWidth: .infinity)
-    }
-
-    private func dialPoint(_ minute: Int, radius: CGFloat, center: CGPoint) -> CGPoint {
-        let angle = CGFloat(minute) / 1440 * 2 * .pi
-        return CGPoint(x: center.x + radius * sin(angle), y: center.y - radius * cos(angle))
-    }
-
-    private var fuel: some View {
-        HStack(spacing: 10) {
-            fuelCell(numberWidth: 56, unitWidth: 72)
-            fuelCell(numberWidth: 40, unitWidth: 88)
-        }
-    }
-
-    private func fuelCell(numberWidth: CGFloat, unitWidth: CGFloat) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .firstTextBaseline, spacing: 5) {
-                SkeletonBlock(width: numberWidth, height: 22, radius: 6)
-                SkeletonBlock(width: unitWidth, height: 12)
+            .frame(width: 240, height: 240)
+            .padding(.top, Space.xs)
+            SkeletonBlock(width: 170, height: 34, radius: 17)
+            SkeletonCard(height: 150) {
+                VStack(alignment: .leading, spacing: 12) {
+                    SkeletonBlock(width: 140, height: 10)
+                    SkeletonBlock(width: 220, height: 26, radius: 8)
+                    SkeletonBlock(width: 180, height: 14)
+                }
             }
-            Capsule().fill(Palette.surfaceSunk).frame(height: 6)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Palette.surface)
-                .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Palette.hairline))
-        }
-    }
-
-    private var meals: some View {
-        VStack(alignment: .leading, spacing: Space.md) {
-            mealSection(labelWidth: 148)
-            mealSection(labelWidth: 118)
-        }
-    }
-
-    private func mealSection(labelWidth: CGFloat) -> some View {
-        VStack(alignment: .leading, spacing: Space.xs) {
-            SkeletonBlock(width: labelWidth, height: 11)
-            mealRow(titleWidth: 152)
-        }
-    }
-
-    private func mealRow(titleWidth: CGFloat) -> some View {
-        HStack(spacing: Space.sm) {
-            SkeletonBlock(width: 44, height: 44, radius: 10)
-            VStack(alignment: .leading, spacing: 4) {
-                SkeletonBlock(width: titleWidth, height: 16)
-                SkeletonBlock(width: 64, height: 12)
-            }
-            Spacer(minLength: 8)
-            SkeletonBlock(width: 62, height: 14)
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Palette.surface, in: RoundedRectangle(cornerRadius: Radius.md, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
-                .strokeBorder(Palette.hairline)
-        )
-    }
-
-    private var dock: some View {
-        HStack(spacing: 8) {
-            SkeletonBlock(height: 44, radius: 22)
-            Circle()
-                .fill(Palette.surfaceSunk)
-                .frame(width: 34, height: 34)
+            .padding(.top, Space.xs)
+            Spacer(minLength: 0)
         }
         .padding(.horizontal, Space.gutter)
-        .padding(.vertical, 10)
-        .background {
-            Rectangle()
-                .fill(.ultraThinMaterial)
-                .overlay(Palette.background.opacity(0.84))
-                .overlay(alignment: .top) {
-                    Rectangle().fill(Palette.hairline).frame(height: 1)
-                }
-                .ignoresSafeArea(edges: .bottom)
-        }
+        .padding(.top, Space.xs)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background(Palette.background.ignoresSafeArea())
+        .skeletonLoading()
     }
 }
 

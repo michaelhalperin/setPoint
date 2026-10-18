@@ -56,9 +56,8 @@ struct MealLog: View {
                 Spacer()
                 if slot.kcal > 0 {
                     Text("\(slot.kcal.formatted()) kcal")
-                        .font(Typography.data(11, weight: .semibold))
+                        .font(Typography.mono(11))
                         .foregroundStyle(Palette.inkFaint)
-                        .monospacedDigit()
                 }
             }
 
@@ -126,10 +125,10 @@ struct MealLog: View {
     private func pendingRow(_ pending: TodayPending) -> some View {
         switch pending {
         case let .parsing(title, _):
-            TodayMealRow(title: title, detail: "Working it out…", kcal: 640, redacted: true)
+            TodayMealRow(title: title, detail: "…", kcal: 640, redacted: true)
                 .shimmering(true)
         case let .logged(title, kcal, _):
-            landing(TodayMealRow(title: title, detail: "Just now", kcal: kcal))
+            landing(TodayMealRow(title: title, detail: "now", kcal: kcal))
         }
     }
 
@@ -145,27 +144,27 @@ struct MealLog: View {
     private func missedRow(_ slot: HomeResponse.Day.Slot) -> some View {
         HStack(spacing: Space.sm) {
             Text("Nothing logged")
-                .font(Typography.voice(16))
+                .font(Typography.data(15, weight: .regular))
                 .foregroundStyle(Palette.inkSoft)
             Spacer(minLength: Space.xs)
             Button {
                 onLogMissed(slot)
             } label: {
                 Label("Add \(slot.meal.title.lowercased())", systemImage: "plus")
-                    .font(Typography.data(13, weight: .semibold))
-                    .foregroundStyle(Palette.accentDeep)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(Palette.accentTint, in: Capsule())
+                    .font(Typography.data(13, weight: .regular))
+                    .foregroundStyle(Palette.onBone)
+                    .padding(.horizontal, 14)
+                    .frame(height: 34)
+                    .background(Palette.ink, in: Capsule())
             }
             .buttonStyle(PressableCard())
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background {
-            RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
-                .strokeBorder(Palette.inkFaint.opacity(0.4), style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+            RoundedRectangle(cornerRadius: Radius.lg, style: .continuous)
+                .strokeBorder(Color.white.opacity(0.12), style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
         }
     }
 }
@@ -197,43 +196,46 @@ struct TodayMealRow: View {
     }
 
     var body: some View {
-        HStack(spacing: Space.sm) {
+        HStack(spacing: 14) {
             if let photo {
                 Image(uiImage: photo)
                     .resizable()
                     .scaledToFill()
-                    .frame(width: 44, height: 44)
-                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .frame(width: 42, height: 42)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                     .transition(.opacity)
+            } else if !detail.isEmpty {
+                Text(detail)
+                    .font(Typography.mono(12))
+                    .foregroundStyle(Palette.inkSoft)
+                    .frame(width: 44, alignment: .leading)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
             }
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .font(Typography.data(16, weight: .semibold))
+                    .font(Typography.data(15, weight: .regular))
                     .foregroundStyle(Palette.ink)
                     .lineLimit(2)
-                if !detail.isEmpty {
+                if photo != nil, !detail.isEmpty {
                     Text(detail)
-                        .font(Typography.data(12))
+                        .font(Typography.mono(11))
                         .foregroundStyle(Palette.inkFaint)
                 }
             }
             Spacer(minLength: 8)
-            Text("\(kcal) kcal")
-                .font(Typography.data(14, weight: .semibold))
+            Text("\(kcal)")
+                .font(Typography.mono(13))
                 .foregroundStyle(Palette.ink)
-                .monospacedDigit()
                 .contentTransition(.numericText(value: Double(kcal)))
+            Image(systemName: "chevron.right")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(Palette.inkFaint)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Palette.surface)
-        .clipShape(RoundedRectangle(cornerRadius: Radius.md, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
-                .strokeBorder(Palette.hairline)
-        )
-        .elevation(.resting)
+        .glass(radius: Radius.lg)
         .redacted(reason: redacted ? .placeholder : [])
         .task(id: meal?.photoUrl) {
             guard let meal else { return }
@@ -242,29 +244,42 @@ struct TodayMealRow: View {
     }
 }
 
-// MARK: - Log dock
+// MARK: - Log panel
 
-/// Logging, always in the same place: pinned above the tab bar and rising with
-/// the keyboard. It shows what's being worked out and, when filling in a
-/// missed meal time, which one.
+/// Logging: a sheet that rises from the nav's "+". Type it, snap it, scan it,
+/// tap a usual, or — when you don't remember — pick a rough size. While the
+/// field is being typed into, it shrinks to the field and recents so it fits
+/// above the keyboard.
 struct LogDock: View {
     @Bindable var logger: LogMealViewModel
     var focused: FocusState<Bool>.Binding
-    /// A usual-size meal for the "About a normal lunch" estimate; nil hides it.
+    /// A usual-size meal for the rough-size estimate; nil hides it.
     var estimateKcal: Int? = nil
+    /// The meal the rough size counts for when nothing is backdated.
+    var currentSlot: MealSlot = .lunch
     let photoNamespace: Namespace.ID
     let photoGeometryID: String
+    let onClose: () -> Void
     let onSubmit: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var size = 1
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Space.xs) {
-            status
+        VStack(alignment: .leading, spacing: 14) {
+            Capsule()
+                .fill(Color.white.opacity(0.18))
+                .frame(width: 40, height: 5)
+                .frame(maxWidth: .infinity)
 
-            if showsQuickLog {
-                quickLog
-                    .transition(.opacity.combined(with: .move(edge: .bottom)))
+            HStack(alignment: .top) {
+                Headline(title, tail: typing ? nil : "Tap, snap or scan it.", size: typing ? 22 : 28)
+                Spacer(minLength: 8)
+                RoundIconButton("xmark", label: "Close", action: onClose)
+            }
+
+            if let backdate = logger.backdate {
+                backdateChip(backdate)
             }
 
             SearchComposer(
@@ -273,114 +288,164 @@ struct LogDock: View {
                 onSubmit: onSubmit,
                 photoNamespace: photoNamespace,
                 photoGeometryID: photoGeometryID,
-                prompt: prompt
+                prompt: "“Two eggs, toast and a latte”"
             )
+
+            if typing {
+                if logger.text.isEmpty, !logger.recents.isEmpty { recentsRow }
+            } else {
+                modeTiles
+                usuals
+                if let kcal = estimateKcal { roughSize(base: kcal) }
+            }
         }
         .padding(.horizontal, Space.gutter)
-        .padding(.vertical, 10)
+        .padding(.top, 12)
+        .padding(.bottom, 16)
         .background {
-            Rectangle()
-                .fill(.ultraThinMaterial)
-                .overlay(Palette.background.opacity(0.84))
+            UnevenRoundedRectangle(topLeadingRadius: 32, topTrailingRadius: 32, style: .continuous)
+                .fill(Palette.sheet)
                 .overlay(alignment: .top) {
-                    Rectangle().fill(Palette.hairline).frame(height: 1)
+                    UnevenRoundedRectangle(topLeadingRadius: 32, topTrailingRadius: 32, style: .continuous)
+                        .strokeBorder(Palette.hairline)
+                        .mask(alignment: .top) { Rectangle().frame(height: 40) }
                 }
+                .elevation(.lifted)
                 .ignoresSafeArea(edges: .bottom)
         }
-        .animation(Motion.adaptive(Motion.snappy, reduceMotion: reduceMotion), value: logger.phase)
+        .animation(Motion.adaptive(Motion.snappy, reduceMotion: reduceMotion), value: typing)
         .animation(Motion.adaptive(Motion.snappy, reduceMotion: reduceMotion), value: logger.backdate)
-        .animation(Motion.adaptive(Motion.snappy, reduceMotion: reduceMotion), value: showsQuickLog)
     }
 
-    /// Modes + my meals + recents while the field is open and empty.
-    private var showsQuickLog: Bool {
-        focused.wrappedValue && logger.phase == .compose && logger.text.isEmpty
-            && logger.photo == nil
+    private var typing: Bool {
+        focused.wrappedValue || !logger.text.isEmpty || logger.photo != nil
     }
 
-    private var quickLog: some View {
-        VStack(alignment: .leading, spacing: Space.sm) {
-            if let backdate = logger.backdate, let kcal = estimateKcal {
-                estimateChip(slot: backdate.slot, kcal: kcal)
+    private var title: String {
+        if let backdate = logger.backdate { return "What was \(backdate.slot.title.lowercased())?" }
+        return "What did you eat?"
+    }
+
+    private var slot: MealSlot { logger.backdate?.slot ?? currentSlot }
+
+    private func backdateChip(_ backdate: LogMealViewModel.Backdate) -> some View {
+        HStack(spacing: 6) {
+            Text("Adding to \(backdate.slot.title.lowercased()) · \(backdate.at.formatted(date: .omitted, time: .shortened))")
+            Button {
+                logger.backdate = nil
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .foregroundStyle(Palette.amber.opacity(0.6))
             }
+            .accessibilityLabel("Log it for now instead")
+        }
+        .font(Typography.data(12, weight: .regular))
+        .foregroundStyle(Palette.amber)
+        .padding(.horizontal, 12)
+        .frame(height: 30)
+        .glassCapsule(fill: Palette.ember.opacity(0.10), stroke: Palette.ember.opacity(0.25))
+    }
 
-            SegmentedPills(
-                options: LogMealViewModel.Mode.allCases,
-                selection: modeBinding,
-                title: { $0.title }
-            )
-
-            if !logger.savedMeals.isEmpty {
-                VStack(alignment: .leading, spacing: Space.xs) {
-                    Text("My meals").sectionLabelStyle()
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 10) {
-                            ForEach(logger.savedMeals) { meal in
-                                SavedMealCard(meal: meal) {
-                                    focused.wrappedValue = false
-                                    Task { await logger.logSaved(meal) }
-                                }
-                            }
-                        }
-                    }
-                    .scrollClipDisabled()
-                }
+    private var modeTiles: some View {
+        HStack(spacing: 10) {
+            tile("Photo", "camera") {
+                logger.mode = .photo
+                logger.showPhotoPicker = true
             }
-
-            if !logger.recents.isEmpty {
-                recentsRow
+            tile("Barcode", "barcode.viewfinder") {
+                focused.wrappedValue = false
+                logger.mode = .scan
+                logger.openScanner()
             }
         }
     }
 
-    /// Ate but don't remember the details? A rough number keeps the day honest.
-    private func estimateChip(slot: MealSlot, kcal: Int) -> some View {
-        Button {
-            focused.wrappedValue = false
-            Task { await logger.logEstimate(slot: slot, kcal: kcal) }
-        } label: {
-            HStack(spacing: 8) {
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundStyle(Palette.accent)
-                Text("About a normal \(slot.title.lowercased())")
-                    .foregroundStyle(Palette.ink)
-                Text("~\(kcal) kcal")
-                    .foregroundStyle(Palette.inkFaint)
-                    .monospacedDigit()
+    private func tile(_ title: String, _ symbol: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                Image(systemName: symbol)
+                    .font(.system(size: 16, weight: .regular))
+                Text(title)
+                    .font(Typography.data(14, weight: .regular))
+                Spacer(minLength: 0)
             }
-            .font(Typography.data(14, weight: .bold))
+            .foregroundStyle(Palette.ink)
             .padding(.horizontal, 14)
-            .padding(.vertical, 9)
-            .background(Palette.surface, in: Capsule())
-            .overlay(Capsule().strokeBorder(Palette.hairline))
+            .frame(height: 48)
+            .glass(radius: 16)
         }
         .buttonStyle(PressableCard())
-        .accessibilityLabel("Log about a normal \(slot.title.lowercased()), roughly \(kcal) calories")
+        .disabled(logger.phase == .parsing)
     }
 
-    private var modeBinding: Binding<LogMealViewModel.Mode> {
-        Binding(
-            get: { logger.mode },
-            set: { next in
-                logger.mode = next
-                switch next {
-                case .type:
-                    break
-                case .scan:
-                    focused.wrappedValue = false
-                    logger.openScanner()
-                case .photo:
-                    logger.showPhotoPicker = true
+    /// Saved meals first, then today's-and-yesterday's recents, two columns.
+    @ViewBuilder
+    private var usuals: some View {
+        let saved = Array(logger.savedMeals.prefix(4))
+        let recents = Array(logger.recents.prefix(max(0, 4 - saved.count)))
+        if !saved.isEmpty || !recents.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("Your usuals").sectionLabelStyle()
+                    Spacer()
+                    Text("One tap logs it")
+                        .font(Typography.data(12, weight: .regular))
+                        .foregroundStyle(Palette.inkFaint)
+                }
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
+                    ForEach(saved) { meal in
+                        usual(meal.name, kcal: meal.kcal, suggested: meal.suggested) {
+                            focused.wrappedValue = false
+                            Task { await logger.logSaved(meal) }
+                        }
+                    }
+                    ForEach(recents) { meal in
+                        usual(meal.summary ?? "Logged", kcal: meal.kcal, suggested: false) {
+                            focused.wrappedValue = false
+                            Task { await logger.logAgain(meal) }
+                        }
+                    }
                 }
             }
-        )
+        }
+    }
+
+    private func usual(_ name: String, kcal: Int, suggested: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(name)
+                    .font(Typography.data(14, weight: .regular))
+                    .foregroundStyle(Palette.ink)
+                    .lineLimit(2, reservesSpace: true)
+                    .multilineTextAlignment(.leading)
+                HStack {
+                    Text("\(kcal.formatted()) kcal")
+                        .font(Typography.mono(12))
+                        .foregroundStyle(Palette.amber)
+                    Spacer(minLength: 0)
+                    if suggested {
+                        Text("NOW")
+                            .font(Typography.mono(9, weight: .medium))
+                            .foregroundStyle(Palette.onEmber)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Palette.amber, in: Capsule())
+                    }
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .glass(radius: 18, stroke: suggested ? Palette.amber.opacity(0.4) : Palette.hairline)
+        }
+        .buttonStyle(PressableCard())
+        .disabled(logger.phase == .parsing)
+        .accessibilityLabel("Log \(name), \(kcal) calories")
     }
 
     private var recentsRow: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                Text("Recent")
-                    .sectionLabelStyle()
                 ForEach(logger.recents) { meal in
                     Button {
                         focused.wrappedValue = false
@@ -389,21 +454,20 @@ struct LogDock: View {
                         HStack(spacing: 6) {
                             if meal.isScanned {
                                 Image(systemName: "barcode")
-                                    .font(.system(size: 11, weight: .bold))
+                                    .font(.system(size: 11, weight: .medium))
                                     .foregroundStyle(Palette.inkFaint)
                             }
                             Text(meal.summary ?? "")
                                 .lineLimit(1)
                             Text("\(meal.kcal)")
-                                .foregroundStyle(Palette.inkFaint)
-                                .monospacedDigit()
+                                .font(Typography.mono(12))
+                                .foregroundStyle(Palette.amber)
                         }
-                        .font(Typography.data(14, weight: .bold))
+                        .font(Typography.data(14, weight: .regular))
                         .foregroundStyle(Palette.ink)
                         .padding(.horizontal, 14)
-                        .padding(.vertical, 9)
-                        .background(Palette.surface, in: Capsule())
-                        .overlay(Capsule().strokeBorder(Palette.hairline))
+                        .frame(height: 38)
+                        .glassCapsule()
                     }
                     .buttonStyle(PressableCard())
                     .accessibilityLabel("Log \(meal.summary ?? "this") again, \(meal.kcal) calories")
@@ -413,116 +477,73 @@ struct LogDock: View {
         .scrollClipDisabled()
     }
 
-    private var prompt: String {
-        if let backdate = logger.backdate {
-            return "What was \(backdate.slot.title.lowercased())?"
-        }
-        return "What did you eat?"
-    }
-
-    @ViewBuilder
-    private var status: some View {
-        switch logger.phase {
-        case .parsing:
-            statusLine(
-                symbol: nil,
-                text: logger.submittedPrompt.isEmpty ? "Working it out…" : "Working out “\(logger.submittedPrompt)”…",
-                working: true
-            )
-        case let .queued(message):
-            statusLine(symbol: "icloud.slash", text: message, working: false)
-        case let .logged(logged) where !logger.confirmingPhoto:
-            statusLine(
-                symbol: "checkmark",
-                text: "Logged · \(logged.kcal) kcal" + (logged.resolvedCheckIn ? " · check-in answered" : ""),
-                working: false
-            )
-        default:
-            if let backdate = logger.backdate {
-                HStack(spacing: 6) {
-                    Image(systemName: backdate.slot.symbol)
-                    Text("Adding to \(backdate.slot.title.lowercased()) · \(backdate.at.formatted(date: .omitted, time: .shortened))")
-                    Button {
-                        logger.backdate = nil
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(Palette.accentDeep.opacity(0.6))
-                    }
-                    .accessibilityLabel("Log it for now instead")
-                }
-                .font(Typography.data(12, weight: .semibold))
-                .foregroundStyle(Palette.accentDeep)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(Palette.accentTint, in: Capsule())
-                .transition(.opacity)
+    /// Ate but don't remember the details? A rough size keeps the day honest.
+    private func roughSize(base: Int) -> some View {
+        let sizes = [("Small", 0.6), ("Normal", 1.0), ("Big", 1.5)]
+        let kcal = Int((Double(base) * sizes[size].1 / 50).rounded()) * 50
+        return VStack(alignment: .leading, spacing: 10) {
+            (Text("Don’t remember exactly? ").foregroundColor(Palette.ink)
+                + Text("Pick a size.").foregroundColor(Palette.inkSoft))
+                .font(Typography.data(14, weight: .regular))
+            SegmentedPills(options: [0, 1, 2], selection: $size, title: { sizes[$0].0 })
+            ActionButton(title: "Log a \(sizes[size].0.lowercased()) \(slot.title.lowercased()) · ~\(kcal.formatted()) kcal", kind: .secondary) {
+                focused.wrappedValue = false
+                Task { await logger.logEstimate(slot: slot, kcal: kcal) }
             }
+            .disabled(logger.phase == .parsing)
         }
-    }
-
-    private func statusLine(symbol: String?, text: String, working: Bool) -> some View {
-        HStack(spacing: 8) {
-            if working {
-                ProgressView()
-                    .controlSize(.mini)
-                    .tint(Palette.accent)
-            } else if let symbol {
-                Image(systemName: symbol)
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(Palette.dayOnTrack)
-            }
-            Text(text)
-                .font(Typography.data(13, weight: .medium))
-                .foregroundStyle(Palette.inkSoft)
-                .lineLimit(1)
-        }
-        .padding(.leading, 6)
-        .transition(.opacity)
+        .padding(14)
+        .glass(radius: 20, fill: Color.white.opacity(0.03))
     }
 }
 
-private struct SavedMealCard: View {
-    let meal: SavedMeal
-    let onLog: () -> Void
+/// What the logger is doing, floating above the nav once the panel has closed:
+/// working it out, queued offline, or logged.
+struct LogStatusToast: View {
+    @Bindable var logger: LogMealViewModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                if meal.suggested {
-                    Text("NOW")
-                        .font(Typography.data(10, weight: .bold))
-                        .foregroundStyle(Palette.background)
-                        .padding(.horizontal, 7)
-                        .padding(.vertical, 3)
-                        .background(Palette.accent, in: Capsule())
-                }
-                Spacer(minLength: 0)
-                Button(action: onLog) {
-                    Image(systemName: "plus")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(Palette.ink)
-                        .frame(width: 28, height: 28)
-                        .background(Palette.surfaceSunk, in: Circle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Log \(meal.name)")
+        Group {
+            switch logger.phase {
+            case .parsing:
+                line(symbol: nil, text: logger.submittedPrompt.isEmpty ? "Working it out…" : "Working out “\(logger.submittedPrompt)”…", working: true)
+            case let .queued(message):
+                line(symbol: "icloud.slash", text: message, working: false)
+            case let .logged(logged) where !logger.confirmingPhoto:
+                line(
+                    symbol: "checkmark",
+                    text: "Logged · \(logged.kcal) kcal" + (logged.resolvedCheckIn ? " · check-in answered" : ""),
+                    working: false
+                )
+            default:
+                EmptyView()
             }
-            Text(meal.name)
-                .font(Typography.data(15, weight: .bold))
-                .foregroundStyle(Palette.ink)
-                .lineLimit(2)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            Text("\(meal.kcal) kcal")
-                .font(Typography.data(12, weight: .semibold))
-                .foregroundStyle(Palette.inkFaint)
-                .monospacedDigit()
         }
-        .padding(12)
-        .frame(width: 148, alignment: .leading)
-        .background(Palette.surface, in: RoundedRectangle(cornerRadius: Radius.md, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
-                .strokeBorder(meal.suggested ? Palette.accent : Palette.hairline, lineWidth: meal.suggested ? 2 : 1)
-        )
+    }
+
+    private func line(symbol: String?, text: String, working: Bool) -> some View {
+        HStack(spacing: 8) {
+            if working {
+                BusyDots(tint: Palette.amber)
+            } else if let symbol {
+                Image(systemName: symbol)
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(Palette.amber)
+            }
+            Text(text)
+                .font(Typography.data(13, weight: .regular))
+                .foregroundStyle(Palette.ink)
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 16)
+        .frame(height: 40)
+        .background {
+            Capsule(style: .continuous)
+                .fill(.ultraThinMaterial)
+                .overlay(Capsule(style: .continuous).fill(Color(hex: 0x1C1C20, opacity: 0.85)))
+                .overlay(Capsule(style: .continuous).strokeBorder(Palette.hairline))
+        }
+        .transition(.move(edge: .bottom).combined(with: .opacity))
+        .accessibilityElement(children: .combine)
     }
 }

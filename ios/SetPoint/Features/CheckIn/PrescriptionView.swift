@@ -158,8 +158,8 @@ struct PrescriptionView: View {
             }
             .presentationDetents([.height(SnoozeSheet.height(for: choices.count))])
             .presentationDragIndicator(.visible)
-            .presentationBackground(Palette.background)
-            .presentationCornerRadius(28)
+            .presentationBackground(Palette.sheet)
+            .presentationCornerRadius(32)
         }
     }
 
@@ -169,18 +169,18 @@ struct PrescriptionView: View {
             segment("Not hungry", selected: notHungry) { select(notHungry: true) }
         }
         .padding(4)
-        .background(Palette.surfaceSunk, in: Capsule())
+        .glassCapsule(fill: Color.white.opacity(0.05), stroke: Color.white.opacity(0.08))
     }
 
     private func segment(_ title: String, selected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(title)
-                .font(Typography.data(14, weight: .bold))
-                .foregroundStyle(selected ? Palette.ink : Palette.inkSoft)
-                .frame(maxWidth: .infinity, minHeight: 36)
+                .font(Typography.data(14, weight: selected ? .medium : .regular))
+                .foregroundStyle(selected ? Palette.onBone : Palette.inkSoft)
+                .frame(maxWidth: .infinity, minHeight: 40)
                 .background {
                     if selected {
-                        Capsule().fill(Palette.surface)
+                        Capsule().fill(Palette.ink)
                     }
                 }
         }
@@ -220,40 +220,30 @@ struct PrescriptionView: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Text(label)
-                    .font(Typography.data(11, weight: .heavy))
-                    .foregroundStyle(emphasized ? Palette.accent : Palette.inkFaint)
-                    .tracking(0.6)
+                    .sectionLabelStyle(emphasized ? Palette.amber : Palette.inkFaint)
                 Spacer()
                 Text("\(prescription.totalKcal.formatted()) kcal")
-                    .font(Typography.data(13, weight: .bold))
+                    .font(Typography.mono(13))
                     .foregroundStyle(Palette.ink)
-                    .monospacedDigit()
             }
             ForEach(prescription.items) { item in
                 HStack(spacing: 10) {
                     Text(item.quantity > 1 ? "\(Int(item.quantity))× \(item.name)" : item.name)
-                        .font(Typography.data(15, weight: .semibold))
+                        .font(Typography.data(15, weight: .regular))
                         .foregroundStyle(Palette.ink)
                     Spacer(minLength: 8)
                     Text("\(item.kcal)")
-                        .font(Typography.data(13))
-                        .foregroundStyle(Palette.inkFaint)
-                        .monospacedDigit()
+                        .font(Typography.mono(13))
+                        .foregroundStyle(Palette.inkSoft)
                 }
             }
         }
-        .padding(14)
-        .background {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Palette.surface)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .strokeBorder(
-                            emphasized ? Palette.accent : Palette.hairline,
-                            lineWidth: emphasized ? 2 : 1
-                        )
-                )
-        }
+        .padding(16)
+        .glass(
+            radius: 22,
+            fill: emphasized ? Palette.ember.opacity(0.07) : Palette.glass,
+            stroke: emphasized ? Palette.amber.opacity(0.45) : Palette.hairline
+        )
     }
 
     private var primaryActions: some View {
