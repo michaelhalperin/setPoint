@@ -26,7 +26,7 @@ struct SetPointTodayWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "SetPointTodayWidget", provider: TodayWidgetProvider()) { entry in
             SetPointTodayWidgetView(entry: entry)
-                .containerBackground(for: .widget) { WidgetChrome.paper }
+                .containerBackground(for: .widget) { WidgetChrome.background }
         }
         .configurationDisplayName("Today")
         .description("Calories left, the next check-in, and your usual meals.")
