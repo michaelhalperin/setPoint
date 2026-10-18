@@ -4,3 +4,4 @@ export * from './exclusions.js';
 export * from './targets.js';
 export * from './prescribe.js';
 export * from './meals.js';
+export * from './topUp.js';

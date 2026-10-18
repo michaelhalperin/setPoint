@@ -86,6 +86,18 @@ export type ScheduleInput = {
   graceMin?: number;
   /** Extra mid-morning / afternoon check-ins (SMALL_FREQUENT / LOW). */
   extraSlots?: boolean;
+  /**
+   * A logged meal only covers its slot when the day is near the intake
+   * expected through it (see `engine/gap.ts`). Absent: any log covers the slot.
+   */
+  lightRule?: LightRule;
+};
+
+/** When a logged-but-small meal still leaves its slot open. Pass `GAP_CONFIG`. */
+export type LightRule = {
+  coverShare: number;
+  minLightGapKcal: number;
+  lightSlots: readonly SlotName[];
 };
 
 export type ScheduledCheckIn = {
@@ -96,7 +108,17 @@ export type ScheduledCheckIn = {
   dueMin: number;
   /** The due time has already passed (the job will fire on its next run). */
   overdue: boolean;
+  /** Something was logged for this meal, but too little for where the day should be. */
+  light?: boolean;
 };
+
+/** kcal the day's equal meal shares expect by the end of `slot`. */
+export function expectedThroughSlot(slot: SlotName, targetKcal: number, extra: boolean): number {
+  const order = extra ? APPETITE_SLOT_ORDER : SLOT_ORDER;
+  const idx = order.indexOf(slot);
+  if (idx < 0) return targetKcal;
+  return Math.round((targetKcal * (idx + 1)) / order.length);
+}
 
 function atOf(times: MealTimes, slot: SlotName): number {
   if (slot === 'breakfast') return times.breakfastMin;
@@ -148,10 +170,19 @@ export function checkInSlotAt(minute: number, times: MealTimes, graceMin: number
   return found;
 }
 
-/** Whether a meal has already covered `slot` today. */
-function covered(slot: SlotName, input: ScheduleInput): boolean {
+/** Minutes of today's meals logged for `slot` (from its window start on). */
+function mealsInSlot(slot: SlotName, input: ScheduleInput): number[] {
   const start = slotWindowStart(slot, input.times);
-  return input.mealMinutesToday.some((m) => m >= start);
+  return input.mealMinutesToday.filter((m) => m >= start);
+}
+
+/** A slot with a log that's still too light for where the day should be by now. */
+function isLight(slot: SlotName, input: ScheduleInput, extra: boolean): boolean {
+  const rule = input.lightRule;
+  if (!rule || !rule.lightSlots.includes(slot)) return false;
+  const expected = expectedThroughSlot(slot, input.targetKcal, extra);
+  if (input.consumedKcal >= expected * rule.coverShare) return false;
+  return expected - input.consumedKcal >= rule.minLightGapKcal;
 }
 
 /**
@@ -177,7 +208,13 @@ export function upcomingCheckIn(input: ScheduleInput): ScheduledCheckIn | null {
     const dueMin = mealMin + grace;
     if (input.nowMin >= slotCloses(slot, input.times, extra)) continue;
     if (input.checkedSlotsToday.includes(slot)) continue;
-    if (covered(slot, input)) continue;
+    const logged = mealsInSlot(slot, input);
+    if (logged.length > 0) {
+      if (!isLight(slot, input, extra)) continue;
+      // Give the meal time to land before asking for more.
+      const lightDue = Math.max(dueMin, Math.max(...logged) + grace);
+      return { slot, mealMin, dueMin: lightDue, overdue: input.nowMin >= lightDue, light: true };
+    }
     return { slot, mealMin, dueMin, overdue: input.nowMin >= dueMin };
   }
   return null;

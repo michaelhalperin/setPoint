@@ -135,3 +135,32 @@ describe('weekend meal times', () => {
     );
   });
 });
+
+describe('upcomingCheckIn with the light-meal rule', () => {
+  const rule = { coverShare: 0.75, minLightGapKcal: 300, lightSlots: ['lunch', 'dinner'] as const };
+  const light = (over: Partial<ScheduleInput> = {}) =>
+    input({ lightRule: rule, targetKcal: 3000, mealMinutesToday: [485, 790], ...over });
+
+  it('keeps lunch open when the lunch logged was too small, due 45 min after it', () => {
+    expect(upcomingCheckIn(light({ nowMin: 830, consumedKcal: 900 }))).toEqual({
+      slot: 'lunch',
+      mealMin: 780,
+      dueMin: 835,
+      overdue: false,
+      light: true,
+    });
+  });
+
+  it('treats lunch as covered once the day is near pace', () => {
+    expect(upcomingCheckIn(light({ nowMin: 830, consumedKcal: 1600 }))?.slot).toBe('dinner');
+  });
+
+  it('never chases breakfast: that is the in-app top-up’s job', () => {
+    expect(upcomingCheckIn(light({ nowMin: 560, consumedKcal: 200, mealMinutesToday: [485] }))?.slot).toBe('lunch');
+  });
+
+  it('without the rule, any log covers the slot', () => {
+    expect(upcomingCheckIn(input({ nowMin: 830, consumedKcal: 900, targetKcal: 3000, mealMinutesToday: [485, 790] }))?.slot).toBe('dinner');
+  });
+});
+

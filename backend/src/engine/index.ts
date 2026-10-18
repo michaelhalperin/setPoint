@@ -12,3 +12,4 @@ export * from './training.js';
 export * from './expenditure.js';
 export * from './behaviorScore.js';
 export * from './flags.js';
+export * from './gap.js';

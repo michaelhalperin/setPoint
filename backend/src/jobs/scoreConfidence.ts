@@ -33,6 +33,10 @@ import {
   needsRefuel,
   needsPreWorkoutNudge,
   effectiveWorkouts,
+  GAP_CONFIG,
+  closeCheckIn,
+  dailyCapReached,
+  lightShortfall,
   type EscalationDecision,
   type Goal,
   type SlotName,
@@ -50,10 +54,12 @@ import {
   loadStapleFoods,
   prescribe,
   prescriptionSummary,
+  namedSummary,
   refuelPrescription,
   type PrescriptionResult,
   type SolverFood,
 } from '../solver/index.js';
+import { REFUEL_TARGET_PROTEIN_G } from '../solver/meals.js';
 import { prescriptionFromSavedMeal } from '../savedMeals/index.js';
 import { trainingForLocalDay } from '../training/day.js';
 import { isEntitled } from '../subscription/entitlement.js';
@@ -247,7 +253,12 @@ async function processUser(
       stillDue: isDeferred ? underTarget : null,
       now,
     });
-    blocked = (await applyDecision(deps, user, ci.id, ci.message, decision, now, summary)) || blocked;
+    // The evening close is an offer, not a meal: letting it lapse never counts as a miss.
+    const settled =
+      ci.kind === 'CLOSE' && (decision.kind === 'miss' || decision.kind === 'redeliver')
+        ? ({ kind: 'resolve' } as EscalationDecision)
+        : decision;
+    blocked = (await applyDecision(deps, user, ci.id, ci.message, settled, now, summary)) || blocked;
   }
 
   if (blocked || activeCheckIns.length > 0) {
@@ -271,12 +282,17 @@ async function processUser(
     return;
   }
 
-  if (!isEntitled(user, now)) {
-    bump(summary, 'not_subscribed');
+  if (dailyCapReached(todayCheckIns)) {
+    bump(summary, 'daily_cap');
     return;
   }
 
+  // Meal and close-the-gap check-ins are free — they're the product. A
+  // subscription adds training check-ins and calendar-aware timing.
+  const entitled = isEntitled(user, now);
+
   if (
+    entitled &&
     await maybeFireTrainingCheckIn(deps, user, {
       now,
       dayStart,
@@ -305,7 +321,9 @@ async function processUser(
   );
   const extraSlots = shape === 'SMALL';
   const checkedSlotsToday = todayCheckIns
-    .filter((c) => c.tier < TIER.CONVERSATION && c.kind !== 'REFUEL' && c.kind !== 'PRE_WORKOUT')
+    .filter(
+      (c) => c.tier < TIER.CONVERSATION && c.kind !== 'REFUEL' && c.kind !== 'PRE_WORKOUT' && c.kind !== 'CLOSE',
+    )
     .map((c) => slotNameOf(c.slot) ?? checkInSlotAt(localMinute(c.createdAt, user.timezone), times))
     .filter((slot): slot is SlotName => slot !== null);
   const upcoming = upcomingCheckIn({
@@ -316,18 +334,53 @@ async function processUser(
     consumedKcal,
     targetKcal,
     extraSlots,
+    lightRule: GAP_CONFIG,
   });
-  const calendarPrefs = prefsFromProfile(profile);
+  const calendarPrefs = entitled ? prefsFromProfile(profile) : { ...prefsFromProfile(profile), enabled: false };
   const todayBusy = toMinuteBlocks(busyRows, dayStart, user.timezone);
-  const shifted = upcoming
+  const keepRows = calendarPrefs.enabled
+    ? await prisma.calendarKeep.findMany({
+        where: { userId: user.id, localDate: localDateISO(now, user.timezone) },
+        select: { slot: true },
+      })
+    : [];
+  // A light meal was eaten; moving its follow-up around the calendar makes no sense.
+  const shifted = upcoming?.light
+    ? { ...upcoming, movedFromMin: null, busy: null }
+    : upcoming
     ? withOverdue(
-        applyCalendarShift(upcoming, times, todayBusy, calendarPrefs, localWeekday(now, user.timezone))!,
+        applyCalendarShift(
+          upcoming,
+          times,
+          todayBusy,
+          calendarPrefs,
+          localWeekday(now, user.timezone),
+          new Set(keepRows.map((k) => k.slot)),
+        )!,
         nowMin,
       )
     : null;
   const due = shifted?.overdue ? shifted : null;
   summary.scored += 1;
   if (!due) {
+    if (
+      shifted?.slot !== 'dinner' &&
+      (await maybeFireCloseCheckIn(deps, user, {
+        now,
+        nowMin,
+        times,
+        consumedKcal,
+        targetKcal,
+        consumedProteinG: todayMeals.reduce((acc, m) => acc + m.proteinG, 0),
+        todayCheckIns,
+        restrictions,
+        solverFoods: ctx.solverFoods,
+        foodIdBySlug: ctx.foodIdBySlug,
+        summary,
+      }))
+    ) {
+      return;
+    }
     bump(summary, 'not_due');
     return;
   }
@@ -418,8 +471,10 @@ async function processUser(
     dailyProteinTargetG: profile.dailyProteinTargetG,
     consumedProteinG: todayMeals.reduce((acc, m) => acc + m.proteinG, 0),
   });
-  const shapedKcal =
-    shape === 'NORMAL'
+  const isLight = due.light === true;
+  const shapedKcal = isLight
+    ? lightShortfall({ slot: due.slot, consumedKcal, targetKcal, extra: extraSlots })
+    : shape === 'NORMAL'
       ? computed.targetKcal
       : appetiteMealTarget({
           remainingKcal: Math.max(0, targetKcal - consumedKcal),
@@ -447,9 +502,12 @@ async function processUser(
         })
       : null;
   const summaryLine = rx ? prescriptionSummary(rx) : null;
+  const namedLine = rx ? namedSummary(rx) : null;
   const isHeadsUp = due.movedFromMin != null && due.busy != null;
   const message = isHeadsUp && due.busy
     ? headsUpCopy(due.busy, due.slot)
+    : isLight
+    ? lightMealCopy(due.slot, namedLine)
     : await checkInCopy(deps.voice, {
         tier,
         goal: profile.goal as Goal,
@@ -474,7 +532,7 @@ async function processUser(
       message,
       slot: due.slot,
       episodeKey,
-      kind: isHeadsUp ? 'HEADS_UP' : 'MEAL',
+      kind: isHeadsUp ? 'HEADS_UP' : isLight ? 'TOP_UP' : 'MEAL',
       movedFromMin: due.movedFromMin,
       busyUntil,
     },
@@ -518,6 +576,134 @@ async function processUser(
     update: { lastCheckInAt: now },
   });
   summary.checkInsCreated += 1;
+}
+
+/** Deterministic: the numbers in it must match the plate exactly. */
+export function lightMealCopy(slot: SlotName, summaryLine: string | null): string {
+  const meal = slot === 'snack_am' || slot === 'snack_pm' ? 'That snack' : slot[0]!.toUpperCase() + slot.slice(1);
+  return summaryLine
+    ? `${meal} was light. Add ${summaryLine[0]!.toLowerCase()}${summaryLine.slice(1)} to stay on pace.`
+    : `${meal} was light. A little more now keeps the day on pace.`;
+}
+
+export function closeCopy(gapKcal: number, summaryLine: string | null): string {
+  const gap = Math.round(gapKcal / 10) * 10;
+  return summaryLine
+    ? `You're ${gap} kcal short today. ${summaryLine[0]!.toUpperCase()}${summaryLine.slice(1)} closes most of it.`
+    : `You're ${gap} kcal short today. Something easy before bed closes it.`;
+}
+
+type CloseCtx = {
+  now: Date;
+  nowMin: number;
+  times: { breakfastMin: number; lunchMin: number; dinnerMin: number };
+  consumedKcal: number;
+  targetKcal: number;
+  consumedProteinG: number;
+  todayCheckIns: { episodeKey: string | null; kind: string; tier: number; createdAt: Date }[];
+  restrictions: { token: string }[];
+  solverFoods: SolverFood[];
+  foodIdBySlug: Map<string, string>;
+  summary: ScoreConfidenceSummary;
+};
+
+/** The evening close-the-gap check-in (once a day, after dinner had its chance). */
+async function maybeFireCloseCheckIn(
+  deps: ScoreConfidenceDeps,
+  user: UserWithRelations,
+  ctx: CloseCtx,
+): Promise<boolean> {
+  const profile = user.onboarding;
+  if (!profile) return false;
+  const last = ctx.todayCheckIns.reduce<Date | null>(
+    (acc, c) => (acc === null || c.createdAt > acc ? c.createdAt : acc),
+    null,
+  );
+  const close = closeCheckIn({
+    nowMin: ctx.nowMin,
+    times: ctx.times,
+    quietStartMin: profile.quietHoursStartMin,
+    consumedKcal: ctx.consumedKcal,
+    targetKcal: ctx.targetKcal,
+    closedToday: ctx.todayCheckIns.some((c) => c.kind === 'CLOSE'),
+    minSinceLastCheckIn: last ? Math.floor((ctx.now.getTime() - last.getTime()) / 60_000) : null,
+  });
+  if (!close?.overdue) return false;
+  const episodeKey = `${localDateISO(ctx.now, user.timezone)}:close`;
+  if (ctx.todayCheckIns.some((c) => c.episodeKey === episodeKey)) return false;
+
+  const remainingProtein =
+    profile.dailyProteinTargetG != null ? Math.max(0, profile.dailyProteinTargetG - ctx.consumedProteinG) : null;
+  const rx =
+    ctx.solverFoods.length > 0
+      ? prescribe(ctx.solverFoods, {
+          targetKcal: close.plateKcal,
+          targetProteinG: remainingProtein != null ? Math.min(remainingProtein, REFUEL_TARGET_PROTEIN_G) : null,
+          excludedTokens: excludedTokensFrom(ctx.restrictions, profile.dislikedFoods),
+          preferLowFriction: true,
+          preferCalorieDense: true,
+          preferDrinkable: profile.drinkableOk ?? true,
+          pantryTokens: profile.pantryTokens ?? [],
+        })
+      : null;
+  const message = closeCopy(close.gapKcal, rx ? namedSummary(rx) : null);
+  const checkIn = await deps.prisma.checkIn.create({
+    data: {
+      userId: user.id,
+      tier: 1,
+      status: 'PENDING',
+      deliveryStatus: 'CREATED',
+      message,
+      slot: 'close',
+      episodeKey,
+      kind: 'CLOSE',
+    },
+  });
+  const prescriptionId = rx ? await savePrescription(deps.prisma, user.id, checkIn.id, rx, ctx.foodIdBySlug) : null;
+  if (prescriptionId) ctx.summary.prescriptionsCreated += 1;
+  await markDelivered(deps, user.id, checkIn.id, 1, message, prescriptionId, ctx.now, 'CHECK_IN');
+  await deps.prisma.escalationState.upsert({
+    where: { userId: user.id },
+    create: { userId: user.id, lastCheckInAt: ctx.now, currentTier: 1 },
+    update: { lastCheckInAt: ctx.now },
+  });
+  ctx.summary.checkInsCreated += 1;
+  return true;
+}
+
+async function savePrescription(
+  prisma: PrismaClient,
+  userId: string,
+  checkInId: string,
+  rx: PrescriptionResult,
+  foodIdBySlug: Map<string, string>,
+): Promise<string> {
+  const created = await prisma.prescription.create({
+    data: {
+      userId,
+      checkInId,
+      targetKcal: rx.targetKcal,
+      targetProteinG: rx.targetProteinG,
+      totalKcal: rx.totalKcal,
+      totalProteinG: rx.totalProteinG,
+      totalCarbsG: rx.totalCarbsG,
+      totalFatG: rx.totalFatG,
+      status: 'OFFERED',
+      items: {
+        create: rx.items.map((i) => ({
+          foodItemId: foodIdBySlug.get(i.slug) ?? null,
+          name: i.name,
+          quantity: i.quantity,
+          unit: 'serving',
+          kcal: i.kcal,
+          proteinG: i.proteinG,
+          carbsG: i.carbsG,
+          fatG: i.fatG,
+        })),
+      },
+    },
+  });
+  return created.id;
 }
 
 type TrainingCtx = {

@@ -94,3 +94,19 @@ describe('prescribe', () => {
     expect(summary).toContain(rx.items[0]!.servingDesc || rx.items[0]!.name);
   });
 });
+
+describe('namedSummary', () => {
+  it('names the foods, with counts, for copy and log text', async () => {
+    const { namedSummary } = await import('./prescribe.js');
+    expect(
+      namedSummary({
+        items: [
+          { name: 'Whole milk', quantity: 2 },
+          { name: 'Peanut butter', quantity: 1 },
+        ],
+      }),
+    ).toBe('2 × whole milk + peanut butter');
+    expect(namedSummary({ items: [{ name: 'Almonds', quantity: 1 }] })).toBe('Almonds');
+  });
+});
+
