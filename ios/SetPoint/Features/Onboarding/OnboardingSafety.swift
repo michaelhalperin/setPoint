@@ -13,7 +13,10 @@ struct SafetyStep: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Space.lg) {
-            StepHeadline(text: "Quick and private.", detail: "Six yes-or-no questions.")
+            StepHeadline(
+                text: "Quick and private.",
+                detail: "Six yes-or-no questions. Pushing someone to eat isn’t always safe — if it isn’t for you, I stay quiet."
+            )
 
             ZStack {
                 if remainingBehind >= 2 {

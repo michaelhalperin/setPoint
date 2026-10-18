@@ -2,6 +2,8 @@ import SwiftUI
 
 struct TrainingScreen: View {
     var preview: TrainingWeekResponse? = nil
+    /// Shown as the Training tab rather than pushed from somewhere.
+    var isTabRoot = false
 
     @Environment(AppEnvironment.self) private var env
     @State private var week: TrainingWeekResponse?
@@ -12,7 +14,7 @@ struct TrainingScreen: View {
     @State private var newStart = Calendar.current.date(bySettingHour: 17, minute: 0, second: 0, of: Date()) ?? Date()
 
     var body: some View {
-        SettingsScreen(title: "Training", subtitle: "Eat around the session. Calories follow the work.") {
+        SettingsScreen(title: "Training", subtitle: "Eat around the session. Calories follow the work.", showsBack: !isTabRoot) {
             if let week {
                 content(week)
             } else if let error {
@@ -262,6 +264,50 @@ struct TrainingScreen: View {
         comps.day = d
         guard let date = Calendar.current.date(from: comps) else { return "·" }
         return date.formatted(.dateTime.weekday(.narrow))
+    }
+}
+
+/// The Training tab without a subscription: what it does, and the way in.
+struct TrainingLockedView: View {
+    @State private var showingPaywall = false
+
+    var body: some View {
+        SettingsScreen(title: "Training", subtitle: "Eat around the session. Calories follow the work.", showsBack: false) {
+            VStack(alignment: .leading, spacing: Space.md) {
+                lockedRow("figure.strengthtraining.traditional", "Training days get more food", "Your target rises with the session, so the extra burn doesn’t widen the gap.")
+                lockedRow("bolt.heart", "Refuel right after", "When Apple Health saves a workout, a refuel check-in follows within minutes.")
+                lockedRow("fork.knife", "Eat before you train", "A nudge before a planned session if you haven’t eaten.")
+            }
+            .appearIn(2)
+            ActionButton(title: "See plans") { showingPaywall = true }
+                .appearIn(3)
+            Text("Meal check-ins, top-ups and the evening close stay free.")
+                .font(Typography.data(13))
+                .foregroundStyle(Palette.inkSoft)
+                .appearIn(4)
+        }
+        .sheet(isPresented: $showingPaywall) {
+            PaywallView().presentationDetents([.large])
+        }
+    }
+
+    private func lockedRow(_ symbol: String, _ title: String, _ detail: String) -> some View {
+        HStack(alignment: .top, spacing: Space.sm) {
+            Image(systemName: symbol)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(Palette.accent)
+                .frame(width: 36, height: 36)
+                .background(Palette.accentTint, in: Circle())
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(Typography.data(16, weight: .bold))
+                    .foregroundStyle(Palette.ink)
+                Text(detail)
+                    .font(Typography.data(14))
+                    .foregroundStyle(Palette.inkSoft)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
     }
 }
 

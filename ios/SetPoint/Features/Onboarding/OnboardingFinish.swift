@@ -137,16 +137,20 @@ struct CoveredStep: View {
         }
     }
 
+    /// Tomorrow as plates, not a daily number: a big kcal total reads as a
+    /// wall to someone who struggles to eat. The total stays, small.
     private var covered: some View {
         let d = model.draft
+        let meals = [("Breakfast", d.breakfastMin), ("Lunch", d.lunchMin), ("Dinner", d.dinnerMin)]
         return VStack(alignment: .leading, spacing: Space.xs) {
-            Text("You’re covered.")
+            Text("Here’s tomorrow.")
                 .font(Typography.display(44))
                 .foregroundStyle(Palette.background)
                 .appearIn(0)
-            Text("I’ll only speak up if a meal slips.")
+            Text("Three plates. I only speak up if one slips or runs light.")
                 .font(Typography.data(17))
                 .foregroundStyle(Palette.background.opacity(0.82))
+                .fixedSize(horizontal: false, vertical: true)
                 .appearIn(1)
 
             Spacer(minLength: Space.sm)
@@ -158,42 +162,53 @@ struct CoveredStep: View {
             ) {
                 VStack(spacing: 2) {
                     Text(shownKcal.formatted())
-                        .font(Typography.data(46, weight: .bold))
+                        .font(Typography.data(40, weight: .bold))
                         .monospacedDigit()
                         .contentTransition(.numericText(value: Double(shownKcal)))
                         .foregroundStyle(Palette.background)
-                    Text("kcal a day")
+                    Text("kcal a plate")
                         .font(Typography.data(13, weight: .semibold))
                         .foregroundStyle(Palette.background.opacity(0.7))
-                    if let protein = model.result?.dailyProteinTargetG {
-                        Text("\(protein) g protein")
-                            .font(Typography.data(14, weight: .bold))
-                            .foregroundStyle(Palette.background)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 5)
-                            .background(Palette.background.opacity(0.16), in: Capsule())
-                            .padding(.top, 6)
-                    }
                 }
                 .accessibilityElement(children: .combine)
             }
-            .frame(maxWidth: 340)
+            .frame(maxWidth: 300)
             .frame(maxWidth: .infinity)
 
             Spacer(minLength: Space.sm)
 
-            HStack(spacing: Space.xs) {
-                ForEach([d.breakfastMin, d.lunchMin, d.dinnerMin], id: \.self) { meal in
-                    Label(formatMinutes(CheckInSchedule.minute(afterMeal: meal)), systemImage: "bell.fill")
-                        .font(Typography.data(15, weight: .bold))
-                        .foregroundStyle(Palette.background)
-                        .frame(maxWidth: .infinity, minHeight: 44)
-                        .background(Palette.background.opacity(0.16), in: Capsule())
+            VStack(spacing: 0) {
+                ForEach(Array(meals.enumerated()), id: \.offset) { index, meal in
+                    if index > 0 {
+                        Rectangle().fill(Palette.background.opacity(0.18)).frame(height: 1)
+                    }
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(formatMinutes(meal.1))
+                            .font(Typography.data(15, weight: .bold))
+                            .monospacedDigit()
+                            .frame(width: 56, alignment: .leading)
+                        Text(meal.0)
+                            .font(Typography.data(15, weight: .bold))
+                        Spacer(minLength: Space.xs)
+                        Label(formatMinutes(CheckInSchedule.minute(afterMeal: meal.1)), systemImage: "bell.fill")
+                            .font(Typography.data(13, weight: .semibold))
+                            .opacity(0.75)
+                    }
+                    .foregroundStyle(Palette.background)
+                    .padding(.vertical, 10)
                 }
             }
             .opacity(markers ? 1 : 0)
             .animation(Motion.adaptive(Motion.enter, reduceMotion: reduceMotion).delay(0.5), value: markers)
-            .accessibilityLabel("Check-in times if a meal doesn’t show")
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(planAccessibilityLabel(meals))
+
+            if let total = model.result?.dailyKcalTarget {
+                Text(totalLine(total))
+                    .font(Typography.data(13, weight: .semibold))
+                    .foregroundStyle(Palette.background.opacity(0.7))
+                    .opacity(markers ? 1 : 0)
+            }
 
             Spacer(minLength: Space.md)
 
@@ -209,6 +224,20 @@ struct CoveredStep: View {
         .onAppear(perform: reveal)
     }
 
+    private func plateKcal(_ total: Int) -> Int {
+        Int((Double(total) / 3 / 10).rounded()) * 10
+    }
+
+    private func totalLine(_ total: Int) -> String {
+        let protein = model.result?.dailyProteinTargetG.map { " · \($0) g protein" } ?? ""
+        return "\(total.formatted()) kcal a day\(protein). Short in the evening? I’ll help close it."
+    }
+
+    private func planAccessibilityLabel(_ meals: [(String, Int)]) -> String {
+        let list = meals.map { "\($0.0) at \(formatMinutes($0.1))" }.joined(separator: ", ")
+        return "\(list). A check-in comes 45 minutes after each if it doesn’t show."
+    }
+
     private var quiet: some View {
         VStack(alignment: .leading, spacing: Space.md) {
             Text("Quiet mode is on.")
@@ -222,7 +251,8 @@ struct CoveredStep: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .appearIn(1)
             Spacer()
-            ActionButton(title: "Start") { showingPaywall = true }
+            // No upsell here: someone in quiet mode was flagged by the safety screen.
+            ActionButton(title: "Start") { model.advance() }
         }
     }
 
@@ -236,7 +266,8 @@ struct CoveredStep: View {
     }
 
     private func reveal() {
-        guard let target = model.result?.dailyKcalTarget else { return }
+        guard let total = model.result?.dailyKcalTarget else { return }
+        let target = plateKcal(total)
         guard !reduceMotion else {
             ring = 1
             markers = true

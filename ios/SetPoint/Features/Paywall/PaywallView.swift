@@ -14,10 +14,10 @@ struct PaywallView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 10) {
-                Text("Stay covered.")
+                Text("Fuel the training.")
                     .font(Typography.display(40))
                     .foregroundStyle(Palette.background)
-                Text("Check-ins, calendar, training and appetite.")
+                Text("Meal check-ins stay free. This adds your training and your calendar.")
                     .font(Typography.data(16, weight: .semibold))
                     .foregroundStyle(Palette.onAccentVoice)
             }
@@ -27,9 +27,9 @@ struct PaywallView: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: Space.md) {
-                    feature(symbol: "bell.fill", title: "Check-ins when a meal slips")
-                    feature(symbol: "calendar", title: "Eat before you're busy")
-                    feature(symbol: "dumbbell.fill", title: "Fuel around training")
+                    feature(symbol: "bolt.heart.fill", title: "Refuel check-ins after every workout")
+                    feature(symbol: "dumbbell.fill", title: "More food on training days")
+                    feature(symbol: "calendar", title: "Eat before you’re busy")
 
                     HStack(spacing: Space.sm) {
                         planCard(

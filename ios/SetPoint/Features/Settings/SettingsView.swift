@@ -6,12 +6,11 @@ struct SettingsView: View {
     @State private var model: SettingsViewModel?
     @AppStorage(MassUnit.storageKey) private var massUnit = MassUnit.localeDefault
     @AppStorage("you.seen.calendar") private var seenCalendar = false
-    @AppStorage("you.seen.training") private var seenTraining = false
     @AppStorage("you.seen.appetite") private var seenAppetite = false
     #if DEBUG
     @State private var showingDevOnboarding = false
-    @State private var showingDevCheckInToday = false
     @State private var showingDevMealConfirm = false
+    @State private var showingDevCheckInToday = false
     @State private var showingDevCheckIn = false
     @State private var showingDevConversation = false
     #endif
@@ -37,12 +36,12 @@ struct SettingsView: View {
                 )
                 model = vm
                 await vm.load()
+            }
             // For the Calendar row's "3 moved".
             if !env.calendar.isPreview, env.subscription.entitled {
                 env.calendar.refreshAuthorization()
                 await env.calendar.refreshStatus()
                 if env.calendar.connected { await env.calendar.refreshWeek() }
-            }
             }
         }
     }
@@ -99,28 +98,8 @@ struct SettingsView: View {
                     }
                     rowDivider
                     NavigationLink {
-                        if env.subscription.entitled {
-                            TrainingScreen()
-                                .onAppear { seenTraining = true }
-                        } else {
-                            PaywallView()
-                        }
-                    } label: {
-                        YouRow(
-                            symbol: "dumbbell.fill",
-                            title: "Training",
-                            value: nil,
-                            isNew: !seenTraining
-                        )
-                    }
-                    rowDivider
-                    NavigationLink {
-                        if env.subscription.entitled {
-                            AppetiteSettingsView()
-                                .onAppear { seenAppetite = true }
-                        } else {
-                            PaywallView()
-                        }
+                        AppetiteSettingsView()
+                            .onAppear { seenAppetite = true }
                     } label: {
                         YouRow(
                             symbol: "fork.knife",
@@ -165,9 +144,6 @@ struct SettingsView: View {
                 if let error = model.error {
                     Text(error)
                         .font(Typography.data(13))
-        .fullScreenCover(isPresented: $showingDevCheckInToday) {
-            DevCheckInTodayPreview()
-        }
                         .foregroundStyle(Palette.accentDeep)
                         .padding(Space.sm)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -189,6 +165,9 @@ struct SettingsView: View {
         .fullScreenCover(isPresented: $showingDevMealConfirm) {
             DevMealConfirmPreview()
         }
+        .fullScreenCover(isPresented: $showingDevCheckInToday) {
+            DevCheckInTodayPreview()
+        }
         .fullScreenCover(isPresented: $showingDevCheckIn) {
             DevCheckInPreview()
         }
@@ -209,14 +188,6 @@ struct SettingsView: View {
             Button {
                 showingDevOnboarding = true
             } label: {
-            Button {
-                showingDevCheckIn = true
-            } label: {
-                DestinationRow(title: "Check-in · Sheet", subtitle: "Starts a real check-in")
-            }
-            .buttonStyle(PressableCard())
-            .appearIn(9)
-
                 DestinationRow(title: "Onboarding")
             }
             .buttonStyle(PressableCard())
@@ -237,6 +208,14 @@ struct SettingsView: View {
             }
             .buttonStyle(PressableCard())
             .appearIn(8)
+
+            Button {
+                showingDevCheckIn = true
+            } label: {
+                DestinationRow(title: "Check-in · Sheet", subtitle: "Starts a real check-in")
+            }
+            .buttonStyle(PressableCard())
+            .appearIn(9)
 
             Button {
                 showingDevConversation = true
@@ -773,9 +752,6 @@ private struct DevCheckInTodayPreview: View {
     }
 
     private func start() async {
-    @Environment(AppEnvironment.self) private var env
-    @State private var home: HomeResponse?
-    @State private var error: String?
         guard model == nil else { return }
         error = nil
         do {
@@ -797,6 +773,9 @@ private struct DevCheckInTodayPreview: View {
 /// meal check-in if none is open.
 private struct DevCheckInPreview: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(AppEnvironment.self) private var env
+    @State private var home: HomeResponse?
+    @State private var error: String?
 
     var body: some View {
         Group {
@@ -832,21 +811,8 @@ private struct DevCheckInPreview: View {
                         .frame(maxWidth: 200)
                 }
                 .padding(28)
-            home = loaded
-        } catch {
-            self.error = UserFacingError.message(for: error, fallback: "Couldn't start a check-in.")
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Palette.background.ignoresSafeArea())
-
-    private func minutesUntilNextMeal(_ home: HomeResponse) -> Int? {
-        let times = home.resolvedMealTimes
-        let now = Calendar.current.dateComponents([.hour, .minute], from: .now)
-        let nowMin = (now.hour ?? 0) * 60 + (now.minute ?? 0)
-        let candidates = [times.breakfastMin, times.lunchMin, times.dinnerMin]
-            .map { $0 > nowMin ? $0 - nowMin : $0 + 1440 - nowMin }
-            .filter { $0 > 0 }
-        return candidates.min()
-    }
             } else {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -866,7 +832,20 @@ private struct DevCheckInPreview: View {
                 self.error = "Couldn't open a meal check-in."
                 return
             }
+            home = loaded
+        } catch {
+            self.error = UserFacingError.message(for: error, fallback: "Couldn't start a check-in.")
         }
+    }
+
+    private func minutesUntilNextMeal(_ home: HomeResponse) -> Int? {
+        let times = home.resolvedMealTimes
+        let now = Calendar.current.dateComponents([.hour, .minute], from: .now)
+        let nowMin = (now.hour ?? 0) * 60 + (now.minute ?? 0)
+        let candidates = [times.breakfastMin, times.lunchMin, times.dinnerMin]
+            .map { $0 > nowMin ? $0 - nowMin : $0 + 1440 - nowMin }
+            .filter { $0 > 0 }
+        return candidates.min()
     }
 }
 

@@ -1,7 +1,7 @@
 import SwiftUI
 import UIKit
 
-/// The signed-in shell: three tabs, with onboarding presented full-screen over
+/// The signed-in shell: four tabs (Today · Training · Week · You), with onboarding presented full-screen over
 /// everything until it's complete.
 struct MainTabView: View {
     @Environment(AppEnvironment.self) private var env
@@ -10,7 +10,7 @@ struct MainTabView: View {
     @State private var selection = Tab.today
     @State private var deepLinkCheckInID: String?
 
-    enum Tab: Hashable { case today, week, you }
+    enum Tab: Hashable { case today, training, week, you }
 
     init() {
         let appearance = UITabBarAppearance()
@@ -34,6 +34,19 @@ struct MainTabView: View {
                     }
                     .tabItem { Label("Today", systemImage: "sun.max") }
                     .tag(Tab.today)
+
+                    NavigationStack {
+                        Group {
+                            if env.subscription.entitled {
+                                TrainingScreen(isTabRoot: true)
+                            } else {
+                                TrainingLockedView()
+                            }
+                        }
+                        .toolbar(.hidden, for: .navigationBar)
+                    }
+                    .tabItem { Label("Training", systemImage: "dumbbell") }
+                    .tag(Tab.training)
 
                     NavigationStack {
                         SettlementView()

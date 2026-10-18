@@ -47,7 +47,7 @@ private struct WelcomeSubline: View {
     }
 }
 
-// MARK: - A · You forget to eat
+// MARK: - A · You train hard. I get the food in.
 
 struct WelcomeHookPage: View {
     var body: some View {
@@ -75,8 +75,8 @@ struct WelcomeHookPage: View {
             Spacer(minLength: Space.sm)
 
             WelcomeHeadline(
-                first: "You forget to eat.",
-                second: "I don’t.",
+                first: "You train hard.",
+                second: "I get the food in.",
                 color: Palette.background,
                 accent: Color(hex: 0xFFE3D3),
                 size: 50
@@ -101,7 +101,7 @@ struct WelcomeNoticePage: View {
             .accessibilityLabel("Breakfast logged at 8. Lunch time passes with nothing logged, and a check-in arrives at 13:45.")
             Spacer(minLength: Space.md)
             WelcomeHeadline(first: "Lunch slips.", second: "I notice.")
-            WelcomeSubline(text: "When a meal isn’t logged on your rhythm — even if the app is closed.")
+            WelcomeSubline(text: "A skipped meal, or one too small to count — I check in, even if the app is closed.")
                 .padding(.bottom, WelcomeLayout.controlsClearance)
         }
         .padding(.horizontal, 24)
@@ -243,7 +243,7 @@ struct WelcomePlanPage: View {
             .accessibilityLabel("A check-in suggests lunch: chicken breast, rice and olive oil. One tap on I ate this logs it.")
             Spacer(minLength: Space.md)
             WelcomeHeadline(first: "Not a nag.", second: "A plan.")
-            WelcomeSubline(text: "Exactly what to eat. One tap to log.")
+            WelcomeSubline(text: "Exactly what to eat — dense, easy food when appetite is low. One tap to log.")
                 .padding(.bottom, WelcomeLayout.controlsClearance)
         }
         .padding(.horizontal, 24)
@@ -340,7 +340,7 @@ struct WelcomeQuietPage: View {
             .accessibilityLabel("If you ignore a check-in: a nudge, then firm, then a talk — then I go quiet.")
             Spacer(minLength: Space.md)
             WelcomeHeadline(first: "Firm.", second: "Then quiet.")
-            WelcomeSubline(text: "No streaks. No guilt. No endless pings.")
+            WelcomeSubline(text: "At most four check-ins a day. No streaks, no guilt.")
                 .padding(.bottom, WelcomeLayout.controlsClearance)
         }
         .padding(.horizontal, 24)
