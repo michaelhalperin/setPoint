@@ -8,7 +8,7 @@ struct BusyRulesView: View {
 
     var body: some View {
         let calendar = env.calendar
-        SettingsScreen(title: "Busy rules", subtitle: "How early I remind you, and what counts as busy.") {
+        SettingsScreen(title: "Busy rules", subtitle: "How early I remind you.", headline: "When you’re busy.") {
             VStack(alignment: .leading, spacing: 14) {
                 CalendarImpactCard(week: calendar.week, refreshing: calendar.refreshing)
                     .appearIn(2)
@@ -28,19 +28,15 @@ struct BusyRulesView: View {
         return SettingsCard {
             VStack(alignment: .leading, spacing: 14) {
                 CalendarCardLabel(text: "Heads-up")
-                Text("How early before a meeting should I remind you to eat?")
-                    .font(Typography.display(22))
-                    .foregroundStyle(Palette.ink)
-                    .fixedSize(horizontal: false, vertical: true)
+                Headline("How early should I remind you?", tail: "Before a meeting.", size: 22)
                 HStack(spacing: 0) {
                     tile(symbol: "bell", label: "Reminder", time: meeting - calendar.leadMin, accent: true)
                     VStack(spacing: 2) {
                         Text("\(calendar.leadMin) min")
-                            .font(Typography.data(11, weight: .bold))
+                            .font(Typography.mono(11))
                             .foregroundStyle(Palette.inkSoft)
-                            .monospacedDigit()
                         Image(systemName: "chevron.right")
-                            .font(.system(size: 13, weight: .bold))
+                            .font(.system(size: 12, weight: .medium))
                             .foregroundStyle(Palette.inkSoft)
                     }
                     .frame(width: 56)
@@ -67,14 +63,13 @@ struct BusyRulesView: View {
     private func tile(symbol: String, label: String, time: Int, accent: Bool) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 5) {
-                Image(systemName: symbol).font(.system(size: 12, weight: .semibold))
-                Text(label).font(Typography.data(13, weight: .bold))
+                Image(systemName: symbol).font(.system(size: 12, weight: .regular))
+                Text(label).font(Typography.data(13, weight: .regular))
             }
-            .foregroundStyle(accent ? Palette.accentDeep : Palette.ink)
+            .foregroundStyle(accent ? Palette.amber : Palette.inkSoft)
             Text(CalendarClock.hm(time))
-                .font(Typography.data(30, weight: .heavy))
-                .foregroundStyle(accent ? Palette.accent : Palette.ink)
-                .monospacedDigit()
+                .font(Typography.mono(26))
+                .foregroundStyle(accent ? Palette.amber : Palette.ink)
                 .contentTransition(.numericText())
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -83,7 +78,8 @@ struct BusyRulesView: View {
         .background {
             if accent {
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(Palette.accentTint)
+                    .fill(Palette.ember.opacity(0.10))
+                    .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Color(hex: 0xFF8A50, opacity: 0.3)))
             } else {
                 BusyHatch(cornerRadius: 16)
             }
@@ -99,9 +95,8 @@ struct BusyRulesView: View {
                     CalendarCardLabel(text: "Counts as busy")
                     Spacer()
                     Text(CalendarCopy.minBlock(Int(sliderValue)))
-                        .font(Typography.data(14, weight: .bold))
+                        .font(Typography.mono(13))
                         .foregroundStyle(Palette.ink)
-                        .monospacedDigit()
                 }
                 Slider(value: $sliderValue, in: 30...180, step: 15) { editing in
                     guard !editing else { return }
@@ -110,14 +105,14 @@ struct BusyRulesView: View {
                     env.calendar.minBlockMin = value
                     env.calendar.rulesChanged()
                 }
-                .tint(Palette.accent)
+                .tint(Palette.amber)
                 .accessibilityLabel("Counts as busy")
                 .accessibilityValue(CalendarCopy.minBlock(Int(sliderValue)))
                 GeometryReader { geo in
                     ForEach([(30, "30m"), (60, "1h"), (120, "2h"), (180, "3h")], id: \.0) { value, label in
                         let fraction = CGFloat(value - 30) / 150
                         Text(label)
-                            .font(Typography.data(11, weight: .semibold))
+                            .font(Typography.mono(10))
                             .foregroundStyle(Palette.inkFaint)
                             .fixedSize()
                             .position(x: 14 + fraction * (geo.size.width - 28), y: 6)
@@ -145,14 +140,14 @@ struct BusyRulesView: View {
                     subtitle: "Weekend meals never move",
                     isOn: Binding(get: { calendar.workdaysOnly }, set: { calendar.workdaysOnly = $0; calendar.rulesChanged() })
                 )
-                Divider().overlay(Palette.hairline).padding(.leading, 66)
+                ListDivider().padding(.leading, 64)
                 CalendarToggleRow(
                     symbol: "sun.max",
                     title: "All-day events",
                     subtitle: "Trips and days off count as busy",
                     isOn: Binding(get: { calendar.includeAllDay }, set: { calendar.includeAllDay = $0; calendar.rulesChanged() })
                 )
-                Divider().overlay(Palette.hairline).padding(.leading, 66)
+                ListDivider().padding(.leading, 64)
                 CalendarToggleRow(
                     symbol: "eye",
                     title: "Events marked free",

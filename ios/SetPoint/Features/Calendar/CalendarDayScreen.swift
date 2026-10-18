@@ -90,7 +90,7 @@ struct CalendarDayView: View {
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundStyle(target == nil ? Palette.inkFaint : Palette.ink)
                 .frame(width: 44, height: 44)
-                .background(Palette.surfaceSunk, in: Circle())
+                .background(Color.white.opacity(0.06), in: Circle())
         }
         .buttonStyle(.plain)
         .disabled(target == nil)
@@ -134,9 +134,9 @@ struct CalendarDayView: View {
                 HStack(spacing: 10) {
                     Image(systemName: "sparkle")
                         .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(Palette.accent)
+                        .foregroundStyle(Palette.ember)
                         .frame(width: 32, height: 32)
-                        .background(Palette.accentTint, in: Circle())
+                        .background(Palette.ember.opacity(0.12), in: Circle())
                     Text(meal.kept
                         ? "\(CalendarCopy.slotName(meal.slot)) kept at \(CalendarClock.hm(meal.usualMin))"
                         : "Why \(CalendarClock.hm(earlyMin))?")
@@ -299,8 +299,8 @@ struct CalendarDayTimeline: View {
             }
             marker(title: name, detail: meal.status == "missed" ? "missed · \(CalendarClock.hm(meal.atMin))" : "moved · heads-up \(CalendarClock.hm(meal.atMin))",
                    minute: meal.atMin, width: width) {
-                Image(systemName: "fork.knife").font(.system(size: 12, weight: .bold)).foregroundStyle(.white)
-                    .frame(width: 28, height: 28).background(Palette.accent, in: Circle())
+                Image(systemName: "fork.knife").font(.system(size: 12, weight: .semibold)).foregroundStyle(Palette.onEmber)
+                    .frame(width: 28, height: 28).background(Palette.ember, in: Circle())
             }
         default:
             let detail = meal.status == "missed"
@@ -308,7 +308,7 @@ struct CalendarDayTimeline: View {
                 : meal.kept ? "kept · \(CalendarClock.hm(meal.atMin))" : CalendarClock.hm(meal.atMin)
             marker(title: name, detail: detail, minute: meal.atMin, width: width, faded: meal.status == "missed") {
                 Image(systemName: "fork.knife").font(.system(size: 12, weight: .bold)).foregroundStyle(Palette.ink)
-                    .frame(width: 28, height: 28).background(Palette.surfaceSunk, in: Circle())
+                    .frame(width: 28, height: 28).background(Color.white.opacity(0.06), in: Circle())
             }
         }
     }

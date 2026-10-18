@@ -112,9 +112,9 @@ struct CalendarConnectView: View {
         SettingsCard {
             VStack(alignment: .leading, spacing: 14) {
                 CalendarCardLabel(text: "What I see")
-                seeRow(symbol: "checkmark", tint: Palette.dayOnTrack, background: Palette.surfaceSunk,
+                seeRow(symbol: "checkmark", tint: Palette.positive, background: Color.white.opacity(0.06),
                        title: "When you're busy", detail: "Start and end times only")
-                seeRow(symbol: "nosign", tint: Palette.accentDeep, background: Palette.accentTint,
+                seeRow(symbol: "nosign", tint: Palette.amber, background: Palette.ember.opacity(0.12),
                        title: "Never titles, people or places", detail: "They stay on this phone")
             }
         }
@@ -207,7 +207,7 @@ struct CalendarPickView: View {
             HStack(alignment: .top, spacing: 12) {
                 Image(systemName: "sparkle")
                     .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(Palette.accent)
+                    .foregroundStyle(Palette.ember)
                     .padding(.top, 2)
                 VStack(alignment: .leading, spacing: 3) {
                     Text(preview.movedCount == 0
@@ -223,7 +223,7 @@ struct CalendarPickView: View {
                 Spacer(minLength: 0)
             }
             .padding(16)
-            .background(Palette.accentTint, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .background(Palette.ember.opacity(0.12), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
             .padding(.top, 8)
             .accessibilityElement(children: .combine)
         }

@@ -3,23 +3,32 @@ import UIKit
 
 /// Shared chrome for inner screens: round glass back, a light title, glass cards, rows, save bar.
 struct SettingsScreen<Content: View>: View {
+    /// The mono label in the header row (and the headline, unless `headline` is set).
     let title: String
+    /// The dim tail after the headline.
     var subtitle: String? = nil
-    /// Trailing item on the back-button row (a status pill, day arrows).
+    /// Trailing item on the header row (a status pill, day arrows).
     var accessory: AnyView? = nil
     /// False when the screen is a tab's root — there's nowhere to go back to.
     var showsBack: Bool = true
     /// The light behind the title — haze for training screens.
     var glow: AmbientGlow.Tone = .ember
+    /// A headline that differs from the label ("Your plan." under "Edit plan").
+    var headline: String? = nil
     @ViewBuilder var content: Content
 
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                VStack(alignment: .leading, spacing: 16) {
-                    if showsBack || accessory != nil {
+            VStack(alignment: .leading, spacing: 18) {
+                if showsBack || accessory != nil {
+                    ZStack {
+                        if accessory == nil {
+                            Text(title).sectionLabelStyle()
+                                .lineLimit(1)
+                                .padding(.horizontal, 56)
+                        }
                         HStack {
                             if showsBack {
                                 RoundIconButton("chevron.left", label: "Back") { dismiss() }
@@ -28,24 +37,11 @@ struct SettingsScreen<Content: View>: View {
                             if let accessory { accessory }
                         }
                     }
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(title)
-                            .font(Typography.display(36))
-                            .displayTracking(36)
-                            .foregroundStyle(Palette.ink)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .accessibilityAddTraits(.isHeader)
-                            .appearIn(0)
-                        if let subtitle {
-                            Text(subtitle)
-                                .font(Typography.data(15, weight: .regular))
-                                .foregroundStyle(Palette.inkSoft)
-                                .fixedSize(horizontal: false, vertical: true)
-                                .appearIn(1)
-                        }
-                    }
+                    .frame(minHeight: 40)
                 }
+
+                Headline(headline ?? title, tail: subtitle, size: 34)
+                    .appearIn(0, rise: 16)
 
                 content
             }

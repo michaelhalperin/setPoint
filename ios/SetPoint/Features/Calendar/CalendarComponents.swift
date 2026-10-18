@@ -131,9 +131,9 @@ struct BusyHatch: View {
                 path.addLine(to: CGPoint(x: x + size.height, y: 0))
                 x += spacing
             }
-            context.stroke(path, with: .color(Palette.ink.opacity(faded ? 0.06 : 0.13)), lineWidth: 3.5)
+            context.stroke(path, with: .color(Color.white.opacity(faded ? 0.05 : 0.10)), lineWidth: 3.5)
         }
-        .background(Palette.ink.opacity(faded ? 0.03 : 0.07))
+        .background(Color.white.opacity(faded ? 0.02 : 0.04))
         .clipShape(shape)
         .accessibilityHidden(true)
     }
@@ -156,10 +156,7 @@ struct CalendarCardLabel: View {
     let text: String
 
     var body: some View {
-        Text(text.uppercased())
-            .font(Typography.data(11, weight: .heavy))
-            .foregroundStyle(Palette.inkFaint)
-            .tracking(0.6)
+        Text(text).sectionLabelStyle()
     }
 }
 
@@ -175,14 +172,20 @@ struct CalendarMoveRows: View {
         VStack(spacing: 10) {
             row(
                 time: CalendarClock.hm(atMin),
-                timeColor: kept ? Palette.ink : Palette.accentDeep,
-                background: kept ? Palette.surfaceSunk : Palette.accentTint
+                timeColor: kept ? Palette.ink : Palette.amber,
+                background: kept ? Color.white.opacity(0.05) : Palette.ember.opacity(0.10)
             ) {
-                Image(systemName: "fork.knife")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(kept ? Palette.ink : .white)
-                    .frame(width: 34, height: 34)
-                    .background(kept ? Palette.surface : Palette.accent, in: Circle())
+                if kept {
+                    Image(systemName: "fork.knife")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(Palette.ink)
+                        .frame(width: 34, height: 34)
+                        .background(Color.white.opacity(0.06), in: Circle())
+                } else {
+                    EmberBall(size: 34) {
+                        Image(systemName: "fork.knife").font(.system(size: 13, weight: .semibold))
+                    }
+                }
             } title: {
                 Text(CalendarCopy.slotName(slot))
             } detail: {
@@ -195,7 +198,7 @@ struct CalendarMoveRows: View {
                     }
                 }
             }
-            row(time: CalendarClock.hm(busy.startMin), timeColor: Palette.ink, background: Palette.surfaceSunk) {
+            row(time: CalendarClock.hm(busy.startMin), timeColor: Palette.ink, background: Color.white.opacity(0.05)) {
                 BusyHatch(cornerRadius: 17)
                     .frame(width: 34, height: 34)
             } title: {
@@ -217,15 +220,14 @@ struct CalendarMoveRows: View {
     ) -> some View {
         HStack(spacing: 12) {
             Text(time)
-                .font(Typography.data(20, weight: .heavy))
+                .font(Typography.mono(17))
                 .foregroundStyle(timeColor)
-                .monospacedDigit()
                 .contentTransition(.numericText())
                 .frame(width: 64, alignment: .leading)
             icon()
             VStack(alignment: .leading, spacing: 1) {
                 title()
-                    .font(Typography.data(15, weight: .bold))
+                    .font(Typography.data(15, weight: .regular))
                     .foregroundStyle(Palette.ink)
                 detail()
                     .font(Typography.data(12))
@@ -235,7 +237,7 @@ struct CalendarMoveRows: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        .background(background, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .glass(radius: 16, fill: background)
     }
 }
 
@@ -251,19 +253,19 @@ struct CalendarToggleRow: View {
             HStack(spacing: 14) {
                 if let symbol {
                     Image(systemName: symbol)
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.system(size: 14, weight: .regular))
                         .foregroundStyle(Palette.ink)
-                        .frame(width: 36, height: 36)
-                        .background(Palette.surfaceSunk, in: Circle())
+                        .frame(width: 34, height: 34)
+                        .background(Color.white.opacity(0.06), in: Circle())
                 } else if let colorHex {
-                    Circle()
+                    RoundedRectangle(cornerRadius: 3, style: .continuous)
                         .fill(Color(hex: colorHex))
                         .frame(width: 10, height: 10)
                         .padding(.horizontal, 2)
                 }
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
-                        .font(Typography.data(16, weight: .bold))
+                        .font(Typography.data(15, weight: .regular))
                         .foregroundStyle(Palette.ink)
                     Text(subtitle)
                         .font(Typography.data(12))
@@ -272,7 +274,7 @@ struct CalendarToggleRow: View {
                 }
             }
         }
-        .tint(Palette.accent)
+        .tint(Palette.ember)
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
     }
@@ -285,7 +287,7 @@ struct CalendarChoicesCard: View {
     let set: (CalendarChoice, Bool) -> Void
 
     var body: some View {
-        SettingsCard(padding: 0) {
+        VStack(spacing: 0) {
             VStack(spacing: 0) {
                 ForEach(Array(choices.enumerated()), id: \.element.id) { index, choice in
                     CalendarToggleRow(
@@ -295,11 +297,12 @@ struct CalendarChoicesCard: View {
                         isOn: Binding(get: { isOn(choice) }, set: { set(choice, $0) })
                     )
                     if index < choices.count - 1 {
-                        Divider().overlay(Palette.hairline).padding(.leading, 16)
+                        ListDivider().padding(.leading, 16)
                     }
                 }
             }
         }
+        .glass(radius: 22)
     }
 }
 
@@ -357,9 +360,9 @@ struct CalendarKeepButton: View {
             guard stage == .idle else { return }
             Task { await run() }
         } label: {
-            BusyLabel(title: title, busy: busy, done: done, tint: done ? Palette.dayOnTrack : Palette.ink)
-                .font(Typography.data(style == .card ? 15 : 13, weight: .bold))
-                .foregroundStyle(done ? Palette.dayOnTrack : Palette.ink)
+            BusyLabel(title: title, busy: busy, done: done, tint: done ? Palette.positive : Palette.ink)
+                .font(Typography.data(style == .card ? 15 : 13, weight: .regular))
+                .foregroundStyle(done ? Palette.positive : Palette.ink)
                 .lineLimit(1)
                 .frame(maxWidth: style == .card ? .infinity : nil)
                 .padding(.horizontal, style == .card ? 16 : 12)
@@ -367,14 +370,14 @@ struct CalendarKeepButton: View {
                 .background {
                     switch style {
                     case .card:
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .fill(done ? Palette.dayOnTrack.opacity(0.12) : Palette.surface)
+                        Capsule(style: .continuous)
+                            .fill(done ? Palette.positive.opacity(0.12) : Color.white.opacity(0.06))
                             .overlay(
-                                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                    .strokeBorder(done ? Palette.dayOnTrack.opacity(0.35) : Palette.hairline, lineWidth: 1)
+                                Capsule(style: .continuous)
+                                    .strokeBorder(done ? Palette.positive.opacity(0.35) : Color.white.opacity(0.10), lineWidth: 1)
                             )
                     case .chip:
-                        Capsule().fill(done ? Palette.dayOnTrack.opacity(0.14) : Palette.surfaceSunk)
+                        Capsule().fill(done ? Palette.positive.opacity(0.14) : Color.white.opacity(0.06))
                     }
                 }
                 .contentShape(Rectangle())
@@ -406,16 +409,12 @@ struct CalendarKeepButton: View {
 
 struct CalendarConnectedPill: View {
     var body: some View {
-        HStack(spacing: 5) {
-            Image(systemName: "checkmark")
-                .font(.system(size: 10, weight: .heavy))
-            Text("Connected")
-                .font(Typography.data(12, weight: .bold))
-        }
-        .foregroundStyle(Palette.dayOnTrack)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 7)
-        .background(Palette.dayOnTrack.opacity(0.16), in: Capsule())
+        Text("Connected · Apple Calendar")
+            .font(Typography.data(12, weight: .regular))
+            .foregroundStyle(Palette.positive)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(Palette.positive.opacity(0.10), in: Capsule())
     }
 }
 
@@ -437,16 +436,15 @@ struct CalendarImpactCard: View {
         let count = week?.movedCount ?? 0
         HStack(alignment: .center, spacing: 14) {
             Text("\(count)")
-                .font(Typography.data(30, weight: .heavy))
-                .foregroundStyle(count > 0 ? Palette.accent : Palette.inkSoft)
-                .monospacedDigit()
+                .font(Typography.data(28, weight: .light))
+                .foregroundStyle(count > 0 ? Palette.amber : Palette.inkSoft)
                 .contentTransition(.numericText())
                 .frame(width: 52, height: 52)
-                .background(count > 0 ? Palette.surface : Palette.surfaceSunk, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .background(Color.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                 .opacity(refreshing ? 0.45 : 1)
             VStack(alignment: .leading, spacing: 3) {
                 Text(count == 1 ? "meal moves earlier this week" : "meals move earlier this week")
-                    .font(Typography.data(15, weight: .bold))
+                    .font(Typography.data(15, weight: .regular))
                     .foregroundStyle(Palette.ink)
                 Group {
                     if refreshing {
@@ -467,7 +465,7 @@ struct CalendarImpactCard: View {
             Spacer(minLength: 0)
         }
         .padding(14)
-        .background(count > 0 ? Palette.accentTint : Palette.surfaceSunk.opacity(0.6), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .glass(radius: 20, fill: count > 0 ? Palette.ember.opacity(0.06) : Palette.glass, stroke: count > 0 ? Color(hex: 0xFF8A50, opacity: 0.25) : Palette.hairline)
         .animation(Motion.adaptive(Motion.settle, reduceMotion: reduceMotion), value: refreshing)
         .animation(Motion.adaptive(Motion.settle, reduceMotion: reduceMotion), value: count)
         .accessibilityElement(children: .combine)
