@@ -67,6 +67,11 @@ enum DebugPreviewStub {
     case settingsHealthWrite
     case calendarSettings
     case calendarConnect
+    case calendarPick
+    case calendarWeek(kept: Bool)
+    case calendarDay
+    case calendarRules
+    case calendarCalendars
     case training
     case refuel
     case checkinSmaller
@@ -122,6 +127,16 @@ enum DebugPreviewStub {
             NavigationStack { CalendarSettingsView() }
         case .calendarConnect:
             NavigationStack { CalendarConnectView() }
+        case .calendarPick:
+            NavigationStack { CalendarPickView() }
+        case .calendarWeek:
+            NavigationStack { CalendarWeekView() }
+        case .calendarDay:
+            NavigationStack { CalendarDayView(date: "2026-09-15") }
+        case .calendarRules:
+            NavigationStack { BusyRulesView() }
+        case .calendarCalendars:
+            NavigationStack { CalendarsView() }
         case .training:
             NavigationStack { TrainingScreen(preview: .sample) }
         case .refuel:
@@ -225,8 +240,33 @@ enum DebugPreviewStub {
         case "saved-meal": return .savedMeal
         case "settings": return .settings
         case "you": return .settings
-        case "calendar-settings": return .calendarSettings
-        case "calendar-connect": return .calendarConnect
+        case "calendar-settings":
+            CalendarManager.shared.loadPreview(connected: true)
+            return .calendarSettings
+        case "calendar-connect":
+            CalendarManager.shared.loadPreview(connected: false)
+            return .calendarConnect
+        case "calendar-reconnect":
+            CalendarManager.shared.loadPreview(connected: false, reconnect: true)
+            return .calendarConnect
+        case "calendar-pick":
+            CalendarManager.shared.loadPreview(connected: false)
+            return .calendarPick
+        case "calendar-week":
+            CalendarManager.shared.loadPreview(connected: true)
+            return .calendarWeek(kept: false)
+        case "calendar-week-kept":
+            CalendarManager.shared.loadPreview(connected: true, keptTomorrow: true)
+            return .calendarWeek(kept: true)
+        case "calendar-day":
+            CalendarManager.shared.loadPreview(connected: true)
+            return .calendarDay
+        case "calendar-rules":
+            CalendarManager.shared.loadPreview(connected: true)
+            return .calendarRules
+        case "calendar-calendars":
+            CalendarManager.shared.loadPreview(connected: true)
+            return .calendarCalendars
         case "home-busy": return .home(.sampleBusy)
         case "home-training": return .home(.sampleTraining)
         case "home-appetite", "home-appetite-low": return .home(.sampleAppetiteLow)

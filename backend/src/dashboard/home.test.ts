@@ -2,6 +2,7 @@ import type { PrismaClient } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 import type { ManagerVoice } from '../managerVoice/types.js';
 import { OnboardingIncompleteError, buildHome } from './home.js';
+import { AccountNotFoundError } from '../account/deleteAccount.js';
 
 const NOW = new Date('2026-09-01T18:00:00Z'); // 14:00 in New York
 const hoursAgo = (h: number) => new Date(NOW.getTime() - h * 3_600_000);
@@ -36,6 +37,7 @@ function fakePrisma(over: {
     calendarBusyBlock: { findMany: async () => [] },
     workout: { findMany: async () => [] },
     dayAppetite: { findUnique: async () => over.dayAppetite ?? null },
+    calendarKeep: { findMany: async () => [] },
   } as unknown as PrismaClient;
 }
 
@@ -202,6 +204,12 @@ describe('buildHome', () => {
       buildHome({ prisma: fakePrisma({ user: { id: 'u1', timezone: 'UTC', onboarding: null } }), voice, now: NOW }, 'u1'),
     ).rejects.toBeInstanceOf(OnboardingIncompleteError);
   });
+  it('treats a token for a deleted account as signed out, not as onboarding', async () => {
+    await expect(
+      buildHome({ prisma: fakePrisma({ user: null }), voice, now: NOW }, 'u1'),
+    ).rejects.toBeInstanceOf(AccountNotFoundError);
+  });
+
 
   it('marks answeredToday and names nextPlate on appetite', async () => {
     const unanswered = await buildHome({ prisma: fakePrisma(), voice, now: NOW }, 'u1');

@@ -48,7 +48,7 @@ const schema = z.object({
   ANTHROPIC_API_KEY: z.string().default(''),
   APNS_KEY_ID: z.string().default(''),
   APNS_TEAM_ID: z.string().default(''),
-  APNS_BUNDLE_ID: z.string().default('com.setpoint.app'),
+  APNS_BUNDLE_ID: z.string().default('com.michaelhalperin.setpoint'),
   APNS_PRIVATE_KEY: z.string().default(''),
 
   // Wearable modifier kill switch + cohort. Off until beta proves incremental value.
@@ -60,7 +60,7 @@ const schema = z.object({
   SUBSCRIPTION_GATE: z.string().default(''),
   // App Store purchase verification. APPLE_APP_APPLE_ID is the numeric Apple ID from
   // App Store Connect — required to accept production (App Store) purchases.
-  APP_BUNDLE_ID: z.string().default('com.setpoint.app'),
+  APP_BUNDLE_ID: z.string().default('com.michaelhalperin.setpoint'),
   APPLE_APP_APPLE_ID: z.string().default(''),
 });
 

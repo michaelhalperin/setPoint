@@ -61,7 +61,7 @@ path. HealthKit on a simulator **requires** `SIGNED=1` so Xcode writes HealthKit
 into the simulator entitlements file (injected at launch). Do not re-sign the
 `.app` with that file — SpringBoard will refuse to launch it.
 
-In the Apple Developer portal, the App ID `com.setpoint.app` must have the
+In the Apple Developer portal, the App ID `com.michaelhalperin.setpoint` must have the
 HealthKit capability (with background delivery) enabled. Verify a signed build:
 
 ```bash
@@ -193,7 +193,7 @@ accent — never looping. The hero stat and protein row use
   active check-in; `SetPointWidgets` is the widget extension (lock screen +
   Dynamic Island). Server push-to-start is wired but needs an APNs key.
 
-Test a notification locally: `xcrun simctl push <device> com.setpoint.app payload.json`
+Test a notification locally: `xcrun simctl push <device> com.michaelhalperin.setpoint payload.json`
 (a `{aps, checkInId, deepLink}` body). Test the deep link:
 `xcrun simctl openurl <device> "setpoint://check-in/<id>"`.
 
@@ -220,7 +220,7 @@ Test a notification locally: `xcrun simctl push <device> com.setpoint.app payloa
 ### Manual verification
 
 1. Put your Team ID in `ios/Config/Signing.xcconfig`. In the Apple Developer
-   portal, the App ID `com.setpoint.app` must have the HealthKit capability
+   portal, the App ID `com.michaelhalperin.setpoint` must have the HealthKit capability
    (with background delivery) enabled.
 2. Simulator: `SIGNED=1 ./ios/scripts/run.sh`. In the simulator's Health app →
    Browse → Heart → Heart Rate Variability → Add Data, add at least 8 samples on

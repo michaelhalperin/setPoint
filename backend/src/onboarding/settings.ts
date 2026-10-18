@@ -47,6 +47,7 @@ export type SettingsView = {
     minBlockMin: number;
     workdaysOnly: boolean;
     includeAllDay: boolean;
+    countFree: boolean;
   };
   training: {
     addCalories: boolean;
@@ -91,6 +92,7 @@ export type SettingsPatch = {
     minBlockMin?: number;
     workdaysOnly?: boolean;
     includeAllDay?: boolean;
+    countFree?: boolean;
   };
   training?: {
     addCalories?: boolean;
@@ -243,6 +245,7 @@ export async function updateSettings(
       if (patch.calendar.minBlockMin != null) profileData.calendarMinBlockMin = patch.calendar.minBlockMin;
       if (patch.calendar.workdaysOnly != null) profileData.calendarWorkdaysOnly = patch.calendar.workdaysOnly;
       if (patch.calendar.includeAllDay != null) profileData.calendarIncludeAllDay = patch.calendar.includeAllDay;
+      if (patch.calendar.countFree != null) profileData.calendarCountFree = patch.calendar.countFree;
     }
     if (patch.training) {
       if (patch.training.addCalories != null) profileData.trainingAddCalories = patch.training.addCalories;
@@ -366,6 +369,7 @@ function toView(user: UserWithSettings, weekendSuggestion: WeekendBreakfastSugge
       minBlockMin: p.calendarMinBlockMin ?? 60,
       workdaysOnly: p.calendarWorkdaysOnly ?? true,
       includeAllDay: p.calendarIncludeAllDay ?? false,
+      countFree: p.calendarCountFree ?? false,
     },
     training: {
       addCalories: p.trainingAddCalories ?? true,

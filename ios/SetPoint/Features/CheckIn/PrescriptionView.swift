@@ -8,7 +8,7 @@ struct PrescriptionView: View {
     var headline = "Time to eat."
     /// "Usually 13:00 · nothing since 8:05"
     var whyNow: String?
-    /// Minutes until the user's next meal time — unused for the single 30-min snooze.
+    /// Minutes until the user's next meal time — feeds the snooze sheet choices.
     var nextMealMinutes: Int? = nil
     /// Close without answering.
     let onDismiss: () -> Void
@@ -29,6 +29,7 @@ struct PrescriptionView: View {
     @State private var error: String?
     @State private var rated: Bool?
     @State private var drag: CGFloat = 0
+    @State private var choosingSnooze = false
     @State private var notHungry: Bool
     @State private var fullPlate: HomeResponse.ActiveCheckIn.Prescription?
     @State private var smallerPlate: HomeResponse.ActiveCheckIn.Prescription?
@@ -150,6 +151,16 @@ struct PrescriptionView: View {
         .offset(y: drag)
         .gesture(dismissDrag)
         .task { await loadVariants() }
+        .sheet(isPresented: $choosingSnooze) {
+            let choices = CheckInActions.snoozeChoices(nextMealMinutes: nextMealMinutes)
+            SnoozeSheet(choices: choices) { minutes in
+                run { try await snooze(minutes) }
+            }
+            .presentationDetents([.height(SnoozeSheet.height(for: choices.count))])
+            .presentationDragIndicator(.visible)
+            .presentationBackground(Palette.background)
+            .presentationCornerRadius(28)
+        }
     }
 
     private var sizeControl: some View {
@@ -250,33 +261,39 @@ struct PrescriptionView: View {
             ActionButton(title: primaryTitle, busy: busy, busyTitle: "Logging") {
                 run(eatThis)
             }
-            HStack {
-                Button { run { try await snooze(30) } } label: {
-                    Text("Snooze 30 min")
-                        .font(Typography.data(14, weight: .bold))
-                        .foregroundStyle(Palette.inkSoft)
+            HStack(spacing: 10) {
+                secondaryAction(title: "Snooze", symbol: "zzz") {
+                    choosingSnooze = true
                 }
-                .buttonStyle(.plain)
-                Spacer()
-                Button { run(alreadyAte, then: onAlreadyAte) } label: {
-                    Text("I already ate")
-                        .font(Typography.data(14, weight: .bold))
-                        .foregroundStyle(Palette.inkSoft)
+                secondaryAction(title: "I already ate") {
+                    run(alreadyAte, then: onAlreadyAte)
                 }
-                .buttonStyle(.plain)
             }
             .disabled(busy)
-            .padding(.horizontal, 4)
         }
     }
 
-    private var primaryTitle: String {
-        let plate = notHungry ? smallerPlate : fullPlate
-        if let name = plate?.items.first?.name {
-            let short = name.split(separator: " ").prefix(3).joined(separator: " ").lowercased()
-            return "I'll have the \(short)"
+    private func secondaryAction(title: String, symbol: String? = nil, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                if let symbol {
+                    Image(systemName: symbol)
+                        .font(.system(size: 14, weight: .semibold))
+                }
+                Text(title)
+                    .font(Typography.data(15, weight: .bold))
+            }
+            .foregroundStyle(Palette.ink)
+            .frame(maxWidth: .infinity, minHeight: 48)
+            .background(Palette.surfaceSunk, in: RoundedRectangle(cornerRadius: Radius.md, style: .continuous))
         }
-        return "I'll have this"
+        .buttonStyle(PressableCard())
+    }
+
+    /// Logs the whole plate, so the button names the plate, not its first item.
+    private var primaryTitle: String {
+        guard let plate = notHungry ? smallerPlate : fullPlate else { return "I’ll have this" }
+        return "I’ll have this · \(plate.totalKcal) kcal"
     }
 
     private var activePrescription: HomeResponse.ActiveCheckIn.Prescription? {

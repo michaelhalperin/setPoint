@@ -15,6 +15,9 @@ export type CalendarPrefs = {
   includeAllDay: boolean;
 };
 
+/** Why a moved meal landed where it did: the heads-up lead, or the gap after the previous meal. */
+export type ShiftReason = 'lead' | 'floor';
+
 export const DEFAULT_CALENDAR_PREFS: CalendarPrefs = {
   enabled: false,
   leadMin: 45,
@@ -23,7 +26,7 @@ export const DEFAULT_CALENDAR_PREFS: CalendarPrefs = {
   includeAllDay: false,
 };
 
-const PREVIOUS_MEAL_GAP_MIN = 90;
+export const PREVIOUS_MEAL_GAP_MIN = 90;
 
 export function isWorkday(weekday: number): boolean {
   return weekday !== 0 && weekday !== 6;
@@ -65,17 +68,18 @@ export function shiftDueForBusy(input: {
   times: MealTimes;
   blocks: MinuteBlock[];
   leadMin: number;
-}): { dueMin: number; movedFromMin: number | null; block: MinuteBlock | null } {
+}): { dueMin: number; movedFromMin: number | null; block: MinuteBlock | null; reason: ShiftReason | null } {
   const overlapping = input.blocks
     .filter((block) => rangesOverlap(input.mealMin, input.dueMin, block.startMin, block.endMin))
     .sort((a, b) => a.startMin - b.startMin);
   const block = overlapping[0];
-  if (!block) return { dueMin: input.dueMin, movedFromMin: null, block: null };
+  if (!block) return { dueMin: input.dueMin, movedFromMin: null, block: null, reason: null };
 
   const floor = (previousMealMin(input.slot, input.times) ?? 0) + PREVIOUS_MEAL_GAP_MIN;
-  const moved = Math.max(floor, block.startMin - input.leadMin);
-  if (moved >= input.dueMin) return { dueMin: input.dueMin, movedFromMin: null, block: null };
-  return { dueMin: moved, movedFromMin: input.dueMin, block };
+  const lead = block.startMin - input.leadMin;
+  const moved = Math.max(floor, lead);
+  if (moved >= input.dueMin) return { dueMin: input.dueMin, movedFromMin: null, block: null, reason: null };
+  return { dueMin: moved, movedFromMin: input.dueMin, block, reason: floor > lead ? 'floor' : 'lead' };
 }
 
 export type ShiftedCheckIn = ScheduledCheckIn & {
@@ -89,8 +93,11 @@ export function applyCalendarShift(
   blocks: MinuteBlock[],
   prefs: CalendarPrefs,
   weekday: number,
+  /** Slots the user chose to keep at their usual time today. */
+  kept: ReadonlySet<string> = new Set(),
 ): ShiftedCheckIn | null {
   if (!scheduled) return null;
+  if (kept.has(scheduled.slot)) return { ...scheduled, movedFromMin: null, busy: null };
   const qualified = qualifyingBusyBlocks(blocks, prefs, weekday);
   const shifted = shiftDueForBusy({
     slot: scheduled.slot,
@@ -135,10 +142,12 @@ export function movedSlotsToday(
   blocks: MinuteBlock[],
   prefs: CalendarPrefs,
   weekday: number,
+  kept: ReadonlySet<string> = new Set(),
 ): { slot: SlotName; fromMin: number; toMin: number }[] {
   const qualified = qualifyingBusyBlocks(blocks, prefs, weekday);
   const moved: { slot: SlotName; fromMin: number; toMin: number }[] = [];
   for (const slot of SLOT_ORDER) {
+    if (kept.has(slot)) continue;
     const mealMin = slot === 'breakfast' ? times.breakfastMin : slot === 'lunch' ? times.lunchMin : times.dinnerMin;
     const dueMin = mealMin + graceMin;
     const shifted = shiftDueForBusy({ slot, mealMin, dueMin, times, blocks: qualified, leadMin: prefs.leadMin });

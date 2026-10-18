@@ -55,6 +55,7 @@ describe('the floor at the entry points', () => {
   it('onboarding refuses an underweight diet target before writing anything', async () => {
     const transaction = vi.fn();
     const prisma = {
+      user: { findUnique: async () => ({ id: 'u1' }) },
       onboardingProfile: { findUnique: async () => null },
       $transaction: transaction,
     } as unknown as PrismaClient;

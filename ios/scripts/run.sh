@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Build, install and launch on the simulator. Opens the Simulator window.
-# Pass --console to stream the app's stdout/stderr (blocks until you Ctrl-C).
+# FRESH=1 uninstalls first (clean slate). Pass --console to stream the app's stdout/stderr (blocks until you Ctrl-C).
 # Extra args pass through to the app, e.g.:
 #   ./ios/scripts/run.sh -uiStub home
 source "$(dirname "$0")/_common.sh"
@@ -19,7 +19,11 @@ open -a Simulator
 APP="$(app_path)"
 [ -n "$APP" ] || { echo "✗ build product not found"; exit 1; }
 
-xcrun simctl uninstall "$UDID" "$BUNDLE_ID" 2>/dev/null || true
+# Installing over the old build keeps permissions (Calendar, Health, notifications)
+# and local settings. FRESH=1 wipes the app first, like a new user.
+if [ "${FRESH:-0}" = "1" ]; then
+  xcrun simctl uninstall "$UDID" "$BUNDLE_ID" 2>/dev/null || true
+fi
 xcrun simctl install "$UDID" "$APP"
 xcrun simctl terminate "$UDID" "$BUNDLE_ID" 2>/dev/null || true
 

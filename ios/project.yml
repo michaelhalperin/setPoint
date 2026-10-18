@@ -1,7 +1,7 @@
 name: SetPoint
 
 options:
-  bundleIdPrefix: com.setpoint
+  bundleIdPrefix: com.michaelhalperin.setpoint
   deploymentTarget:
     iOS: "17.0"
   createIntermediateGroups: true
@@ -56,11 +56,11 @@ targets:
         NSPhotoLibraryUsageDescription: "Attach a photo of a meal to log it."
         SentryDSN: $(SENTRY_DSN)
         CFBundleURLTypes:
-          - CFBundleURLName: com.setpoint.app
+          - CFBundleURLName: com.michaelhalperin.setpoint
             CFBundleURLSchemes: [setpoint]
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.setpoint.app
+        PRODUCT_BUNDLE_IDENTIFIER: com.michaelhalperin.setpoint
         ENABLE_PREVIEWS: YES
         # Sentry DSN for crash reporting (a public client key, not a secret).
         # Empty = reporting off.
@@ -77,9 +77,9 @@ targets:
         com.apple.developer.healthkit.access: []
         com.apple.developer.healthkit.background-delivery: true
         com.apple.security.application-groups:
-          - group.com.setpoint.app
+          - group.com.michaelhalperin.setpoint
         keychain-access-groups:
-          - $(AppIdentifierPrefix)group.com.setpoint.app
+          - $(AppIdentifierPrefix)group.com.michaelhalperin.setpoint
     dependencies:
       - target: SetPointWidgets
         embed: true
@@ -102,7 +102,7 @@ targets:
       - path: SetPoint/Shared
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.setpoint.app.widgets
+        PRODUCT_BUNDLE_IDENTIFIER: com.michaelhalperin.setpoint.widgets
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: SetPointWidgets/Info.plist
         SKIP_INSTALL: YES
@@ -110,9 +110,9 @@ targets:
       path: SetPointWidgets/SetPointWidgets.entitlements
       properties:
         com.apple.security.application-groups:
-          - group.com.setpoint.app
+          - group.com.michaelhalperin.setpoint
         keychain-access-groups:
-          - $(AppIdentifierPrefix)group.com.setpoint.app
+          - $(AppIdentifierPrefix)group.com.michaelhalperin.setpoint
     dependencies:
       - sdk: ActivityKit.framework
       - sdk: WidgetKit.framework
@@ -128,7 +128,7 @@ targets:
       - target: SetPoint
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.setpoint.app.tests
+        PRODUCT_BUNDLE_IDENTIFIER: com.michaelhalperin.setpoint.tests
         GENERATE_INFOPLIST_FILE: YES
 
 schemes:

@@ -177,11 +177,15 @@ struct HomeContent: View {
                 onSave: { await logger?.saveEditor($0) ?? false }
             )
         }
-        .confirmationDialog("Snooze this check-in", isPresented: $choosingSnooze, titleVisibility: .visible) {
-            ForEach(CheckInActions.snoozeChoices(nextMealMinutes: minutesUntilNextMeal())) { choice in
-                Button(choice.title) { snooze(minutes: choice.minutes) }
+        .sheet(isPresented: $choosingSnooze) {
+            let choices = CheckInActions.snoozeChoices(nextMealMinutes: minutesUntilNextMeal())
+            SnoozeSheet(choices: choices) { minutes in
+                snooze(minutes: minutes)
             }
-            Button("Cancel", role: .cancel) {}
+            .presentationDetents([.height(SnoozeSheet.height(for: choices.count))])
+            .presentationDragIndicator(.visible)
+            .presentationBackground(Palette.background)
+            .presentationCornerRadius(28)
         }
         .sheet(isPresented: $showingPaywall) {
             PaywallView()

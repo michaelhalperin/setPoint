@@ -244,21 +244,6 @@ struct CheckInTakeover: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Space.sm) {
-            HStack(spacing: 8) {
-                LoopingPhase(period: 1.8, still: 1) { t in
-                    ZStack {
-                        Circle()
-                            .fill(Palette.background)
-                            .scaleEffect(1 + 1.4 * Phase.ramp(t, 0, 0.7))
-                            .opacity(0.8 * (1 - Phase.ramp(t, 0, 0.7)))
-                        Circle().fill(Palette.background)
-                    }
-                }
-                .frame(width: 8, height: 8)
-                Text(checkIn.tier >= 3 ? "Let’s talk" : "Check-in")
-                    .sectionLabelStyle(Palette.background.opacity(0.85))
-            }
-
             VStack(alignment: .leading, spacing: 6) {
                 Text(TodayCopy.headline(moment))
                     .font(Typography.display(44))

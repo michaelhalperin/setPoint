@@ -10,6 +10,7 @@ struct SettingsView: View {
     @AppStorage("you.seen.appetite") private var seenAppetite = false
     #if DEBUG
     @State private var showingDevOnboarding = false
+    @State private var showingDevCheckInToday = false
     @State private var showingDevMealConfirm = false
     @State private var showingDevCheckIn = false
     @State private var showingDevConversation = false
@@ -36,6 +37,12 @@ struct SettingsView: View {
                 )
                 model = vm
                 await vm.load()
+            // For the Calendar row's "3 moved".
+            if !env.calendar.isPreview, env.subscription.entitled {
+                env.calendar.refreshAuthorization()
+                await env.calendar.refreshStatus()
+                if env.calendar.connected { await env.calendar.refreshWeek() }
+            }
             }
         }
     }
@@ -86,7 +93,7 @@ struct SettingsView: View {
                         YouRow(
                             symbol: "calendar",
                             title: "Calendar",
-                            value: env.calendar.connected ? "Connected" : "Off",
+                            value: env.calendar.youRowValue,
                             isNew: !seenCalendar
                         )
                     }
@@ -158,6 +165,9 @@ struct SettingsView: View {
                 if let error = model.error {
                     Text(error)
                         .font(Typography.data(13))
+        .fullScreenCover(isPresented: $showingDevCheckInToday) {
+            DevCheckInTodayPreview()
+        }
                         .foregroundStyle(Palette.accentDeep)
                         .padding(Space.sm)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -199,6 +209,14 @@ struct SettingsView: View {
             Button {
                 showingDevOnboarding = true
             } label: {
+            Button {
+                showingDevCheckIn = true
+            } label: {
+                DestinationRow(title: "Check-in · Sheet", subtitle: "Starts a real check-in")
+            }
+            .buttonStyle(PressableCard())
+            .appearIn(9)
+
                 DestinationRow(title: "Onboarding")
             }
             .buttonStyle(PressableCard())
@@ -213,9 +231,9 @@ struct SettingsView: View {
             .appearIn(7)
 
             Button {
-                showingDevCheckIn = true
+                showingDevCheckInToday = true
             } label: {
-                DestinationRow(title: "Check-in", subtitle: "Full-screen, demo data")
+                DestinationRow(title: "Check-in · Today", subtitle: "Real check-in on Today")
             }
             .buttonStyle(PressableCard())
             .appearIn(8)
@@ -226,7 +244,7 @@ struct SettingsView: View {
                 DestinationRow(title: "Let’s talk", subtitle: "Starts a real conversation")
             }
             .buttonStyle(PressableCard())
-            .appearIn(9)
+            .appearIn(10)
         }
     }
     #endif
@@ -707,27 +725,146 @@ private struct DevMealConfirmPreview: View {
     }
 }
 
-/// The full-screen check-in (§5.3/§5.4) over a dimmed Home, same staging as
-/// `-uiStub prescription` — reachable from Settings so it doesn't need a real
-/// check-in to be pending.
+/// Today with a real check-in takeover — creates one if none is open.
+private struct DevCheckInTodayPreview: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(AppEnvironment.self) private var env
+    @State private var model: HomeViewModel?
+    @State private var error: String?
+
+    var body: some View {
+        ZStack(alignment: .topTrailing) {
+            Group {
+                if let model {
+                    HomeContent(model: model)
+                } else if let error {
+                    VStack(spacing: 14) {
+                        Text(error)
+                            .font(Typography.data(15))
+                            .foregroundStyle(Palette.inkSoft)
+                            .multilineTextAlignment(.center)
+                        ActionButton(title: "Try again", kind: .secondary) {
+                            Task { await start() }
+                        }
+                        .frame(maxWidth: 200)
+                        ActionButton(title: "Close", kind: .secondary) { dismiss() }
+                            .frame(maxWidth: 200)
+                    }
+                    .padding(28)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Palette.background.ignoresSafeArea())
+                } else {
+                    ProgressView()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(Palette.background.ignoresSafeArea())
+                }
+            }
+
+            Button("Close preview") { dismiss() }
+                .font(Typography.data(13, weight: .medium))
+                .foregroundStyle(Palette.inkSoft)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(.ultraThinMaterial, in: Capsule())
+                .padding(.trailing, Space.gutter)
+                .padding(.top, 6)
+        }
+        .task { await start() }
+    }
+
+    private func start() async {
+    @Environment(AppEnvironment.self) private var env
+    @State private var home: HomeResponse?
+    @State private var error: String?
+        guard model == nil else { return }
+        error = nil
+        do {
+            let _: StartTalkResponse = try await env.api.post("/api/checkins/start-check-in")
+            let vm = HomeViewModel(
+                api: env.api,
+                onUnauthorized: { env.auth.handleUnauthorized() },
+                onMealChanged: { env.changes.mealsChanged() }
+            )
+            await vm.load()
+            model = vm
+        } catch {
+            self.error = UserFacingError.message(for: error, fallback: "Couldn't start a check-in.")
+        }
+    }
+}
+
+/// Full-screen check-in sheet against the signed-in account — creates a real
+/// meal check-in if none is open.
 private struct DevCheckInPreview: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        ZStack {
-            HomeContent(model: .previewed(.loaded(.sampleUnder)))
-                .disabled(true)
-                .overlay { Palette.scrim.ignoresSafeArea().allowsHitTesting(false) }
+        Group {
+            if let home, let checkIn = home.activeCheckIn, checkIn.tier < 3 {
+                ZStack {
+                    HomeContent(model: .previewed(.loaded(home)))
+                        .disabled(true)
+                        .overlay { Palette.scrim.ignoresSafeArea().allowsHitTesting(false) }
 
-            if let checkIn = HomeResponse.sampleUnder.activeCheckIn {
-                PrescriptionView(
-                    checkIn: checkIn,
-                    headline: TodayCopy.headline(TodayMoment.resolve(.sampleUnder)),
-                    whyNow: TodayCopy.whyNow(.sampleUnder),
-                    onDismiss: { dismiss() },
-                    onResolved: { dismiss() },
-                    onAlreadyAte: { dismiss() }
-                )
+                    PrescriptionView(
+                        checkIn: checkIn,
+                        headline: TodayCopy.headline(TodayMoment.resolve(home)),
+                        whyNow: TodayCopy.whyNow(home),
+                        nextMealMinutes: minutesUntilNextMeal(home),
+                        onDismiss: { dismiss() },
+                        onResolved: { dismiss() },
+                        onAlreadyAte: { dismiss() },
+                        suggestSmallerDefault: home.appetite?.suggestSmallerDefault == true,
+                        appetiteLevel: home.appetite?.level
+                    )
+                }
+            } else if let error {
+                VStack(spacing: 14) {
+                    Text(error)
+                        .font(Typography.data(15))
+                        .foregroundStyle(Palette.inkSoft)
+                        .multilineTextAlignment(.center)
+                    ActionButton(title: "Try again", kind: .secondary) {
+                        Task { await start() }
+                    }
+                    .frame(maxWidth: 200)
+                    ActionButton(title: "Close", kind: .secondary) { dismiss() }
+                        .frame(maxWidth: 200)
+                }
+                .padding(28)
+            home = loaded
+        } catch {
+            self.error = UserFacingError.message(for: error, fallback: "Couldn't start a check-in.")
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Palette.background.ignoresSafeArea())
+
+    private func minutesUntilNextMeal(_ home: HomeResponse) -> Int? {
+        let times = home.resolvedMealTimes
+        let now = Calendar.current.dateComponents([.hour, .minute], from: .now)
+        let nowMin = (now.hour ?? 0) * 60 + (now.minute ?? 0)
+        let candidates = [times.breakfastMin, times.lunchMin, times.dinnerMin]
+            .map { $0 > nowMin ? $0 - nowMin : $0 + 1440 - nowMin }
+            .filter { $0 > 0 }
+        return candidates.min()
+    }
+            } else {
+                ProgressView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Palette.background.ignoresSafeArea())
+            }
+        }
+        .task { await start() }
+    }
+
+    private func start() async {
+        guard home == nil else { return }
+        error = nil
+        do {
+            let _: StartTalkResponse = try await env.api.post("/api/checkins/start-check-in")
+            let loaded: HomeResponse = try await env.api.get("/api/home")
+            guard let checkIn = loaded.activeCheckIn, checkIn.tier < 3 else {
+                self.error = "Couldn't open a meal check-in."
+                return
             }
         }
     }

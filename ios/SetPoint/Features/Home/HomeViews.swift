@@ -49,3 +49,65 @@ enum CheckInActions {
         let minutes: Int
     }
 }
+
+/// Compact sheet for picking how long to snooze a check-in.
+struct SnoozeSheet: View {
+    let choices: [CheckInActions.SnoozeChoice]
+    let onPick: (Int) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+
+    static func height(for choiceCount: Int) -> CGFloat {
+        148 + CGFloat(max(choiceCount, 1)) * 68 + 72
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Space.md) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Snooze")
+                    .font(Typography.display(28))
+                    .foregroundStyle(Palette.ink)
+                    .accessibilityAddTraits(.isHeader)
+                Text("I’ll ask again later.")
+                    .font(Typography.data(15))
+                    .foregroundStyle(Palette.inkSoft)
+            }
+
+            VStack(spacing: 10) {
+                ForEach(choices) { choice in
+                    Button {
+                        onPick(choice.minutes)
+                        dismiss()
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "zzz")
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundStyle(Palette.accent)
+                                .frame(width: 36, height: 36)
+                                .background(Palette.accentTint, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                            Text(choice.title)
+                                .font(Typography.data(17, weight: .bold))
+                                .foregroundStyle(Palette.ink)
+                            Spacer(minLength: 0)
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(Palette.inkFaint)
+                        }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 12)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Palette.surfaceSunk, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    }
+                    .buttonStyle(PressableCard())
+                }
+            }
+
+            ActionButton(title: "Cancel", kind: .secondary) { dismiss() }
+        }
+        .padding(.horizontal, Space.gutter)
+        .padding(.top, Space.lg)
+        .padding(.bottom, Space.md)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background(Palette.background.ignoresSafeArea())
+    }
+}

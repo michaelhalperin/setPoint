@@ -1,3 +1,4 @@
+import { AccountNotFoundError } from '../account/deleteAccount.js';
 import type { PrismaClient } from '@prisma/client';
 import {
   applyCalendarShift,
@@ -130,12 +131,14 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
     where: { id: userId },
     include: { onboarding: true, safetyScreening: true, escalationState: true, weightEntries: { orderBy: { measuredAt: 'desc' }, take: 1 } },
   });
-  if (!user?.onboarding) throw new OnboardingIncompleteError('onboarding not complete');
+  // A valid token for a deleted account — the app should sign out, not start onboarding.
+  if (!user) throw new AccountNotFoundError('account not found');
+  if (!user.onboarding) throw new OnboardingIncompleteError('onboarding not complete');
 
   const profile = user.onboarding;
   const dayStart = startOfLocalDay(now, user.timezone);
 
-  const [todayMeals, lastMeal, activeCheckIn, todayCheckIns, lastWeighIn, busyRows, dayAppetite, smallerCount] = await Promise.all([
+  const [todayMeals, lastMeal, activeCheckIn, todayCheckIns, lastWeighIn, busyRows, dayAppetite, smallerCount, keepRows] = await Promise.all([
     prisma.meal.findMany({
       where: { userId, loggedAt: { gte: dayStart } },
       orderBy: { loggedAt: 'asc' },
@@ -206,6 +209,12 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
   const framing = homeFraming(goal, consumedKcal, targetKcal);
   const remainingKcal = Math.round(targetKcal - consumedKcal);
   const remainingProteinG = targetProteinG === null ? null : round1(targetProteinG - consumedProteinG);
+    profile.calendarEnabled
+      ? prisma.calendarKeep.findMany({
+          where: { userId, localDate: localDateISO(now, user.timezone) },
+          select: { slot: true },
+        })
+      : Promise.resolve([]),
   const hoursSinceMeal = lastMeal ? hoursBetween(lastMeal.loggedAt, now) : null;
   const localMinute = (date: Date): number => Math.floor(msSinceLocalMidnight(date, user.timezone) / 60_000);
   const mins = localMinute(now);
@@ -255,6 +264,7 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
         targetKcal,
         extraSlots,
       })
+  const keptSlots = new Set(keepRows.map((k) => k.slot));
     : null;
   const shifted = scheduled
     ? withOverdue(applyCalendarShift(scheduled, times, todayBusy, calendarPrefs, weekday)!, mins)
@@ -269,7 +279,7 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
         endMin: b.endMin,
       }))
     : [];
-  const movedSlots = movedSlotsToday(times, SCHEDULE_CONFIG.graceMin, todayBusy, calendarPrefs, weekday);
+  const movedSlots = movedSlotsToday(times, SCHEDULE_CONFIG.graceMin, todayBusy, calendarPrefs, weekday, keptSlots);
   const trainingRows = workoutHomeRows(trainingDay.workouts, user.timezone, dayStart);
   const firstSession = trainingDay.workouts[0];
   const refuelUntilMin = firstSession

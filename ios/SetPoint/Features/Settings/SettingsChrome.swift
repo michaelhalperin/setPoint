@@ -5,6 +5,10 @@ import UIKit
 struct SettingsScreen<Content: View>: View {
     let title: String
     var subtitle: String? = nil
+    /// Trailing item on the back-button row (a status pill, day arrows).
+    var accessory: AnyView? = nil
+    /// False when the screen is a tab's root — there's nowhere to go back to.
+    var showsBack: Bool = true
     @ViewBuilder var content: Content
 
     @Environment(\.dismiss) private var dismiss
@@ -13,17 +17,25 @@ struct SettingsScreen<Content: View>: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 VStack(alignment: .leading, spacing: 16) {
-                    Button {
-                        dismiss()
-                    } label: {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundStyle(Palette.ink)
-                            .frame(width: 44, height: 44)
-                            .background(Palette.surfaceSunk, in: Circle())
+                    if showsBack || accessory != nil {
+                        HStack {
+                            if showsBack {
+                                Button {
+                                    dismiss()
+                                } label: {
+                                    Image(systemName: "chevron.left")
+                                        .font(.system(size: 18, weight: .semibold))
+                                        .foregroundStyle(Palette.ink)
+                                        .frame(width: 44, height: 44)
+                                        .background(Palette.surfaceSunk, in: Circle())
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel("Back")
+                            }
+                            Spacer(minLength: 0)
+                            if let accessory { accessory }
+                        }
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Back")
 
                     VStack(alignment: .leading, spacing: 4) {
                         Text(title)
@@ -50,6 +62,10 @@ struct SettingsScreen<Content: View>: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .scrollDismissesKeyboard(.interactively)
+        #if DEBUG
+        // Screenshots of the lower half of a stub: `-uiStub calendar-week -stubScrollBottom`.
+        .defaultScrollAnchor(CommandLine.arguments.contains("-stubScrollBottom") ? .bottom : .top)
+        #endif
         .background(Palette.background.ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
         .navigationBarBackButtonHidden(true)
