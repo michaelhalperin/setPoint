@@ -58,18 +58,19 @@ final class OnboardingTests: XCTestCase {
     }
 
     @MainActor
-    func testSetupStartsAtTheGoalWithNoWayBack() {
+    func testSetupStartsAtAboutYouWithNoWayBack() {
         let vm = makeModel()
-        XCTAssertEqual(vm.step, .goal)
+        XCTAssertEqual(vm.step, .about)
         XCTAssertFalse(vm.canGoBack) // the pitch lives before sign-in, not behind this
     }
 
     @MainActor
     func testGoalGatesUntilChosen() {
         let vm = makeModel()
+        vm.step = .goal
         XCTAssertFalse(vm.canAdvance)
-        vm.draft.goal = .bulk
-        XCTAssertTrue(vm.canAdvance)
+        vm.draft.goal = .maintain
+        XCTAssertTrue(vm.canAdvance)               // Maintain has no target to set
     }
 
     @MainActor
@@ -96,9 +97,9 @@ final class OnboardingTests: XCTestCase {
     }
 
     @MainActor
-    func testTargetStepGatesOnAValidWeight() {
+    func testGoalWithATargetGatesOnAValidWeight() {
         let vm = makeModel()
-        vm.step = .target
+        vm.step = .goal
         vm.draft.goal = .bulk
         vm.draft.weightKg = 70
         XCTAssertFalse(vm.canAdvance)             // no target yet
@@ -109,38 +110,24 @@ final class OnboardingTests: XCTestCase {
     }
 
     @MainActor
-    func testMaintainSkipsTheTargetStepBothWays() {
+    func testGoalFollowsAboutAndLeadsToMealTimes() {
         let vm = makeModel()
-        vm.draft.goal = .maintain
-        vm.step = .about
         vm.advance()
-        XCTAssertEqual(vm.step, .rhythm)          // .target skipped going forward
-        vm.goBack()
-        XCTAssertEqual(vm.step, .about)           // and skipped coming back
-    }
-
-    @MainActor
-    func testGainKeepsTheTargetStep() {
-        let vm = makeModel()
-        vm.draft.goal = .bulk
-        vm.step = .about
-        vm.advance()
-        XCTAssertEqual(vm.step, .target)
+        XCTAssertEqual(vm.step, .goal)
         vm.advance()
         XCTAssertEqual(vm.step, .rhythm)
+        vm.goBack()
+        XCTAssertEqual(vm.step, .goal)
     }
 
     @MainActor
-    func testProgressRingCountsOnlyTheStepsThisGoalSees() {
+    func testProgressCountsFiveSteps() {
         let vm = makeModel()
-        vm.draft.goal = .bulk
-        XCTAssertEqual(vm.progress, 1.0 / 6, accuracy: 0.001)
+        XCTAssertEqual(vm.progress, 1.0 / 5, accuracy: 0.001)
+        vm.step = .goal
+        XCTAssertEqual(vm.progress, 2.0 / 5, accuracy: 0.001)
         vm.step = .safety
         XCTAssertEqual(vm.progress, 1, accuracy: 0.001)
-
-        vm.draft.goal = .maintain
-        vm.step = .goal
-        XCTAssertEqual(vm.progress, 1.0 / 5, accuracy: 0.001)
     }
 
     @MainActor
@@ -255,7 +242,8 @@ final class OnboardingTests: XCTestCase {
     @MainActor
     func testAutoAdvanceOnlyFiresIfStillOnTheOriginatingStep() async {
         let vm = makeModel()
-        vm.draft.goal = .bulk
+        vm.step = .goal
+        vm.draft.goal = .maintain
         vm.autoAdvance(from: .goal, after: 0.05)
         vm.step = .about // navigate away before the timer fires
         try? await Task.sleep(for: .milliseconds(150))
@@ -353,7 +341,7 @@ final class OnboardingTests: XCTestCase {
         let first = OnboardingViewModel(api: AppEnvironment.preview().api, progressStore: store, onComplete: {})
         first.draft.goal = .bulk
         first.step = .about
-        first.advance() // saved at .target with no height/weight yet
+        first.advance() // saved at .goal with no height/weight yet
 
         let resumed = OnboardingViewModel(api: AppEnvironment.preview().api, progressStore: store, onComplete: {})
         XCTAssertEqual(resumed.step, .about)
@@ -364,6 +352,6 @@ final class OnboardingTests: XCTestCase {
         let first = makeModel()
         first.draft.goal = .diet
         first.advance()
-        XCTAssertEqual(makeModel().step, .goal)
+        XCTAssertEqual(makeModel().step, .about)
     }
 }

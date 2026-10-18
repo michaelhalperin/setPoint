@@ -1,7 +1,8 @@
 import SwiftUI
 import UIKit
 
-// Setup, one decision per screen: goal, about you, target, meal times, foods.
+// Setup, one decision per screen: about you, goal (with its target), meal
+// times, foods.
 // Safety lives in OnboardingSafety.swift; the payoff in OnboardingFinish.swift.
 
 // MARK: - Goal
@@ -23,7 +24,14 @@ struct GoalStep: View {
                     .appearIn(1 + index, rise: 14)
                 }
             }
+            // Gain or cut: the target slides in under the choice.
+            if model.draft.goal?.hasWeightTarget == true {
+                TargetCard(model: model)
+                    .id(model.draft.goal)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
         }
+        .animation(Motion.settle, value: model.draft.goal)
     }
 
     static func symbol(_ goal: Goal) -> String {
@@ -38,10 +46,10 @@ struct GoalStep: View {
         withAnimation(Motion.settle) {
             if model.draft.goal != goal {
                 model.draft.preferredDurationWeeks = nil
+                model.draft.targetWeightKg = nil
             }
             model.draft.goal = goal
         }
-        model.autoAdvance(from: .goal, after: 0.55)
     }
 }
 
@@ -241,8 +249,9 @@ struct AboutStep: View {
 
 // MARK: - Target
 
-/// Target weight + pace. Skipped for Maintain.
-struct TargetStep: View {
+/// Target weight, pace and timeframe — shown on the goal screen for a gain or
+/// a cut. Maintain has no target.
+private struct TargetCard: View {
     @Bindable var model: OnboardingViewModel
     @AppStorage(MassUnit.storageKey) private var massUnit = MassUnit.localeDefault
 
@@ -250,9 +259,7 @@ struct TargetStep: View {
     private var target: Double { model.draft.targetWeightKg ?? (model.draft.weightKg ?? 70) }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Space.md) {
-            StepTitle(label: "Target", text: "Where to?", tail: "Pick a pace, not a deadline.")
-
+        VStack(alignment: .leading, spacing: 10) {
             VStack(alignment: .leading, spacing: 14) {
                 HStack {
                     Text("Target weight").sectionLabelStyle()
@@ -303,7 +310,6 @@ struct TargetStep: View {
             }
             .padding(16)
             .glass(radius: 22)
-            .appearIn(1, rise: 14)
 
             if model.targetWeightMessage == nil {
                 GlassList {
@@ -316,7 +322,6 @@ struct TargetStep: View {
                         onUp: { model.setDurationWeeks(weeks + 1) }
                     )
                 }
-                .appearIn(2, rise: 14)
             }
         }
         .animation(Motion.settle, value: model.targetWeightMessage)

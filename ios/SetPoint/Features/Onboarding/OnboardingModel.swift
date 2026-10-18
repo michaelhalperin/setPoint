@@ -167,11 +167,12 @@ final class OnboardingViewModel {
     /// Setup after sign-in (the pitch lives in `WelcomeView`, before it). One
     /// decision per screen; `safety` submits, `reach` and `covered` come after.
     enum Step: Int, CaseIterable {
-        case goal, about, target, rhythm, restrictions, safety
+        /// Body stats come first so the goal screen can set a target against them.
+        case about, goal, rhythm, restrictions, safety
         case reach, covered
     }
 
-    var step: Step = .goal
+    var step: Step = .about
     var draft = OnboardingDraft()
     /// Which safety card is in front.
     var safetyIndex = 0
@@ -202,9 +203,9 @@ final class OnboardingViewModel {
 
     // MARK: Progress
 
-    /// The steps that fill the ring on the Next button, for this goal.
+    /// The steps counted in the setup header.
     var progressSteps: [Step] {
-        [.goal, .about, .target, .rhythm, .restrictions, .safety].filter { !shouldSkip($0) }
+        [.about, .goal, .rhythm, .restrictions, .safety]
     }
 
     /// 0...1 — how full the ring is once the current step is done.
@@ -324,28 +325,20 @@ final class OnboardingViewModel {
     var canGoBack: Bool {
         guard !submitting else { return false }
         switch step {
-        case .goal, .reach, .covered: return false
+        case .about, .reach, .covered: return false
         default: return true
         }
     }
 
     var canAdvance: Bool {
         switch step {
-        case .goal: return draft.goal != nil
         case .about: return draft.heightCm != nil && draft.weightKg != nil && draft.isOldEnough
-        case .target: return targetWeightIsValid && draft.targetWeightKg != nil
+        // A gain or cut needs a valid target; Maintain has none to set.
+        case .goal: return targetWeightIsValid
         case .rhythm: return draft.mealRhythmPreset != .custom || mealAnchorsAreValid
         case .restrictions: return true
         case .safety: return safetyComplete && !submitting
         case .reach, .covered: return true
-        }
-    }
-
-    /// `.target` only applies to a goal with a weight target — Maintain skips it.
-    private func shouldSkip(_ step: Step) -> Bool {
-        switch step {
-        case .target: return draft.goal?.hasWeightTarget != true
-        default: return false
         }
     }
 
@@ -358,9 +351,7 @@ final class OnboardingViewModel {
         case .covered:
             onComplete()
         default:
-            var next = step.rawValue + 1
-            while let candidate = Step(rawValue: next), shouldSkip(candidate) { next += 1 }
-            if let nextStep = Step(rawValue: next) { step = nextStep }
+            if let nextStep = Step(rawValue: step.rawValue + 1) { step = nextStep }
             saveProgress()
         }
     }
@@ -371,9 +362,7 @@ final class OnboardingViewModel {
             saveProgress()
             return
         }
-        var prev = step.rawValue - 1
-        while let candidate = Step(rawValue: prev), shouldSkip(candidate) { prev -= 1 }
-        if let prevStep = Step(rawValue: prev) { step = prevStep }
+        if let prevStep = Step(rawValue: step.rawValue - 1) { step = prevStep }
         saveProgress()
     }
 
@@ -440,7 +429,7 @@ final class OnboardingViewModel {
     // MARK: Saved progress
 
     private struct Progress: Codable {
-        static let version = 2
+        static let version = 3
         var version = Progress.version
         var step: Int
         var safetyIndex: Int
@@ -466,12 +455,10 @@ final class OnboardingViewModel {
         else { return }
         draft = saved.draft
         // Resume at the saved step, but never past one whose answers are missing.
-        let target = Step(rawValue: saved.step) ?? .goal
-        step = .goal
+        let target = Step(rawValue: saved.step) ?? .about
+        step = .about
         while step.rawValue < target.rawValue, step.rawValue < Step.safety.rawValue, canAdvance {
-            var next = step.rawValue + 1
-            while let candidate = Step(rawValue: next), shouldSkip(candidate) { next += 1 }
-            guard let nextStep = Step(rawValue: next) else { break }
+            guard let nextStep = Step(rawValue: step.rawValue + 1) else { break }
             step = nextStep
         }
         if step == .safety {
@@ -496,7 +483,7 @@ final class OnboardingViewModel {
     ) -> OnboardingViewModel {
         let vm = OnboardingViewModel(api: AppEnvironment.preview().api, onComplete: onComplete)
         vm.previewOnly = true
-        if step != .goal {
+        if step != .about {
             vm.draft.goal = .bulk
             vm.draft.heightCm = 178
             vm.draft.weightKg = 74

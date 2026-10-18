@@ -64,7 +64,6 @@ struct OnboardingFlow: View {
         switch model.step {
         case .goal: GoalStep(model: model)
         case .about: AboutStep(model: model)
-        case .target: TargetStep(model: model)
         case .rhythm: RhythmStep(model: model)
         case .restrictions: RestrictionsStep(model: model)
         case .safety: SafetyStep(model: model)
