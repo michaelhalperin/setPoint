@@ -417,7 +417,9 @@ final class SettingsViewModel {
             checkInsPaused: false,
             restrictions: [.init(label: "Dairy", token: "dairy", source: "INTOLERANCE")],
             enforcementEnabled: true, enforcementDisabledReason: nil,
-            heightCm: 182, minHealthyWeightKg: 61.3
+            heightCm: 182, minHealthyWeightKg: 61.3,
+            pantryTokens: ["Oats", "Whole milk", "Peanut butter", "Bagels", "Bananas"],
+            dislikedFoods: ["Mushrooms"]
         ))
         vm.phase = .loaded
         return vm

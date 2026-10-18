@@ -69,79 +69,50 @@ struct SettingsView: View {
     @ViewBuilder
     private func profile(_ model: SettingsViewModel) -> some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: Space.md) {
-                Headline("You", size: 36)
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .firstTextBaseline) {
+                    Headline("You", size: 36)
+                    Spacer(minLength: 8)
+                    NavigationLink { GoalSettingsView(model: model) } label: {
+                        Text("Edit plan")
+                            .font(Typography.data(13, weight: .regular))
+                            .foregroundStyle(Palette.ink)
+                            .padding(.horizontal, 14)
+                            .frame(height: 36)
+                            .glassCapsule(fill: Color.white.opacity(0.06), stroke: Color.white.opacity(0.10))
+                    }
+                    .buttonStyle(PressableCard())
+                }
+                .appearIn(0)
+
+                goalCard(model)
                     .appearIn(0)
 
-                planCard(model)
-                    .appearIn(0)
-
-                checkInsCard(model)
+                checkInsSection(model)
                     .appearIn(1)
 
-                youSection("Your day") {
-                    NavigationLink { RhythmSettingsView(model: model) } label: {
-                        YouRow(symbol: "clock", title: "Meal times", value: mealTimesSubtitle(model))
-                    }
-                    rowDivider
-                    NavigationLink {
-                        if env.subscription.entitled {
-                            CalendarSettingsView()
-                                .onAppear { seenCalendar = true }
-                        } else {
-                            PaywallView()
-                        }
-                    } label: {
-                        YouRow(
-                            symbol: "calendar",
-                            title: "Calendar",
-                            value: env.calendar.youRowValue,
-                            isNew: !seenCalendar
-                        )
-                    }
-                    rowDivider
-                    NavigationLink {
-                        AppetiteSettingsView()
-                            .onAppear { seenAppetite = true }
-                    } label: {
-                        YouRow(
-                            symbol: "fork.knife",
-                            title: "Appetite",
-                            value: nil,
-                            isNew: !seenAppetite
-                        )
-                    }
-                }
-                .appearIn(2)
+                setupGrid(model)
+                    .appearIn(2)
 
-                youSection("Food") {
-                    NavigationLink { GoalSettingsView(model: model) } label: {
-                        YouRow(symbol: "scope", title: "Goal and pace", value: goalSubtitle(model))
-                    }
-                    rowDivider
-                    NavigationLink { FoodsSettingsView(model: model) } label: {
-                        YouRow(symbol: "nosign", title: "Foods I avoid", value: restrictionsSubtitle(model))
-                    }
-                }
-                .appearIn(3)
+                proCard
+                    .appearIn(3)
 
-                youSection("Connected") {
-                    if env.health.isAvailable {
-                        NavigationLink { HealthSettingsView() } label: {
-                            YouRow(symbol: "heart", title: "Apple Health", value: healthRowValue)
-                        }
-                        rowDivider
+                NavigationLink { AccountSettingsView(model: model) } label: {
+                    HStack {
+                        Text("Account & data")
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(Color(hex: 0x52525B))
                     }
-                    NavigationLink { AccountSettingsView(model: model) } label: {
-                        YouRow(symbol: "person", title: "Account", value: nil)
-                    }
-                    rowDivider
-                    Button {
-                        massUnit = massUnit == .kg ? .lb : .kg
-                    } label: {
-                        YouRow(symbol: "scalemass", title: "Units", value: massUnit.title)
-                    }
+                    .font(Typography.data(14, weight: .regular))
+                    .foregroundStyle(Palette.inkSoft)
+                    .padding(.horizontal, 18)
+                    .frame(height: 48)
+                    .overlay(Capsule().strokeBorder(Color.white.opacity(0.08)))
+                    .contentShape(Capsule())
                 }
+                .buttonStyle(PressableCard())
                 .appearIn(4)
 
                 if let error = model.error {
@@ -158,8 +129,9 @@ struct SettingsView: View {
                 #endif
             }
             .padding(Space.gutter)
+            .padding(.bottom, 90)
         }
-        .background(alignment: .top) { AmbientGlow(tone: .mixed, strength: 0.5).offset(y: -170).ignoresSafeArea() }
+        .background(alignment: .top) { AmbientGlow(tone: .mixed, strength: 0.6).offset(y: -140).ignoresSafeArea() }
         .background(Palette.background.ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
         #if DEBUG
@@ -232,19 +204,6 @@ struct SettingsView: View {
     }
     #endif
 
-    private func youSection<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(title).sectionLabelStyle()
-            VStack(spacing: 0) { content() }
-                .buttonStyle(.plain)
-                .glass(radius: 24)
-        }
-    }
-
-    private var rowDivider: some View {
-        Rectangle().fill(Color.white.opacity(0.07)).frame(height: 1).padding(.leading, 64)
-    }
-
     private var healthRowValue: String {
         switch env.health.state {
         case .connected:
@@ -254,100 +213,287 @@ struct SettingsView: View {
         }
     }
 
-    private func planCard(_ model: SettingsViewModel) -> some View {
-        NavigationLink {
+    /// The goal as a picture: weight now inside a ring that fills toward the target.
+    private func goalCard(_ model: SettingsViewModel) -> some View {
+        let progress = model.goal.hasWeightTarget ? (planProgress(model) ?? 0.04) : 1
+        return NavigationLink {
             GoalSettingsView(model: model)
         } label: {
-            VStack(alignment: .leading, spacing: 16) {
-                HStack(spacing: 14) {
-                    FuelOrb(size: 48, breathing: false, glow: 0.35)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(planTitle(model))
-                            .font(Typography.data(20, weight: .regular))
-                            .foregroundStyle(Palette.ink)
-                        Text("Your plan")
-                            .font(Typography.data(13, weight: .regular))
-                            .foregroundStyle(Palette.inkSoft)
+            HStack(spacing: 18) {
+                ZStack {
+                    OrbRing(progress: max(0.04, progress))
+                    FuelOrb(size: 80, glow: 0.4)
+                    VStack(spacing: 0) {
+                        Text(model.currentWeightKg.map { massUnit.number($0, digits: 1 ... 1) } ?? "—")
+                            .font(Typography.data(22, weight: .light))
+                            .tracking(-0.6)
+                        Text("\(massUnit.abbreviation.uppercased()) NOW")
+                            .font(Typography.mono(9))
+                            .foregroundStyle(Color(hex: 0xFDE6CF))
                     }
-                    Spacer(minLength: 8)
-                    Text("Edit plan")
-                        .font(Typography.data(13, weight: .regular))
+                    .foregroundStyle(Palette.ink)
+                    .shadow(color: .black.opacity(0.6), radius: 6, y: 2)
+                }
+                .frame(width: 112, height: 112)
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(goalLabel(model, progress: progress)).sectionLabelStyle(Palette.amber)
+                    Text(goalTitle(model))
+                        .font(Typography.display(26))
+                        .tracking(-0.8)
                         .foregroundStyle(Palette.ink)
-                        .padding(.horizontal, 14)
-                        .frame(height: 36)
-                        .glassCapsule(fill: Color.white.opacity(0.06), stroke: Color.white.opacity(0.10))
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.8)
+                    Text(goalLines(model))
+                        .font(Typography.mono(11))
+                        .foregroundStyle(Palette.inkSoft)
+                        .lineSpacing(3)
+                        .textCase(.uppercase)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-
-                if let progress = planProgress(model) {
-                    GeometryReader { box in
-                        ZStack(alignment: .leading) {
-                            Capsule().fill(Color.white.opacity(0.08))
-                            Capsule()
-                                .fill(LinearGradient(colors: [Palette.ember, Palette.amber], startPoint: .leading, endPoint: .trailing))
-                                .frame(width: max(6, box.size.width * progress))
-                        }
-                    }
-                    .frame(height: 6)
-                }
-
-                HStack(spacing: Space.md) {
-                    planMetric(model.kcalTarget.formatted(), label: "kcal a day")
-                    if let protein = model.proteinTarget {
-                        planMetric("\(protein) g", label: "protein")
-                    }
-                    if let current = model.currentWeightKg, model.goal.hasWeightTarget {
-                        planMetric(massUnit.number(current, digits: 1 ... 1), label: "\(massUnit.abbreviation) now")
-                    }
-                    Spacer(minLength: 0)
-                }
+                Spacer(minLength: 0)
             }
             .padding(18)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .glass(radius: Radius.xl)
+            .background {
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .fill(LinearGradient(colors: [Palette.ember.opacity(0.12), Color.white.opacity(0.02)], startPoint: .topLeading, endPoint: .bottomTrailing))
+            }
+            .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous).strokeBorder(Color(hex: 0xFF8A50, opacity: 0.30)))
         }
         .buttonStyle(PressableCard())
+        .accessibilityLabel("\(goalTitle(model)). \(goalLines(model)). Edit plan")
     }
 
-    private func planMetric(_ value: String, label: String) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(value)
-                .font(Typography.data(22, weight: .light))
-                .foregroundStyle(Palette.ink)
-            Text(label)
-                .font(Typography.mono(11))
-                .foregroundStyle(Palette.inkFaint)
+    private func goalLabel(_ model: SettingsViewModel, progress: Double) -> String {
+        guard model.goal.hasWeightTarget else { return "Maintaining" }
+        let verb = model.goal == .bulk ? "Gaining" : "Cutting"
+        return "\(verb) · \(Int((progress * 100).rounded()))% there"
+    }
+
+    private func goalTitle(_ model: SettingsViewModel) -> String {
+        guard model.goal.hasWeightTarget, let target = model.targetWeightKg else {
+            if let current = model.currentWeightKg { return "Holding at \(massUnit.formatKg(current))" }
+            return "Hold steady"
         }
+        return "To \(massUnit.formatKg(target, digits: 0))"
     }
 
-    /// The manager's switch: when check-ins come, on or off, and quiet hours.
-    private func checkInsCard(_ model: SettingsViewModel) -> some View {
+    private func goalLines(_ model: SettingsViewModel) -> String {
+        let first = "\(model.kcalTarget.formatted()) kcal a day"
+        let second: String
+        if model.goal.hasWeightTarget {
+            second = model.honestDurationWeeks.map { "\(model.pace.title) · ~\($0) weeks left" } ?? model.pace.title
+        } else {
+            second = "No end date"
+        }
+        return first + "\n" + second
+    }
+
+    /// On or paused, drawn as the three meal check-ins a day — or a quiet line.
+    private func checkInsSection(_ model: SettingsViewModel) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text("Check-ins")
-                    .font(Typography.data(16, weight: .medium))
-                    .foregroundStyle(Palette.ink)
+                Text("How I check in").sectionLabelStyle()
                 Spacer()
                 Text("Quiet \(formatMinutes(model.quietHours.startMin))–\(formatMinutes(model.quietHours.endMin))")
-                    .font(Typography.mono(11))
+                    .font(Typography.mono(10))
                     .textCase(.uppercase)
                     .foregroundStyle(Palette.inkFaint)
-                if model.enforcementEnabled {
-                    Toggle("Check-ins", isOn: Binding(
-                        get: { !model.checkInsPaused },
-                        set: { on in Task { await model.setCheckInsPaused(!on) } }
-                    ))
-                    .labelsHidden()
-                    .tint(Palette.ember)
-                    .disabled(model.saving)
-                }
             }
+            .padding(.horizontal, 4)
+
+            if model.enforcementEnabled {
+                HStack(spacing: 8) {
+                    checkInTile(title: "On", caption: "After each meal time", dots: 3, selected: !model.checkInsPaused) {
+                        Task { await model.setCheckInsPaused(false) }
+                    }
+                    checkInTile(title: "Paused", caption: "Plan still updates", dots: 0, selected: model.checkInsPaused) {
+                        Task { await model.setCheckInsPaused(true) }
+                    }
+                }
+                .disabled(model.saving)
+            }
+
             Text(checkInsDetail(model))
                 .font(Typography.data(13, weight: .regular))
                 .foregroundStyle(Palette.inkSoft)
                 .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 4)
         }
-        .padding(16)
-        .glass(radius: 24)
+    }
+
+    private func checkInTile(title: String, caption: String, dots: Int, selected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 4) {
+                    if dots == 0 {
+                        Image(systemName: "pause.fill")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(selected ? Palette.onBone : Palette.inkFaint)
+                    }
+                    ForEach(0..<dots, id: \.self) { _ in
+                        Circle()
+                            .fill(selected ? Palette.ember : Color.white.opacity(0.25))
+                            .frame(width: 6, height: 6)
+                            .shadow(color: Palette.ember.opacity(selected ? 0.8 : 0), radius: 3)
+                    }
+                }
+                .frame(height: 14)
+                Text(title)
+                    .font(Typography.data(15, weight: .medium))
+                Text(caption.uppercased())
+                    .font(Typography.mono(10))
+                    .opacity(0.7)
+            }
+            .foregroundStyle(selected ? Palette.onBone : Palette.ink)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(selected ? Palette.ink : Color.white.opacity(0.035))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .strokeBorder(selected ? Palette.ink : Color.white.opacity(0.08))
+            )
+        }
+        .buttonStyle(PressableCard())
+        .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+
+    /// Each setting as a tile with a small picture of its current value.
+    private func setupGrid(_ model: SettingsViewModel) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Your setup").sectionLabelStyle().padding(.horizontal, 4)
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
+                NavigationLink { RhythmSettingsView(model: model) } label: {
+                    SetupTile(title: "Meal times", value: mealTimesSubtitle(model)) {
+                        HStack(alignment: .center, spacing: 6) {
+                            ForEach([model.mealTimes.breakfastMin, model.mealTimes.lunchMin, model.mealTimes.dinnerMin], id: \.self) { minute in
+                                Circle().fill(Palette.amber).frame(width: 8, height: 8)
+                                    .shadow(color: Palette.amber.opacity(0.6), radius: 3)
+                                    .offset(y: CGFloat(abs(minute - 780)) / 60 - 3)
+                            }
+                        }
+                    }
+                }
+                NavigationLink {
+                    AppetiteSettingsView().onAppear { seenAppetite = true }
+                } label: {
+                    SetupTile(title: "Appetite", value: appetiteValue(model), isNew: !seenAppetite) {
+                        HStack(spacing: 5) {
+                            Circle().strokeBorder(Palette.amber, lineWidth: 1.5).frame(width: 9, height: 9)
+                            Circle().fill(Color.white.opacity(0.3)).frame(width: 12, height: 12)
+                            FuelOrb(size: 18, breathing: false, glow: 0.3)
+                        }
+                    }
+                }
+                NavigationLink { FoodsSettingsView(model: model) } label: {
+                    SetupTile(title: "Foods I avoid", value: restrictionsSubtitle(model)) {
+                        HStack(spacing: 5) {
+                            FuelOrb(size: 18, breathing: false, glow: 0.3)
+                            Image(systemName: "nosign")
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundStyle(Palette.danger)
+                        }
+                    }
+                }
+                NavigationLink {
+                    if env.subscription.entitled {
+                        CalendarSettingsView().onAppear { seenCalendar = true }
+                    } else {
+                        PaywallView()
+                    }
+                } label: {
+                    SetupTile(
+                        title: "Calendar",
+                        value: env.subscription.entitled ? env.calendar.youRowValue : "Pro",
+                        valueColor: env.subscription.entitled ? Palette.inkSoft : Palette.hazeSoft,
+                        isNew: !seenCalendar
+                    ) {
+                        HStack(spacing: 5) {
+                            let picked = env.calendar.selectedChoices.prefix(4)
+                            if picked.isEmpty {
+                                ForEach([0x818CF8, 0xFFB86B, 0x86EFAC] as [UInt32], id: \.self) { hex in
+                                    RoundedRectangle(cornerRadius: 4).fill(Color(hex: hex)).frame(width: 12, height: 12).opacity(0.25)
+                                }
+                            } else {
+                                ForEach(Array(picked)) { choice in
+                                    RoundedRectangle(cornerRadius: 4).fill(Color(hex: choice.colorHex)).frame(width: 12, height: 12)
+                                }
+                            }
+                        }
+                    }
+                }
+                if env.health.isAvailable {
+                    NavigationLink { HealthSettingsView() } label: {
+                        SetupTile(title: "Apple Health", value: healthRowValue, valueColor: env.health.connected ? Palette.positive : Palette.inkSoft) {
+                            Image(systemName: "heart.fill")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundStyle(Color(hex: 0xFF3B5C))
+                                .frame(width: 22, height: 22)
+                                .background(Palette.ink, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+                        }
+                    }
+                }
+                Button {
+                    massUnit = massUnit == .kg ? .lb : .kg
+                } label: {
+                    SetupTile(title: "Units", value: massUnit.title, showsChevron: false) {
+                        HStack(spacing: 4) {
+                            ForEach(MassUnit.allCases, id: \.self) { unit in
+                                Text(unit.abbreviation)
+                                    .font(Typography.mono(10))
+                                    .foregroundStyle(unit == massUnit ? Palette.onBone : Palette.inkFaint)
+                                    .padding(.horizontal, 6)
+                                    .frame(height: 18)
+                                    .background(unit == massUnit ? Palette.ink : Color.white.opacity(0.06), in: Capsule())
+                            }
+                        }
+                    }
+                }
+            }
+            .buttonStyle(PressableCard())
+        }
+    }
+
+    private func appetiteValue(_ model: SettingsViewModel) -> String {
+        switch model.mode {
+        case "SMALL_FREQUENT": return "Smaller plates"
+        case "DRINKABLE": return "Drinkable first"
+        case "ASK_DAILY": return "Ask each morning"
+        default: return "Normal plates"
+        }
+    }
+
+    private var proCard: some View {
+        NavigationLink { PaywallView() } label: {
+            HStack(spacing: 14) {
+                FuelOrb(size: 38, breathing: false, glow: 0.5, haze: true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("SetPoint Pro")
+                        .font(Typography.data(15, weight: .medium))
+                        .foregroundStyle(Palette.ink)
+                    Text(env.subscription.entitled ? "Active · training and calendar on" : "Training refuels and calendar planning")
+                        .font(Typography.data(12, weight: .regular))
+                        .foregroundStyle(Palette.hazeSoft)
+                }
+                Spacer(minLength: 8)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Palette.hazeSoft)
+            }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 16)
+            .background {
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(LinearGradient(colors: [Palette.haze.opacity(0.16), Palette.haze.opacity(0.03)], startPoint: .topLeading, endPoint: .bottomTrailing))
+            }
+            .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(Palette.hazeSoft.opacity(0.35)))
+        }
+        .buttonStyle(PressableCard())
     }
 
     private func checkInsDetail(_ model: SettingsViewModel) -> String {
@@ -387,44 +533,44 @@ struct SettingsView: View {
     }
 }
 
-private struct YouRow: View {
-    let symbol: String
+/// A tile on You: a small picture of the setting, its name and current value.
+private struct SetupTile<Mark: View>: View {
     let title: String
-    let value: String?
+    let value: String
+    var valueColor: Color = Palette.inkSoft
     var isNew = false
+    var showsChevron = true
+    @ViewBuilder var mark: Mark
 
     var body: some View {
-        HStack(spacing: 14) {
-            Image(systemName: symbol)
-                .font(.system(size: 15, weight: .regular))
-                .foregroundStyle(Palette.ink)
-                .frame(width: 34, height: 34)
-                .background(Color.white.opacity(0.06), in: Circle())
-            Text(title)
-                .font(Typography.data(15, weight: .regular))
-                .foregroundStyle(Palette.ink)
-            if isNew {
-                Text("NEW")
-                    .font(Typography.mono(9, weight: .medium))
-                    .foregroundStyle(Palette.onEmber)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(Palette.amber, in: Capsule())
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                mark.frame(height: 22)
+                Spacer(minLength: 0)
+                if isNew {
+                    Text("NEW")
+                        .font(Typography.mono(9, weight: .medium))
+                        .foregroundStyle(Palette.onEmber)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Palette.amber, in: Capsule())
+                }
             }
-            Spacer(minLength: 8)
-            if let value {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(Typography.data(15, weight: .regular))
+                    .foregroundStyle(Palette.ink)
                 Text(value)
-                    .font(Typography.data(13, weight: .regular))
-                    .foregroundStyle(Palette.inkFaint)
+                    .font(Typography.data(12, weight: .regular))
+                    .foregroundStyle(valueColor)
                     .lineLimit(1)
             }
-            Image(systemName: "chevron.right")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(Color(hex: 0x52525B))
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+        .padding(14)
+        .frame(maxWidth: .infinity, minHeight: 104, alignment: .topLeading)
+        .glass(radius: 22)
         .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -644,7 +790,7 @@ private struct DevOnboardingPreview: View {
         }
         .onAppear {
             if model == nil {
-                model = .previewed(at: .goal, onComplete: { dismiss() })
+                model = .previewed(at: .about, onComplete: { dismiss() })
             }
         }
     }

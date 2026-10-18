@@ -13,26 +13,31 @@ struct AppetiteSettingsView: View {
     @State private var mealTimes = MealTimesPayload.standard
     @State private var loading = true
 
+    @State private var selectedDay: Int?
+
     var body: some View {
-        SettingsScreen(
-            title: "Appetite",
-            subtitle: "And what still got eaten.",
-            headline: "How hungry you’ve been."
-        ) {
+        InnerScreen(spacing: 16) {
+            ScreenHeader(label: "Appetite · 4 weeks")
+
             if let history {
-                lastFourWeeks(history)
-                eatenTiles(history)
-                if !history.patterns.isEmpty {
-                    noticedSection(history.patterns)
+                hero(history).appearIn(0, rise: 16)
+                tide(history).appearIn(1, rise: 14)
+                dayReadout(history).appearIn(2)
+                if let first = history.patterns.first {
+                    patternCard(first).appearIn(3, rise: 14)
+                }
+                ForEach(history.patterns.dropFirst().prefix(1)) { pattern in
+                    quietPattern(pattern)
                 }
                 if !history.lowDayFoods.isEmpty {
-                    lowFoodsSection(history.lowDayFoods)
+                    lowFoodsSection(history.lowDayFoods).appearIn(4)
                 }
-                whenLowSection
+                lowDaySection.appearIn(5)
             } else if loading {
                 AppetiteSkeletonView()
             } else {
-                whenLowSection
+                Headline("How hungry you’ve been.", tail: "Check back after a few days.", size: 34)
+                lowDaySection
             }
         }
         .task { await load() }
@@ -45,63 +50,181 @@ struct AppetiteSettingsView: View {
         }
     }
 
-    // MARK: Sections
+    // MARK: Hero
 
-    private func lastFourWeeks(_ history: AppetiteHistoryResponse) -> some View {
+    private func hero(_ history: AppetiteHistoryResponse) -> some View {
         let lowCount = history.days.filter { $0.level == "LOW" }.count
-        return SettingsCard {
-            VStack(alignment: .leading, spacing: 14) {
-                Text("Last 4 weeks").sectionLabelStyle()
-                Headline("Low on \(lowCount) of 28 days.", tail: "Smaller plates on those.", size: 26)
-
-                appetiteGrid(history.days)
-
-                HStack(spacing: 14) {
-                    legend(level: "HUNGRY", label: "Hungry")
-                    legend(level: "NORMAL", label: "Normal")
-                    legend(level: "LOW", label: "Low")
-                }
-                .padding(.top, 4)
+        return HStack(alignment: .bottom, spacing: 14) {
+            Text("\(lowCount)")
+                .font(Typography.data(92, weight: .light))
+                .tracking(-5)
+                .foregroundStyle(Palette.ink)
+                .frame(height: 76, alignment: .bottom)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(lowCount == 1 ? "low day" : "low days")
+                    .font(Typography.data(22, weight: .light))
+                    .foregroundStyle(Palette.ink)
+                (Text("You still ate ") + Text("\(history.percentEatenLow)%").foregroundColor(Palette.amber) + Text(" on them" + (history.percentEatenLowBefore.map { " · was \($0)%" } ?? "")))
+                    .font(Typography.data(13, weight: .regular))
+                    .foregroundStyle(Palette.inkSoft)
             }
+            .padding(.bottom, 4)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    // MARK: Tide
+
+    private static func level(_ raw: String?) -> Double {
+        switch raw {
+        case "HUNGRY": return 1
+        case "LOW": return 0.25
+        default: return 0.6
         }
     }
 
-    private func appetiteGrid(_ days: [AppetiteHistoryResponse.Day]) -> some View {
-        let cols = Array(repeating: GridItem(.flexible(), spacing: 6), count: 7)
-        let headers = ["M", "T", "W", "T", "F", "S", "S"]
-        let todayISO: String = {
-            let f = DateFormatter()
-            f.calendar = Calendar.current
-            f.locale = Locale(identifier: "en_US_POSIX")
-            f.dateFormat = "yyyy-MM-dd"
-            return f.string(from: Date())
-        }()
+    private func defaultDay(_ days: [AppetiteHistoryResponse.Day]) -> Int {
+        days.lastIndex { $0.level == "LOW" } ?? max(0, days.count - 1)
+    }
+
+    /// Appetite over four weeks as one curve: lows dip below the line and get a ring.
+    private func tide(_ history: AppetiteHistoryResponse) -> some View {
+        let days = history.days
+        let raw = days.map { Self.level($0.level) }
+        let smooth = raw.indices.map { i in
+            0.5 * raw[i] + 0.25 * (raw[max(0, i - 1)] + raw[min(raw.count - 1, i + 1)])
+        }
+        let selected = selectedDay ?? defaultDay(days)
         return VStack(spacing: 6) {
-            LazyVGrid(columns: cols, spacing: 6) {
-                ForEach(headers.indices, id: \.self) { i in
-                    Text(headers[i])
-                        .font(Typography.mono(10))
+            GeometryReader { geo in
+                let w = geo.size.width, h: CGFloat = 150
+                let n = max(1, days.count - 1)
+                let pts = smooth.indices.map { CGPoint(x: 6 + CGFloat($0) / CGFloat(n) * (w - 12), y: 130 - CGFloat(smooth[$0]) * 120) }
+                ZStack(alignment: .topLeading) {
+                    Path { p in
+                        p.move(to: CGPoint(x: 0, y: 72)); p.addLine(to: CGPoint(x: w, y: 72))
+                    }
+                    .stroke(Color.white.opacity(0.16), style: StrokeStyle(lineWidth: 1, dash: [3, 5]))
+                    Text("LOW")
+                        .font(Typography.mono(9))
                         .foregroundStyle(Palette.inkFaint)
-                        .frame(maxWidth: .infinity)
+                        .position(x: w - 12, y: 62)
+
+                    Self.curve(pts, close: h).fill(Palette.ember.opacity(0.16))
+                    Self.curve(pts, close: nil)
+                        .stroke(Palette.amber, style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                        .shadow(color: Palette.amber.opacity(0.6), radius: 6)
+
+                    if pts.indices.contains(selected) {
+                        Rectangle().fill(Color.white.opacity(0.22)).frame(width: 1, height: h)
+                            .position(x: pts[selected].x, y: h / 2)
+                    }
+                    ForEach(days.indices, id: \.self) { i in
+                        if days[i].level == "LOW" {
+                            Circle().strokeBorder(Palette.amber, lineWidth: 1.5)
+                                .background(Circle().fill(Palette.background))
+                                .frame(width: 11, height: 11)
+                                .position(pts[i])
+                        } else if days[i].level == nil {
+                            Circle().fill(Color(hex: 0x52525B)).frame(width: 6, height: 6).position(pts[i])
+                        }
+                    }
+                    if pts.indices.contains(selected) {
+                        Circle().fill(Palette.amber).frame(width: 14, height: 14)
+                            .shadow(color: Palette.amber.opacity(0.85), radius: 7)
+                            .position(pts[selected])
+                    }
+                    HStack(spacing: 0) {
+                        ForEach(days.indices, id: \.self) { i in
+                            Color.clear
+                                .contentShape(Rectangle())
+                                .onTapGesture { withAnimation(Motion.settle) { selectedDay = i } }
+                                .accessibilityElement()
+                                .accessibilityLabel("\(Self.dayTitle(days[i].date)), \(Self.word(days[i].level))")
+                                .accessibilityAddTraits(.isButton)
+                        }
+                    }
+                    .frame(height: h)
                 }
             }
-            LazyVGrid(columns: cols, spacing: 6) {
-                ForEach(days) { day in
-                    dayCell(day, isToday: day.date == todayISO)
+            .frame(height: 150)
+            HStack {
+                ForEach(Self.weekTicks(days), id: \.self) { tick in
+                    Text(tick)
+                    if tick != Self.weekTicks(days).last { Spacer() }
                 }
+            }
+            .font(Typography.mono(10))
+            .foregroundStyle(Palette.inkFaint)
+        }
+    }
+
+    private static func curve(_ pts: [CGPoint], close: CGFloat?) -> Path {
+        Path { p in
+            guard let first = pts.first else { return }
+            p.move(to: first)
+            for i in 0..<(pts.count - 1) {
+                let p0 = pts[max(0, i - 1)], p1 = pts[i], p2 = pts[i + 1], p3 = pts[min(pts.count - 1, i + 2)]
+                p.addCurve(
+                    to: p2,
+                    control1: CGPoint(x: p1.x + (p2.x - p0.x) / 6, y: p1.y + (p2.y - p0.y) / 6),
+                    control2: CGPoint(x: p2.x - (p3.x - p1.x) / 6, y: p2.y - (p3.y - p1.y) / 6)
+                )
+            }
+            if let close, let last = pts.last {
+                p.addLine(to: CGPoint(x: last.x, y: close))
+                p.addLine(to: CGPoint(x: first.x, y: close))
+                p.closeSubpath()
             }
         }
     }
 
-    private func dayCell(_ day: AppetiteHistoryResponse.Day, isToday: Bool) -> some View {
-        ZStack {
-            if isToday {
-                Circle().strokeBorder(Palette.ink.opacity(0.6), lineWidth: 1).frame(width: 30, height: 30)
-            }
-            dot(day.level)
+    private static func date(_ iso: String) -> Date? {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "yyyy-MM-dd"
+        return f.date(from: iso)
+    }
+
+    private static func dayTitle(_ iso: String) -> String {
+        date(iso)?.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated)) ?? iso
+    }
+
+    private static func weekTicks(_ days: [AppetiteHistoryResponse.Day]) -> [String] {
+        stride(from: 0, to: days.count, by: 7).compactMap { date(days[$0].date)?.formatted(.dateTime.day().month(.abbreviated)).uppercased() }
+    }
+
+    private static func word(_ level: String?) -> String {
+        switch level {
+        case "HUNGRY": return "Hungry"
+        case "LOW": return "Low"
+        case nil: return "No check-in"
+        default: return "Normal"
         }
-        .frame(maxWidth: .infinity)
-        .frame(height: 32)
+    }
+
+    private func dayReadout(_ history: AppetiteHistoryResponse) -> some View {
+        let days = history.days
+        let i = min(max(0, selectedDay ?? defaultDay(days)), max(0, days.count - 1))
+        let level = days.isEmpty ? nil : days[i].level
+        return HStack(spacing: 12) {
+            dot(level).frame(width: 24)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(days.isEmpty ? "—" : "\(Self.dayTitle(days[i].date)) · \(Self.word(level))")
+                    .font(Typography.data(15, weight: .regular))
+                    .foregroundStyle(Palette.ink)
+                Text(level == "LOW" ? "Smaller plates that day" : level == nil ? "Nothing logged" : "Usual plates")
+                    .font(Typography.data(12, weight: .regular))
+                    .foregroundStyle(Palette.inkSoft)
+            }
+            Spacer(minLength: 8)
+            StepCircle(symbol: "chevron.left", label: "Previous day") { withAnimation(Motion.settle) { selectedDay = max(0, i - 1) } }
+            StepCircle(symbol: "chevron.right", label: "Next day") { withAnimation(Motion.settle) { selectedDay = min(days.count - 1, i + 1) } }
+        }
+        .padding(.leading, 16)
+        .padding(.trailing, 10)
+        .padding(.vertical, 10)
+        .glass(radius: 22)
     }
 
     /// Appetite as orb size: a big lit orb for hungry, a small ring for low.
@@ -111,236 +234,140 @@ struct AppetiteSettingsView: View {
         case "HUNGRY":
             FuelOrb(size: 20, breathing: false, glow: 0.35)
         case "LOW":
-            Circle().strokeBorder(Palette.amber.opacity(0.7), lineWidth: 1.5).frame(width: 10, height: 10)
+            Circle().strokeBorder(Palette.amber.opacity(0.85), lineWidth: 1.5).frame(width: 12, height: 12)
         case nil:
-            Circle().fill(Color.white.opacity(0.08)).frame(width: 5, height: 5)
+            Circle().fill(Color.white.opacity(0.15)).frame(width: 6, height: 6)
         default:
-            Circle().fill(Color.white.opacity(0.28)).frame(width: 13, height: 13)
+            Circle().fill(Color.white.opacity(0.3)).frame(width: 13, height: 13)
         }
     }
 
-    private func legend(level: String, label: String) -> some View {
-        HStack(spacing: 6) {
-            dot(level).frame(width: 20, height: 20)
-            Text(label)
-                .font(Typography.data(12, weight: .regular))
-                .foregroundStyle(Palette.inkSoft)
-        }
-    }
+    // MARK: Patterns
 
-    private func eatenTiles(_ history: AppetiteHistoryResponse) -> some View {
-        HStack(spacing: 10) {
-            tile(label: "NORMAL DAYS", value: "\(history.percentEatenNormal)%", detail: "of target eaten", accent: false)
-            tile(
-                label: "LOW DAYS",
-                value: "\(history.percentEatenLow)%",
-                detail: history.percentEatenLowBefore.map { "up from \($0)% before smaller plates" } ?? "of target eaten",
-                accent: true
-            )
-        }
-    }
-
-    private func tile(label: String, value: String, detail: String, accent: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(label).sectionLabelStyle()
-            Text(value)
-                .font(Typography.data(28, weight: .light))
-                .foregroundStyle(accent ? Palette.amber : Palette.ink)
-            Text(detail)
-                .font(Typography.data(12))
-                .foregroundStyle(Palette.inkSoft)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .glass(radius: 20)
-    }
-
-    private func noticedSection(_ patterns: [AppetiteHistoryResponse.Pattern]) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("What i noticed").sectionLabelStyle()
-            ForEach(patterns.prefix(2)) { pattern in
-                SettingsCard {
-                    HStack(alignment: .top, spacing: 12) {
-                        Image(systemName: pattern.id == "late_dinner" ? "moon.stars.fill" : "dumbbell.fill")
-                            .font(.system(size: 14, weight: .regular))
-                            .foregroundStyle(Palette.amber)
-                            .frame(width: 36, height: 36)
-                            .background(Palette.ember.opacity(0.12), in: Circle())
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text(pattern.title)
-                                .font(Typography.data(15, weight: .medium))
-                                .foregroundStyle(Palette.ink)
-                            Text(pattern.body)
-                                .font(Typography.data(14))
-                                .foregroundStyle(Palette.inkSoft)
-                            if let action = pattern.action {
-                                Button {
-                                    Task { await moveDinner(action.dinnerMin ?? 1200) }
-                                } label: {
-                                    Text(action.label)
-                                        .font(Typography.data(13, weight: .medium))
-                                        .foregroundStyle(Palette.onBone)
-                                        .padding(.horizontal, 14)
-                                        .frame(height: 34)
-                                        .background(Palette.ink, in: Capsule())
-                                }
-                                .buttonStyle(.plain)
-                                .padding(.top, 4)
-                            }
-                        }
-                    }
+    private func patternCard(_ pattern: AppetiteHistoryResponse.Pattern) -> some View {
+        CalloutCard(haze: true, spacing: 12) {
+            HStack(spacing: 8) {
+                Circle().fill(Palette.haze).frame(width: 7, height: 7).shadow(color: Palette.haze, radius: 4)
+                Text("What I noticed").sectionLabelStyle(Palette.hazeSoft)
+            }
+            Headline(pattern.title.replacingOccurrences(of: " → ", with: ", ") + ".", tail: pattern.body, size: 22)
+            if let action = pattern.action {
+                BonePill(title: action.label) {
+                    Task { await moveDinner(action.dinnerMin ?? 1200) }
                 }
             }
         }
+    }
+
+    private func quietPattern(_ pattern: AppetiteHistoryResponse.Pattern) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: pattern.id == "late_dinner" ? "moon.stars.fill" : "dumbbell.fill")
+                .font(.system(size: 13, weight: .regular))
+                .foregroundStyle(Palette.hazeSoft)
+                .frame(width: 34, height: 34)
+                .background(Palette.haze.opacity(0.14), in: Circle())
+            VStack(alignment: .leading, spacing: 3) {
+                Text(pattern.title)
+                    .font(Typography.data(15, weight: .medium))
+                    .foregroundStyle(Palette.ink)
+                Text(pattern.body)
+                    .font(Typography.data(13, weight: .regular))
+                    .foregroundStyle(Palette.inkSoft)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glass(radius: 22)
     }
 
     private func lowFoodsSection(_ foods: [AppetiteHistoryResponse.LowDayFood]) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("What gets eaten on low days").sectionLabelStyle()
-            SettingsCard(padding: 0) {
-                VStack(spacing: 0) {
-                    ForEach(Array(foods.enumerated()), id: \.element.id) { index, food in
-                        if index > 0 { ListDivider() }
-                        HStack(spacing: 12) {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(food.name)
-                                    .font(Typography.data(15, weight: .regular))
-                                    .foregroundStyle(Palette.ink)
-                                Text(food.tag)
-                                    .font(Typography.data(12))
-                                    .foregroundStyle(Palette.inkFaint)
-                            }
-                            Spacer()
-                            VStack(alignment: .trailing, spacing: 4) {
-                                GeometryReader { geo in
-                                    Capsule().fill(Color.white.opacity(0.08))
-                                        .overlay(alignment: .leading) {
-                                            Capsule().fill(Palette.amber)
-                                                .frame(width: geo.size.width * ratio(food))
-                                        }
+            VStack(spacing: 10) {
+                ForEach(foods) { food in
+                    HStack(spacing: 12) {
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(food.name)
+                                .font(Typography.data(14, weight: .regular))
+                                .foregroundStyle(Palette.ink)
+                            Text(food.tag)
+                                .font(Typography.data(11))
+                                .foregroundStyle(Palette.inkFaint)
+                        }
+                        .frame(width: 140, alignment: .leading)
+                        GeometryReader { geo in
+                            Capsule().fill(Color.white.opacity(0.07))
+                                .overlay(alignment: .leading) {
+                                    Capsule()
+                                        .fill(LinearGradient(colors: [Palette.ember, Palette.amber], startPoint: .leading, endPoint: .trailing))
+                                        .frame(width: max(6, geo.size.width * ratio(food)))
                                 }
-                                .frame(width: 56, height: 6)
-                                Text("\(food.eaten)/\(food.offered)")
-                                    .font(Typography.data(11, weight: .semibold))
-                                    .foregroundStyle(Palette.inkFaint)
-                                    .monospacedDigit()
-                            }
                         }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 12)
+                        .frame(height: 6)
+                        Text("\(food.eaten)/\(food.offered)")
+                            .font(Typography.mono(11))
+                            .foregroundStyle(Palette.inkFaint)
                     }
+                    .accessibilityElement(children: .combine)
                 }
             }
+            .padding(16)
+            .glass(radius: 22)
         }
     }
 
-    private var whenLowSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("When appetite is low").sectionLabelStyle()
-            SettingsCard(padding: 0) {
-                VStack(spacing: 0) {
-                    settingsRow(
-                        title: "Plate size",
-                        subtitle: mode == "SMALL_FREQUENT"
-                            ? "Smaller plates, 5 check-ins"
-                            : "Usual 3 meals, 3 check-ins",
-                        trailing: plateSizeSwitch
-                    )
-                    .padding(.vertical, 4)
-                    ListDivider()
-                    Toggle(isOn: Binding(
-                        get: { drinkableOk },
-                        set: { drinkableOk = $0; Task { await savePrefs() } }
-                    )) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Drinks count")
-                                .font(Typography.data(15, weight: .regular))
-                                .foregroundStyle(Palette.ink)
-                            Text("Smoothies, milk, shakes")
-                                .font(Typography.data(13))
-                                .foregroundStyle(Palette.inkSoft)
-                        }
-                    }
-                    .tint(Palette.ember)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
-                    ListDivider()
-                    Toggle(isOn: Binding(
-                        get: { askDaily },
-                        set: { askDaily = $0; Task { await savePrefs() } }
-                    )) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Ask me each morning")
-                                .font(Typography.data(15, weight: .regular))
-                                .foregroundStyle(Palette.ink)
-                            Text("Before breakfast, once a day")
-                                .font(Typography.data(13))
-                                .foregroundStyle(Palette.inkSoft)
-                        }
-                    }
-                    .tint(Palette.ember)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
-                }
-            }
-        }
-    }
+    // MARK: On a low day
 
-    private var plateSizeSwitch: some View {
+    private var lowDaySection: some View {
         let smaller = mode == "SMALL_FREQUENT"
-        return HStack(spacing: 0) {
-            plateSizeOption("Usual", selected: !smaller) {
-                setMode("NORMAL")
+        return VStack(alignment: .leading, spacing: 10) {
+            Text("On a low day").sectionLabelStyle()
+            HStack(spacing: 10) {
+                plateTile("Usual plates", "3 a day", count: 3, size: 22, selected: !smaller) { setMode("NORMAL") }
+                plateTile("Smaller plates", "5 a day, easier", count: 5, size: 13, selected: smaller) { setMode("SMALL_FREQUENT") }
             }
-            plateSizeOption("Smaller", selected: smaller) {
-                setMode("SMALL_FREQUENT")
+            .fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: 8) {
+                ToggleChip(title: "Drinks count", on: drinkableOk) {
+                    drinkableOk.toggle()
+                    Task { await savePrefs() }
+                }
+                ToggleChip(title: "Ask me each morning", on: askDaily) {
+                    askDaily.toggle()
+                    Task { await savePrefs() }
+                }
             }
         }
-        .padding(3)
-        .glassCapsule(fill: Color.white.opacity(0.05), stroke: Color.white.opacity(0.08))
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("Plate size")
     }
 
-    private func plateSizeOption(_ title: String, selected: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(title)
-                .font(Typography.data(12, weight: selected ? .medium : .regular))
-                .foregroundStyle(selected ? Palette.onBone : Palette.inkSoft)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 7)
-                .background {
-                    if selected {
-                        Capsule().fill(Palette.ink)
+    private func plateTile(_ title: String, _ note: String, count: Int, size: CGFloat, selected: Bool, action: @escaping () -> Void) -> some View {
+        ChoiceTile(selected: selected, action: action) {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 6) {
+                    ForEach(0..<count, id: \.self) { _ in
+                        if selected {
+                            EmberDot(size: size, glow: 0.5)
+                        } else {
+                            Circle().fill(Color.white.opacity(0.18)).frame(width: size, height: size)
+                        }
                     }
                 }
+                .frame(height: 34)
+                Text(title)
+                    .font(Typography.data(15, weight: .medium))
+                    .foregroundStyle(Palette.ink)
+                Text(note)
+                    .font(Typography.mono(11))
+                    .foregroundStyle(Palette.inkSoft)
+            }
         }
-        .buttonStyle(.plain)
-        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
     private func setMode(_ next: String) {
         guard mode != next else { return }
-        mode = next
+        withAnimation(Motion.settle) { mode = next }
         Task { await savePrefs() }
-    }
-
-    private func settingsRow<Trailing: View>(title: String, subtitle: String, trailing: Trailing) -> some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(Typography.data(15, weight: .regular))
-                    .foregroundStyle(Palette.ink)
-                Text(subtitle)
-                    .font(Typography.data(13))
-                    .foregroundStyle(Palette.inkSoft)
-            }
-            Spacer(minLength: 8)
-            trailing
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
     }
 
     private func ratio(_ food: AppetiteHistoryResponse.LowDayFood) -> CGFloat {

@@ -9,37 +9,33 @@ struct GoalSettingsView: View {
     @State private var editingTarget: DailyTargetField?
 
     var body: some View {
-        SettingsScreen(title: "Edit plan", subtitle: "Change anything.", headline: "Your plan.") {
-            VStack(alignment: .leading, spacing: 14) {
-                SegmentedPills(
-                    options: Goal.allCases,
-                    selection: Binding(
-                        get: { model.goal },
-                        set: { goal in
-                            withAnimation(Motion.settle) {
-                                let changed = model.goal != goal
-                                model.goal = goal
-                                proposeTargetIfNeeded()
-                                if changed { model.resetDurationForGoalChange() }
-                            }
-                        }
-                    ),
-                    title: { $0.title }
-                )
-                .appearIn(1, rise: 14)
+        InnerScreen(spacing: 14) {
+            ScreenHeader(label: "Edit plan")
 
-                if model.goal.hasWeightTarget {
-                    targetCard.appearIn(2, rise: 14)
-                }
+            goalTiles.appearIn(1, rise: 14)
 
-                yourDay.appearIn(3, rise: 14)
+            pathCard.appearIn(2, rise: 14)
 
-                if let error = model.error {
-                    SettingsErrorBanner(message: error)
-                }
+            if model.goal.hasWeightTarget, model.targetWeightMessage == nil {
+                paceTiles.appearIn(3, rise: 14)
+            }
+
+            if let message = model.targetWeightMessage ?? model.durationMessage {
+                Text(message)
+                    .font(Typography.data(13, weight: .regular))
+                    .foregroundStyle(Palette.amber)
+                    .frame(maxWidth: .infinity)
+                    .multilineTextAlignment(.center)
+            }
+
+            yourDay.appearIn(4, rise: 14)
+
+            if let error = model.error {
+                SettingsErrorBanner(message: error)
             }
         }
         .animation(Motion.settle, value: model.goal)
+        .animation(Motion.settle, value: model.pace)
         .settingsSaveBar(
             visible: model.goalDirty,
             note: model.goalSaveNote,
@@ -59,118 +55,228 @@ struct GoalSettingsView: View {
         }
     }
 
-    private var targetCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 10) {
-                Text("Target weight").sectionLabelStyle()
-                Spacer(minLength: 0)
-                StepCircle(symbol: "minus", label: "Lower target") { nudge(-1) }
-                Text("\(massUnit.number(targetKg, digits: 0 ... 0)) \(massUnit.abbreviation)")
-                    .font(Typography.mono(18))
-                    .foregroundStyle(Palette.ink)
-                    .frame(width: 76)
-                    .contentTransition(.numericText(value: targetKg))
-                    .accessibilityLabel("Target \(massUnit.number(targetKg, digits: 0 ... 0)) \(massUnit.spokenName)")
-                StepCircle(symbol: "plus", label: "Raise target") { nudge(1) }
-            }
+    // MARK: Goal
 
-            if model.targetWeightMessage == nil {
-                SegmentedPills(
-                    options: GoalPace.allCases,
-                    selection: Binding(
-                        get: { model.pace },
-                        set: { model.applyPaceShortcut($0) }
-                    ),
-                    title: { $0.title },
-                    detail: { $0.blurb(for: model.goal) }
-                )
-                ListDivider()
-                StepperRow(
-                    name: "Timeframe",
-                    note: model.currentWeightKg.map { "from \(massUnit.formatKg($0)) now" },
-                    value: "\(weeks) wk",
-                    canDown: weeks > 1,
-                    onDown: { model.setDurationWeeks(weeks - 1) },
-                    onUp: { model.setDurationWeeks(weeks + 1) }
-                )
-            }
-
-            if let message = model.targetWeightMessage ?? model.durationMessage {
-                Text(message)
-                    .font(Typography.data(13, weight: .regular))
-                    .foregroundStyle(Palette.amber)
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: .infinity)
+    private var goalTiles: some View {
+        HStack(spacing: 8) {
+            ForEach(Goal.allCases) { goal in
+                ChoiceTile(selected: model.goal == goal, action: { pick(goal) }) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        GoalSpark(goal: goal)
+                            .stroke(model.goal == goal ? Palette.amber : Color(hex: 0x71717A), style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                            .frame(width: 56, height: 22)
+                        Text(goal.title)
+                            .font(Typography.data(15, weight: .medium))
+                            .foregroundStyle(Palette.ink)
+                    }
+                }
+                .accessibilityLabel(goal.title)
             }
         }
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private func pick(_ goal: Goal) {
+        withAnimation(Motion.settle) {
+            let changed = model.goal != goal
+            model.goal = goal
+            proposeTargetIfNeeded()
+            if changed { model.resetDurationForGoalChange() }
+        }
+    }
+
+    // MARK: Path
+
+    private var currentKg: Double { model.currentWeightKg ?? targetKg }
+
+    private var pathCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(model.goal.hasWeightTarget ? "Target" : "Holding at").sectionLabelStyle()
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Text(massUnit.number(model.goal.hasWeightTarget ? targetKg : currentKg, digits: 1 ... 1))
+                            .font(Typography.data(40, weight: .light))
+                            .tracking(-1.6)
+                            .contentTransition(.numericText(value: targetKg))
+                        Text(massUnit.abbreviation)
+                            .font(Typography.data(14, weight: .regular))
+                            .foregroundStyle(Palette.inkSoft)
+                    }
+                    .foregroundStyle(Palette.ink)
+                }
+                Spacer(minLength: 0)
+                if model.goal.hasWeightTarget {
+                    HStack(spacing: 8) {
+                        StepCircle(symbol: "minus", label: "Lower target") { nudge(-1) }
+                        StepCircle(symbol: "plus", label: "Raise target") { nudge(1) }
+                    }
+                }
+            }
+
+            WeightPathChart(
+                currentKg: currentKg,
+                targetKg: model.goal.hasWeightTarget ? targetKg : currentKg,
+                weeks: model.goal.hasWeightTarget ? weeks : nil,
+                otherWeeks: model.goal.hasWeightTarget ? otherPaceWeeks : nil,
+                endLabel: endLabel,
+                rising: model.goal != .diet
+            )
+            .frame(height: 150)
+
+            HStack {
+                Text("Now · \(massUnit.number(currentKg, digits: 1 ... 1))")
+                Spacer()
+                Text(model.goal.hasWeightTarget ? "\(max(weeks, otherPaceWeeks ?? weeks)) weeks" : "6 months")
+            }
+            .font(Typography.mono(10))
+            .textCase(.uppercase)
+            .foregroundStyle(Palette.inkFaint)
+        }
         .padding(16)
-        .glass(radius: 22)
+        .glass(radius: 26)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(model.goal.hasWeightTarget
+            ? "From \(massUnit.formatKg(currentKg)) to \(massUnit.formatKg(targetKg)) in about \(weeks) weeks"
+            : "Holding at \(massUnit.formatKg(currentKg))")
+    }
+
+    private var endLabel: String {
+        guard model.goal.hasWeightTarget else { return "±1 \(massUnit.abbreviation) band" }
+        return "\(massUnit.formatKg(targetKg, digits: 0)) · \(Self.monthYear(weeksFromNow: weeks))"
+    }
+
+    private static func monthYear(weeksFromNow weeks: Int) -> String {
+        let date = Calendar.current.date(byAdding: .day, value: weeks * 7, to: .now) ?? .now
+        return date.formatted(.dateTime.month(.abbreviated).year())
+    }
+
+    // MARK: Pace
+
+    private func paceWeeks(_ pace: GoalPace) -> Int? {
+        guard let current = model.currentWeightKg else { return nil }
+        let remaining = WeightPace.remainingKg(goal: model.goal, currentKg: current, targetKg: targetKg)
+        let rate = WeightPace.clampKgPerWeek(goal: model.goal, weightKg: current, pace: pace.kgPerWeek(for: model.goal))
+        return WeightPace.etaWeeks(remainingKg: remaining, paceKgPerWeek: rate)
+    }
+
+    private var otherPaceWeeks: Int? {
+        paceWeeks(model.pace == .gentle ? .steady : .gentle)
+    }
+
+    private var paceTiles: some View {
+        VStack(spacing: 8) {
+            HStack(spacing: 8) {
+                ForEach(GoalPace.allCases) { pace in
+                    let on = model.pace == pace
+                    Button { withAnimation(Motion.settle) { model.applyPaceShortcut(pace) } } label: {
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text(pace.title)
+                                    .font(Typography.data(15, weight: .medium))
+                                    .foregroundStyle(Palette.ink)
+                                Spacer(minLength: 4)
+                                Text("\(model.goal == .diet ? "−" : "+")\(pace.kgPerWeek(for: model.goal).formatted()) kg/wk")
+                                    .font(Typography.mono(10))
+                                    .foregroundStyle(on ? Palette.amber : Color(hex: 0x71717A))
+                            }
+                            Text(paceNote(pace))
+                                .font(Typography.data(12, weight: .regular))
+                                .foregroundStyle(Palette.inkSoft)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .padding(14)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                        .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(Color.white.opacity(on ? 0.07 : 0.025)))
+                        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(on ? Palette.amber.opacity(0.55) : Color.white.opacity(0.08)))
+                    }
+                    .buttonStyle(PressableCard())
+                    .accessibilityAddTraits(on ? .isSelected : [])
+                }
+            }
+            .fixedSize(horizontal: false, vertical: true)
+
+            StepperRow(
+                name: "Timeframe",
+                note: "or set the weeks yourself",
+                value: "\(weeks) wk",
+                canDown: weeks > 1,
+                onDown: { withAnimation(Motion.settle) { model.setDurationWeeks(weeks - 1) } },
+                onUp: { withAnimation(Motion.settle) { model.setDurationWeeks(weeks + 1) } }
+            )
+            .padding(.horizontal, 14)
+            .glass(radius: 20)
+        }
+    }
+
+    private func paceNote(_ pace: GoalPace) -> String {
+        let feel = pace == .gentle ? "easier to eat" : "faster, a bit more food"
+        guard let w = paceWeeks(pace) else { return feel.capitalized }
+        return "\(w) weeks · \(Self.monthYear(weeksFromNow: w)) · \(feel)"
     }
 
     private var weeks: Int { model.preferredDurationWeeks ?? model.honestDurationWeeks ?? 12 }
 
+    // MARK: Your day
+
     /// The day the plan works out to — tap a number to set it yourself.
     private var yourDay: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("Your day").sectionLabelStyle(Palette.amber)
-                Spacer()
-                Text(model.dailyTargetsEdited ? "Set by you" : "From your goal")
-                    .font(Typography.data(12, weight: .regular))
-                    .foregroundStyle(Palette.inkSoft)
-            }
-            HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Button { editingTarget = .kcal } label: {
-                    HStack(alignment: .firstTextBaseline, spacing: 6) {
-                        Text(model.kcalTarget.formatted())
-                            .font(Typography.data(36, weight: .light))
-                            .tracking(-1.1)
-                            .foregroundStyle(Palette.ink)
-                        Text("kcal")
-                            .font(Typography.data(15, weight: .regular))
-                            .foregroundStyle(Palette.inkSoft)
-                        if model.kcalEdited {
-                            Text(model.savedKcalTarget.formatted())
-                                .font(Typography.mono(13))
-                                .strikethrough()
-                                .foregroundStyle(Palette.inkFaint)
+        CalloutCard(spacing: 10) {
+            HStack(alignment: .bottom) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Your day").sectionLabelStyle(Palette.amber)
+                    Button { editingTarget = .kcal } label: {
+                        HStack(alignment: .firstTextBaseline, spacing: 6) {
+                            Text(model.kcalTarget.formatted())
+                                .font(Typography.data(38, weight: .light))
+                                .tracking(-1.5)
+                                .foregroundStyle(Palette.ink)
+                            Text("kcal")
+                                .font(Typography.data(14, weight: .regular))
+                                .foregroundStyle(Palette.inkSoft)
+                            if model.kcalEdited {
+                                Text(model.savedKcalTarget.formatted())
+                                    .font(Typography.mono(12))
+                                    .strikethrough()
+                                    .foregroundStyle(Palette.inkFaint)
+                            }
                         }
                     }
+                    .buttonStyle(PressableCard())
+                    .accessibilityLabel("\(model.kcalTarget) calories a day. Set it yourself.")
                 }
-                .buttonStyle(PressableCard())
-                .accessibilityLabel("\(model.kcalTarget) calories a day. Set it yourself.")
+                Spacer(minLength: 8)
                 if let protein = model.proteinTarget {
-                    Text("·").foregroundStyle(Palette.inkFaint)
                     Button { editingTarget = .protein } label: {
                         Text("\(protein) g protein")
-                            .font(Typography.data(15, weight: .regular))
-                            .foregroundStyle(Palette.inkSoft)
-                            .strikethrough(false)
+                            .font(Typography.mono(12))
+                            .foregroundStyle(Palette.amber)
+                            .padding(.bottom, 6)
                     }
                     .buttonStyle(PressableCard())
                     .accessibilityLabel("\(protein) grams of protein. Set it yourself.")
                 }
             }
-            Text(dayLine)
-                .font(Typography.data(13, weight: .regular))
-                .foregroundStyle(Palette.inkSoft)
-        }
-        .padding(18)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(LinearGradient(colors: [Palette.ember.opacity(0.10), Palette.ember.opacity(0.03)], startPoint: .top, endPoint: .bottom))
-                .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(Color(hex: 0xFF8A50, opacity: 0.35)))
+            HStack(spacing: 6) {
+                dayChip(model.dailyTargetsEdited ? "Set by you" : "From your goal", tint: nil)
+                if model.goal.hasWeightTarget, let eta = model.honestDurationWeeks {
+                    dayChip("~\(eta) weeks to target", tint: Palette.amber)
+                }
+            }
+            Text("Tap a number to set it yourself.")
+                .font(Typography.data(12, weight: .regular))
+                .foregroundStyle(Palette.inkFaint)
         }
     }
 
-    private var dayLine: String {
-        var parts: [String] = []
-        if model.goal.hasWeightTarget, let eta = model.honestDurationWeeks {
-            parts.append("About \(eta) weeks to target")
-        }
-        parts.append("Tap a number to set it yourself")
-        return parts.joined(separator: " · ")
+    private func dayChip(_ text: String, tint: Color?) -> some View {
+        Text(text)
+            .font(Typography.mono(11))
+            .foregroundStyle(tint ?? Color(hex: 0xD4D4D8))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background((tint ?? .white).opacity(tint == nil ? 0.05 : 0.14), in: Capsule())
+            .overlay(Capsule().strokeBorder((tint ?? .white).opacity(tint == nil ? 0.10 : 0.45)))
     }
 
     @ViewBuilder
@@ -196,6 +302,89 @@ struct GoalSettingsView: View {
     private func proposeTargetIfNeeded() {
         guard model.goal.hasWeightTarget, model.targetWeightKg == nil, let current = model.currentWeightKg else { return }
         model.targetWeightKg = (current + (model.goal == .bulk ? 4 : -5)).rounded()
+    }
+}
+
+/// The little line on a goal tile: up for gain, down for cut, a wave for maintain.
+private struct GoalSpark: Shape {
+    let goal: Goal
+
+    func path(in r: CGRect) -> Path {
+        var p = Path()
+        switch goal {
+        case .bulk:
+            p.move(to: CGPoint(x: r.minX + 2, y: r.maxY - 4))
+            p.addCurve(to: CGPoint(x: r.maxX - 2, y: r.minY + 4), control1: CGPoint(x: r.midX - 8, y: r.maxY - 4), control2: CGPoint(x: r.midX + 2, y: r.minY + 4))
+        case .diet:
+            p.move(to: CGPoint(x: r.minX + 2, y: r.minY + 4))
+            p.addCurve(to: CGPoint(x: r.maxX - 2, y: r.maxY - 4), control1: CGPoint(x: r.midX - 8, y: r.minY + 4), control2: CGPoint(x: r.midX + 2, y: r.maxY - 4))
+        case .maintain:
+            p.move(to: CGPoint(x: r.minX + 2, y: r.midY))
+            p.addCurve(to: CGPoint(x: r.midX, y: r.midY), control1: CGPoint(x: r.minX + 12, y: r.midY - 6), control2: CGPoint(x: r.midX - 10, y: r.midY + 6))
+            p.addCurve(to: CGPoint(x: r.maxX - 2, y: r.midY), control1: CGPoint(x: r.midX + 10, y: r.midY - 6), control2: CGPoint(x: r.maxX - 12, y: r.midY + 6))
+        }
+        return p
+    }
+}
+
+/// Weight from now to the target: the chosen pace bright, the other dashed.
+private struct WeightPathChart: View {
+    let currentKg: Double
+    let targetKg: Double
+    /// nil when maintaining — a flat line inside a ±1 kg band.
+    let weeks: Int?
+    let otherWeeks: Int?
+    let endLabel: String
+    let rising: Bool
+
+    var body: some View {
+        GeometryReader { geo in
+            let w = geo.size.width, h = geo.size.height
+            let maxW = Double(max(weeks ?? 26, otherWeeks ?? 0, 4))
+            let lo = min(currentKg, targetKg) - 1.5, hi = max(currentKg, targetKg) + 1.5
+            let x = { (wk: Double) in 8 + CGFloat(wk / maxW) * (w - 16) }
+            let y = { (kg: Double) in h - 22 - CGFloat((kg - lo) / (hi - lo)) * (h - 44) }
+            let end = CGPoint(x: x(Double(weeks ?? Int(maxW))), y: y(targetKg))
+
+            ZStack(alignment: .topLeading) {
+                if weeks == nil {
+                    Path { p in
+                        p.addRect(CGRect(x: 8, y: y(targetKg + 1), width: w - 16, height: y(targetKg - 1) - y(targetKg + 1)))
+                    }
+                    .fill(Palette.amber.opacity(0.07))
+                }
+                if let otherWeeks {
+                    curve(to: Double(otherWeeks), x: x, y: y, maxW: maxW)
+                        .stroke(Color.white.opacity(0.22), style: StrokeStyle(lineWidth: 1.5, dash: [3, 5]))
+                }
+                curve(to: Double(weeks ?? Int(maxW)), x: x, y: y, maxW: maxW)
+                    .stroke(Palette.amber, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
+                    .shadow(color: Palette.amber.opacity(0.6), radius: 6)
+
+                Circle().fill(Palette.ink).frame(width: 10, height: 10)
+                    .position(x: x(0), y: y(currentKg))
+                EmberDot(size: 20)
+                    .position(end)
+                Text(endLabel)
+                    .font(Typography.mono(11))
+                    .foregroundStyle(Palette.amber)
+                    .fixedSize()
+                    .position(x: min(end.x, w - 70), y: rising ? end.y - 20 : end.y + 22)
+            }
+            .animation(Motion.settle, value: weeks)
+            .animation(Motion.settle, value: targetKg)
+        }
+        .accessibilityHidden(true)
+    }
+
+    private func curve(to wk: Double, x: (Double) -> CGFloat, y: (Double) -> CGFloat, maxW: Double) -> Path {
+        Path { p in
+            let a = CGPoint(x: x(0), y: y(currentKg))
+            let b = CGPoint(x: x(wk), y: y(targetKg))
+            p.move(to: a)
+            p.addCurve(to: b, control1: CGPoint(x: a.x + (b.x - a.x) * 0.45, y: a.y), control2: CGPoint(x: a.x + (b.x - a.x) * 0.55, y: b.y))
+            if wk < maxW { p.addLine(to: CGPoint(x: x(maxW), y: b.y)) }
+        }
     }
 }
 
@@ -239,7 +428,13 @@ private struct DailyTargetSheet: View {
 
 struct RhythmSettingsView: View {
     @Bindable var model: SettingsViewModel
-    @State private var rhythmSet: RhythmSet = .weekdays
+    @State private var rhythmSet: RhythmSet
+    @State private var selected: DialItem = .meal(.lunch)
+
+    init(model: SettingsViewModel, startOnWeekends: Bool = false) {
+        self.model = model
+        _rhythmSet = State(initialValue: startOnWeekends ? .weekends : .weekdays)
+    }
 
     private enum RhythmSet: String, CaseIterable, Identifiable {
         case weekdays, weekends
@@ -252,6 +447,24 @@ struct RhythmSettingsView: View {
         }
     }
 
+    enum DialItem: Hashable {
+        case meal(MealSlot)
+        case quietStart
+        case quietEnd
+
+        var title: String {
+            switch self {
+            case let .meal(slot): return slot.title
+            case .quietStart: return "Quiet from"
+            case .quietEnd: return "Quiet until"
+            }
+        }
+
+        var isQuiet: Bool { if case .meal = self { return false } else { return true } }
+
+        static let order: [DialItem] = [.meal(.breakfast), .meal(.lunch), .meal(.dinner), .quietStart, .quietEnd]
+    }
+
     private var editingWeekends: Bool { rhythmSet == .weekends }
 
     private var activeTimes: MealTimesPayload {
@@ -259,27 +472,43 @@ struct RhythmSettingsView: View {
     }
 
     var body: some View {
-        SettingsScreen(title: "Meal times", subtitle: "I watch these times.", headline: "When do you eat?") {
-            VStack(alignment: .leading, spacing: 20) {
-                SegmentedPills(
-                    options: RhythmSet.allCases,
-                    selection: $rhythmSet,
-                    title: { $0.title }
-                )
-                .appearIn(1)
+        InnerScreen(spacing: 14) {
+            ZStack {
+                HStack {
+                    RoundIconButton("chevron.left", label: "Back") { dismiss() }
+                    Spacer()
+                    SegmentedPills(options: RhythmSet.allCases, selection: $rhythmSet, title: { $0.title })
+                        .frame(width: 196)
+                }
+            }
 
-                if let suggestion = model.weekendSuggestion, editingWeekends {
-                    suggestionBanner(suggestion).appearIn(2)
-                }
+            Headline(editingWeekends ? "Weekends run later." : "Three plates a day.", tail: tail, size: 34)
+                .appearIn(0, rise: 16)
 
-                mealRows.appearIn(2, rise: 14)
-                if editingWeekends {
-                    weekendDaysCard.appearIn(4)
-                }
-                quietCard.appearIn(5)
-                if let error = model.error {
-                    SettingsErrorBanner(message: error)
-                }
+            if let suggestion = model.weekendSuggestion, editingWeekends {
+                suggestionBanner(suggestion).appearIn(1)
+            }
+
+            MealClock(
+                times: activeTimes,
+                quietStart: model.quietHours.startMin,
+                quietEnd: model.quietHours.endMin,
+                selected: $selected,
+                minute: minute(of:),
+                note: note(for:)
+            )
+            .frame(width: 300, height: 300)
+            .frame(maxWidth: .infinity)
+            .appearIn(2, rise: 14)
+
+            controlBar.appearIn(3)
+
+            if editingWeekends {
+                weekendDays.transition(.opacity.combined(with: .move(edge: .top)))
+            }
+
+            if let error = model.error {
+                SettingsErrorBanner(message: error)
             }
         }
         .settingsSaveBar(
@@ -294,8 +523,86 @@ struct RhythmSettingsView: View {
             }
         }
         .onDisappear { model.revertToOriginal() }
-        .animation(Motion.settle, value: model.checkInsPaused)
         .animation(Motion.settle, value: rhythmSet)
+        .animation(Motion.settle, value: selected)
+    }
+
+    @Environment(\.dismiss) private var dismiss
+
+    private var tail: String {
+        let span = "\(formatMinutes(activeTimes.breakfastMin)) to \(formatMinutes(activeTimes.dinnerMin))"
+        return editingWeekends ? "Lit days, \(span)." : "\(span), quiet overnight."
+    }
+
+    private func minute(of item: DialItem) -> Int {
+        switch item {
+        case let .meal(slot): return activeTimes[slot]
+        case .quietStart: return model.quietHours.startMin
+        case .quietEnd: return model.quietHours.endMin
+        }
+    }
+
+    private func note(for item: DialItem) -> String {
+        switch item {
+        case let .meal(slot):
+            let t = activeTimes[slot]
+            let weekday = model.mealTimes[slot]
+            let checkIn = "check-in \(formatMinutes(CheckInSchedule.minute(afterMeal: t)))"
+            return editingWeekends && t != weekday ? "weekdays \(formatMinutes(weekday)) · \(checkIn)" : checkIn
+        case .quietStart, .quietEnd:
+            let span = (model.quietHours.endMin - model.quietHours.startMin + 1440) % 1440
+            let h = span / 60, m = span % 60
+            return "no check-ins for \(h) h" + (m > 0 ? " \(m) min" : "")
+        }
+    }
+
+    private var controlBar: some View {
+        HStack(spacing: 8) {
+            StepCircle(symbol: "minus", label: "15 minutes earlier") { shift(-15) }
+            Button {
+                let i = DialItem.order.firstIndex(of: selected) ?? 0
+                selected = DialItem.order[(i + 1) % DialItem.order.count]
+            } label: {
+                (Text("Next: \(DialItem.order[((DialItem.order.firstIndex(of: selected) ?? 0) + 1) % DialItem.order.count].title.lowercased()) ")
+                    + Text("›").foregroundColor(Palette.inkFaint))
+                    .font(Typography.data(13, weight: .regular))
+                    .foregroundStyle(Palette.inkSoft)
+                    .frame(maxWidth: .infinity, minHeight: 46)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            StepCircle(symbol: "plus", label: "15 minutes later") { shift(15) }
+        }
+        .padding(6)
+        .glassCapsule()
+    }
+
+    private func shift(_ delta: Int) {
+        UISelectionFeedbackGenerator().selectionChanged()
+        withAnimation(Motion.settle) {
+            switch selected {
+            case let .meal(slot):
+                setTime(activeTimes[slot] + delta, slot: slot)
+            case .quietStart:
+                model.quietHours.startMin = MealTimeEditing.snap(model.quietHours.startMin + delta)
+            case .quietEnd:
+                model.quietHours.endMin = MealTimeEditing.snap(model.quietHours.endMin + delta)
+            }
+        }
+    }
+
+    private func setTime(_ minute: Int, slot: MealSlot) {
+        if editingWeekends {
+            model.setWeekendTime(minute, slot: slot)
+        } else {
+            let clamped = MealTimeEditing.clamp(
+                minute, slot: slot,
+                breakfast: model.mealTimes.breakfastMin,
+                lunch: model.mealTimes.lunchMin,
+                dinner: model.mealTimes.dinnerMin
+            )
+            model.mealTimes[slot] = clamped
+        }
     }
 
     private func suggestionBanner(_ suggestion: WeekendSuggestion) -> some View {
@@ -323,156 +630,127 @@ struct RhythmSettingsView: View {
         .accessibilityLabel("Use suggested weekend breakfast \(formatMinutes(suggestion.breakfastMin))")
     }
 
-    private var mealRows: some View {
-        GlassList {
-            ForEach(Array(MealSlot.allCases.enumerated()), id: \.element) { index, slot in
-                if index > 0 { ListDivider() }
-                let t = activeTimes[slot]
-                let weekday = model.mealTimes[slot]
-                StepperRow(
-                    name: slot.title,
-                    note: (editingWeekends && t != weekday ? "weekdays \(formatMinutes(weekday)) · " : "")
-                        + "check-in \(formatMinutes(CheckInSchedule.minute(afterMeal: t)))",
-                    value: formatMinutes(t),
-                    onDown: { withAnimation(Motion.settle) { setTime(t - 15, slot: slot) } },
-                    onUp: { withAnimation(Motion.settle) { setTime(t + 15, slot: slot) } }
-                )
-            }
-        }
-    }
-
-    private func mealBinding(_ slot: MealSlot) -> Binding<Int> {
-        Binding(
-            get: { activeTimes[slot] },
-            set: { setTime($0, slot: slot) }
-        )
-    }
-
-    private func setTime(_ minute: Int, slot: MealSlot) {
-        if editingWeekends {
-            model.setWeekendTime(minute, slot: slot)
-        } else {
-            let clamped = MealTimeEditing.clamp(
-                minute, slot: slot,
-                breakfast: model.mealTimes.breakfastMin,
-                lunch: model.mealTimes.lunchMin,
-                dinner: model.mealTimes.dinnerMin
-            )
-            model.mealTimes[slot] = clamped
-        }
-    }
-
-    private var weekendDaysCard: some View {
-        SettingsCard(padding: 16) {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Weekend days")
-                    .font(Typography.data(15, weight: .medium))
-                    .foregroundStyle(Palette.ink)
-                Text("Check-ins follow this set on these days.")
-                    .font(Typography.data(13))
-                    .foregroundStyle(Palette.inkSoft)
-                HStack(spacing: 6) {
-                    ForEach(Array(WeekendDays.bitsInDisplayOrder.enumerated()), id: \.offset) { index, bit in
-                        let on = WeekendDays.contains(model.weekendDays, weekday: bit)
-                        Button {
-                            withAnimation(Motion.settle) {
-                                model.weekendDays = WeekendDays.toggling(model.weekendDays, weekday: bit)
-                            }
-                        } label: {
-                            Text(WeekendDays.labels[index])
-                                .font(Typography.mono(12))
-                                .foregroundStyle(on ? Palette.onBone : Palette.ink)
-                                .frame(width: 38, height: 38)
-                                .background(on ? Palette.ink : Color.white.opacity(0.06), in: Circle())
-                                .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel(WeekendDays.names[index])
-                        .accessibilityAddTraits(on ? .isSelected : [])
+    /// Lit days follow the weekend times.
+    private var weekendDays: some View {
+        HStack(spacing: 8) {
+            ForEach(Array(WeekendDays.bitsInDisplayOrder.enumerated()), id: \.offset) { index, bit in
+                let on = WeekendDays.contains(model.weekendDays, weekday: bit)
+                Button {
+                    withAnimation(Motion.settle) {
+                        model.weekendDays = WeekendDays.toggling(model.weekendDays, weekday: bit)
                     }
-                }
-            }
-        }
-    }
-
-    private var quietSpanMinutes: Int {
-        (model.quietHours.endMin - model.quietHours.startMin + 1440) % 1440
-    }
-
-    private var quietSpanLabel: String {
-        let hours = quietSpanMinutes / 60
-        let mins = quietSpanMinutes % 60
-        if hours == 0 { return "\(mins) min overnight" }
-        if mins == 0 { return hours == 1 ? "1 hour overnight" : "\(hours) hours overnight" }
-        return "\(hours) hr \(mins) min overnight"
-    }
-
-    private var quietCard: some View {
-        SettingsCard(padding: 16) {
-            VStack(alignment: .leading, spacing: 16) {
-                HStack(spacing: 14) {
-                    Image(systemName: "moon")
-                        .font(.system(size: 15, weight: .regular))
-                        .foregroundStyle(Palette.hazeSoft)
+                } label: {
+                    Text(WeekendDays.labels[index])
+                        .font(Typography.mono(12))
+                        .foregroundStyle(on ? Color(hex: 0xE0E7FF) : Palette.inkFaint)
                         .frame(width: 36, height: 36)
-                        .background(Palette.haze.opacity(0.14), in: Circle())
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Quiet hours")
-                            .font(Typography.data(15, weight: .medium))
-                            .foregroundStyle(Palette.ink)
-                        Text("No check-ins while you sleep.")
-                            .font(Typography.data(13))
-                            .foregroundStyle(Palette.inkSoft)
+                        .background(Circle().fill(on ? Palette.haze.opacity(0.22) : Color.white.opacity(0.04)))
+                        .overlay(Circle().strokeBorder(on ? Palette.hazeSoft.opacity(0.7) : Color.white.opacity(0.08)))
+                        .shadow(color: Palette.haze.opacity(on ? 0.35 : 0), radius: 7)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(WeekendDays.names[index] + (on ? ", weekend times" : ""))
+                .accessibilityAddTraits(on ? .isSelected : [])
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
+
+/// The day as a clock: noon at the top, night at the bottom. Meals are lit dots on
+/// the ring, quiet hours a haze arc; the selected one is read out in the middle.
+private struct MealClock: View {
+    let times: MealTimesPayload
+    let quietStart: Int
+    let quietEnd: Int
+    @Binding var selected: RhythmSettingsView.DialItem
+    let minute: (RhythmSettingsView.DialItem) -> Int
+    let note: (RhythmSettingsView.DialItem) -> String
+
+    private let radius: CGFloat = 128
+
+    var body: some View {
+        GeometryReader { geo in
+            let c = CGPoint(x: geo.size.width / 2, y: geo.size.height / 2)
+            ZStack {
+                Circle().stroke(Color.white.opacity(0.08), lineWidth: 2)
+                    .frame(width: radius * 2, height: radius * 2)
+                    .position(c)
+                arc(from: times.breakfastMin, to: times.dinnerMin, center: c)
+                    .stroke(Palette.amber.opacity(0.55), style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
+                arc(from: quietStart, to: quietEnd, center: c)
+                    .stroke(Palette.haze.opacity(0.6), style: StrokeStyle(lineWidth: 12, lineCap: .round))
+                    .shadow(color: Palette.haze.opacity(0.7), radius: 10)
+
+                ForEach([(720, 12), (1080, 18), (0, 0), (360, 6)], id: \.0) { m, hour in
+                    Text(DialClock.cardinalLabel(hour))
+                        .font(Typography.mono(10))
+                        .foregroundStyle(Palette.inkFaint)
+                        .position(point(m, r: 102, c: c))
+                }
+
+                VStack(spacing: 6) {
+                    Text(selected.title).sectionLabelStyle(selected.isQuiet ? Palette.hazeSoft : Palette.amber)
+                    Text(formatMinutes(minute(selected)))
+                        .font(Typography.data(46, weight: .light))
+                        .tracking(-2)
+                        .foregroundStyle(Palette.ink)
+                        .contentTransition(.numericText(value: Double(minute(selected))))
+                        .minimumScaleFactor(0.7)
+                        .lineLimit(1)
+                    Text(note(selected))
+                        .font(Typography.mono(11))
+                        .foregroundStyle(Palette.inkSoft)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(width: 170)
+                .position(c)
+                .accessibilityElement(children: .combine)
+
+                ForEach(RhythmSettingsView.DialItem.order, id: \.self) { item in
+                    let on = item == selected
+                    Button { selected = item } label: {
+                        Group {
+                            if item.isQuiet {
+                                Circle()
+                                    .fill(on ? Color(hex: 0xE0E7FF) : Palette.haze)
+                                    .frame(width: on ? 22 : 14, height: on ? 22 : 14)
+                                    .shadow(color: Palette.haze.opacity(0.9), radius: on ? 9 : 4)
+                            } else if on {
+                                EmberDot(size: 30)
+                            } else {
+                                Circle().fill(Palette.amber).frame(width: 16, height: 16)
+                                    .shadow(color: Palette.amber.opacity(0.55), radius: 4)
+                            }
+                        }
+                        .frame(width: 44, height: 44)
+                        .contentShape(Circle())
                     }
+                    .buttonStyle(.plain)
+                    .position(point(minute(item), r: radius, c: c))
+                    .accessibilityLabel("\(item.title) \(formatMinutes(minute(item)))")
+                    .accessibilityAddTraits(on ? .isSelected : [])
                 }
-
-                HStack(alignment: .center, spacing: 10) {
-                    quietWell("Starts", $model.quietHours.startMin)
-                    quietBridge
-                    quietWell("Until", $model.quietHours.endMin)
-                }
-
-                Text(quietSpanLabel)
-                    .font(Typography.mono(11))
-                    .foregroundStyle(Palette.inkFaint)
-                    .frame(maxWidth: .infinity)
-                    .accessibilityHidden(true)
             }
         }
     }
 
-    private var quietBridge: some View {
-        VStack(spacing: 6) {
-            Capsule()
-                .fill(Palette.hairline)
-                .frame(width: 1, height: 10)
-            Image(systemName: "moon.zzz.fill")
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(Palette.inkFaint)
-            Capsule()
-                .fill(Palette.hairline)
-                .frame(width: 1, height: 10)
-        }
-        .frame(width: 22)
-        .accessibilityHidden(true)
+    /// Noon at the top, clockwise.
+    private func angle(_ m: Int) -> Double { Double(m - 720) / 1440 * 2 * .pi }
+
+    private func point(_ m: Int, r: CGFloat, c: CGPoint) -> CGPoint {
+        CGPoint(x: c.x + r * CGFloat(sin(angle(m))), y: c.y - r * CGFloat(cos(angle(m))))
     }
 
-    private func quietWell(_ title: String, _ minutes: Binding<Int>) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title).sectionLabelStyle()
-            MinutesChip(
-                minutes: Binding(
-                    get: { minutes.wrappedValue },
-                    set: { value in
-                        withAnimation(Motion.settle) { minutes.wrappedValue = value }
-                    }
-                ),
-                name: title
-            )
+    private func arc(from a: Int, to b: Int, center c: CGPoint) -> Path {
+        Path { p in
+            let span = (b - a + 1440) % 1440
+            let steps = max(2, span / 10)
+            for i in 0...steps {
+                let pt = point(a + span * i / steps, r: radius, c: c)
+                if i == 0 { p.move(to: pt) } else { p.addLine(to: pt) }
+            }
         }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .glass(radius: 16, fill: Color.white.opacity(0.04))
     }
 }
 
@@ -518,36 +796,48 @@ private struct MinutesChip: View {
 
 struct FoodsSettingsView: View {
     @Bindable var model: SettingsViewModel
-    @State private var customText = ""
-    @State private var pantryDraft = ""
+    @State private var ruleDraft = ""
     @State private var dislikeDraft = ""
+    @State private var pantryDraft = ""
 
     private static let allergies = ["Peanuts", "Tree nuts", "Shellfish", "Fish", "Sesame", "Eggs", "Soy"]
     private static let intolerances = ["Dairy", "Gluten"]
     private static let dontEat = ["Pork", "Beef", "Vegetarian", "Vegan"]
     private static var known: [String] { allergies + intolerances + dontEat }
 
-    private var customRestrictions: [String] {
-        model.restrictions.filter { item in
-            !Self.known.contains { $0.caseInsensitiveCompare(item) == .orderedSame }
-        }
-    }
+    /// Where pantry foods sit around the plate (centre x, y in a 350 × 290 box).
+    private static let slots: [CGPoint] = [
+        CGPoint(x: 0.5, y: 0.08), CGPoint(x: 0.82, y: 0.24), CGPoint(x: 0.18, y: 0.24), CGPoint(x: 0.85, y: 0.52),
+        CGPoint(x: 0.15, y: 0.52), CGPoint(x: 0.78, y: 0.8), CGPoint(x: 0.22, y: 0.8), CGPoint(x: 0.5, y: 0.93),
+    ]
 
     var body: some View {
-        SettingsScreen(title: "Foods I avoid", subtitle: "Hard rule.", headline: "Never suggest these.") {
-            VStack(alignment: .leading, spacing: 20) {
-                chipGroup("Allergies", Self.allergies).appearIn(2)
-                chipGroup("Intolerances", Self.intolerances).appearIn(3)
-                chipGroup("I don’t eat", Self.dontEat).appearIn(4)
-                if !customRestrictions.isEmpty {
-                    chipGroup("Yours", customRestrictions).appearIn(5)
-                }
-                addYourOwn.appearIn(6)
-                tokenField("What I have around", text: $pantryDraft, tokens: $model.pantryTokens).appearIn(7)
-                tokenField("I don’t like", text: $dislikeDraft, tokens: $model.dislikedFoods).appearIn(8)
-                reassurance.appearIn(9)
+        InnerScreen(spacing: 14) {
+            ScreenHeader(label: "Foods") {
+                Text("\(neverCount) never")
+                    .font(Typography.mono(11))
+                    .foregroundStyle(Color(hex: 0xFCA5A5))
             }
+
+            Headline("On the plate.", tail: "Off the table.", size: 38)
+                .appearIn(0, rise: 16)
+
+            plate.appearIn(1, rise: 14)
+
+            Text("Top-ups and the evening close reach for these first.")
+                .font(Typography.data(13, weight: .regular))
+                .foregroundStyle(Palette.inkSoft)
+                .frame(maxWidth: .infinity)
+                .multilineTextAlignment(.center)
+
+            addField("Something you keep around…", text: $pantryDraft) { add(&pantryDraft, to: \.pantryTokens) }
+                .appearIn(2)
+
+            tray.appearIn(3, rise: 14)
         }
+        .animation(Motion.settle, value: model.restrictions)
+        .animation(Motion.settle, value: model.pantryTokens)
+        .animation(Motion.settle, value: model.dislikedFoods)
         .settingsSaveBar(
             visible: model.restrictionsDirty,
             note: model.restrictionsSaveNote,
@@ -562,26 +852,169 @@ struct FoodsSettingsView: View {
         .onDisappear { model.revertToOriginal() }
     }
 
-    private func chipGroup(_ title: String, _ options: [String]) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(title).sectionLabelStyle()
-            FlowChips(options: options, selected: $model.restrictions)
+    private var neverCount: Int { model.restrictions.count + model.dislikedFoods.count }
+
+    // MARK: Plate
+
+    /// What's in the kitchen, floating around a plate that glows brighter the more there is.
+    private var plate: some View {
+        GeometryReader { geo in
+            let w = geo.size.width, h = geo.size.height
+            let items = Array(model.pantryTokens.prefix(8))
+            ZStack {
+                FuelOrb(size: 120, glow: 0.42)
+                    .opacity(0.35 + 0.65 * min(1, Double(items.count) / 5))
+                    .position(x: w / 2, y: h / 2)
+                VStack(spacing: 2) {
+                    Text("\(model.pantryTokens.count)")
+                        .font(Typography.data(34, weight: .light))
+                    Text("AT HOME")
+                        .font(Typography.mono(9))
+                        .tracking(1.2)
+                        .foregroundStyle(Color(hex: 0xFDE6CF))
+                }
+                .foregroundStyle(Palette.ink)
+                .shadow(color: .black.opacity(0.6), radius: 6, y: 2)
+                .position(x: w / 2, y: h / 2)
+
+                ForEach(Array(items.enumerated()), id: \.element) { index, item in
+                    let slot = Self.slots[index]
+                    Button {
+                        model.pantryTokens.removeAll { $0 == item }
+                    } label: {
+                        HStack(spacing: 6) {
+                            Text(item)
+                            Image(systemName: "xmark")
+                                .font(.system(size: 8, weight: .bold))
+                                .foregroundStyle(Palette.inkFaint)
+                        }
+                        .font(Typography.data(13, weight: .regular))
+                        .foregroundStyle(Palette.ink)
+                        .padding(.horizontal, 12)
+                        .frame(height: 34)
+                        .background(.ultraThinMaterial.opacity(0.6), in: Capsule())
+                        .background(Color(hex: 0x18181B, opacity: 0.7), in: Capsule())
+                        .overlay(Capsule().strokeBorder(Color(hex: 0xFF8A50, opacity: 0.6)))
+                        .shadow(color: Palette.ember.opacity(0.22), radius: 9)
+                        .fixedSize()
+                    }
+                    .buttonStyle(PressableCard())
+                    .floating(index)
+                    .position(x: slot.x * w, y: slot.y * h)
+                    .accessibilityLabel("Remove \(item)")
+                }
+                if items.isEmpty {
+                    Text("Add what you keep at home —\nmilk, oats, peanut butter…")
+                        .font(Typography.data(13, weight: .regular))
+                        .foregroundStyle(Palette.inkFaint)
+                        .multilineTextAlignment(.center)
+                        .position(x: w / 2, y: h - 20)
+                }
+            }
         }
+        .frame(height: 290)
     }
 
-    private var addYourOwn: some View {
-        addField("Something else…", text: $customText, onAdd: submitCustom)
+    // MARK: Tray
+
+    private var ruledOut: [(label: String, kind: String, dislike: Bool)] {
+        model.restrictions.map { ($0, kind(of: $0), false) } + model.dislikedFoods.map { ($0, "DISLIKE", true) }
     }
 
-    private var reassurance: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "checkmark.shield")
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(Palette.positive)
-            Text("Every check-in, top-up and evening close skips these.")
-                .font(Typography.data(13, weight: .regular))
-                .foregroundStyle(Palette.inkSoft)
+    private var suggestions: [String] {
+        Self.known.filter { item in !model.restrictions.contains { $0.caseInsensitiveCompare(item) == .orderedSame } }
+    }
+
+    private func kind(of item: String) -> String {
+        if Self.allergies.contains(item) { return "ALLERGY" }
+        if Self.intolerances.contains(item) { return "INTOLERANT" }
+        if Self.dontEat.contains(item) { return "CHOICE" }
+        return "YOURS"
+    }
+
+    private var tray: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Label("Off the table", systemImage: "nosign")
+                    .labelStyle(TrayLabelStyle())
+                Spacer()
+                Text("HARD RULE")
+                    .font(Typography.mono(10))
+                    .tracking(1)
+                    .foregroundStyle(Palette.inkFaint)
+            }
+
+            FlexWrap(spacing: 8, lineSpacing: 8) {
+                ForEach(ruledOut, id: \.label) { item in
+                    Button {
+                        if item.dislike {
+                            model.dislikedFoods.removeAll { $0 == item.label }
+                        } else {
+                            model.restrictions.removeAll { $0 == item.label }
+                        }
+                    } label: {
+                        HStack(spacing: 8) {
+                            Text(item.label)
+                                .strikethrough(true, color: Palette.danger.opacity(0.75))
+                                .font(Typography.data(14, weight: .regular))
+                                .foregroundStyle(Color(hex: 0xFECACA))
+                            Text(item.kind)
+                                .font(Typography.mono(9))
+                                .tracking(1)
+                                .foregroundStyle(Palette.danger)
+                        }
+                        .padding(.horizontal, 14)
+                        .frame(height: 40)
+                        .background(Palette.danger.opacity(0.10), in: Capsule())
+                        .overlay(Capsule().strokeBorder(Palette.danger.opacity(0.42)))
+                    }
+                    .buttonStyle(PressableCard())
+                    .accessibilityLabel("Allow \(item.label) again")
+                }
+            }
+            if ruledOut.isEmpty {
+                Text("Nothing yet. Tap one below.")
+                    .font(Typography.data(13, weight: .regular))
+                    .foregroundStyle(Palette.inkFaint)
+            }
+
+            Rectangle().fill(Color.white.opacity(0.06)).frame(height: 1)
+
+            Text("Common · tap to rule out")
+                .font(Typography.data(12, weight: .regular))
+                .foregroundStyle(Palette.inkFaint)
+            FlexWrap(spacing: 6, lineSpacing: 6) {
+                ForEach(suggestions, id: \.self) { item in
+                    Button { model.restrictions.append(item) } label: {
+                        Text("+ \(item)")
+                            .font(Typography.data(13, weight: .regular))
+                            .foregroundStyle(Palette.inkSoft)
+                            .padding(.horizontal, 12)
+                            .frame(height: 34)
+                            .overlay(Capsule().strokeBorder(Color.white.opacity(0.16), style: StrokeStyle(lineWidth: 1, dash: [4, 3])))
+                    }
+                    .buttonStyle(PressableCard())
+                }
+            }
+
+            addField("Rule out something else…", text: $ruleDraft) {
+                model.addCustomRestriction(ruleDraft)
+                ruleDraft = ""
+            }
+            addField("A food you don’t like…", text: $dislikeDraft) { add(&dislikeDraft, to: \.dislikedFoods) }
+
+            HStack(spacing: 8) {
+                Image(systemName: "checkmark.shield")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(Palette.positive)
+                Text("Every check-in, top-up and evening close skips these.")
+                    .font(Typography.data(12, weight: .regular))
+                    .foregroundStyle(Palette.inkSoft)
+            }
         }
+        .padding(16)
+        .background(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(Palette.danger.opacity(0.045)))
+        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(Palette.danger.opacity(0.30), style: StrokeStyle(lineWidth: 1, dash: [5, 4])))
     }
 
     private func addField(_ prompt: String, text: Binding<String>, onAdd: @escaping () -> Void) -> some View {
@@ -599,28 +1032,44 @@ struct FoodsSettingsView: View {
         .glassCapsule(fill: Color.white.opacity(0.05), stroke: Color.white.opacity(0.10))
     }
 
-    private func submitCustom() {
-        model.addCustomRestriction(customText)
-        customText = ""
-    }
-
-    private func tokenField(_ title: String, text: Binding<String>, tokens: Binding<[String]>) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(title).sectionLabelStyle()
-            if !tokens.wrappedValue.isEmpty {
-                FlowChips(options: tokens.wrappedValue, selected: tokens)
-            }
-            addField("Add…", text: text) { addToken(text, into: tokens) }
-        }
-    }
-
-    private func addToken(_ text: Binding<String>, into tokens: Binding<[String]>) {
-        let value = text.wrappedValue.trimmingCharacters(in: .whitespacesAndNewlines)
+    private func add(_ text: inout String, to keyPath: ReferenceWritableKeyPath<SettingsViewModel, [String]>) {
+        let value = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !value.isEmpty else { return }
-        if !tokens.wrappedValue.contains(where: { $0.caseInsensitiveCompare(value) == .orderedSame }) {
-            tokens.wrappedValue.append(value)
+        if !model[keyPath: keyPath].contains(where: { $0.caseInsensitiveCompare(value) == .orderedSame }) {
+            model[keyPath: keyPath].append(value)
         }
-        text.wrappedValue = ""
+        text = ""
+    }
+}
+
+private struct TrayLabelStyle: LabelStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(spacing: 8) {
+            configuration.icon
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(Palette.danger)
+            configuration.title.sectionLabelStyle(Color(hex: 0xFCA5A5))
+        }
+    }
+}
+
+private extension View {
+    /// A slow bob, offset per item so the chips don't move in step.
+    func floating(_ index: Int) -> some View {
+        modifier(FloatBob(index: index))
+    }
+}
+
+private struct FloatBob: ViewModifier {
+    let index: Int
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
+        TimelineView(.animation(paused: reduceMotion)) { ctx in
+            let t = ctx.date.timeIntervalSinceReferenceDate
+            let period = 5.0 + Double(index % 3) * 0.5
+            content.offset(y: reduceMotion ? 0 : CGFloat(sin((t / period + Double(index) * 0.37) * 2 * .pi)) * 4.5)
+        }
     }
 }
 
@@ -629,109 +1078,20 @@ struct FoodsSettingsView: View {
 struct HealthSettingsView: View {
     @Environment(AppEnvironment.self) private var env
 
+    private var on: Bool { env.health.connected }
+
     var body: some View {
-        SettingsScreen(title: "Apple Health", subtitle: "Workouts in, meals out.", headline: "Apple Health.") {
-            VStack(alignment: .leading, spacing: 20) {
-                hero.appearIn(2)
-
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("SetPoint writes").sectionLabelStyle()
-                    GlassList {
-                        writeToggle("Calories", "Today \(env.health.todayWrittenKcal) kcal", \.energy)
-                        ListDivider()
-                        writeToggle("Protein", nil, \.protein)
-                        ListDivider()
-                        writeToggle("Carbs", nil, \.carbs)
-                        ListDivider()
-                        writeToggle("Fat", nil, \.fat)
-                        ListDivider()
-                        writeToggle("Weight you log here", "Optional", \.bodyMass)
-                    }
-                    Text("Edits and deletes in SetPoint overwrite the same meal in Health.")
-                        .font(Typography.data(13, weight: .regular))
-                        .foregroundStyle(Palette.inkSoft)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .appearIn(3)
-
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("SetPoint reads").sectionLabelStyle()
-                    FlexWrap(spacing: 8, lineSpacing: 8) {
-                        ForEach(readChips, id: \.self) { chip in
-                            Text(chip)
-                                .font(Typography.data(14, weight: .regular))
-                                .foregroundStyle(Palette.ink)
-                                .padding(.horizontal, 14)
-                                .frame(height: 38)
-                                .glassCapsule()
-                        }
-                    }
-                }
-                .appearIn(4)
-
-                privacyNote.appearIn(5)
-
-                ActionButton(title: "Manage in the Health app", kind: .secondary, action: openHealth)
-                    .appearIn(6)
-            }
-        }
-        .task {
-            env.health.refreshTodayWritten()
-            await loadWritePreferences()
-        }
-    }
-
-    private var readChips: [String] {
-        ["Heart rate variability", "Resting heart rate", "Weight", "Height, age, sex"]
-    }
-
-    private var hero: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(spacing: 14) {
-                Image(systemName: "heart.fill")
-                    .font(.system(size: 18, weight: .medium))
-                    .foregroundStyle(Color(hex: 0xFF3B5C))
-                    .frame(width: 44, height: 44)
-                    .background(Palette.ink, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(env.health.connected ? "Connected" : "Not connected")
-                        .font(Typography.data(15, weight: .medium))
-                        .foregroundStyle(Palette.ink)
-                    Text(env.health.connected ? env.health.statusLine : "Workouts in, so refuels come on time")
-                        .font(Typography.data(13, weight: .regular))
-                        .foregroundStyle(Palette.inkSoft)
-                }
-                Spacer(minLength: 8)
-                if !env.health.connected {
-                    Button {
-                        Task { await env.health.connect() }
-                    } label: {
-                        Group {
-                            if env.health.connecting {
-                                BusyDots(tint: Palette.onBone)
-                            } else {
-                                Text("Connect")
-                            }
-                        }
-                        .font(Typography.data(13, weight: .medium))
-                        .foregroundStyle(Palette.onBone)
-                        .padding(.horizontal, 14)
-                        .frame(height: 34)
-                        .background(Palette.ink, in: Capsule())
-                    }
-                    .buttonStyle(PressableCard())
-                    .disabled(env.health.connecting)
-                } else {
-                    Circle().fill(Palette.positive).frame(width: 8, height: 8)
-                }
+        InnerScreen(glow: .mixed, spacing: 14) {
+            ScreenHeader(label: "") {
+                StatusPill(dot: on ? Palette.positive : Color(hex: 0x52525B), text: on ? env.health.statusLine : "Not connected")
             }
 
-            Text(heroDetail)
-                .font(Typography.data(13, weight: .regular))
-                .foregroundStyle(Palette.inkSoft)
-                .fixedSize(horizontal: false, vertical: true)
+            Headline("Workouts in.", tail: "Meals out.", size: 40)
+                .appearIn(0, rise: 16)
 
-            if env.health.connected && env.health.needsMorePermissions {
+            bridge.appearIn(1, rise: 14)
+
+            if on && env.health.needsMorePermissions {
                 ActionButton(title: "Allow meals and workouts", kind: .secondary) {
                     Task { await env.health.grantMorePermissions() }
                 }
@@ -739,55 +1099,148 @@ struct HealthSettingsView: View {
 
             if env.health.state == .connected && !env.health.hasHeartData {
                 Text("No heart data yet. Wear your Apple Watch, or check SetPoint’s access in Health → Sharing → Apps.")
-                    .font(Typography.data(13, weight: .regular))
+                    .font(Typography.data(12, weight: .regular))
                     .foregroundStyle(Palette.inkFaint)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            if let message = env.health.lastError, !env.health.connected {
+            if let message = env.health.lastError, !on {
                 Text(message)
                     .font(Typography.data(13, weight: .regular))
                     .foregroundStyle(Palette.danger)
                     .fixedSize(horizontal: false, vertical: true)
             }
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .glass(radius: 22)
-    }
 
-    private var heroDetail: String {
-        if env.health.connected {
-            return "Meals you log write to Apple Health. Recovery and weight still flow the other way."
-        }
-        return "Connect to write meals into Health and fill in your body stats."
-    }
-
-    private func writeToggle(
-        _ title: String,
-        _ caption: String?,
-        _ keyPath: WritableKeyPath<HealthWritePreferences, Bool>
-    ) -> some View {
-        Toggle(isOn: Binding(
-            get: { env.health.writePreferences[keyPath: keyPath] },
-            set: {
-                env.health.writePreferences[keyPath: keyPath] = $0
-                env.health.persistWritePreferences()
+            HStack(spacing: 8) {
+                Image(systemName: "lock")
+                    .font(.system(size: 12, weight: .medium))
+                Text("Raw readings stay on this phone. Edits in SetPoint overwrite the same meal in Health.")
+                    .font(Typography.data(12, weight: .regular))
+                    .fixedSize(horizontal: false, vertical: true)
             }
-        )) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(Typography.data(15, weight: .regular))
-                    .foregroundStyle(Palette.ink)
-                if let caption {
-                    Text(caption)
-                        .font(Typography.data(12, weight: .regular))
-                        .foregroundStyle(Palette.inkFaint)
+            .foregroundStyle(Palette.inkFaint)
+            .appearIn(2)
+
+            if on {
+                ActionButton(title: "Manage in the Health app", kind: .secondary, action: openHealth)
+                    .appearIn(3)
+            } else {
+                ActionButton(title: env.health.connecting ? "Connecting" : "Connect Apple Health", busy: env.health.connecting) {
+                    Task { await env.health.connect() }
                 }
+                .appearIn(3)
             }
         }
-        .tint(Palette.ember)
-        .padding(.vertical, 12)
+        .animation(Motion.settle, value: on)
+        .task {
+            env.health.refreshTodayWritten()
+            await loadWritePreferences()
+        }
+    }
+
+    private var reads: [String] { ["Weight", "Height · age · sex", "HRV", "Resting heart rate"] }
+
+    private var writes: [(title: String, value: String?, key: WritableKeyPath<HealthWritePreferences, Bool>)] {
+        [
+            ("Calories", env.health.todayWrittenKcal > 0 ? env.health.todayWrittenKcal.formatted() : nil, \.energy),
+            ("Protein", nil, \.protein),
+            ("Carbs", nil, \.carbs),
+            ("Fat", nil, \.fat),
+            ("Weight", nil, \.bodyMass),
+        ]
+    }
+
+    /// Health at the top, SetPoint at the bottom: what's read flows down the left,
+    /// what's written flows up the right. Tap a right-hand pill to stop writing it.
+    private var bridge: some View {
+        GeometryReader { geo in
+            let w = geo.size.width
+            let mid = w / 2
+            ZStack(alignment: .top) {
+                Image(systemName: "heart.fill")
+                    .font(.system(size: 24, weight: .medium))
+                    .foregroundStyle(Color(hex: 0xFF3B5C))
+                    .frame(width: 56, height: 56)
+                    .background(Palette.ink, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .shadow(color: Color(hex: 0xFF3B5C).opacity(on ? 0.45 : 0), radius: 18)
+                    .position(x: mid, y: 28)
+
+                Text("Reads ↓").sectionLabelStyle(on ? Palette.hazeSoft : Color(hex: 0x52525B))
+                    .position(x: 36, y: 26)
+                Text("Writes ↑").sectionLabelStyle(on ? Palette.amber : Color(hex: 0x52525B))
+                    .position(x: w - 38, y: 26)
+
+                line(x: mid - 25, color: Palette.hazeSoft)
+                line(x: mid + 24, color: Color(hex: 0xFF8A50))
+                if on {
+                    FlowingDots(color: Palette.hazeSoft, length: 240, downward: true)
+                        .position(x: mid - 25, y: 66 + 120)
+                    FlowingDots(color: Palette.amber, length: 240, downward: false)
+                        .position(x: mid + 24, y: 66 + 120)
+                }
+
+                VStack(alignment: .trailing, spacing: 10) {
+                    ForEach(reads, id: \.self) { item in
+                        Text(item)
+                            .font(Typography.data(13, weight: .regular))
+                            .foregroundStyle(on ? Color(hex: 0xE0E7FF) : Color(hex: 0x71717A))
+                            .padding(.horizontal, 12)
+                            .frame(height: 34)
+                            .background(Capsule().fill(on ? Palette.haze.opacity(0.10) : .clear))
+                            .overlay(Capsule().strokeBorder(on ? Palette.hazeSoft.opacity(0.32) : Color.white.opacity(0.12), style: StrokeStyle(lineWidth: 1, dash: on ? [] : [4, 3])))
+                            .fixedSize()
+                    }
+                }
+                .frame(width: mid - 39, alignment: .trailing)
+                .position(x: (mid - 39) / 2, y: 80 + 102)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Reads " + reads.joined(separator: ", "))
+
+                VStack(alignment: .leading, spacing: 10) {
+                    ForEach(writes, id: \.title) { item in
+                        let lit = on && env.health.writePreferences[keyPath: item.key]
+                        Button {
+                            guard on else { return }
+                            env.health.writePreferences[keyPath: item.key].toggle()
+                            env.health.persistWritePreferences()
+                        } label: {
+                            HStack(spacing: 8) {
+                                Text(item.title)
+                                if let value = item.value {
+                                    Text(value)
+                                        .font(Typography.mono(11))
+                                        .foregroundStyle(lit ? Palette.amber : Color(hex: 0x52525B))
+                                }
+                            }
+                            .font(Typography.data(13, weight: .regular))
+                            .foregroundStyle(lit ? Palette.ink : Color(hex: 0x71717A))
+                            .padding(.horizontal, 12)
+                            .frame(height: 34)
+                            .background(Capsule().fill(lit ? Palette.ember.opacity(0.12) : .clear))
+                            .overlay(Capsule().strokeBorder(lit ? Color(hex: 0xFF8A50, opacity: 0.5) : Color.white.opacity(0.14), style: StrokeStyle(lineWidth: 1, dash: lit ? [] : [4, 3])))
+                            .fixedSize()
+                        }
+                        .buttonStyle(PressableCard())
+                        .accessibilityLabel("Write \(item.title) to Health")
+                        .accessibilityValue(lit ? "On" : "Off")
+                    }
+                }
+                .frame(width: mid - 38, alignment: .leading)
+                .position(x: mid + 38 + (mid - 38) / 2, y: 80 + 102 + 22)
+
+                FuelOrb(size: 56, dimmed: !on, glow: 0.45)
+                    .position(x: mid, y: 340)
+            }
+        }
+        .frame(height: 368)
+    }
+
+    private func line(x: CGFloat, color: Color) -> some View {
+        Rectangle()
+            .fill(color.opacity(on ? 0.45 : 0.18))
+            .frame(width: 1.5, height: 240)
+            .position(x: x, y: 66 + 120)
+            .accessibilityHidden(true)
     }
 
     private func loadWritePreferences() async {
@@ -795,24 +1248,6 @@ struct HealthSettingsView: View {
               let payload = settings.healthWrite
         else { return }
         env.health.applyServerWritePreferences(.from(payload))
-    }
-
-    private var privacyNote: some View {
-        HStack(alignment: .top, spacing: 10) {
-            Image(systemName: "lock")
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(Palette.inkSoft)
-                .padding(.top, 2)
-            (
-                Text("Raw readings stay on this phone.").foregroundColor(Palette.ink)
-                + Text(" Nutrition you log is written into Health. I only send how far today is from your normal.").foregroundColor(Palette.inkSoft)
-            )
-            .font(Typography.data(13, weight: .regular))
-            .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .glass(radius: 18, fill: Color.white.opacity(0.03))
     }
 
     private func openHealth() {

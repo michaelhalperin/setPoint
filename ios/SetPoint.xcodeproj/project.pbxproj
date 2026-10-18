@@ -82,6 +82,7 @@
 		977291CD24CD4C3C42B758A1 /* CalendarManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA1CDC6F08B711EAF47371AB /* CalendarManager.swift */; };
 		986D0B7C2342E6B05225C7B4 /* TrainingScreens.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69E046348B4D52C2800A3FDD /* TrainingScreens.swift */; };
 		9878761462D8114645F21FB4 /* ConversationViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B975D8AD90E038FB0E7082D6 /* ConversationViewModel.swift */; };
+		9906B0DB3C667C99FD4E2A97 /* RedesignPieces.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C6339A05F2010095AE6DB9A /* RedesignPieces.swift */; };
 		9938AA9FD6C95C53466880C1 /* TodayWidgetViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99EDC533BAB8E6329BDB5A96 /* TodayWidgetViews.swift */; };
 		9B0C59C6A3F3D67DA3DD2DB7 /* APIConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B48D8D6E1339295933EFC28 /* APIConfig.swift */; };
 		9BFF374841C89CA935F78B0A /* MassUnitTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B9A434B0F6DB211B7FFFBF7 /* MassUnitTests.swift */; };
@@ -198,6 +199,7 @@
 		308193DF41DAF6B5772A35C3 /* CalendarWeekTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarWeekTests.swift; sourceTree = "<group>"; };
 		3AC0F512FD86BD03490F144B /* OnboardingFinish.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingFinish.swift; sourceTree = "<group>"; };
 		3BB436B32C601D78062589D6 /* BarcodeLogViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BarcodeLogViews.swift; sourceTree = "<group>"; };
+		3C6339A05F2010095AE6DB9A /* RedesignPieces.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RedesignPieces.swift; sourceTree = "<group>"; };
 		3D0A0DAB41B755C0BFB38E14 /* SubscriptionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionStore.swift; sourceTree = "<group>"; };
 		3D5EBB067542BB4ED82F2416 /* OnboardingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingTests.swift; sourceTree = "<group>"; };
 		3DE0776BE27E3FB776B02BB7 /* LogMealViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogMealViewModel.swift; sourceTree = "<group>"; };
@@ -433,6 +435,7 @@
 				FA50138B8097773BBC7F74C3 /* Motion.swift */,
 				7936684A077EC94FC463DA02 /* OnboardingComponents.swift */,
 				D449CA2B0A6EDA6F603583A6 /* Palette.swift */,
+				3C6339A05F2010095AE6DB9A /* RedesignPieces.swift */,
 				5757ABD836E69A9824F2F4C5 /* Spacing.swift */,
 				21981A8CC1F3D3E6093F7478 /* Typography.swift */,
 			);
@@ -894,6 +897,7 @@
 				44513A1C41411708F0A32879 /* PaywallView.swift in Sources */,
 				A1E337DF032F197F35D4D31B /* PrescriptionView.swift in Sources */,
 				85DD024A43F4B3B8F45C95E6 /* PushManager.swift in Sources */,
+				9906B0DB3C667C99FD4E2A97 /* RedesignPieces.swift in Sources */,
 				49442018BF61D9F41867AA35 /* RootView.swift in Sources */,
 				BC1B045B45916AAAC4921489 /* SavedMealEditorView.swift in Sources */,
 				3953FE9973A1006C6AEF39E7 /* SetPointApp.swift in Sources */,
