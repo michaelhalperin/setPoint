@@ -4,157 +4,192 @@ import SwiftUI
 
 struct BusyRulesView: View {
     @Environment(AppEnvironment.self) private var env
-    @State private var sliderValue: Double = 60
+
+    private static let lengths = [30, 60, 120, 180]
 
     var body: some View {
         let calendar = env.calendar
-        SettingsScreen(title: "Busy rules", subtitle: "How early I remind you.", headline: "When you’re busy.") {
-            VStack(alignment: .leading, spacing: 14) {
-                CalendarImpactCard(week: calendar.week, refreshing: calendar.refreshing)
-                    .appearIn(2)
-                headsUpCard.appearIn(3)
-                minBlockCard.appearIn(4)
-                togglesCard.appearIn(5)
-            }
+        InnerScreen(spacing: 14) {
+            ScreenHeader(label: "Busy rules")
+
+            Headline("When you’re busy.", tail: "How early I step in.", size: 36)
+                .appearIn(0, rise: 16)
+
+            headsUp.appearIn(1, rise: 14)
+            countsAsBusy.appearIn(2, rise: 14)
+            alsoRules.appearIn(3)
+
+            CalendarMovedStrip(week: calendar.week, refreshing: calendar.refreshing, title: "With these rules")
+                .appearIn(4)
         }
-        .onAppear { sliderValue = Double(calendar.minBlockMin) }
     }
 
     // MARK: Heads-up
 
-    private var headsUpCard: some View {
+    /// A meeting at 12:00 and the reminder dot sliding along the morning as the lead changes.
+    private var headsUp: some View {
         let calendar = env.calendar
         let meeting = calendar.week?.next?.busy.startMin ?? 12 * 60
-        return SettingsCard {
-            VStack(alignment: .leading, spacing: 14) {
-                CalendarCardLabel(text: "Heads-up")
-                Headline("How early should I remind you?", tail: "Before a meeting.", size: 22)
-                HStack(spacing: 0) {
-                    tile(symbol: "bell", label: "Reminder", time: meeting - calendar.leadMin, accent: true)
-                    VStack(spacing: 2) {
-                        Text("\(calendar.leadMin) min")
-                            .font(Typography.mono(11))
-                            .foregroundStyle(Palette.inkSoft)
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(Palette.inkSoft)
-                    }
-                    .frame(width: 56)
-                    tile(symbol: "calendar", label: "Meeting", time: meeting, accent: false)
-                }
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel("Reminder at \(CalendarClock.hm(meeting - calendar.leadMin)), \(calendar.leadMin) minutes before a meeting at \(CalendarClock.hm(meeting))")
-                SegmentedPills(
-                    options: [30, 45, 60],
-                    selection: Binding(
-                        get: { calendar.leadMin },
-                        set: {
-                            guard $0 != calendar.leadMin else { return }
-                            calendar.leadMin = $0
-                            calendar.rulesChanged()
+        return VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Text("Heads-up").sectionLabelStyle()
+                Spacer()
+                Text(CalendarClock.hm(meeting - calendar.leadMin))
+                    .font(Typography.mono(12))
+                    .foregroundStyle(Palette.amber)
+                    .contentTransition(.numericText())
+            }
+            GeometryReader { geo in
+                let w = geo.size.width
+                let from = meeting - 90, span = 150.0
+                let x = { (m: Int) in CGFloat(Double(m - from) / span) * w }
+                let orbX = x(meeting - calendar.leadMin)
+                let meetingX = x(meeting)
+                ZStack(alignment: .topLeading) {
+                    BusyBlock(radius: 12)
+                        .overlay(alignment: .topLeading) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Meeting").font(Typography.data(12, weight: .regular)).foregroundStyle(Palette.ink)
+                                Text(CalendarClock.hm(meeting)).font(Typography.mono(10)).foregroundStyle(Palette.inkFaint)
+                            }
+                            .padding(8)
                         }
-                    ),
-                    title: { "\($0) min" }
-                )
+                        .frame(width: w - meetingX, height: 64)
+                        .offset(x: meetingX, y: 10)
+                    Rectangle()
+                        .fill(Palette.amber.opacity(0.6))
+                        .frame(width: max(0, meetingX - orbX - 15), height: 1.5)
+                        .offset(x: orbX + 13, y: 42)
+                    Text("\(calendar.leadMin) min")
+                        .font(Typography.mono(10))
+                        .foregroundStyle(Palette.amber)
+                        .fixedSize()
+                        .position(x: (orbX + meetingX) / 2, y: 28)
+                    EmberDot(size: 22)
+                        .offset(x: orbX - 11, y: 31)
+                    ForEach(0..<6, id: \.self) { i in
+                        let m = from + i * 30
+                        Text(CalendarClock.hm(m))
+                            .font(Typography.mono(9))
+                            .foregroundStyle(Palette.inkFaint)
+                            .fixedSize()
+                            .position(x: min(max(x(m), 14), w - 14), y: 90)
+                    }
+                }
+                .animation(Motion.settle, value: calendar.leadMin)
             }
-        }
-    }
+            .frame(height: 98)
+            .accessibilityElement()
+            .accessibilityLabel("Reminder at \(CalendarClock.hm(meeting - calendar.leadMin)), \(calendar.leadMin) minutes before a meeting at \(CalendarClock.hm(meeting))")
 
-    private func tile(symbol: String, label: String, time: Int, accent: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 5) {
-                Image(systemName: symbol).font(.system(size: 12, weight: .regular))
-                Text(label).font(Typography.data(13, weight: .regular))
-            }
-            .foregroundStyle(accent ? Palette.amber : Palette.inkSoft)
-            Text(CalendarClock.hm(time))
-                .font(Typography.mono(26))
-                .foregroundStyle(accent ? Palette.amber : Palette.ink)
-                .contentTransition(.numericText())
+            SegmentedPills(
+                options: [30, 45, 60],
+                selection: Binding(
+                    get: { calendar.leadMin },
+                    set: {
+                        guard $0 != calendar.leadMin else { return }
+                        calendar.leadMin = $0
+                        calendar.rulesChanged()
+                    }
+                ),
+                title: { "\($0) min" }
+            )
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 14)
-        .padding(.vertical, 14)
-        .background {
-            if accent {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(Palette.ember.opacity(0.10))
-                    .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Color(hex: 0xFF8A50, opacity: 0.3)))
-            } else {
-                BusyHatch(cornerRadius: 16)
-            }
-        }
+        .padding(16)
+        .glass(radius: 24)
     }
 
     // MARK: Counts as busy
 
-    private var minBlockCard: some View {
-        SettingsCard {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    CalendarCardLabel(text: "Counts as busy")
-                    Spacer()
-                    Text(CalendarCopy.minBlock(Int(sliderValue)))
-                        .font(Typography.mono(13))
-                        .foregroundStyle(Palette.ink)
-                }
-                Slider(value: $sliderValue, in: 30...180, step: 15) { editing in
-                    guard !editing else { return }
-                    let value = Int(sliderValue)
-                    guard value != env.calendar.minBlockMin else { return }
-                    env.calendar.minBlockMin = value
-                    env.calendar.rulesChanged()
-                }
-                .tint(Palette.amber)
-                .accessibilityLabel("Counts as busy")
-                .accessibilityValue(CalendarCopy.minBlock(Int(sliderValue)))
-                GeometryReader { geo in
-                    ForEach([(30, "30m"), (60, "1h"), (120, "2h"), (180, "3h")], id: \.0) { value, label in
-                        let fraction = CGFloat(value - 30) / 150
-                        Text(label)
-                            .font(Typography.mono(10))
-                            .foregroundStyle(Palette.inkFaint)
-                            .fixedSize()
-                            .position(x: 14 + fraction * (geo.size.width - 28), y: 6)
-                    }
-                }
-                .frame(height: 14)
-                .accessibilityHidden(true)
-                Text("Standups and quick calls don't move anything.")
-                    .font(Typography.data(12))
-                    .foregroundStyle(Palette.inkSoft)
-                    .padding(.top, 4)
+    /// Four bars of 30 min to 3 h. Bars at or past the threshold are striped; tap one to set it.
+    private var countsAsBusy: some View {
+        let calendar = env.calendar
+        let threshold = Self.lengths.min { abs($0 - calendar.minBlockMin) < abs($1 - calendar.minBlockMin) } ?? 60
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("Counts as busy").sectionLabelStyle()
+                Spacer()
+                Text(CalendarCopy.minBlock(calendar.minBlockMin))
+                    .font(Typography.mono(12))
+                    .foregroundStyle(Palette.ink)
             }
+            VStack(spacing: 4) {
+                ForEach(Self.lengths, id: \.self) { length in
+                    let counts = length >= threshold
+                    let selected = length == threshold
+                    Button {
+                        guard length != calendar.minBlockMin else { return }
+                        UISelectionFeedbackGenerator().selectionChanged()
+                        calendar.minBlockMin = length
+                        calendar.rulesChanged()
+                    } label: {
+                        HStack(spacing: 12) {
+                            Text(length < 60 ? "\(length) min" : "\(length / 60) h")
+                                .font(Typography.mono(12))
+                                .foregroundStyle(selected ? Palette.amber : Palette.inkSoft)
+                                .frame(width: 46, alignment: .leading)
+                            GeometryReader { geo in
+                                BusyBlock(counts: counts, radius: 7)
+                                    .frame(width: geo.size.width * CGFloat(length) / 180, height: 22)
+                                    .overlay(alignment: .leading) {
+                                        if selected {
+                                            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                                                .strokeBorder(Palette.amber, lineWidth: 1.5)
+                                                .frame(width: geo.size.width * CGFloat(length) / 180, height: 22)
+                                                .shadow(color: Palette.amber.opacity(0.35), radius: 8)
+                                        }
+                                    }
+                                    .frame(maxHeight: .infinity)
+                            }
+                            .frame(height: 22)
+                            Text(counts ? "counts" : "ignored")
+                                .font(Typography.data(12, weight: .regular))
+                                .foregroundStyle(counts ? Palette.ink : Color(hex: 0x52525B))
+                                .frame(width: 52, alignment: .trailing)
+                        }
+                        .frame(height: 40)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(CalendarCopy.minBlock(length))
+                    .accessibilityAddTraits(selected ? .isSelected : [])
+                }
+            }
+            .animation(Motion.settle, value: calendar.minBlockMin)
+            Text("Standups and quick calls don’t move anything.")
+                .font(Typography.data(12, weight: .regular))
+                .foregroundStyle(Palette.inkSoft)
         }
+        .padding(16)
+        .glass(radius: 24)
     }
 
-    // MARK: Toggles
+    // MARK: Also
 
-    private var togglesCard: some View {
+    private var alsoRules: some View {
         let calendar = env.calendar
-        return SettingsCard(padding: 0) {
-            VStack(spacing: 0) {
-                CalendarToggleRow(
-                    symbol: "calendar",
-                    title: "Workdays only",
-                    subtitle: "Weekend meals never move",
-                    isOn: Binding(get: { calendar.workdaysOnly }, set: { calendar.workdaysOnly = $0; calendar.rulesChanged() })
-                )
-                ListDivider().padding(.leading, 64)
-                CalendarToggleRow(
-                    symbol: "sun.max",
-                    title: "All-day events",
-                    subtitle: "Trips and days off count as busy",
-                    isOn: Binding(get: { calendar.includeAllDay }, set: { calendar.includeAllDay = $0; calendar.rulesChanged() })
-                )
-                ListDivider().padding(.leading, 64)
-                CalendarToggleRow(
-                    symbol: "eye",
-                    title: "Events marked free",
-                    subtitle: "Count them too. Tentative and declined never do.",
-                    isOn: Binding(get: { calendar.countFree }, set: { calendar.countFree = $0; calendar.rulesChanged() })
-                )
+        let line = [
+            calendar.workdaysOnly ? "Weekend meals never move." : "Weekends can move too.",
+            calendar.includeAllDay ? "Trips and days off count as busy." : "All-day events are ignored.",
+            calendar.countFree ? "Free events count." : "Free, tentative and declined events never count.",
+        ].joined(separator: " ")
+        return VStack(alignment: .leading, spacing: 10) {
+            Text("Also").sectionLabelStyle()
+            FlexWrap(spacing: 8, lineSpacing: 8) {
+                ToggleChip(title: "Workdays only", on: calendar.workdaysOnly, haze: true) {
+                    calendar.workdaysOnly.toggle(); calendar.rulesChanged()
+                }
+                ToggleChip(title: "All-day events count", on: calendar.includeAllDay, haze: true) {
+                    calendar.includeAllDay.toggle(); calendar.rulesChanged()
+                }
+                ToggleChip(title: "Free events count", on: calendar.countFree, haze: true) {
+                    calendar.countFree.toggle(); calendar.rulesChanged()
+                }
             }
+            Text(line)
+                .font(Typography.data(13, weight: .regular))
+                .foregroundStyle(Palette.inkSoft)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 }
