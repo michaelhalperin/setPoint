@@ -5,7 +5,7 @@ import { buildSettlement } from './settlement.js';
 const NOW = new Date('2026-09-15T18:00:00Z');
 type AnyRow = Record<string, unknown>;
 
-function fakePrisma(over: { onboarding?: AnyRow; weightEntries?: AnyRow[]; meals?: AnyRow[] } = {}) {
+function fakePrisma(over: { onboarding?: AnyRow; weightEntries?: AnyRow[]; meals?: AnyRow[]; outcomes?: AnyRow[] } = {}) {
   const user: AnyRow = {
     id: 'u1',
     timezone: 'America/New_York',
@@ -14,7 +14,7 @@ function fakePrisma(over: { onboarding?: AnyRow; weightEntries?: AnyRow[]; meals
   };
   return {
     user: { findUnique: async () => user },
-    dayOutcome: { findMany: async () => [] },
+    dayOutcome: { findMany: async () => over.outcomes ?? [] },
     meal: { findMany: async () => over.meals ?? [] },
     checkIn: { findMany: async () => [] },
     workout: { findMany: async () => [] },
@@ -116,3 +116,26 @@ describe('buildSettlement record', () => {
     expect(view.record.missed).toBe(1);
   });
 });
+
+describe('buildSettlement gap', () => {
+  it('leads with how many settled days closed their gap', async () => {
+    const outcome = (date: string, kcalConsumed: number) => ({
+      date: new Date(`${date}T00:00:00Z`),
+      kind: 'UNDER',
+      kcalConsumed,
+      kcalTarget: 3000,
+      summaryLine: null,
+    });
+    const view = await buildSettlement(
+      {
+        prisma: fakePrisma({
+          outcomes: [outcome('2026-09-12', 2950), outcome('2026-09-13', 2000), outcome('2026-09-14', 2600)],
+        }),
+        now: NOW,
+      },
+      'u1',
+    );
+    expect(view.gap).toEqual({ closedDays: 1, totalDays: 3, avgShortfallKcal: 700 });
+  });
+});
+

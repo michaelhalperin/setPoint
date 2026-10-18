@@ -8,6 +8,7 @@ import {
   type CheckInMetricRecord,
   type CheckInStatusName,
 } from '../metrics/betaMetrics.js';
+import { buildGapMetrics } from '../metrics/gapMetrics.js';
 import { gatherStopSignals } from '../metrics/stopSignals.js';
 
 /** A meal logged this many minutes before a check-in fired ⇒ likely false positive. */
@@ -56,8 +57,13 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
         deferCount: true,
         feedbackPositive: true,
         deliveredAt: true,
+        kind: true,
         confidenceScore: { select: { score: true } },
       },
+    });
+    const settledDays = await prisma.dayOutcome.findMany({
+      where: { date: { gte: fromDate, lte: toDate } },
+      select: { kcalConsumed: true, kcalTarget: true },
     });
 
     // One pass for "ate shortly before the check-in": pull every meal for the
@@ -111,6 +117,10 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     const evaluation = evaluateStopConditions(signals, now);
     return {
       ...metrics,
+      gap: buildGapMetrics(
+        settledDays,
+        checkIns.filter((c) => c.tier < 3).map((c) => ({ kind: c.kind, status: c.status })),
+      ),
       scheduler: {
         lastRunAt: signals.schedulerLastRunAt?.toISOString() ?? null,
         lastOk: signals.schedulerLastOk,
