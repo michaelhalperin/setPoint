@@ -58,47 +58,34 @@ struct SnoozeSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     static func height(for choiceCount: Int) -> CGFloat {
-        148 + CGFloat(max(choiceCount, 1)) * 68 + 72
+        150 + CGFloat(max(choiceCount, 1)) * 53 + 70
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Space.md) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Snooze")
-                    .font(Typography.display(28))
-                    .foregroundStyle(Palette.ink)
-                    .accessibilityAddTraits(.isHeader)
-                Text("I’ll ask again later.")
-                    .font(Typography.data(15))
-                    .foregroundStyle(Palette.inkSoft)
-            }
+        VStack(alignment: .leading, spacing: 16) {
+            Headline("Snooze.", tail: "I’ll ask again later.", size: 28)
 
-            VStack(spacing: 10) {
-                ForEach(choices) { choice in
+            GlassList {
+                ForEach(Array(choices.enumerated()), id: \.element.id) { index, choice in
+                    if index > 0 { ListDivider() }
                     Button {
+                        Haptics.select()
                         onPick(choice.minutes)
                         dismiss()
                     } label: {
                         HStack(spacing: 12) {
-                            Image(systemName: "zzz")
-                                .font(.system(size: 15, weight: .semibold))
-                                .foregroundStyle(Palette.accent)
-                                .frame(width: 36, height: 36)
-                                .background(Palette.accentTint, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                             Text(choice.title)
-                                .font(Typography.data(17, weight: .bold))
+                                .font(Typography.data(15, weight: .regular))
                                 .foregroundStyle(Palette.ink)
                             Spacer(minLength: 0)
                             Image(systemName: "chevron.right")
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundStyle(Palette.inkFaint)
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(Color(hex: 0x52525B))
                         }
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 12)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Palette.surfaceSunk, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .frame(minHeight: 52)
+                        .contentShape(Rectangle())
                     }
-                    .buttonStyle(PressableCard())
+                    .buttonStyle(.plain)
                 }
             }
 
@@ -108,6 +95,5 @@ struct SnoozeSheet: View {
         .padding(.top, Space.lg)
         .padding(.bottom, Space.md)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background(Palette.background.ignoresSafeArea())
     }
 }

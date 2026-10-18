@@ -168,16 +168,11 @@ struct SavedMealEditorView: View {
     private var canSave: Bool { draft.write != nil }
 
     var body: some View {
-        SettingsScreen(title: draft.existingId == nil ? "My meal" : "Edit meal", subtitle: "Log it in one tap next time.") {
+        SettingsScreen(title: draft.existingId == nil ? "My meal" : "Edit meal", subtitle: "One tap next time.", headline: draft.name.isEmpty ? "Your usual." : "\(draft.name).") {
             VStack(alignment: .leading, spacing: Space.md) {
                 VStack(alignment: .leading, spacing: Space.xs) {
                     Text("Name").sectionLabelStyle()
-                    TextField("Usual oats", text: $draft.name)
-                        .font(Typography.voice(20, weight: .medium))
-                        .foregroundStyle(Palette.ink)
-                        .padding(14)
-                        .background(Palette.surface, in: RoundedRectangle(cornerRadius: Radius.md, style: .continuous))
-                        .overlay(RoundedRectangle(cornerRadius: Radius.md, style: .continuous).strokeBorder(Palette.hairline))
+                    GlassField(prompt: "Usual oats", text: $draft.name)
                 }
 
                 VStack(alignment: .leading, spacing: Space.sm) {
@@ -188,8 +183,8 @@ struct SavedMealEditorView: View {
                             draft.items.append(.init())
                         } label: {
                             Label("Add food", systemImage: "plus")
-                                .font(Typography.data(12, weight: .semibold))
-                                .foregroundStyle(Palette.accentDeep)
+                                .font(Typography.data(13, weight: .regular))
+                                .foregroundStyle(Palette.amber)
                         }
                         .buttonStyle(.plain)
                         .disabled(draft.items.count >= 20)
@@ -202,48 +197,51 @@ struct SavedMealEditorView: View {
                     let totals = draft.totals
                     HStack {
                         Text("\(totals.kcal) kcal")
-                            .font(Typography.data(18, weight: .heavy))
+                            .font(Typography.mono(15))
                             .foregroundStyle(Palette.ink)
-                            .monospacedDigit()
                         Spacer()
-                        Text("P \(Int(totals.proteinG.rounded())) · C \(Int(totals.carbsG.rounded())) · F \(Int(totals.fatG.rounded()))")
-                            .font(Typography.data(12, weight: .semibold))
-                            .foregroundStyle(Palette.inkFaint)
+                        Text("\(Int(totals.proteinG.rounded())) g protein")
+                            .font(Typography.mono(13))
+                            .foregroundStyle(Palette.amber)
                     }
                     .padding(.top, Space.xxs)
                 }
 
-                SettingsCard(padding: 0) {
+                GlassList {
                     VStack(spacing: 0) {
                         suggestRow
-                        Divider().overlay(Palette.hairline)
+                        ListDivider()
                         Toggle(isOn: $draft.useInCheckIns) {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Use in check-ins")
-                                    .font(Typography.data(16, weight: .bold))
+                                    .font(Typography.data(15, weight: .regular))
                                     .foregroundStyle(Palette.ink)
                                 Text("Show this as the suggestion when this meal is due.")
                                     .font(Typography.data(12))
                                     .foregroundStyle(Palette.inkFaint)
                             }
                         }
-                        .tint(Palette.accent)
-                        .padding(16)
-                        Divider().overlay(Palette.hairline)
-                        SettingsRow(
-                            symbol: "waveform",
-                            title: "Siri phrase",
-                            value: "Log my usual \(draft.suggestSlot ?? "meal")",
-                            showsChevron: false
-                        )
+                        .tint(Palette.ember)
+                        .padding(.vertical, 14)
+                        ListDivider()
+                        HStack {
+                            Text("Siri phrase")
+                                .font(Typography.data(15, weight: .regular))
+                                .foregroundStyle(Palette.ink)
+                            Spacer()
+                            Text("“Log my usual \(draft.suggestSlot ?? "meal")”")
+                                .font(Typography.data(13, weight: .regular))
+                                .foregroundStyle(Palette.inkSoft)
+                        }
+                        .frame(minHeight: 50)
                             .accessibilityLabel("Siri phrase, Log my usual \(draft.suggestSlot ?? "meal")")
                     }
                 }
 
                 if let error {
                     Text(error)
-                        .font(Typography.data(13))
-                        .foregroundStyle(Palette.accentDeep)
+                        .font(Typography.data(13, weight: .regular))
+                        .foregroundStyle(Palette.danger)
                 }
             }
         }
@@ -276,22 +274,22 @@ struct SavedMealEditorView: View {
                 }
             )
         }
-        .padding(16)
+        .padding(.vertical, 14)
     }
 
     private func editorItem(_ item: Binding<SavedMealDraft.Item>) -> some View {
-        Card(tint: Palette.surfaceRaised, padding: 14) {
+        Card(padding: 14) {
             VStack(alignment: .leading, spacing: Space.sm) {
                 HStack {
                     TextField("Food", text: item.name)
-                        .font(Typography.data(16, weight: .semibold))
+                        .font(Typography.data(16, weight: .regular))
                     if draft.items.count > 1 {
                         Button {
                             draft.items.removeAll { $0.id == item.wrappedValue.id }
                         } label: {
                             Image(systemName: "trash")
                                 .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(Palette.accentDeep)
+                                .foregroundStyle(Palette.danger)
                         }
                         .buttonStyle(.plain)
                     }
@@ -314,11 +312,11 @@ struct SavedMealEditorView: View {
             Text(label).sectionLabelStyle()
             TextField("0", text: text)
                 .keyboardType(.decimalPad)
-                .font(Typography.data(14, weight: .semibold))
+                .font(Typography.mono(14))
         }
         .padding(9)
         .frame(maxWidth: .infinity)
-        .background(Palette.surfaceSunk.opacity(0.7), in: RoundedRectangle(cornerRadius: Radius.sm, style: .continuous))
+        .glass(radius: 12, fill: Color.white.opacity(0.04))
     }
 }
 

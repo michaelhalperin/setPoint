@@ -23,6 +23,9 @@ struct ConversationView: View {
             Palette.background
                 .opacity(1.0 - Double(dismissProgress) * 0.4)
                 .ignoresSafeArea()
+            AmbientGlow(tone: .haze, strength: 0.8, height: 380)
+                .offset(x: -60, y: -80)
+                .ignoresSafeArea()
 
             VStack(spacing: 0) {
                 grabber
@@ -51,8 +54,8 @@ struct ConversationView: View {
 
     private var grabber: some View {
         Capsule()
-            .fill(Palette.inkFaint.opacity(0.4))
-            .frame(width: 36, height: 5)
+            .fill(Color.white.opacity(0.18))
+            .frame(width: 40, height: 5)
             .frame(maxWidth: .infinity)
             .padding(.top, 8)
             .padding(.bottom, 6)
@@ -88,29 +91,18 @@ struct ConversationView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
                     HStack {
-                        Text("Let’s talk")
-                            .sectionLabelStyle(Palette.accent)
+                        Text("Let’s talk").sectionLabelStyle()
                         Spacer()
-                        Button(action: onDismiss) {
-                            Image(systemName: "xmark")
-                                .font(.system(size: 15, weight: .semibold))
-                                .foregroundStyle(Palette.inkSoft)
-                                .frame(width: 34, height: 34)
-                                .background(Palette.surfaceSunk, in: Circle())
-                        }
-                        .accessibilityLabel("Close")
+                        RoundIconButton("xmark", label: "Close", action: onDismiss)
                     }
 
-                    Text("Rough few days.")
-                        .font(Typography.display(40))
-                        .foregroundStyle(Palette.ink)
-                        .accessibilityAddTraits(.isHeader)
-                        .appearIn(0)
+                    Headline("Rough few days.", tail: "A few check-ins didn’t land.", size: 42)
+                        .appearIn(0, rise: 16)
 
                     if let opener = model.messages.first, opener.role == "assistant" {
                         Text(opener.content)
-                            .font(Typography.voice(19))
-                            .foregroundStyle(Palette.inkSoft)
+                            .font(Typography.data(15, weight: .regular))
+                            .foregroundStyle(Color(hex: 0xD4D4D8))
                             .lineSpacing(2)
                             .fixedSize(horizontal: false, vertical: true)
                             .id(opener.id)
@@ -149,13 +141,13 @@ struct ConversationView: View {
                     if let err = model.sendError {
                         Text(err)
                             .font(Typography.data(13, weight: .semibold))
-                            .foregroundStyle(Palette.accentDeep)
+                            .foregroundStyle(Palette.amber)
                     }
 
                     if let proposal = model.pendingProposal, !model.resolved {
                         VStack(alignment: .leading, spacing: 8) {
                             Text(proposal.title)
-                                .font(Typography.data(16, weight: .bold))
+                                .font(Typography.data(16, weight: .medium))
                                 .foregroundStyle(Palette.ink)
                             Text(proposal.summary)
                                 .font(Typography.data(14))
@@ -164,8 +156,8 @@ struct ConversationView: View {
                                 Task { await model.confirmProposal() }
                             }
                         }
-                        .padding(14)
-                        .background(Palette.surfaceSunk.opacity(0.7), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .padding(16)
+                        .glass(radius: 22)
                         .id("proposal")
                     }
 
@@ -173,19 +165,20 @@ struct ConversationView: View {
                         HStack(alignment: .top, spacing: 10) {
                             Image(systemName: model.outcomeIcon)
                                 .font(.system(size: 16, weight: .medium))
-                                .foregroundStyle(Palette.accent)
+                                .foregroundStyle(Palette.hazeSoft)
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(model.outcomeTitle)
-                                    .sectionLabelStyle(Palette.accent)
+                                    .font(Typography.data(16, weight: .medium))
+                                    .foregroundStyle(Palette.ink)
                                 Text(summary)
                                     .font(Typography.data(14))
                                     .foregroundStyle(Palette.ink)
                                     .fixedSize(horizontal: false, vertical: true)
                             }
                         }
-                        .padding(14)
+                        .padding(20)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Palette.surfaceSunk.opacity(0.7), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .glass(radius: 24, fill: Color(hex: 0xA5B4FC, opacity: 0.08), stroke: Color(hex: 0xA5B4FC, opacity: 0.25))
                         .padding(.top, 8)
                         .appearIn()
                         .id("outcome")
@@ -204,7 +197,7 @@ struct ConversationView: View {
 
         Group {
             if model.resolved {
-                ActionButton(title: "Done") { onResolved() }
+                ActionButton(title: "Back to today") { onResolved() }
                     .padding(.horizontal, 20)
                     .padding(.bottom, 12)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
@@ -220,25 +213,28 @@ struct ConversationView: View {
     private func composer(_ model: ConversationViewModel) -> some View {
         HStack(spacing: 10) {
             TextField(model.messages.count == 1 ? "Or tell me what’s going on…" : "Reply…", text: Binding(get: { model.draft }, set: { model.draft = $0 }), axis: .vertical)
-                .font(Typography.data(15))
+                .font(Typography.data(15, weight: .regular))
                 .lineLimit(1 ... 4)
-                .padding(12)
-                .background(Palette.surfaceSunk, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                 .focused($composerFocused)
 
             Button {
                 composerFocused = false
                 Task { await model.send() }
             } label: {
-                Image(systemName: "arrow.up.circle.fill")
-                    .font(.system(size: 30))
-                    .foregroundStyle(canSend(model) ? Palette.accent : Palette.inkFaint)
+                Image(systemName: "arrow.up")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(canSend(model) ? Palette.onBone : Palette.inkFaint)
+                    .frame(width: 36, height: 36)
+                    .background(Circle().fill(canSend(model) ? Palette.ink : Color.white.opacity(0.10)))
             }
             .disabled(!canSend(model))
         }
+        .padding(.leading, 18)
+        .padding(.trailing, 8)
+        .padding(.vertical, 8)
+        .glass(radius: 26, fill: Color.white.opacity(0.05), stroke: Color.white.opacity(0.10))
         .padding(.horizontal, 20)
         .padding(.vertical, 12)
-        .background(Palette.background)
     }
 
     private func canSend(_ model: ConversationViewModel) -> Bool {
@@ -268,7 +264,7 @@ private struct ConversationSkeletonView: View {
                 HStack {
                     SkeletonBlock(width: 72, height: 12)
                     Spacer()
-                    Circle().fill(Palette.surfaceSunk).frame(width: 34, height: 34)
+                    Circle().fill(Color.white.opacity(0.06)).frame(width: 34, height: 34)
                 }
 
                 VStack(alignment: .leading, spacing: 8) {
@@ -294,7 +290,7 @@ private struct ConversationSkeletonView: View {
 
             HStack(spacing: 10) {
                 SkeletonBlock(height: 44, radius: 14)
-                Circle().fill(Palette.surfaceSunk).frame(width: 30, height: 30)
+                Circle().fill(Color.white.opacity(0.06)).frame(width: 30, height: 30)
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
@@ -307,7 +303,7 @@ private struct ConversationSkeletonView: View {
 
     private var quickFix: some View {
         HStack(spacing: 14) {
-            Circle().fill(Palette.surfaceSunk).frame(width: 44, height: 44)
+            Circle().fill(Color.white.opacity(0.06)).frame(width: 44, height: 44)
             VStack(alignment: .leading, spacing: 6) {
                 SkeletonBlock(width: 132, height: 16)
                 SkeletonBlock(width: 188, height: 13)
@@ -347,30 +343,25 @@ private struct QuickFixCard: View {
     var body: some View {
         HStack(spacing: 14) {
             Image(systemName: fix.symbol)
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(Palette.accent)
-                .frame(width: 44, height: 44)
-                .background(Palette.accentTint, in: Circle())
-            VStack(alignment: .leading, spacing: 2) {
+                .font(.system(size: 16, weight: .regular))
+                .foregroundStyle(Palette.hazeSoft)
+                .frame(width: 40, height: 40)
+                .background(Palette.haze.opacity(0.12), in: Circle())
+            VStack(alignment: .leading, spacing: 3) {
                 Text(fix.title)
-                    .font(Typography.data(16, weight: .bold))
+                    .font(Typography.data(16, weight: .medium))
                     .foregroundStyle(Palette.ink)
                 Text(fix.detail)
                     .font(Typography.data(13))
                     .foregroundStyle(Palette.inkSoft)
             }
             Spacer(minLength: 0)
-            Image(systemName: "arrow.right")
-                .font(.system(size: 14, weight: .semibold))
+            Image(systemName: "chevron.right")
+                .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(Palette.inkFaint)
         }
         .padding(16)
-        .background {
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(Palette.surface)
-                .elevation(.resting)
-                .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Palette.hairline))
-        }
+        .glass(radius: 22)
     }
 }
 
@@ -383,18 +374,18 @@ private struct MessageBubble: View {
         HStack {
             if isUser { Spacer(minLength: 40) }
             Text(message.content)
-                .font(isUser ? Typography.data(15) : Typography.voice(17))
+                .font(Typography.data(15, weight: .regular))
                 .foregroundStyle(Palette.ink)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
                 .background(
-                    isUser ? Palette.accentSoft.opacity(0.6) : Palette.surface,
-                    in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    isUser ? Palette.haze.opacity(0.18) : Palette.glass,
+                    in: RoundedRectangle(cornerRadius: 18, style: .continuous)
                 )
                 .overlay(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .strokeBorder(Palette.ink.opacity(isUser ? 0 : 0.05))
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .strokeBorder(isUser ? Palette.haze.opacity(0.3) : Palette.hairline)
                 )
             if !isUser { Spacer(minLength: 40) }
         }

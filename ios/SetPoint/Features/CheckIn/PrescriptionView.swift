@@ -83,14 +83,14 @@ struct PrescriptionView: View {
 
             HStack {
                 Text("Check-in")
-                    .sectionLabelStyle(Palette.accent)
+                    .sectionLabelStyle(Palette.ember)
                 Spacer()
                 Button(action: onDismiss) {
                     Image(systemName: "xmark")
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(Palette.inkSoft)
                         .frame(width: 34, height: 34)
-                        .background(Palette.surfaceSunk, in: Circle())
+                        .background(Color.white.opacity(0.06), in: Circle())
                 }
                 .accessibilityLabel("Close")
             }
@@ -106,7 +106,7 @@ struct PrescriptionView: View {
                     .foregroundStyle(Palette.inkSoft)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
-                    .background(Palette.surfaceSunk, in: Capsule())
+                    .background(Color.white.opacity(0.06), in: Capsule())
             }
 
             if checkIn.prescription != nil {
@@ -123,7 +123,7 @@ struct PrescriptionView: View {
             if let error {
                 Text(error)
                     .font(Typography.data(13, weight: .semibold))
-                    .foregroundStyle(Palette.accentDeep)
+                    .foregroundStyle(Palette.amber)
             }
 
             Spacer(minLength: 0)
@@ -275,7 +275,7 @@ struct PrescriptionView: View {
             }
             .foregroundStyle(Palette.ink)
             .frame(maxWidth: .infinity, minHeight: 48)
-            .background(Palette.surfaceSunk, in: RoundedRectangle(cornerRadius: Radius.md, style: .continuous))
+            .background(Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: Radius.md, style: .continuous))
         }
         .buttonStyle(PressableCard())
     }
@@ -302,7 +302,7 @@ struct PrescriptionView: View {
         } label: {
             Image(systemName: rated == positive ? "\(systemName).fill" : systemName)
                 .font(.system(size: 18))
-                .foregroundStyle(rated == positive ? Palette.accent : Palette.inkSoft)
+                .foregroundStyle(rated == positive ? Palette.ember : Palette.inkSoft)
                 .frame(width: 44, height: 44)
         }
         .disabled(rated != nil)

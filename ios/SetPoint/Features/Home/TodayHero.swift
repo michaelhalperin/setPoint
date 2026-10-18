@@ -216,7 +216,8 @@ struct TodayHero: View {
     }
 
     private var nextKcal: Int? {
-        guard case .watching = moment else { return nil }
+        guard case let .watching(_, _, _, light) = moment else { return nil }
+        if light { return home.topUp?.totalKcal }
         if let plate = home.appetite?.nextPlate { return plate.kcal }
         return home.day?.pace?.next?.suggestedKcal
     }

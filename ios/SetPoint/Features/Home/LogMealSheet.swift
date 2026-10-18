@@ -112,7 +112,7 @@ private struct LogMealBody: View {
             .font(Typography.data(16))
             .lineLimit(1 ... 3)
             .padding(14)
-            .background(Palette.surfaceSunk, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .background(Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             .focused($focused)
 
         HStack(spacing: 12) {
@@ -122,7 +122,7 @@ private struct LogMealBody: View {
                     .foregroundStyle(Palette.ink)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
-                    .background(Palette.surfaceSunk, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .background(Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
             }
         }
 
@@ -182,7 +182,7 @@ private struct LogMealBody: View {
                 Task { await model.undo() }
             }
             .font(Typography.data(14, weight: .medium))
-            .foregroundStyle(Palette.accent)
+            .foregroundStyle(Palette.ember)
             .frame(maxWidth: .infinity)
             .disabled(model.removing)
             .appearIn(2)
@@ -190,7 +190,7 @@ private struct LogMealBody: View {
             if let actionError = model.actionError {
                 Text(actionError)
                     .font(Typography.data(13))
-                    .foregroundStyle(Palette.accent)
+                    .foregroundStyle(Palette.ember)
                     .frame(maxWidth: .infinity)
                     .appearIn()
             }
@@ -224,7 +224,7 @@ private struct LogMealBody: View {
             }
             .padding(10)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Palette.surfaceSunk.opacity(0.6), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .background(Color.white.opacity(0.06).opacity(0.6), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
     }
 
@@ -342,7 +342,7 @@ struct PhotoParseConfirm: View {
     var body: some View {
         GeometryReader { geo in
             ZStack(alignment: .top) {
-                Palette.ink.ignoresSafeArea()
+                Color(hex: 0x050506).ignoresSafeArea()
 
                 photoBackdrop(width: geo.size.width, height: geo.size.height * (parsing ? 0.66 : 0.4) + geo.safeAreaInsets.top)
 
@@ -392,19 +392,20 @@ struct PhotoParseConfirm: View {
                     .clipped()
                     .matchedGeometryEffect(id: imageID, in: namespace)
             }
-            LinearGradient(colors: [Palette.ink.opacity(0.35), .clear, Palette.ink.opacity(0.55)], startPoint: .top, endPoint: .bottom)
+            LinearGradient(colors: [Color.black.opacity(0.35), .clear, Color.black.opacity(0.55)], startPoint: .top, endPoint: .bottom)
                 .frame(height: height)
 
             if parsing {
                 LoopingPhase(period: 2.6, still: 0.5) { t in
                     GeometryReader { box in
                         LinearGradient(
-                            colors: [Palette.accent.opacity(0), Palette.accent.opacity(0.3), Color(hex: 0xFFE3D3)],
-                            startPoint: .top, endPoint: .bottom
+                            colors: [Palette.amber.opacity(0), Palette.amber, Palette.amber.opacity(0)],
+                            startPoint: .leading, endPoint: .trailing
                         )
-                        .frame(height: 70)
-                        .offset(y: -70 + (box.size.height + 70) * Phase.ramp(t, 0, 0.85))
-                        .opacity(1 - Phase.ramp(t, 0.85, 1))
+                        .frame(height: 2)
+                        .shadow(color: Palette.amber, radius: 9)
+                        .padding(.horizontal, 30)
+                        .offset(y: box.size.height * (0.18 + 0.6 * (1 - cos(t * 2 * .pi)) / 2))
                     }
                 }
                 .frame(height: height)
@@ -422,27 +423,31 @@ struct PhotoParseConfirm: View {
     private var sheet: some View {
         VStack(alignment: .leading, spacing: Space.sm) {
             Capsule()
-                .fill(Palette.inkFaint.opacity(0.4))
+                .fill(Color.white.opacity(0.18))
                 .frame(width: 40, height: 5)
                 .frame(maxWidth: .infinity)
                 .padding(.bottom, Space.xxs)
 
             if parsing {
                 Text("Reading your plate…")
-                    .font(Typography.display(30))
+                    .font(Typography.data(14, weight: .regular))
                     .foregroundStyle(Palette.ink)
+                    .padding(.horizontal, 20)
+                    .frame(height: 44)
+                    .glassCapsule(stroke: Color.white.opacity(0.14))
+                    .shimmering()
+                    .frame(maxWidth: .infinity)
                 VStack(alignment: .leading, spacing: Space.sm) {
                     HStack(spacing: 8) {
                         ForEach(0..<4, id: \.self) { _ in
                             VStack(alignment: .leading, spacing: 6) {
                                 SkeletonBlock(width: 36, height: 11)
                                 SkeletonBlock(width: 40, height: 20)
-                                Capsule().fill(Palette.surfaceSunk).frame(height: 5)
+                                Capsule().fill(Color.white.opacity(0.06)).frame(height: 5)
                             }
-                            .padding(12)
+                            .padding(10)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(Palette.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Palette.hairline))
+                            .glass(radius: 14)
                         }
                     }
                     VStack(spacing: 0) {
@@ -470,7 +475,7 @@ struct PhotoParseConfirm: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background {
             UnevenRoundedRectangle(topLeadingRadius: 32, topTrailingRadius: 32, style: .continuous)
-                .fill(Palette.background)
+                .fill(Palette.sheet)
                 .ignoresSafeArea(edges: .bottom)
         }
         .matchedGeometryEffect(id: cardID, in: namespace)
@@ -481,32 +486,28 @@ struct PhotoParseConfirm: View {
             HStack(alignment: .top, spacing: 12) {
                 VStack(alignment: .leading, spacing: 8) {
                     if let countsFor {
-                        Label("Counts for \(countsFor.title.lowercased())", systemImage: countsFor.symbol)
-                            .font(Typography.data(12, weight: .bold))
-                            .foregroundStyle(Palette.background)
-                            .padding(.horizontal, 11)
-                            .padding(.vertical, 6)
-                            .background(Palette.ink, in: Capsule())
+                        Text("Photo · \(countsFor.title.lowercased())").sectionLabelStyle()
                     }
 
-                    Text(logged.summary ?? "Your meal")
-                        .font(Typography.voice(20, weight: .medium))
-                        .foregroundStyle(Palette.ink)
+                    Headline(logged.summary ?? "Your meal", size: 26)
                         .lineLimit(2)
                         .minimumScaleFactor(0.8)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
                 Text(confidenceLabel(logged.confidence))
-                    .font(Typography.data(12, weight: .bold))
+                    .font(Typography.data(12, weight: .regular))
                     .foregroundStyle(confidenceColor(logged.confidence))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(confidenceColor(logged.confidence).opacity(0.12), in: Capsule())
                     .fixedSize()
                     .padding(.top, 2)
             }
 
             HStack(spacing: 8) {
-                macro("kcal", value: "\(logged.kcal)", fraction: 1, color: Palette.accent)
-                macro("Protein", value: "\(Int(logged.proteinG.rounded())) g", fraction: logged.proteinG * 4 / Double(max(logged.kcal, 1)), color: Palette.accent)
+                macro("kcal", value: "\(logged.kcal)", fraction: 1, color: Palette.amber)
+                macro("Protein", value: "\(Int(logged.proteinG.rounded())) g", fraction: logged.proteinG * 4 / Double(max(logged.kcal, 1)), color: Palette.amber)
                 macro("Carbs", value: "\(Int(items.reduce(0) { $0 + $1.carbsG }.rounded())) g", fraction: items.reduce(0) { $0 + $1.carbsG } * 4 / Double(max(logged.kcal, 1)), color: Palette.ink)
                 macro("Fat", value: "\(Int(items.reduce(0) { $0 + $1.fatG }.rounded())) g", fraction: items.reduce(0) { $0 + $1.fatG } * 9 / Double(max(logged.kcal, 1)), color: Palette.inkFaint)
             }
@@ -517,7 +518,7 @@ struct PhotoParseConfirm: View {
                         HStack {
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(item.name)
-                                    .font(Typography.data(15, weight: .bold))
+                                    .font(Typography.data(15, weight: .regular))
                                     .foregroundStyle(Palette.ink)
                                 Text(item.quantity)
                                     .font(Typography.data(12))
@@ -525,9 +526,8 @@ struct PhotoParseConfirm: View {
                             }
                             Spacer()
                             Text("\(item.kcal)")
-                                .font(Typography.data(14, weight: .bold))
+                                .font(Typography.mono(13))
                                 .foregroundStyle(Palette.inkSoft)
-                                .monospacedDigit()
                         }
                         .padding(.vertical, 11)
                         .overlay(alignment: .top) { Rectangle().fill(Palette.hairline).frame(height: 1) }
@@ -545,17 +545,17 @@ struct PhotoParseConfirm: View {
 
             if let actionError = model.actionError {
                 Text(actionError)
-                    .font(Typography.data(13, weight: .semibold))
-                    .foregroundStyle(Palette.accentDeep)
+                    .font(Typography.data(13, weight: .regular))
+                    .foregroundStyle(Palette.danger)
             }
 
-            HStack(spacing: Space.sm) {
-                ActionButton(title: "Looks right", action: onKeep)
+            HStack(spacing: 10) {
+                ActionButton(title: "Looks right · \(logged.kcal)", symbol: "checkmark", action: onKeep)
                 Button("Fix") { editing = true }
-                    .font(Typography.data(16, weight: .bold))
-                    .foregroundStyle(Palette.inkSoft)
-                    .padding(.horizontal, Space.sm)
-                    .frame(minHeight: 54)
+                    .font(Typography.data(15, weight: .regular))
+                    .foregroundStyle(Palette.ink)
+                    .frame(width: 90, height: 58)
+                    .glassCapsule(fill: Color.white.opacity(0.06), stroke: Color.white.opacity(0.10))
             }
             .padding(.bottom, Space.xs)
         }
@@ -567,13 +567,12 @@ struct PhotoParseConfirm: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
             Text(value)
-                .font(Typography.data(20, weight: .heavy))
+                .font(Typography.data(18, weight: .regular))
                 .foregroundStyle(Palette.ink)
-                .monospacedDigit()
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
             GeometryReader { box in
-                Capsule().fill(Palette.surfaceSunk)
+                Capsule().fill(Color.white.opacity(0.08))
                     .overlay(alignment: .leading) {
                         Capsule().fill(color)
                             .frame(width: box.size.width * min(1, max(0, fraction)))
@@ -581,10 +580,9 @@ struct PhotoParseConfirm: View {
             }
             .frame(height: 5)
         }
-        .padding(12)
+        .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Palette.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Palette.hairline))
+        .glass(radius: 14)
         .accessibilityElement(children: .combine)
     }
 
@@ -597,7 +595,7 @@ struct PhotoParseConfirm: View {
 
     private func confidenceColor(_ confidence: Double?) -> Color {
         guard let confidence else { return Palette.inkSoft }
-        return confidence >= 0.75 ? Palette.dayOnTrack : Palette.accent
+        return confidence >= 0.75 ? Palette.positive : Palette.amber
     }
 
     private func removeMeal() {
@@ -708,7 +706,7 @@ private struct MealCorrectionEditor: View {
                             .font(.system(size: 13, weight: .bold))
                             .foregroundStyle(Palette.inkSoft)
                             .frame(width: 36, height: 36)
-                            .background(Palette.surfaceSunk, in: Circle())
+                            .background(Color.white.opacity(0.06), in: Circle())
                     }
                     .buttonStyle(.plain)
                     .disabled(saving)
@@ -724,6 +722,7 @@ private struct MealCorrectionEditor: View {
                 VStack(alignment: .leading, spacing: Space.xs) {
                     Text("Edit meal")
                         .font(Typography.display(28))
+                        .displayTracking(28)
                         .foregroundStyle(Palette.ink)
                     Text("Adjust foods or portions.")
                         .font(Typography.data(13))
@@ -734,10 +733,10 @@ private struct MealCorrectionEditor: View {
                 VStack(alignment: .leading, spacing: Space.xs) {
                     Text("Name").sectionLabelStyle()
                     TextField("Meal name", text: $summary)
-                        .font(Typography.voice(18))
+                        .font(Typography.data(17, weight: .regular))
                         .foregroundStyle(Palette.ink)
                         .padding(14)
-                        .background(Palette.surface, in: RoundedRectangle(cornerRadius: Radius.md, style: .continuous))
+                        .glass(radius: Radius.md)
                         .overlay(
                             RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
                                 .strokeBorder(Palette.hairline)
@@ -753,7 +752,7 @@ private struct MealCorrectionEditor: View {
                         } label: {
                             Label("Add", systemImage: "plus")
                                 .font(Typography.data(12, weight: .semibold))
-                                .foregroundStyle(Palette.accentDeep)
+                                .foregroundStyle(Palette.amber)
                         }
                         .buttonStyle(.plain)
                         .disabled(saving || items.count >= 20)
@@ -771,10 +770,10 @@ private struct MealCorrectionEditor: View {
                 if let error {
                     Text(error)
                         .font(Typography.data(13))
-                        .foregroundStyle(Palette.accentDeep)
+                        .foregroundStyle(Palette.amber)
                         .padding(12)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Palette.accentTint, in: RoundedRectangle(cornerRadius: Radius.sm, style: .continuous))
+                        .background(Palette.ember.opacity(0.12), in: RoundedRectangle(cornerRadius: Radius.sm, style: .continuous))
                 }
 
                 removeControl
@@ -784,7 +783,7 @@ private struct MealCorrectionEditor: View {
             .padding(.bottom, 130)
         }
         .scrollDismissesKeyboard(.interactively)
-        .background(Palette.background.ignoresSafeArea())
+        .background(Palette.sheet.ignoresSafeArea())
         .safeAreaInset(edge: .bottom, spacing: 0) {
             VStack(spacing: Space.xs) {
                 ActionButton(title: "Save", busy: saving, busyTitle: "Saving") {
@@ -802,7 +801,7 @@ private struct MealCorrectionEditor: View {
             .padding(.horizontal, Space.gutter)
             .padding(.top, 12)
             .padding(.bottom, 10)
-            .background(Palette.background.overlay(alignment: .top) {
+            .background(Palette.sheet.overlay(alignment: .top) {
                 Rectangle().fill(Palette.hairline).frame(height: 1)
             })
         }
@@ -812,10 +811,10 @@ private struct MealCorrectionEditor: View {
     @ViewBuilder
     private var removeControl: some View {
         if confirmingRemove {
-            Card(tint: Palette.accentTint, padding: 14) {
+            Card(tint: Palette.ember.opacity(0.08), padding: 14) {
                 VStack(alignment: .leading, spacing: Space.sm) {
                     Text("Remove meal?")
-                        .font(Typography.voice(17))
+                        .font(Typography.data(15, weight: .regular))
                         .foregroundStyle(Palette.ink)
                     Text("This removes it from today.")
                         .font(Typography.data(12))
@@ -826,13 +825,13 @@ private struct MealCorrectionEditor: View {
                             .foregroundStyle(Palette.ink)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 11)
-                            .background(Palette.surface, in: RoundedRectangle(cornerRadius: Radius.sm, style: .continuous))
+                            .glass(radius: Radius.sm)
                         Button("Remove") { onRemove() }
                             .font(Typography.data(13, weight: .semibold))
-                            .foregroundStyle(Color.white)
+                            .foregroundStyle(Palette.onBone)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 11)
-                            .background(Palette.accentDeep, in: RoundedRectangle(cornerRadius: Radius.sm, style: .continuous))
+                            .background(Palette.ink, in: RoundedRectangle(cornerRadius: Radius.sm, style: .continuous))
                     }
                     .buttonStyle(.plain)
                 }
@@ -840,7 +839,7 @@ private struct MealCorrectionEditor: View {
         } else {
             Button("Remove meal") { confirmingRemove = true }
                 .font(Typography.data(13, weight: .medium))
-                .foregroundStyle(Palette.accentDeep)
+                .foregroundStyle(Palette.amber)
                 .frame(maxWidth: .infinity)
         }
     }
@@ -852,7 +851,7 @@ private struct EditableFoodCard: View {
     let onRemove: () -> Void
 
     var body: some View {
-        Card(tint: Palette.surfaceRaised, padding: 14) {
+        Card(padding: 14) {
             VStack(alignment: .leading, spacing: Space.sm) {
                 HStack(spacing: Space.xs) {
                     TextField("Food", text: $item.name)
@@ -862,9 +861,9 @@ private struct EditableFoodCard: View {
                         Button(action: onRemove) {
                             Image(systemName: "trash")
                                 .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(Palette.accentDeep)
+                                .foregroundStyle(Palette.amber)
                                 .frame(width: 30, height: 30)
-                                .background(Palette.accentTint, in: Circle())
+                                .background(Palette.ember.opacity(0.12), in: Circle())
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel("Remove \(item.name.isEmpty ? "food" : item.name)")
@@ -875,7 +874,7 @@ private struct EditableFoodCard: View {
                     .font(Typography.data(13))
                     .foregroundStyle(Palette.inkSoft)
                     .padding(10)
-                    .background(Palette.surfaceSunk.opacity(0.7), in: RoundedRectangle(cornerRadius: Radius.sm, style: .continuous))
+                    .background(Color.white.opacity(0.05), in: RoundedRectangle(cornerRadius: Radius.sm, style: .continuous))
 
                 HStack(spacing: Space.xs) {
                     numberField("kcal", text: $item.kcal)
@@ -908,7 +907,7 @@ private struct EditableFoodCard: View {
         }
         .padding(9)
         .frame(maxWidth: .infinity)
-        .background(Palette.surfaceSunk.opacity(0.7), in: RoundedRectangle(cornerRadius: Radius.sm, style: .continuous))
+        .background(Color.white.opacity(0.05), in: RoundedRectangle(cornerRadius: Radius.sm, style: .continuous))
     }
 }
 

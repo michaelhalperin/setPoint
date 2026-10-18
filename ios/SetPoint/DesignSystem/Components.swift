@@ -237,35 +237,24 @@ struct NotificationsOffBanner: View {
             guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
             UIApplication.shared.open(url)
         } label: {
-            HStack(alignment: .top, spacing: Space.sm) {
-                Image(systemName: "bell.slash.fill")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(Palette.accentDeep)
-                    .frame(width: 34, height: 34)
-                    .background(Palette.ember.opacity(0.14), in: Circle())
-
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("Check-ins can't reach you")
-                        .font(Typography.data(15, weight: .semibold))
-                        .foregroundStyle(Palette.ink)
-                    if !compact {
-                        Text("Notifications are off for SetPoint. Turn them on so the manager can step in when you're falling behind.")
-                            .font(Typography.data(12))
-                            .foregroundStyle(Palette.inkSoft)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    Text("Open Settings")
-                        .font(Typography.data(12, weight: .semibold))
-                        .foregroundStyle(Palette.accentDeep)
-                        .padding(.top, 1)
-                }
-                Spacer(minLength: 0)
+            HStack(spacing: 10) {
+                Circle().fill(Palette.ember).frame(width: 6, height: 6)
+                Text("Notifications are off · check-ins can’t reach you")
+                    .font(Typography.data(13, weight: .regular))
+                    .foregroundStyle(Palette.ink)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                Spacer(minLength: 6)
+                Text("Turn on")
+                    .font(Typography.data(13, weight: .medium))
+                    .foregroundStyle(Palette.amber)
             }
-            .padding(14)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .glass(radius: Radius.lg, fill: Palette.ember.opacity(0.08), stroke: Palette.ember.opacity(0.28))
+            .padding(.horizontal, 14)
+            .frame(minHeight: 40)
+            .glassCapsule(fill: Palette.ember.opacity(0.08), stroke: Palette.ember.opacity(0.28))
         }
         .buttonStyle(PressableCard())
+        .accessibilityLabel("Notifications are off, so check-ins can’t reach you. Turn them on.")
         .accessibilityHint("Opens the SetPoint section of the Settings app")
     }
 }
