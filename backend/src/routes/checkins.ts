@@ -18,6 +18,7 @@ import { excludedTokensFor, loadStapleFoods } from '../solver/index.js';
 import { publicPrescription, solveCheckInVariant } from '../checkins/variants.js';
 import { ENGINE_CONFIG, type Goal } from '../engine/index.js';
 import { env, isProd } from '../env.js';
+import { track } from '../analytics/events.js';
 
 /** Same gate as POST /api/auth/dev — off in production unless ENABLE_DEV_LOGIN=true. */
 const devToolsEnabled = !isProd || env.ENABLE_DEV_LOGIN === 'true';
@@ -149,6 +150,7 @@ export async function checkInRoutes(app: FastifyInstance): Promise<void> {
       data: { status: 'DEFERRED', deferUntil, deferCount: { increment: 1 } },
     });
     if (result.count === 0) throw app.httpErrors.notFound('no active check-in with that id');
+    await track(getPrisma(), (req as AuthedRequest).userId, 'check_in_answered', { answer: 'snoozed' });
     return { deferred: true, deferUntil: deferUntil.toISOString() };
   });
 
@@ -179,6 +181,7 @@ export async function checkInRoutes(app: FastifyInstance): Promise<void> {
       data: { status: 'EXPIRED', resolvedAt: now, feedbackPositive: false, feedbackAt: now },
     });
     if (result.count === 0) throw app.httpErrors.notFound('no active check-in with that id');
+    await track(getPrisma(), (req as AuthedRequest).userId, 'check_in_answered', { answer: 'already_ate' }, { dedupeKey: `check_in:${id}:already_ate` });
     return { dismissed: true };
   });
 
@@ -202,6 +205,7 @@ export async function checkInRoutes(app: FastifyInstance): Promise<void> {
       },
     });
     if (result.count === 0) throw app.httpErrors.notFound('no refuel check-in with that id');
+    await track(getPrisma(), (req as AuthedRequest).userId, 'check_in_answered', { answer: 'covered' }, { dedupeKey: `check_in:${id}:covered` });
     return { covered: true };
   });
 

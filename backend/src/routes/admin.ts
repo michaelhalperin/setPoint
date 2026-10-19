@@ -1,5 +1,6 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
+import { SessionTokenError, verifySessionToken } from '../auth/index.js';
 import { getPrisma } from '../db/client.js';
 import { env } from '../env.js';
 import { evaluateStopConditions } from '../engine/stopConditions.js';
@@ -20,12 +21,33 @@ function adminSecret(): string {
   return env.ADMIN_SECRET || env.CRON_SECRET;
 }
 
-function isAuthorized(req: FastifyRequest): boolean {
+/**
+ * Admin access: the shared secret (scripts, cron-style tools), or the session of
+ * an account whose role is ADMIN — so admins don't have to share one password.
+ */
+export async function isAdminRequest(req: FastifyRequest): Promise<boolean> {
   const auth = req.headers.authorization;
   const bearer = auth?.startsWith('Bearer ') ? auth.slice(7) : undefined;
   const header = req.headers['x-admin-secret'];
   const secret = adminSecret();
-  return bearer === secret || header === secret;
+  if (bearer === secret || header === secret) return true;
+  if (!bearer) return false;
+  try {
+    const session = verifySessionToken(bearer);
+    if (session.pendingInvite) return false;
+    const user = await getPrisma().user.findUnique({ where: { id: session.userId }, select: { role: true } });
+    return user?.role === 'ADMIN';
+  } catch (err) {
+    if (err instanceof SessionTokenError) return false;
+    throw err;
+  }
+}
+
+/** Register on an admin plugin: everything in it needs `isAdminRequest`. */
+export function requireAdmin(app: FastifyInstance) {
+  return async (req: FastifyRequest): Promise<void> => {
+    if (!(await isAdminRequest(req))) throw app.httpErrors.unauthorized('admin only');
+  };
 }
 
 const rangeQuery = z.object({
@@ -34,9 +56,7 @@ const rangeQuery = z.object({
 });
 
 export async function adminRoutes(app: FastifyInstance): Promise<void> {
-  app.addHook('preHandler', async (req) => {
-    if (!isAuthorized(req)) throw app.httpErrors.unauthorized('bad or missing admin secret');
-  });
+  app.addHook('preHandler', requireAdmin(app));
 
   // Beta tuning dashboard data (§8): check-in volume, feedback, and the
   // false-positive rate to tune the confidence weights against.

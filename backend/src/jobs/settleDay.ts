@@ -4,6 +4,7 @@ import { dateOnly, localDateISO, shiftDateISO, startOfLocalDay, type Goal } from
 import { classifyDay } from '../dashboard/classify.js';
 import type { ManagerVoice } from '../managerVoice/types.js';
 import { trainingForLocalDay } from '../training/day.js';
+import { track } from '../analytics/events.js';
 
 export type SettleDayDeps = {
   prisma: PrismaClient;
@@ -77,6 +78,7 @@ export async function runSettleDayJob(deps: SettleDayDeps): Promise<SettleDaySum
         update: { kind, kcalConsumed, kcalTarget, summaryLine },
       });
 
+      await track(deps.prisma, user.id, 'day_settled', { kind }, { dedupeKey: `day:${user.id}:${yesterdayISO}` });
       summary.outcomesWritten += 1;
       summary.byKind[kind] = (summary.byKind[kind] ?? 0) + 1;
     } catch (err) {

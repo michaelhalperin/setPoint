@@ -4,7 +4,9 @@ import { requireAuth, type AuthedRequest } from '../auth/index.js';
 import { NEARBY_VENUES, sampleVenues } from '../data/nearbyVenues.js';
 import { getPrisma } from '../db/client.js';
 import { env } from '../env.js';
+import { isFlagOnForUser } from '../flags/index.js';
 import { rankNearby } from '../nearby/index.js';
+import { track } from '../analytics/events.js';
 
 const query = z.object({
   lat: z.coerce.number().min(-90).max(90),
@@ -19,10 +21,14 @@ export async function nearbyRoutes(app: FastifyInstance): Promise<void> {
   // they avoid. The app opens Wolt on a dish; nothing is ordered from here.
   app.get('/', async (req) => {
     const { lat, lng, kcal } = query.parse(req.query);
+    if (!(await isFlagOnForUser(getPrisma(), (req as AuthedRequest).userId, 'order_nearby'))) {
+      throw app.httpErrors.notFound('order nearby is off');
+    }
     const restrictions = await getPrisma().dietaryRestriction.findMany({
       where: { userId: (req as AuthedRequest).userId, isHardExclusion: true },
       select: { token: true },
     });
+    await track(getPrisma(), (req as AuthedRequest).userId, 'order_nearby_opened');
     const venues = env.NEARBY_SAMPLE_VENUES === 'true' ? [...NEARBY_VENUES, ...sampleVenues(lat, lng)] : NEARBY_VENUES;
     return {
       gapKcal: kcal,

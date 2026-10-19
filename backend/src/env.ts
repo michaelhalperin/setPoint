@@ -64,6 +64,8 @@ const schema = z.object({
   APPLE_APP_APPLE_ID: z.string().default(''),
   // Order nearby: "true" adds made-up places around the user, for trying the screen.
   NEARBY_SAMPLE_VENUES: z.string().default(''),
+  /** "true": new accounts need an invite code before they can use the app. */
+  INVITE_ONLY: z.string().default(''),
 });
 
 const parsed = schema.safeParse(process.env);

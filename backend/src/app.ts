@@ -11,6 +11,7 @@ import { UnderageError } from './onboarding/age.js';
 import { UnhealthyTargetError } from './onboarding/targets.js';
 import { accountRoutes } from './routes/account.js';
 import { adminRoutes } from './routes/admin.js';
+import { adminAccessRoutes } from './routes/adminAccess.js';
 import { authRoutes } from './routes/auth.js';
 import { biosignalRoutes } from './routes/biosignals.js';
 import { calendarRoutes } from './routes/calendar.js';
@@ -19,8 +20,11 @@ import { cronRoutes } from './routes/cron.js';
 import { dashboardRoutes } from './routes/dashboard.js';
 import { healthRoutes } from './routes/health.js';
 import { legalRoutes } from './routes/legal.js';
+import { adminPageRoutes } from './routes/adminPage.js';
 import { mealRoutes } from './routes/meals.js';
 import { nearbyRoutes } from './routes/nearby.js';
+import { flagRoutes } from './routes/flags.js';
+import { eventRoutes } from './routes/events.js';
 import { foodRoutes } from './routes/foods.js';
 import { pushTokenRoutes } from './routes/pushTokens.js';
 import { savedMealRoutes } from './routes/savedMeals.js';
@@ -118,11 +122,14 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
 
   await app.register(healthRoutes);
   await app.register(legalRoutes);
+  await app.register(adminPageRoutes);
   await app.register(authRoutes, { prefix: '/api/auth' });
   await app.register(mealRoutes, { prefix: '/api/meals' });
   await app.register(savedMealRoutes, { prefix: '/api/saved-meals' });
   await app.register(foodRoutes, { prefix: '/api/foods' });
   await app.register(nearbyRoutes, { prefix: '/api/nearby' });
+  await app.register(flagRoutes, { prefix: '/api/flags' });
+  await app.register(eventRoutes, { prefix: '/api/events' });
   await app.register(calendarRoutes, { prefix: '/api/calendar' });
   await app.register(workoutRoutes, { prefix: '/api/workouts' });
   await app.register(appetiteRoutes, { prefix: '/api/appetite' });
@@ -135,6 +142,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   await app.register(accountRoutes, { prefix: '/api' });
   await app.register(dashboardRoutes, { prefix: '/api' });
   await app.register(adminRoutes, { prefix: '/api/admin' });
+  await app.register(adminAccessRoutes, { prefix: '/api/admin' });
   await app.register(cronRoutes, { prefix: '/api/cron' });
 
   return app;

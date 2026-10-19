@@ -15,6 +15,7 @@ import {
   StaleTargetReviewError,
   undoLastTargetReview,
 } from '../weight/targetReview.js';
+import { track } from '../analytics/events.js';
 
 const minutes = z.number().int().min(0).max(1439);
 const mealTimes = z.object({ breakfastMin: minutes, lunchMin: minutes, dinnerMin: minutes });
@@ -123,13 +124,17 @@ const targetReviewBody = z.discriminatedUnion('action', [
 const deleteBody = z.object({ confirmation: z.literal('delete my account') });
 
 export async function accountRoutes(app: FastifyInstance): Promise<void> {
-  app.addHook('preHandler', requireAuth(app));
+  // Open to accounts still waiting for an invite, so they can delete themselves.
+  app.addHook('preHandler', requireAuth(app, { allowPendingInvite: true }));
 
   // Onboarding + safety screening + meal-time preferences (§3, §5.1).
   app.post('/onboarding', async (req) => {
     const input = onboardingBody.parse(req.body);
     try {
-      return await runOnboarding({ prisma: getPrisma() }, (req as AuthedRequest).userId, input);
+      const userId = (req as AuthedRequest).userId;
+      const result = await runOnboarding({ prisma: getPrisma() }, userId, input);
+      await track(getPrisma(), userId, 'onboarding_completed', undefined, { dedupeKey: `onboarding:${userId}` });
+      return result;
     } catch (err) {
       if (err instanceof AccountNotFoundError) throw app.httpErrors.unauthorized(err.message);
       if (err instanceof AlreadyOnboardedError) throw app.httpErrors.conflict(err.message);

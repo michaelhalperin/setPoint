@@ -1,0 +1,21 @@
+import type { FastifyInstance } from 'fastify';
+import { z } from 'zod';
+import { CLIENT_EVENTS, track } from '../analytics/events.js';
+import { requireAuth, type AuthedRequest } from '../auth/index.js';
+import { getPrisma } from '../db/client.js';
+
+const body = z.object({
+  name: z.enum(CLIENT_EVENTS),
+  props: z.record(z.unknown()).optional(),
+});
+
+/** The few events only the app can see (opened the app, opened Wolt). */
+export async function eventRoutes(app: FastifyInstance): Promise<void> {
+  app.addHook('preHandler', requireAuth(app));
+
+  app.post('/', async (req) => {
+    const { name, props } = body.parse(req.body);
+    await track(getPrisma(), (req as AuthedRequest).userId, name, props as Record<string, string | number | boolean> | undefined);
+    return { ok: true };
+  });
+}

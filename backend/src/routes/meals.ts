@@ -12,6 +12,7 @@ import { MealNotFoundError, updateMeal } from '../meals/updateMeal.js';
 import { captureError } from '../observability/sentry.js';
 import { queuePhotoDeletion } from '../photos/cleanup.js';
 import { getPhotoStore } from '../photos/store.js';
+import { track } from '../analytics/events.js';
 
 const body = z
   .object({
@@ -88,7 +89,7 @@ export async function mealRoutes(app: FastifyInstance): Promise<void> {
     const client = getAnthropic();
 
     try {
-      return await logMeal(
+      const result = await logMeal(
         {
           prisma,
           parseMeal: client ? createMealParser(client) : null,
@@ -109,6 +110,12 @@ export async function mealRoutes(app: FastifyInstance): Promise<void> {
           clientId: input.clientId,
         },
       );
+      // Keyed by meal and check-in, so a replayed request counts once.
+      await track(prisma, userId, 'meal_logged', { source: result.meal.source }, { dedupeKey: `meal:${result.meal.id}` });
+      if (result.resolvedCheckInId) {
+        await track(prisma, userId, 'check_in_answered', { answer: 'ate' }, { dedupeKey: `check_in:${result.resolvedCheckInId}:ate` });
+      }
+      return result;
     } catch (err) {
       if (err instanceof MealParsingUnavailableError) throw app.httpErrors.serviceUnavailable(err.message);
       if (err instanceof EmptyMealError) throw app.httpErrors.badRequest(err.message);
@@ -128,6 +135,7 @@ export async function mealRoutes(app: FastifyInstance): Promise<void> {
         id,
         input,
       );
+      await track(getPrisma(), (req as AuthedRequest).userId, 'meal_fixed', { source: meal.source });
       return { meal };
     } catch (err) {
       if (err instanceof MealNotFoundError) throw app.httpErrors.notFound(err.message);
