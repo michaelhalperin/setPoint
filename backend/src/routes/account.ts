@@ -93,6 +93,7 @@ const settingsPatch = z
         minBlockMin: z.number().int().min(15).max(240).optional(),
         workdaysOnly: z.boolean().optional(),
         includeAllDay: z.boolean().optional(),
+        countFree: z.boolean().optional(),
       })
       .optional(),
     training: z
@@ -130,6 +131,7 @@ export async function accountRoutes(app: FastifyInstance): Promise<void> {
     try {
       return await runOnboarding({ prisma: getPrisma() }, (req as AuthedRequest).userId, input);
     } catch (err) {
+      if (err instanceof AccountNotFoundError) throw app.httpErrors.unauthorized(err.message);
       if (err instanceof AlreadyOnboardedError) throw app.httpErrors.conflict(err.message);
       if (err instanceof MissingTargetError) throw app.httpErrors.badRequest(err.message);
       if (err instanceof UnderageError) throw app.httpErrors.forbidden(err.message);

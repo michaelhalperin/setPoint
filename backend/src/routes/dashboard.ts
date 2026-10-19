@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { requireAuth, type AuthedRequest } from '../auth/index.js';
 import { OnboardingIncompleteError, buildHome, buildSettlement } from '../dashboard/index.js';
+import { AccountNotFoundError } from '../account/deleteAccount.js';
 import { getPrisma } from '../db/client.js';
 import { createManagerVoice } from '../managerVoice/factory.js';
 import { getPhotoStore } from '../photos/store.js';
@@ -16,6 +17,7 @@ export async function dashboardRoutes(app: FastifyInstance): Promise<void> {
         (req as AuthedRequest).userId,
       );
     } catch (err) {
+      if (err instanceof AccountNotFoundError) throw app.httpErrors.unauthorized(err.message);
       if (err instanceof OnboardingIncompleteError) throw app.httpErrors.conflict(err.message);
       throw err;
     }

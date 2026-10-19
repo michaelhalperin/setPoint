@@ -209,6 +209,121 @@ extension HomeResponse {
         checkIn: .init(id: "ci_3", tier: 3, status: "PENDING", message: nil, deferUntil: nil, prescription: nil)
     )
 
+    // MARK: Closing the gap
+
+    private static let lightLunchMeals: [MealSummary] = lateLunchMeals + [
+        .sample(id: "meal_half", kcal: 280, protein: 14, source: "TEXT", summary: "Half a turkey sandwich", loggedAt: todayAt(790)),
+    ]
+
+    private static func lightLunch(checkIn: ActiveCheckIn?, nowMin: Int = 815) -> HomeResponse {
+        var home = HomeResponse(
+            goal: "BULK",
+            mode: "BASIC",
+            enforcementEnabled: true,
+            ledger: .init(
+                consumedKcal: 880,
+                targetKcal: 3100,
+                remainingKcal: 2220,
+                consumedProteinG: 42,
+                targetProteinG: 165,
+                remainingProteinG: 123,
+                mealsToday: 3,
+                lastMealAt: todayAt(790)
+            ),
+            framing: .init(state: "under", accent: true, primaryCta: "log_meal", heroKcal: 2220),
+            managerNote: "Dinner can carry more if lunch stays small.",
+            meals: lightLunchMeals,
+            mealTimes: .standard,
+            activeCheckIn: checkIn,
+            day: Day(
+                nowMin: nowMin,
+                slots: [
+                    .init(slot: "breakfast", atMin: 480, state: "logged", mealIds: ["meal_oats", "meal_banana"], kcal: 600),
+                    .init(slot: "lunch", atMin: 780, state: "logged", mealIds: ["meal_half"], kcal: 280),
+                    .init(slot: "dinner", atMin: 1140, state: "upcoming", mealIds: [], kcal: 0),
+                ],
+                pace: .init(
+                    expectedByNowKcal: 1800,
+                    behindKcal: 920,
+                    status: "behind",
+                    next: .init(slot: "dinner", atMin: 1140, suggestedKcal: 2220)
+                )
+            )
+        )
+        home.nextCheckIn = checkIn == nil ? .init(slot: "lunch", mealMin: 780, dueMin: 835, overdue: false, light: true) : nil
+        return home
+    }
+
+    /// A 280 kcal lunch: Today offers a one-tap top-up, and lunch stays open.
+    static var sampleTopUp: HomeResponse {
+        var home = lightLunch(checkIn: nil)
+        home.topUp = .init(
+            slot: "lunch",
+            behindKcal: 1187,
+            totalKcal: 488,
+            totalProteinG: 16,
+            logText: "Top-up: 2 × whole milk + peanut butter",
+            items: [
+                .init(name: "Whole milk", servingDesc: "1 cup (240 ml)", quantity: 2, kcal: 298, proteinG: 16, carbsG: 24, fatG: 16),
+                .init(name: "Peanut butter", servingDesc: "2 tbsp (32 g)", quantity: 1, kcal: 190, proteinG: 8, carbsG: 7, fatG: 16),
+            ]
+        )
+        return home
+    }
+
+    /// The light-lunch follow-up check-in.
+    static var sampleLightCheckIn: HomeResponse {
+        lightLunch(
+            checkIn: .init(
+                id: "ci_light",
+                tier: 1,
+                status: "PENDING",
+                message: "Lunch was light. Add 2 × 1 cup whole milk + 1 oz almonds to stay on pace.",
+                deferUntil: nil,
+                prescription: .init(
+                    id: "rx_light",
+                    totalKcal: 462,
+                    totalProteinG: 22,
+                    items: [
+                        .init(name: "Whole milk", quantity: 2, kcal: 298, proteinG: 16),
+                        .init(name: "Almonds", quantity: 1, kcal: 164, proteinG: 6),
+                    ]
+                ),
+                slot: "lunch",
+                kind: "TOP_UP"
+            ),
+            nowMin: 840
+        )
+    }
+
+    /// 20:35 and the day is still 700 short: the evening close.
+    static var sampleClose: HomeResponse {
+        var home = lightLunch(
+            checkIn: .init(
+                id: "ci_close",
+                tier: 1,
+                status: "PENDING",
+                message: "You're 700 kcal short today. A protein shake and granola closes most of it.",
+                deferUntil: nil,
+                prescription: .init(
+                    id: "rx_close",
+                    totalKcal: 650,
+                    totalProteinG: 38,
+                    items: [
+                        .init(name: "Ready-to-drink protein shake", quantity: 1, kcal: 160, proteinG: 30),
+                        .init(name: "Greek yogurt with granola", quantity: 1, kcal: 350, proteinG: 23),
+                        .init(name: "Medjool dates", quantity: 1, kcal: 200, proteinG: 1),
+                    ]
+                ),
+                slot: "dinner",
+                kind: "CLOSE"
+            ),
+            nowMin: 1235
+        )
+        home.nextCheckIn = nil
+        return home
+    }
+
     // MARK: Other days
 
     /// Mid-afternoon, on pace, dinner next.

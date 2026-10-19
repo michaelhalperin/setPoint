@@ -2,8 +2,8 @@ import Foundation
 
 /// Copy a person can see. Server, framework, and system strings never pass through.
 enum UserFacingError {
-    static let generic = "Something went wrong."
-    static let unreachable = "No connection."
+    static let generic = "That didn’t work. Try again."
+    static let unreachable = "No connection. Check your signal and try again."
     static let session = "Session expired. Sign in."
 
     static func message(for error: Error, fallback: String = generic) -> String {

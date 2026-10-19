@@ -4,7 +4,7 @@ set -euo pipefail
 IOS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PROJECT="$IOS_DIR/SetPoint.xcodeproj"
 SCHEME="SetPoint"
-BUNDLE_ID="com.setpoint.app"
+BUNDLE_ID="com.michaelhalperin.setpoint"
 DERIVED="$IOS_DIR/DerivedData"
 
 # Override with:  SETPOINT_SIM="iPhone 16" ./ios/scripts/run.sh

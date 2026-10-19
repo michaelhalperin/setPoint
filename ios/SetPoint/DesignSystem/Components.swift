@@ -1,12 +1,11 @@
 import SwiftUI
 import UIKit
 
-/// A card surface — soft, warm, lifting gently off the paper ground. The app's
-/// default container.
+/// A glass card — white at 4.5% with a 9% border. The app's default container.
 struct Card<Content: View>: View {
-    var tint: Color = Palette.surface
+    var tint: Color = Palette.glass
     var elevation: Elevation = .resting
-    var padding: CGFloat = Space.md - 2
+    var padding: CGFloat = 18
     @ViewBuilder var content: Content
 
     var body: some View {
@@ -14,11 +13,11 @@ struct Card<Content: View>: View {
             .padding(padding)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background {
-                RoundedRectangle(cornerRadius: Radius.lg, style: .continuous)
+                RoundedRectangle(cornerRadius: Radius.xl, style: .continuous)
                     .fill(tint)
                     .elevation(elevation)
                     .overlay(
-                        RoundedRectangle(cornerRadius: Radius.lg, style: .continuous)
+                        RoundedRectangle(cornerRadius: Radius.xl, style: .continuous)
                             .strokeBorder(Palette.hairline)
                     )
             }
@@ -73,8 +72,8 @@ struct BusyLabel: View {
     }
 }
 
-/// The primary action button. Accent-filled only where the plan allows a primary
-/// CTA (under-eating); everything else uses `.secondary`.
+/// The main button. `.primary` is a bone capsule with the ember ball on the
+/// right — one per screen. `.secondary` is a glass capsule.
 struct ActionButton: View {
     enum Kind { case primary, secondary }
 
@@ -84,9 +83,12 @@ struct ActionButton: View {
     var busyTitle: String? = nil
     var done: Bool = false
     var doneTitle: String? = nil
+    /// The icon inside the ember ball on a primary button.
+    var symbol: String = "arrow.right"
     let action: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.isEnabled) private var isEnabled
     @GestureState private var pressed = false
 
     private var shownTitle: String {
@@ -95,38 +97,58 @@ struct ActionButton: View {
         return title
     }
 
-    private var tint: Color { kind == .primary ? Color.white : Palette.ink }
+    private var tint: Color { kind == .primary ? Palette.onBone : Palette.ink }
 
     var body: some View {
-        BusyLabel(title: shownTitle, busy: busy && !done, done: done, tint: tint)
-            .font(Typography.data(16, weight: .semibold))
-            .foregroundStyle(tint)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 16)
-            .background {
-                RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
-                    .fill(kind == .primary ? Palette.accent : Palette.surfaceSunk)
-                    .elevation(kind == .primary && !pressed && !busy ? .resting : .flat)
+        Group {
+            if kind == .primary {
+                HStack(spacing: 12) {
+                    BusyLabel(title: shownTitle, busy: busy && !done, done: done, tint: tint)
+                        .font(Typography.data(16, weight: .medium))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                    Spacer(minLength: 0)
+                    EmberBall(size: 42) {
+                        Image(systemName: done ? "checkmark" : symbol)
+                            .font(.system(size: 16, weight: .semibold))
+                    }
+                    .opacity(busy && !done ? 0.55 : 1)
+                }
+                .foregroundStyle(tint)
+                .padding(.leading, 24)
+                .padding(.trailing, 8)
+                .frame(maxWidth: .infinity, minHeight: 58)
+                .background(Capsule(style: .continuous).fill(Palette.ink))
+            } else {
+                BusyLabel(title: shownTitle, busy: busy && !done, done: done, tint: tint)
+                    .font(Typography.data(15, weight: .regular))
+                    .foregroundStyle(tint)
+                    .frame(maxWidth: .infinity, minHeight: 50)
+                    .glassCapsule(fill: Color.white.opacity(0.06), stroke: Color.white.opacity(0.10))
             }
-            .scaleEffect(pressed ? 0.97 : 1)
-            .brightness(pressed && kind == .primary ? -0.04 : 0)
-            .animation(Motion.adaptive(Motion.snappy, reduceMotion: reduceMotion), value: pressed)
-            .animation(Motion.adaptive(Motion.settle, reduceMotion: reduceMotion), value: busy)
-            .animation(Motion.adaptive(Motion.settle, reduceMotion: reduceMotion), value: done)
-            .contentShape(Rectangle())
-            .gesture(
-                DragGesture(minimumDistance: 0)
-                    .updating($pressed) { _, state, _ in
-                        guard !busy, !done else { return }
-                        state = true
-                    }
-                    .onEnded { _ in
-                        guard !busy, !done else { return }
-                        action()
-                    }
-            )
-            .accessibilityAddTraits(busy ? .updatesFrequently : [])
-            .accessibilityLabel(shownTitle)
+        }
+        .opacity(isEnabled ? 1 : 0.4)
+        .scaleEffect(pressed ? 0.97 : 1)
+        .animation(Motion.adaptive(Motion.snappy, reduceMotion: reduceMotion), value: pressed)
+        .animation(Motion.adaptive(Motion.settle, reduceMotion: reduceMotion), value: busy)
+        .animation(Motion.adaptive(Motion.settle, reduceMotion: reduceMotion), value: done)
+        .contentShape(Capsule())
+        .gesture(
+            DragGesture(minimumDistance: 0)
+                .updating($pressed) { _, state, _ in
+                    guard !busy, !done, isEnabled else { return }
+                    state = true
+                }
+                .onEnded { _ in
+                    guard !busy, !done, isEnabled else { return }
+                    action()
+                }
+        )
+        .accessibilityElement(children: .ignore)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAddTraits(busy ? .updatesFrequently : [])
+        .accessibilityLabel(shownTitle)
+        .accessibilityAction { if !busy, !done { action() } }
     }
 }
 
@@ -143,17 +165,20 @@ struct PillButton: View {
 
     var body: some View {
         Text(title)
-            .font(Typography.data(15, weight: .semibold))
-            .foregroundStyle(kind == .primary ? Color.white : Palette.ink)
+            .font(Typography.data(15, weight: .medium))
+            .foregroundStyle(kind == .primary ? Palette.onBone : Palette.ink)
             .padding(.horizontal, 20)
-            .padding(.vertical, 14)
+            .frame(minHeight: 48)
             .background {
-                Capsule(style: .continuous)
-                    .fill(kind == .primary ? Palette.accent : Palette.surfaceSunk)
-                    .elevation(kind == .primary && !pressed ? .resting : .flat)
+                if kind == .primary {
+                    Capsule(style: .continuous).fill(Palette.ink)
+                } else {
+                    Capsule(style: .continuous)
+                        .fill(Color.white.opacity(0.06))
+                        .overlay(Capsule(style: .continuous).strokeBorder(Color.white.opacity(0.10)))
+                }
             }
             .scaleEffect(pressed ? 0.97 : 1)
-            .brightness(pressed && kind == .primary ? -0.04 : 0)
             .animation(Motion.adaptive(Motion.snappy, reduceMotion: reduceMotion), value: pressed)
             .contentShape(Capsule())
             .gesture(
@@ -161,6 +186,10 @@ struct PillButton: View {
                     .updating($pressed) { _, state, _ in state = true }
                     .onEnded { _ in action() }
             )
+            .accessibilityElement(children: .ignore)
+            .accessibilityAddTraits(.isButton)
+            .accessibilityLabel(title)
+            .accessibilityAction { action() }
     }
 }
 
@@ -174,29 +203,26 @@ struct PressableCard: ButtonStyle {
     }
 }
 
-/// The manager "speaking" — editorial serif on a faintly tinted surface, clearly
-/// distinct from the cold data around it (§6).
+/// The manager "speaking" — a glass note with a thin bar: ember when it
+/// matters, faint otherwise.
 struct ManagerNote: View {
     let text: String
     var emphasised = false
 
     var body: some View {
         HStack(alignment: .top, spacing: Space.sm) {
-            RoundedRectangle(cornerRadius: 2)
-                .fill(emphasised ? Palette.accent : Palette.inkFaint)
+            Capsule()
+                .fill(emphasised ? Palette.ember : Palette.inkFaint.opacity(0.6))
                 .frame(width: 3)
             Text(text)
-                .font(Typography.voice(17))
+                .font(Typography.voice(16))
                 .foregroundStyle(Palette.ink)
-                .lineSpacing(2)
+                .lineSpacing(3)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            (emphasised ? Palette.accentTint : Palette.surfaceSunk.opacity(0.6)),
-            in: RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
-        )
+        .glass(radius: Radius.lg, fill: emphasised ? Palette.ember.opacity(0.08) : Palette.glass)
     }
 }
 
@@ -211,39 +237,24 @@ struct NotificationsOffBanner: View {
             guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
             UIApplication.shared.open(url)
         } label: {
-            HStack(alignment: .top, spacing: Space.sm) {
-                Image(systemName: "bell.slash.fill")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(Palette.accentDeep)
-                    .frame(width: 34, height: 34)
-                    .background(Palette.surface, in: Circle())
-
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("Check-ins can't reach you")
-                        .font(Typography.data(15, weight: .semibold))
-                        .foregroundStyle(Palette.ink)
-                    if !compact {
-                        Text("Notifications are off for SetPoint. Turn them on so the manager can step in when you're falling behind.")
-                            .font(Typography.data(12))
-                            .foregroundStyle(Palette.inkSoft)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    Text("Open Settings")
-                        .font(Typography.data(12, weight: .semibold))
-                        .foregroundStyle(Palette.accentDeep)
-                        .padding(.top, 1)
-                }
-                Spacer(minLength: 0)
+            HStack(spacing: 10) {
+                Circle().fill(Palette.ember).frame(width: 6, height: 6)
+                Text("Notifications are off · check-ins can’t reach you")
+                    .font(Typography.data(13, weight: .regular))
+                    .foregroundStyle(Palette.ink)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                Spacer(minLength: 6)
+                Text("Turn on")
+                    .font(Typography.data(13, weight: .medium))
+                    .foregroundStyle(Palette.amber)
             }
-            .padding(14)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Palette.accentTint, in: RoundedRectangle(cornerRadius: Radius.md, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
-                    .strokeBorder(Palette.accent.opacity(0.28))
-            )
+            .padding(.horizontal, 14)
+            .frame(minHeight: 40)
+            .glassCapsule(fill: Palette.ember.opacity(0.08), stroke: Palette.ember.opacity(0.28))
         }
         .buttonStyle(PressableCard())
+        .accessibilityLabel("Notifications are off, so check-ins can’t reach you. Turn them on.")
         .accessibilityHint("Opens the SetPoint section of the Settings app")
     }
 }
@@ -271,11 +282,7 @@ struct SkeletonCard<Content: View>: View {
         content
             .padding(Space.md)
             .frame(maxWidth: .infinity, minHeight: height, alignment: .topLeading)
-            .background(Palette.surface, in: RoundedRectangle(cornerRadius: Radius.lg, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: Radius.lg, style: .continuous)
-                    .strokeBorder(Palette.hairline)
-            }
+            .glass(radius: Radius.xl)
     }
 }
 
@@ -285,5 +292,42 @@ extension View {
             .shimmering()
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Loading")
+    }
+}
+
+/// A refresh failed but the screen still shows the last good data: say how old
+/// it is and offer a retry, instead of replacing everything with an error.
+struct StaleBanner: View {
+    let since: Date
+    let retry: () -> Void
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "wifi.slash")
+                .font(.system(size: 13, weight: .regular))
+                .foregroundStyle(Palette.hazeSoft)
+            (Text("As of ") + Text(since.formatted(date: .omitted, time: .shortened)).font(Typography.mono(13)).foregroundColor(Palette.hazeSoft))
+                .font(Typography.data(13, weight: .regular))
+                .foregroundStyle(Palette.ink)
+                .lineLimit(1)
+            Button(action: retry) {
+                Label("Refresh", systemImage: "arrow.clockwise")
+                    .font(Typography.data(12, weight: .regular))
+                    .foregroundStyle(Color(hex: 0xE0E7FF))
+                    .padding(.horizontal, 12)
+                    .frame(height: 28)
+                    .background(Palette.haze.opacity(0.18), in: Capsule())
+            }
+            .buttonStyle(PressableCard())
+        }
+        .padding(.leading, 14)
+        .padding(.trailing, 6)
+        .frame(height: 40)
+        .background(Capsule().fill(Color(hex: 0x151518)))
+        .overlay(Capsule().strokeBorder(Palette.hazeSoft.opacity(0.35)))
+        .shadow(color: Palette.haze.opacity(0.18), radius: 12)
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Couldn’t refresh. Showing \(since.formatted(date: .omitted, time: .shortened)). Refresh")
     }
 }

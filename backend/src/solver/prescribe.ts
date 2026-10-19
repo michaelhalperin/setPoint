@@ -215,6 +215,16 @@ export function prescriptionSummary(result: PrescriptionResult): string {
   return result.items.map(formatPrescriptionItem).join(' + ');
 }
 
+/** "2 × whole milk + peanut butter" — names, not serving sizes, for copy and log text. */
+export function namedSummary(result: { items: { name: string; quantity: number }[] }): string {
+  return result.items
+    .map((i, idx) => {
+      const name = idx === 0 ? i.name : i.name[0]!.toLowerCase() + i.name.slice(1);
+      return i.quantity > 1 ? `${i.quantity} × ${name.toLowerCase()}` : name;
+    })
+    .join(' + ');
+}
+
 export function formatPrescriptionItem(i: { name: string; servingDesc: string; quantity: number }): string {
   const serving = i.servingDesc.trim() || i.name;
   if (i.quantity <= 1) return serving;

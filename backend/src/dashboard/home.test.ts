@@ -1,6 +1,8 @@
 import type { PrismaClient } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
+import { STAPLE_FOODS } from '../data/stapleFoods.js';
 import type { ManagerVoice } from '../managerVoice/types.js';
+import { AccountNotFoundError } from '../account/deleteAccount.js';
 import { OnboardingIncompleteError, buildHome } from './home.js';
 
 const NOW = new Date('2026-09-01T18:00:00Z'); // 14:00 in New York
@@ -19,6 +21,7 @@ function fakePrisma(over: {
   meals?: AnyRow[];
   checkIn?: AnyRow | null;
   dayAppetite?: AnyRow | null;
+  restrictions?: AnyRow[];
 } = {}) {
   const meals = over.meals ?? [];
   return {
@@ -34,8 +37,11 @@ function fakePrisma(over: {
     checkIn: { findFirst: async () => over.checkIn ?? null, findMany: async () => [], count: async () => 0 },
     weightEntry: { findFirst: async () => null },
     calendarBusyBlock: { findMany: async () => [] },
+    calendarKeep: { findMany: async () => [] },
     workout: { findMany: async () => [] },
     dayAppetite: { findUnique: async () => over.dayAppetite ?? null },
+    foodItem: { findMany: async () => STAPLE_FOODS.map((f) => ({ id: `fi_${f.slug}`, isStaple: true, ...f })) },
+    dietaryRestriction: { findMany: async () => over.restrictions ?? [] },
   } as unknown as PrismaClient;
 }
 
@@ -187,7 +193,8 @@ describe('buildHome', () => {
       status: 'behind',
       next: { slot: 'dinner', atMin: 1140, suggestedKcal: 1700 },
     });
-    expect(view.nextCheckIn).toEqual({ slot: 'dinner', mealMin: 1140, dueMin: 1185, overdue: false });
+    // 1,300 of 3,000 by 14:00 is a light lunch: it stays open instead of jumping to dinner.
+    expect(view.nextCheckIn).toEqual({ slot: 'lunch', mealMin: 780, dueMin: 825, overdue: true, light: true });
   });
 
   it('drops pace entirely in quiet mode', async () => {
@@ -195,6 +202,12 @@ describe('buildHome', () => {
     const view = await buildHome({ prisma, voice, now: NOW }, 'u1');
     expect(view.day.pace).toBeNull();
     expect(view.day.slots).toHaveLength(3);
+  });
+
+  it('treats a token for a deleted account as signed out, not as onboarding', async () => {
+    await expect(
+      buildHome({ prisma: fakePrisma({ user: null }), voice, now: NOW }, 'u1'),
+    ).rejects.toBeInstanceOf(AccountNotFoundError);
   });
 
   it('rejects a user who has not finished onboarding', async () => {
@@ -224,5 +237,75 @@ describe('buildHome', () => {
     expect(answered.appetite.extraSlots).toHaveLength(2);
     expect(answered.appetite.nextPlate).toMatchObject({ slot: 'snack_pm', atMin: 960 });
     expect(answered.appetite.nextPlate?.kcal).toBeGreaterThan(0);
+  });
+
+  describe('closing the gap', () => {
+    const lunch = (kcal: number) => ({
+      id: 'lunch',
+      loggedAt: hoursAgo(0.75), // 13:15
+      kcal,
+      proteinG: 20,
+      carbsG: 0,
+      fatG: 0,
+      source: 'TEXT',
+      rawInput: 'lunch',
+    });
+    const breakfast = { ...lunch(600), id: 'bfast', loggedAt: hoursAgo(5.5), rawInput: 'oats' };
+
+    it('offers a top-up after a light lunch, inside the user\'s restrictions', async () => {
+      const view = await buildHome(
+        {
+          prisma: fakePrisma({ meals: [breakfast, lunch(300)], restrictions: [{ token: 'dairy' }] }),
+          voice,
+          now: NOW,
+        },
+        'u1',
+      );
+      expect(view.topUp).toMatchObject({ slot: 'lunch', behindKcal: 1100 });
+      expect(view.topUp!.totalKcal).toBeGreaterThan(250);
+      expect(view.topUp!.totalKcal).toBeLessThanOrEqual(600);
+      expect(view.topUp!.logText.length).toBeGreaterThan(0);
+      expect(view.topUp!.items.map((i) => i.name).join(' ')).not.toMatch(/milk|cheese|kefir|butter/i);
+      expect(view.nextCheckIn).toMatchObject({ slot: 'lunch', light: true });
+    });
+
+    it('has no top-up when the day is on pace, or in quiet mode', async () => {
+      const onPace = await buildHome({ prisma: fakePrisma({ meals: [breakfast, lunch(1300)] }), voice, now: NOW }, 'u1');
+      expect(onPace.topUp).toBeNull();
+      const quiet = await buildHome(
+        {
+          prisma: fakePrisma({
+            meals: [breakfast, lunch(300)],
+            user: { ...defaultUser, safetyScreening: { enforcementEnabled: false } },
+          }),
+          voice,
+          now: NOW,
+        },
+        'u1',
+      );
+      expect(quiet.topUp).toBeNull();
+      expect(quiet.closeCheckIn).toBeNull();
+    });
+
+    it('says when the evening close would come, once dinner is in', async () => {
+      const at = (id: string, iso: string, kcal: number) => ({ ...lunch(kcal), id, loggedAt: new Date(iso) });
+      const view = await buildHome(
+        {
+          prisma: fakePrisma({
+            meals: [
+              at('b', '2026-09-01T12:30:00Z', 600),
+              at('l', '2026-09-01T17:15:00Z', 700),
+              at('d', '2026-09-01T23:10:00Z', 1000), // 19:10 dinner, day at 2,300 of 3,000
+            ],
+            user: { ...defaultUser, onboarding: { ...(defaultUser.onboarding as AnyRow), quietHoursStartMin: 1380 } },
+          }),
+          voice,
+          now: new Date('2026-09-02T00:00:00Z'), // 20:00
+        },
+        'u1',
+      );
+      expect(view.nextCheckIn).toBeNull();
+      expect(view.closeCheckIn).toEqual({ dueMin: 1230, gapKcal: 700 });
+    });
   });
 });

@@ -12,6 +12,7 @@ final class AppEnvironment {
     let health = HealthKitManager.shared
     let calendar = CalendarManager.shared
     let changes = AppDataChanges()
+    let chrome = AppChrome()
     let subscription = SubscriptionStore()
 
     init(tokenStore: TokenStore = SessionTokenStore()) {
@@ -54,5 +55,19 @@ final class AppDataChanges {
 
     func openLogPhoto() {
         pendingLogPhoto = true
+    }
+}
+
+/// Shell state shared between a tab's content and the floating nav: whether the
+/// nav should step aside (a check-in or the log panel is up), and requests to
+/// open the log panel from the nav's "+".
+@MainActor
+@Observable
+final class AppChrome {
+    var navHidden = false
+    private(set) var logRequest = 0
+
+    func requestLog() {
+        logRequest &+= 1
     }
 }

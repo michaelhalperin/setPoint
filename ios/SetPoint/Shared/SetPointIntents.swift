@@ -8,11 +8,7 @@ enum WidgetAPI {
            let url = URL(string: override) {
             return url
         }
-        #if targetEnvironment(simulator)
-        return URL(string: "http://localhost:3000")!
-        #else
         return URL(string: "https://set-point-backend.vercel.app")!
-        #endif
     }
 }
 

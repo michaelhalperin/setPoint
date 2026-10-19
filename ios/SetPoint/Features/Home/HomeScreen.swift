@@ -1,9 +1,9 @@
 import SwiftUI
 
-/// Today (§5.2): the day dial as hero — what's logged, what's due, and when the
-/// next check-in comes — or, when a check-in fires, a terracotta takeover with the
-/// meal to eat. Calories and protein sit in a strip below, then the meal log.
-/// Logging lives in `LogDock`, pinned above the tab bar in every state.
+/// Today: the fuel orb as hero — how much of the day's food is in, what's next,
+/// and the day's plates — or, when a check-in fires, the check-in itself with the
+/// plate to eat. Calories and protein sit in a strip below, then the meal log.
+/// Logging rises from the nav's "+" as `LogDock`.
 struct HomeContent: View {
     @Bindable var model: HomeViewModel
     var deepLinkCheckInID: Binding<String?> = .constant(nil)
@@ -21,6 +21,9 @@ struct HomeContent: View {
     @State private var showingPaywall = false
     @State private var checkInBusy = false
     @State private var checkInError: String?
+    @State private var topUpBusy = false
+    @State private var logOpen = false
+    @AppStorage("topUpDismissed") private var topUpDismissed = ""
     @FocusState private var composerFocused: Bool
     @Namespace private var photoLogNamespace
 
@@ -125,6 +128,7 @@ struct HomeContent: View {
             }
         }
         .animation(Motion.adaptive(Motion.morph, reduceMotion: reduceMotion), value: logger?.confirmingPhoto == true)
+        .animation(Motion.adaptive(Motion.sheet, reduceMotion: reduceMotion), value: logOpen)
         .sheet(item: $selectedMeal) { meal in
             MealDetailSheet(
                 meal: meal,
@@ -177,17 +181,26 @@ struct HomeContent: View {
                 onSave: { await logger?.saveEditor($0) ?? false }
             )
         }
-        .confirmationDialog("Snooze this check-in", isPresented: $choosingSnooze, titleVisibility: .visible) {
-            ForEach(CheckInActions.snoozeChoices(nextMealMinutes: minutesUntilNextMeal())) { choice in
-                Button(choice.title) { snooze(minutes: choice.minutes) }
+        .sheet(isPresented: $choosingSnooze) {
+            let choices = CheckInActions.snoozeChoices(nextMealMinutes: minutesUntilNextMeal())
+            SnoozeSheet(choices: choices) { minutes in
+                snooze(minutes: minutes)
             }
-            Button("Cancel", role: .cancel) {}
+            .presentationDetents([.height(SnoozeSheet.height(for: choices.count))])
+            .presentationDragIndicator(.visible)
+            .presentationBackground(Palette.sheet)
+            .presentationCornerRadius(32)
         }
         .sheet(isPresented: $showingPaywall) {
             PaywallView()
                 .presentationDetents([.large])
         }
-        .toolbar(showingCheckIn || logger?.confirmingPhoto == true ? .hidden : .visible, for: .tabBar)
+        .onChange(of: hidesNav, initial: true) { _, hidden in
+            env.chrome.navHidden = hidden
+        }
+        .onChange(of: env.chrome.logRequest) { _, _ in
+            openLog()
+        }
         .task {
             if logger == nil {
                 logger = previewLogger ?? LogMealViewModel(
@@ -196,13 +209,13 @@ struct HomeContent: View {
                 )
             }
             if startComposerExpanded {
-                composerFocused = true
+                openLog(focus: true)
             }
 
             await env.push.syncAuthorizationStatus()
         }
-        .onChange(of: composerFocused) { _, isFocused in
-            guard isFocused, let meals = loadedHome?.meals else { return }
+        .onChange(of: logOpen) { _, open in
+            guard open, let meals = loadedHome?.meals else { return }
             Task {
                 await logger?.loadRecents(today: meals)
                 if previewLogger == nil {
@@ -220,9 +233,9 @@ struct HomeContent: View {
         .onChange(of: env.changes.pendingLogPhoto) { _, pending in
             guard pending else { return }
             env.changes.pendingLogPhoto = false
+            openLog()
             logger?.mode = .photo
             logger?.showPhotoPicker = true
-            composerFocused = true
         }
         .onChange(of: scenePhase) { _, phase in
             guard phase == .active, isLoaded else { return }
@@ -248,7 +261,7 @@ struct HomeContent: View {
         case .loading:
             HomeSkeletonView()
         case let .failed(message):
-            RetryState(message: message) { Task { await model.load() } }
+            RetryState(message: message, retry: { Task { await model.load() } }, onLog: { openLog(focus: true) })
         case .needsOnboarding:
             HomeSkeletonView() // onboarding is presented by MainTabView
         case let .loaded(home):
@@ -275,22 +288,39 @@ struct HomeContent: View {
                     .transition(.opacity)
                 } else {
                     VStack(alignment: .leading, spacing: Space.md) {
+                        if let since = model.staleSince {
+                            StaleBanner(since: since) { Task { await model.load(showSpinner: false) } }
+                        }
                         if home.enforcementEnabled, env.push.authorizationStatus == .denied {
                             NotificationsOffBanner()
                         }
-                        TodayHero(home: home, moment: moment, date: now)
+                        TodayHero(home: home, moment: moment, date: now) {
+                            Task { await model.load(showSpinner: false) }
+                        }
                     }
                     .padding(.horizontal, Space.gutter)
-                    .padding(.top, Space.sm)
+                    .padding(.top, Space.xs)
                     .transition(.opacity)
                 }
 
                 VStack(alignment: .leading, spacing: Space.lg) {
                     if !moment.takesOver {
-                        AppetiteTodayLine(home: home) {
-                            Task { await model.load(showSpinner: false) }
+                        if AppetiteTodayVisibility.resolve(home: home) != .ask {
+                            AppetiteTodayLine(home: home) {
+                                Task { await model.load(showSpinner: false) }
+                            }
+                            .appearIn(0)
                         }
-                        .appearIn(0)
+
+                        if let topUp = home.topUp, topUpDismissed != TopUpDismissal.key(for: topUp, now: now) {
+                            TopUpCard(
+                                topUp: topUp,
+                                busy: topUpBusy,
+                                onAdd: { addTopUp(topUp) },
+                                onDismiss: { topUpDismissed = TopUpDismissal.key(for: topUp, now: now) }
+                            )
+                            .transition(.opacity.combined(with: .move(edge: .top)))
+                        }
                     }
 
                     FuelStrip(home: home, moment: moment)
@@ -302,7 +332,6 @@ struct HomeContent: View {
                         landingNamespace: photoLogNamespace,
                         landingCardID: photoLandingCardID,
                         onOpenMeal: { meal in
-                            composerFocused = false
                             selectedMeal = meal
                         },
                         onLogMissed: logMissed
@@ -313,22 +342,46 @@ struct HomeContent: View {
             }
             .padding(.bottom, Space.lg)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .contentShape(Rectangle())
-            .simultaneousGesture(TapGesture().onEnded { composerFocused = false })
+            .background(alignment: .top) {
+                if !moment.takesOver {
+                    AmbientGlow(tone: moment == .quiet ? .quiet : .mixed)
+                        .offset(y: 20)
+                }
+            }
             .animation(Motion.adaptive(Motion.morph, reduceMotion: reduceMotion), value: moment.takesOver)
         }
         .scrollBounceBehavior(.basedOnSize)
         .scrollDismissesKeyboard(.interactively)
         .refreshable { await model.load(showSpinner: false) }
+        .overlay {
+            if logOpen {
+                Palette.scrim
+                    .ignoresSafeArea()
+                    .onTapGesture(perform: closeLog)
+                    .transition(.opacity)
+                    .accessibilityLabel("Close")
+                    .accessibilityAddTraits(.isButton)
+            }
+        }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if let logger {
-                LogDock(
-                    logger: logger,
-                    focused: $composerFocused,
-                    photoNamespace: photoLogNamespace,
-                    photoGeometryID: Self.photoImageID
-                ) {
-                    Task { await logger.submit() }
+                if logOpen {
+                    LogDock(
+                        logger: logger,
+                        focused: $composerFocused,
+                        estimateKcal: estimateKcal(for: home),
+                        currentSlot: TodayLayout.slot(forMinute: home.day?.nowMin ?? TodayLayout.minuteOfDay(from: now), times: home.resolvedMealTimes),
+                        photoNamespace: photoLogNamespace,
+                        photoGeometryID: Self.photoImageID,
+                        onClose: closeLog
+                    ) {
+                        Task { await logger.submit() }
+                    }
+                    .transition(.move(edge: .bottom))
+                } else {
+                    LogStatusToast(logger: logger, onRetry: { openLog(focus: true) })
+                        .padding(.bottom, 8)
+                        .frame(maxWidth: .infinity)
                 }
             }
         }
@@ -336,9 +389,28 @@ struct HomeContent: View {
 
     // MARK: Actions
 
+    private func openLog(focus: Bool = false) {
+        guard !showingCheckIn else { return }
+        withAnimation(Motion.adaptive(Motion.sheet, reduceMotion: reduceMotion)) { logOpen = true }
+        if focus {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { composerFocused = true }
+        }
+    }
+
+    private func closeLog() {
+        composerFocused = false
+        logger?.backdate = nil
+        withAnimation(Motion.adaptive(Motion.sheet, reduceMotion: reduceMotion)) { logOpen = false }
+    }
+
+    private var hidesNav: Bool {
+        showingCheckIn || logOpen || logger?.confirmingPhoto == true
+    }
+
     private func openCheckIn() {
         Haptics.nudge()
         composerFocused = false
+        logOpen = false
         withAnimation(springForCheckIn) { showingCheckIn = true }
     }
 
@@ -376,7 +448,7 @@ struct HomeContent: View {
             let at = slot == .breakfast ? times.breakfastMin : slot == .lunch ? times.lunchMin : times.dinnerMin
             logger?.backdate = .init(slot: slot, at: TodayLayout.today(atMin: at, now: now))
         }
-        DispatchQueue.main.async { composerFocused = true }
+        openLog()
     }
 
     private func alreadyAte() {
@@ -394,9 +466,33 @@ struct HomeContent: View {
         }
     }
 
+    private func addTopUp(_ topUp: HomeResponse.TopUp) {
+        guard let logger, !topUpBusy else { return }
+        topUpBusy = true
+        Task {
+            await logger.logMacros(
+                summary: topUp.logText,
+                kcal: topUp.totalKcal,
+                proteinG: topUp.totalProteinG,
+                carbsG: topUp.totalCarbsG,
+                fatG: topUp.totalFatG
+            )
+            topUpBusy = false
+        }
+    }
+
+    /// A usual-size meal for "About a normal lunch": the day's target split
+    /// across the meals the user eats.
+    private func estimateKcal(for home: HomeResponse) -> Int? {
+        guard home.ledger.targetKcal > 0 else { return nil }
+        let meals = 3 + (home.appetite?.extraSlots.count ?? 0)
+        let share = Double(home.ledger.targetKcal) / Double(meals)
+        return max(200, Int((share / 50).rounded()) * 50)
+    }
+
     private func logMissed(_ slot: HomeResponse.Day.Slot) {
         logger?.backdate = .init(slot: slot.meal, at: TodayLayout.today(atMin: slot.atMin, now: now))
-        Task { composerFocused = true }
+        openLog()
     }
 
     private func ateThis() {
@@ -436,12 +532,15 @@ struct HomeContent: View {
         switch phase {
         case .parsing:
             composerFocused = false
+            withAnimation(Motion.adaptive(Motion.sheet, reduceMotion: reduceMotion)) { logOpen = false }
         case .failed:
-            composerFocused = true
+            openLog(focus: true)
         case .queued:
             composerFocused = false
+            withAnimation(Motion.adaptive(Motion.sheet, reduceMotion: reduceMotion)) { logOpen = false }
         case let .logged(logged):
             composerFocused = false
+            withAnimation(Motion.adaptive(Motion.sheet, reduceMotion: reduceMotion)) { logOpen = false }
             Haptics.landed()
             if logged.fromPhoto { return }
             landLoggedMeal()
@@ -564,170 +663,166 @@ struct HomeContent: View {
     }
 }
 
+/// Today couldn't load: an unlit orb in a broken ring, and what still works
+/// without a connection.
 private struct RetryState: View {
     let message: String
     let retry: () -> Void
+    var onLog: (() -> Void)? = nil
 
     var body: some View {
-        VStack(spacing: 14) {
-            Text(message)
-                .font(Typography.data(15))
-                .foregroundStyle(Palette.inkSoft)
-                .multilineTextAlignment(.center)
-            ActionButton(title: "Try again", kind: .secondary, action: retry)
-                .frame(maxWidth: 200)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                ZStack {
+                    Circle()
+                        .stroke(Color.white.opacity(0.14), style: StrokeStyle(lineWidth: 3, lineCap: .round, dash: [60, 22]))
+                        .rotationEffect(.degrees(-90))
+                    FuelOrb(size: 160, dimmed: true, glow: 0)
+                    Image(systemName: "icloud.slash")
+                        .font(.system(size: 18, weight: .regular))
+                        .foregroundStyle(Palette.hazeSoft)
+                        .frame(width: 46, height: 46)
+                        .background(Circle().fill(Palette.sheet))
+                        .overlay(Circle().strokeBorder(Palette.hazeSoft.opacity(0.4)))
+                        .shadow(color: Palette.haze.opacity(0.35), radius: 10)
+                        .offset(x: 62, y: 62)
+                }
+                .frame(width: 240, height: 240)
+                .frame(maxWidth: .infinity)
+                .padding(.top, 30)
+                .accessibilityHidden(true)
+
+                Text("No connection")
+                    .font(Typography.mono(11))
+                    .tracking(1.3)
+                    .textCase(.uppercase)
+                    .foregroundStyle(Palette.inkFaint)
+                    .frame(maxWidth: .infinity)
+
+                Headline("Couldn’t load today.", tail: "You can still log.", size: 38)
+
+                Text(message)
+                    .font(Typography.data(13, weight: .regular))
+                    .foregroundStyle(Palette.inkSoft)
+
+                HStack(spacing: 8) {
+                    tile("Log a meal", "Saved here, sent later")
+                    tile("Check-ins", "Run on this phone")
+                    tile("Your plan", "From last time")
+                }
+                .fixedSize(horizontal: false, vertical: true)
+
+                VStack(spacing: 4) {
+                    ActionButton(title: "Try again", action: retry)
+                    if let onLog {
+                        Button("Log something anyway", action: onLog)
+                            .font(Typography.data(14, weight: .regular))
+                            .foregroundStyle(Palette.inkSoft)
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                    }
+                }
+                .padding(.top, 8)
+            }
+            .padding(.horizontal, Space.gutter)
+            .padding(.bottom, 120)
         }
-        .padding(28)
+        .background(alignment: .top) {
+            AmbientGlow(tone: .haze, strength: 0.4).offset(y: -40).ignoresSafeArea()
+        }
+    }
+
+    private func tile(_ title: String, _ note: String) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Image(systemName: "checkmark")
+                .font(.system(size: 9, weight: .heavy))
+                .foregroundStyle(Palette.positive)
+                .frame(width: 18, height: 18)
+                .background(Palette.positive.opacity(0.14), in: Circle())
+            Text(title)
+                .font(Typography.data(13, weight: .regular))
+                .foregroundStyle(Palette.ink)
+            Text(note)
+                .font(Typography.data(11, weight: .regular))
+                .foregroundStyle(Palette.inkFaint)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .glass(radius: 18, fill: Color.white.opacity(0.035))
+        .accessibilityElement(children: .combine)
     }
 }
 
+/// Today while it loads: the day and date (the phone knows those), a dim orb
+/// warming up inside a turning amber arc, and the meal dots pulsing.
 struct HomeSkeletonView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: Space.lg) {
-                VStack(alignment: .leading, spacing: Space.md) {
-                    dial
-                    VStack(alignment: .leading, spacing: 8) {
-                        SkeletonBlock(width: 220, height: 34, radius: 8)
-                        SkeletonBlock(width: 168, height: 16, radius: 6)
-                    }
+        VStack(spacing: Space.md) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(Date.now.formatted(.dateTime.weekday(.wide)))
+                        .font(Typography.data(20, weight: .regular))
+                        .foregroundStyle(Palette.ink)
+                    Text("\(Date.now.formatted(.dateTime.day().month(.abbreviated))) · warming up")
+                        .font(Typography.mono(11))
+                        .tracking(1.2)
+                        .textCase(.uppercase)
+                        .foregroundStyle(Palette.inkFaint)
                 }
-                .padding(.horizontal, Space.gutter)
-                .padding(.top, Space.sm)
-
-                VStack(alignment: .leading, spacing: Space.lg) {
-                    fuel
-                    meals
-                }
-                .padding(.horizontal, Space.gutter)
+                Spacer()
             }
-            .padding(.bottom, Space.lg)
-        }
-        .scrollBounceBehavior(.basedOnSize)
-        .scrollDisabled(true)
-        .background(Palette.background.ignoresSafeArea())
-        .safeAreaInset(edge: .bottom, spacing: 0) { dock }
-        .skeletonLoading()
-    }
-
-    /// Muted stand-in for the day dial: ring, three meal knobs, a number in the middle.
-    private var dial: some View {
-        GeometryReader { geo in
-            let size = min(geo.size.width, geo.size.height)
-            let r = size * 0.33
-            let ringWidth = size * 0.076
-            let knob = min(44, max(18, size * 0.13))
-            let c = CGPoint(x: geo.size.width / 2, y: geo.size.height / 2)
-
             ZStack {
-                Circle()
-                    .stroke(Palette.surfaceSunk, lineWidth: ringWidth)
-                    .frame(width: r * 2, height: r * 2)
-                    .position(c)
-
-                ForEach([480, 780, 1140], id: \.self) { minute in
+                Circle().stroke(Color.white.opacity(0.07), lineWidth: 4)
+                TimelineView(.animation(paused: reduceMotion)) { ctx in
+                    let t = ctx.date.timeIntervalSinceReferenceDate
                     Circle()
-                        .fill(Palette.surface)
-                        .overlay(Circle().strokeBorder(Palette.hairline, lineWidth: 2))
-                        .frame(width: knob, height: knob)
-                        .position(dialPoint(minute, radius: r, center: c))
+                        .trim(from: 0, to: 0.15)
+                        .stroke(Palette.amber, style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                        .shadow(color: Palette.amber.opacity(0.7), radius: 8)
+                        .rotationEffect(.degrees(reduceMotion ? -90 : t.truncatingRemainder(dividingBy: 2.4) / 2.4 * 360))
                 }
-
-                VStack(spacing: 8) {
-                    SkeletonBlock(width: size * 0.28, height: size * 0.11, radius: 10)
-                    SkeletonBlock(width: size * 0.2, height: 10)
+                FuelOrb(size: 180, glow: 0.2)
+                    .opacity(0.32)
+                VStack(spacing: 10) {
+                    SkeletonBlock(width: 110, height: 38, radius: 12)
+                    Text("of your day")
+                        .font(Typography.mono(11))
+                        .foregroundStyle(Color(hex: 0xFDE6CF).opacity(0.7))
                 }
-                .fixedSize()
-                .position(c)
             }
-        }
-        .aspectRatio(1, contentMode: .fit)
-        .frame(maxWidth: 320)
-        .frame(maxWidth: .infinity)
-    }
-
-    private func dialPoint(_ minute: Int, radius: CGFloat, center: CGPoint) -> CGPoint {
-        let angle = CGFloat(minute) / 1440 * 2 * .pi
-        return CGPoint(x: center.x + radius * sin(angle), y: center.y - radius * cos(angle))
-    }
-
-    private var fuel: some View {
-        HStack(spacing: 10) {
-            fuelCell(numberWidth: 56, unitWidth: 72)
-            fuelCell(numberWidth: 40, unitWidth: 88)
-        }
-    }
-
-    private func fuelCell(numberWidth: CGFloat, unitWidth: CGFloat) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .firstTextBaseline, spacing: 5) {
-                SkeletonBlock(width: numberWidth, height: 22, radius: 6)
-                SkeletonBlock(width: unitWidth, height: 12)
+            .frame(width: 240, height: 240)
+            .padding(.top, Space.xs)
+            HStack(spacing: 8) {
+                Circle().fill(Palette.amber).frame(width: 6, height: 6)
+                Text("Pulling in today’s plan")
+                    .font(Typography.mono(11))
+                    .tracking(1.1)
+                    .textCase(.uppercase)
+                    .foregroundStyle(Palette.inkFaint)
             }
-            Capsule().fill(Palette.surfaceSunk).frame(height: 6)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Palette.surface)
-                .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Palette.hairline))
-        }
-    }
-
-    private var meals: some View {
-        VStack(alignment: .leading, spacing: Space.md) {
-            mealSection(labelWidth: 148)
-            mealSection(labelWidth: 118)
-        }
-    }
-
-    private func mealSection(labelWidth: CGFloat) -> some View {
-        VStack(alignment: .leading, spacing: Space.xs) {
-            SkeletonBlock(width: labelWidth, height: 11)
-            mealRow(titleWidth: 152)
-        }
-    }
-
-    private func mealRow(titleWidth: CGFloat) -> some View {
-        HStack(spacing: Space.sm) {
-            SkeletonBlock(width: 44, height: 44, radius: 10)
-            VStack(alignment: .leading, spacing: 4) {
-                SkeletonBlock(width: titleWidth, height: 16)
-                SkeletonBlock(width: 64, height: 12)
+            VStack(alignment: .leading, spacing: 12) {
+                SkeletonBlock(width: 150, height: 10)
+                SkeletonBlock(width: 220, height: 22, radius: 8)
+                SkeletonBlock(height: 50, radius: 16)
+                SkeletonBlock(height: 50, radius: 16).opacity(0.6)
             }
-            Spacer(minLength: 8)
-            SkeletonBlock(width: 62, height: 14)
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Palette.surface, in: RoundedRectangle(cornerRadius: Radius.md, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
-                .strokeBorder(Palette.hairline)
-        )
-    }
-
-    private var dock: some View {
-        HStack(spacing: 8) {
-            SkeletonBlock(height: 44, radius: 22)
-            Circle()
-                .fill(Palette.surfaceSunk)
-                .frame(width: 34, height: 34)
+            .padding(18)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .glass(radius: 26)
+            .shimmering()
+            Spacer(minLength: 0)
         }
         .padding(.horizontal, Space.gutter)
-        .padding(.vertical, 10)
-        .background {
-            Rectangle()
-                .fill(.ultraThinMaterial)
-                .overlay(Palette.background.opacity(0.84))
-                .overlay(alignment: .top) {
-                    Rectangle().fill(Palette.hairline).frame(height: 1)
-                }
-                .ignoresSafeArea(edges: .bottom)
+        .padding(.top, Space.xs)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background(alignment: .top) {
+            AmbientGlow(tone: .ember, strength: 0.5).offset(y: -40).ignoresSafeArea()
         }
+        .background(Palette.background.ignoresSafeArea())
+        .accessibilityElement()
+        .accessibilityLabel("Loading today")
     }
 }
 

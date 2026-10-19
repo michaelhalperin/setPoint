@@ -176,6 +176,7 @@ model User {
   aiUsages                AiUsage[]
   targetReviews           WeightTargetReview[]
   calendarBusyBlocks      CalendarBusyBlock[]
+  calendarKeeps           CalendarKeep[]
   workouts                Workout[]
   dayAppetites            DayAppetite[]
 }
@@ -267,6 +268,8 @@ model OnboardingProfile {
   calendarMinBlockMin    Int     @default(60)
   calendarWorkdaysOnly   Boolean @default(true)
   calendarIncludeAllDay  Boolean @default(false)
+  /// Events marked "free" count as busy only when the user opts in.
+  calendarCountFree      Boolean @default(false)
 
   trainingAddCalories    Boolean @default(true)
   preWorkoutNudgeMin     Int?    @default(90)
@@ -535,6 +538,17 @@ model CalendarBusyBlock {
   createdAt DateTime @default(now())
 
   @@index([userId, start])
+}
+
+/// "Keep lunch at 13:00": this slot doesn't move for busy time on this local date.
+model CalendarKeep {
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  localDate String // YYYY-MM-DD in the user's timezone
+  slot      String // breakfast | lunch | dinner
+  createdAt DateTime @default(now())
+
+  @@id([userId, localDate, slot])
 }
 
 enum WorkoutSource {

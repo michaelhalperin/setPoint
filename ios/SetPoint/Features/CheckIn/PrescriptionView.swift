@@ -8,7 +8,7 @@ struct PrescriptionView: View {
     var headline = "Time to eat."
     /// "Usually 13:00 · nothing since 8:05"
     var whyNow: String?
-    /// Minutes until the user's next meal time — unused for the single 30-min snooze.
+    /// Minutes until the user's next meal time — feeds the snooze sheet choices.
     var nextMealMinutes: Int? = nil
     /// Close without answering.
     let onDismiss: () -> Void
@@ -29,6 +29,7 @@ struct PrescriptionView: View {
     @State private var error: String?
     @State private var rated: Bool?
     @State private var drag: CGFloat = 0
+    @State private var choosingSnooze = false
     @State private var notHungry: Bool
     @State private var fullPlate: HomeResponse.ActiveCheckIn.Prescription?
     @State private var smallerPlate: HomeResponse.ActiveCheckIn.Prescription?
@@ -82,22 +83,19 @@ struct PrescriptionView: View {
 
             HStack {
                 Text("Check-in")
-                    .sectionLabelStyle(Palette.accent)
+                    .sectionLabelStyle(Palette.ember)
                 Spacer()
                 Button(action: onDismiss) {
                     Image(systemName: "xmark")
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(Palette.inkSoft)
                         .frame(width: 34, height: 34)
-                        .background(Palette.surfaceSunk, in: Circle())
+                        .background(Color.white.opacity(0.06), in: Circle())
                 }
                 .accessibilityLabel("Close")
             }
 
-            Text(headline)
-                .font(Typography.display(40))
-                .foregroundStyle(Palette.ink)
-                .accessibilityAddTraits(.isHeader)
+            Headline(headline, tail: notHungry ? "Two ways to get it in." : nil, size: 40)
 
             if let whyNow {
                 Label(whyNow, systemImage: "clock")
@@ -105,12 +103,12 @@ struct PrescriptionView: View {
                     .foregroundStyle(Palette.inkSoft)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
-                    .background(Palette.surfaceSunk, in: Capsule())
+                    .background(Color.white.opacity(0.06), in: Capsule())
             }
 
             if checkIn.prescription != nil {
-                sizeControl
-                plateCards
+                plateTiles
+                Spacer(minLength: 0)
                 primaryActions
             } else if let message = checkIn.message {
                 Text(message)
@@ -122,10 +120,8 @@ struct PrescriptionView: View {
             if let error {
                 Text(error)
                     .font(Typography.data(13, weight: .semibold))
-                    .foregroundStyle(Palette.accentDeep)
+                    .foregroundStyle(Palette.amber)
             }
-
-            Spacer(minLength: 0)
 
             HStack(spacing: Space.sm) {
                 Text("Right time?")
@@ -143,6 +139,11 @@ struct PrescriptionView: View {
         .background {
             UnevenRoundedRectangle(topLeadingRadius: 32, topTrailingRadius: 32, style: .continuous)
                 .fill(Palette.background)
+                .overlay(alignment: .top) {
+                    AmbientGlow(tone: .ember, strength: 0.8, height: 360)
+                        .offset(y: -120)
+                        .clipShape(UnevenRoundedRectangle(topLeadingRadius: 32, topTrailingRadius: 32, style: .continuous))
+                }
                 .shadow(color: Palette.ink.opacity(0.12), radius: 20, y: -6)
                 .ignoresSafeArea(edges: .bottom)
         }
@@ -150,99 +151,96 @@ struct PrescriptionView: View {
         .offset(y: drag)
         .gesture(dismissDrag)
         .task { await loadVariants() }
-    }
-
-    private var sizeControl: some View {
-        HStack(spacing: 0) {
-            segment("Full plate", selected: !notHungry) { select(notHungry: false) }
-            segment("Not hungry", selected: notHungry) { select(notHungry: true) }
+        .sheet(isPresented: $choosingSnooze) {
+            let choices = CheckInActions.snoozeChoices(nextMealMinutes: nextMealMinutes)
+            SnoozeSheet(choices: choices) { minutes in
+                run { try await snooze(minutes) }
+            }
+            .presentationDetents([.height(SnoozeSheet.height(for: choices.count))])
+            .presentationDragIndicator(.visible)
+            .presentationBackground(Palette.sheet)
+            .presentationCornerRadius(32)
         }
-        .padding(4)
-        .background(Palette.surfaceSunk, in: Capsule())
     }
 
-    private func segment(_ title: String, selected: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(title)
-                .font(Typography.data(14, weight: .bold))
-                .foregroundStyle(selected ? Palette.ink : Palette.inkSoft)
-                .frame(maxWidth: .infinity, minHeight: 36)
-                .background {
-                    if selected {
-                        Capsule().fill(Palette.surface)
+    /// The two plates side by side as pictures: a full plate to chew, or a glass and
+    /// a banana to drink. The chosen one lights; its foods sit underneath.
+    private var plateTiles: some View {
+        VStack(spacing: 12) {
+            HStack(spacing: 10) {
+                plateTile(smaller: false, plate: fullPlate)
+                plateTile(smaller: true, plate: smallerPlate)
+            }
+            .fixedSize(horizontal: false, vertical: true)
+            if let plate = activePrescription {
+                FlexWrap(spacing: 8, lineSpacing: 8) {
+                    ForEach(plate.items) { item in
+                        HStack(spacing: 8) {
+                            Text(item.quantity > 1 ? "\(Int(item.quantity))× \(item.name)" : item.name)
+                                .font(Typography.data(13, weight: .regular))
+                                .foregroundStyle(Palette.ink)
+                            Text("\(item.kcal)")
+                                .font(Typography.mono(11))
+                                .foregroundStyle(Palette.amber)
+                        }
+                        .padding(.horizontal, 14)
+                        .frame(height: 34)
+                        .glassCapsule()
                     }
                 }
+                .frame(maxWidth: .infinity)
+                .id(notHungry)
+                .transition(.opacity)
+            } else if !loaded {
+                ProgressView().frame(maxWidth: .infinity, minHeight: 40)
+            }
+        }
+        .animation(Motion.adaptive(Motion.settle, reduceMotion: reduceMotion), value: notHungry)
+    }
+
+    private func plateTile(smaller: Bool, plate: HomeResponse.ActiveCheckIn.Prescription?) -> some View {
+        let on = notHungry == smaller
+        return Button { select(notHungry: smaller) } label: {
+            VStack(spacing: 4) {
+                Group {
+                    if smaller { DrinkPicture() } else { PlatePicture() }
+                }
+                .frame(height: 150)
+                Text(smaller ? "Drink · 2 min" : "Chew · 15 min")
+                    .sectionLabelStyle(on ? Palette.amber : Palette.inkFaint)
+                Text(smaller ? "Easier to get down" : "Full plate")
+                    .font(Typography.data(16, weight: .medium))
+                    .foregroundStyle(Palette.ink)
+                    .multilineTextAlignment(.center)
+                if let plate {
+                    Text("\(plate.totalKcal.formatted()) kcal")
+                        .font(Typography.mono(12))
+                        .foregroundStyle(Palette.inkSoft)
+                    Text("\(Int(plate.totalProteinG.rounded())) g protein")
+                        .font(Typography.data(11, weight: .regular))
+                        .foregroundStyle(Palette.inkFaint)
+                }
+            }
+            .padding(.horizontal, 8)
+            .padding(.top, 8)
+            .padding(.bottom, 16)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .background {
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    .fill(on
+                          ? AnyShapeStyle(LinearGradient(colors: [Palette.ember.opacity(0.13), Palette.ember.opacity(0.03)], startPoint: .top, endPoint: .bottom))
+                          : AnyShapeStyle(Color.white.opacity(0.02)))
+            }
+            .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous).strokeBorder(on ? Color(hex: 0xFF8A50, opacity: 0.55) : Color.white.opacity(0.07)))
+            .shadow(color: Palette.ember.opacity(on ? 0.16 : 0), radius: 20)
+            .scaleEffect(on ? 1 : 0.94)
+            .opacity(on ? 1 : 0.5)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .disabled(busy)
-    }
-
-    @ViewBuilder
-    private var plateCards: some View {
-        let chosen = notHungry ? smallerPlate : fullPlate
-        let other = notHungry ? fullPlate : smallerPlate
-        VStack(spacing: 10) {
-            if let chosen {
-                plateCard(
-                    label: notHungry ? "EASIER TO GET DOWN" : "FULL PLATE",
-                    prescription: chosen,
-                    emphasized: true
-                )
-            } else if !loaded {
-                ProgressView().frame(maxWidth: .infinity, minHeight: 80)
-            }
-            if let other {
-                plateCard(
-                    label: notHungry ? "FULL PLATE" : "EASIER TO GET DOWN",
-                    prescription: other,
-                    emphasized: false
-                )
-            }
-        }
-    }
-
-    private func plateCard(
-        label: String,
-        prescription: HomeResponse.ActiveCheckIn.Prescription,
-        emphasized: Bool
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text(label)
-                    .font(Typography.data(11, weight: .heavy))
-                    .foregroundStyle(emphasized ? Palette.accent : Palette.inkFaint)
-                    .tracking(0.6)
-                Spacer()
-                Text("\(prescription.totalKcal.formatted()) kcal")
-                    .font(Typography.data(13, weight: .bold))
-                    .foregroundStyle(Palette.ink)
-                    .monospacedDigit()
-            }
-            ForEach(prescription.items) { item in
-                HStack(spacing: 10) {
-                    Text(item.quantity > 1 ? "\(Int(item.quantity))× \(item.name)" : item.name)
-                        .font(Typography.data(15, weight: .semibold))
-                        .foregroundStyle(Palette.ink)
-                    Spacer(minLength: 8)
-                    Text("\(item.kcal)")
-                        .font(Typography.data(13))
-                        .foregroundStyle(Palette.inkFaint)
-                        .monospacedDigit()
-                }
-            }
-        }
-        .padding(14)
-        .background {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Palette.surface)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .strokeBorder(
-                            emphasized ? Palette.accent : Palette.hairline,
-                            lineWidth: emphasized ? 2 : 1
-                        )
-                )
-        }
+        .accessibilityLabel((smaller ? "Easier to get down" : "Full plate") + (plate.map { ", \($0.totalKcal) calories" } ?? ""))
+        .accessibilityAddTraits(on ? .isSelected : [])
     }
 
     private var primaryActions: some View {
@@ -250,33 +248,39 @@ struct PrescriptionView: View {
             ActionButton(title: primaryTitle, busy: busy, busyTitle: "Logging") {
                 run(eatThis)
             }
-            HStack {
-                Button { run { try await snooze(30) } } label: {
-                    Text("Snooze 30 min")
-                        .font(Typography.data(14, weight: .bold))
-                        .foregroundStyle(Palette.inkSoft)
+            HStack(spacing: 10) {
+                secondaryAction(title: "Snooze", symbol: "zzz") {
+                    choosingSnooze = true
                 }
-                .buttonStyle(.plain)
-                Spacer()
-                Button { run(alreadyAte, then: onAlreadyAte) } label: {
-                    Text("I already ate")
-                        .font(Typography.data(14, weight: .bold))
-                        .foregroundStyle(Palette.inkSoft)
+                secondaryAction(title: "I already ate") {
+                    run(alreadyAte, then: onAlreadyAte)
                 }
-                .buttonStyle(.plain)
             }
             .disabled(busy)
-            .padding(.horizontal, 4)
         }
     }
 
-    private var primaryTitle: String {
-        let plate = notHungry ? smallerPlate : fullPlate
-        if let name = plate?.items.first?.name {
-            let short = name.split(separator: " ").prefix(3).joined(separator: " ").lowercased()
-            return "I'll have the \(short)"
+    private func secondaryAction(title: String, symbol: String? = nil, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                if let symbol {
+                    Image(systemName: symbol)
+                        .font(.system(size: 14, weight: .semibold))
+                }
+                Text(title)
+                    .font(Typography.data(15, weight: .bold))
+            }
+            .foregroundStyle(Palette.ink)
+            .frame(maxWidth: .infinity, minHeight: 48)
+            .background(Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: Radius.md, style: .continuous))
         }
-        return "I'll have this"
+        .buttonStyle(PressableCard())
+    }
+
+    /// Logs the whole plate, so the button names the plate, not its first item.
+    private var primaryTitle: String {
+        guard let plate = notHungry ? smallerPlate : fullPlate else { return "I’ll have this" }
+        return "I’ll have this · \(plate.totalKcal) kcal"
     }
 
     private var activePrescription: HomeResponse.ActiveCheckIn.Prescription? {
@@ -295,7 +299,7 @@ struct PrescriptionView: View {
         } label: {
             Image(systemName: rated == positive ? "\(systemName).fill" : systemName)
                 .font(.system(size: 18))
-                .foregroundStyle(rated == positive ? Palette.accent : Palette.inkSoft)
+                .foregroundStyle(rated == positive ? Palette.ember : Palette.inkSoft)
                 .frame(width: 44, height: 44)
         }
         .disabled(rated != nil)
@@ -339,7 +343,7 @@ struct PrescriptionView: View {
             }
         } catch {
             loaded = true
-            self.error = UserFacingError.message(for: error)
+            self.error = UserFacingError.message(for: error, fallback: "Couldn’t load the other plate. The one above still works.")
         }
     }
 
@@ -358,7 +362,7 @@ struct PrescriptionView: View {
                 fullPlate = reply.prescription
             }
         } catch {
-            self.error = UserFacingError.message(for: error)
+            self.error = UserFacingError.message(for: error, fallback: "Couldn’t switch plates. Try again.")
         }
     }
 
@@ -400,4 +404,61 @@ struct PrescriptionView: View {
 
 private struct FeedbackBody: Encodable {
     let positive: Bool
+}
+
+/// A full plate, drawn: rice, chicken and greens on a dark plate.
+struct PlatePicture: View {
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(RadialGradient(stops: [
+                    .init(color: Color(hex: 0x2A2723), location: 0.58), .init(color: Color(hex: 0x3A3631), location: 0.6),
+                    .init(color: Color(hex: 0x3A3631), location: 0.66), .init(color: Color(hex: 0x1B1917), location: 0.68),
+                ], center: .center, startRadius: 0, endRadius: 70))
+                .frame(width: 140, height: 140)
+                .shadow(color: .black.opacity(0.7), radius: 25, y: 18)
+            blob(Color(hex: 0xE7D7B4), Color(hex: 0xB79B6A), w: 62, h: 52, x: -19, y: -22)
+            blob(Color(hex: 0xD97A45), Color(hex: 0x8E3D1C), w: 58, h: 50, x: 25, y: -2)
+            blob(Color(hex: 0x5E7A3E), Color(hex: 0x2F4420), w: 56, h: 34, x: -6, y: 31)
+        }
+        .accessibilityHidden(true)
+    }
+
+    private func blob(_ a: Color, _ b: Color, w: CGFloat, h: CGFloat, x: CGFloat, y: CGFloat) -> some View {
+        Ellipse()
+            .fill(RadialGradient(colors: [a, b], center: UnitPoint(x: 0.4, y: 0.4), startRadius: 0, endRadius: w * 0.6))
+            .frame(width: w, height: h)
+            .blur(radius: 1.2)
+            .offset(x: x, y: y)
+    }
+}
+
+/// The easier plate, drawn: a shake with a straw and a banana.
+struct DrinkPicture: View {
+    var body: some View {
+        ZStack {
+            UnevenRoundedRectangle(topLeadingRadius: 10, bottomLeadingRadius: 18, bottomTrailingRadius: 18, topTrailingRadius: 10, style: .continuous)
+                .fill(LinearGradient(stops: [
+                    .init(color: .clear, location: 0), .init(color: .clear, location: 0.22),
+                    .init(color: Color(hex: 0xFDE6CF), location: 0.22), .init(color: Palette.amber, location: 0.62), .init(color: Palette.emberDeep, location: 1),
+                ], startPoint: .top, endPoint: .bottom))
+                .overlay(
+                    UnevenRoundedRectangle(topLeadingRadius: 10, bottomLeadingRadius: 18, bottomTrailingRadius: 18, topTrailingRadius: 10, style: .continuous)
+                        .strokeBorder(Color.white.opacity(0.28), lineWidth: 1.5)
+                )
+                .frame(width: 52, height: 112)
+                .shadow(color: Palette.ember.opacity(0.35), radius: 22)
+                .offset(x: -20, y: 6)
+            Capsule().fill(Palette.ink).frame(width: 4, height: 44)
+                .rotationEffect(.degrees(14))
+                .offset(x: -24, y: -48)
+            UnevenRoundedRectangle(bottomLeadingRadius: 60, bottomTrailingRadius: 60, style: .continuous)
+                .fill(LinearGradient(colors: [Color(hex: 0xFCD34D), Color(hex: 0xCA8A04)], startPoint: .top, endPoint: .bottom))
+                .frame(width: 72, height: 26)
+                .rotationEffect(.degrees(-18))
+                .shadow(color: .black.opacity(0.4), radius: 9, y: 6)
+                .offset(x: 30, y: 44)
+        }
+        .accessibilityHidden(true)
+    }
 }

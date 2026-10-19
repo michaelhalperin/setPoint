@@ -33,7 +33,22 @@ export function variantSolverPrefs(variant: CheckInVariant, drinkableOk: boolean
   };
 }
 
-/** Solve one plate size. Same kcal target; smaller prefers dense / drinkable / no-prep. */
+/** Not hungry ≈ half the full plate, floored so it stays a real bite. */
+export function variantMealTarget(fullTargetKcal: number, variant: CheckInVariant): number {
+  if (variant === 'full') return fullTargetKcal;
+  return Math.max(200, Math.round((fullTargetKcal * 0.5) / 10) * 10);
+}
+
+export function variantProteinTarget(
+  fullProteinG: number | null,
+  variant: CheckInVariant,
+): number | null {
+  if (fullProteinG == null) return null;
+  if (variant === 'full') return fullProteinG;
+  return Math.max(10, Math.round(fullProteinG * 0.5));
+}
+
+/** Solve one plate size. Smaller uses ~half the kcal and denser / drinkable prefs. */
 export function solveCheckInVariant(input: {
   foods: SolverFood[];
   foodIdBySlug: Map<string, string>;
@@ -47,8 +62,8 @@ export function solveCheckInVariant(input: {
 }): SolvedVariant | null {
   const prefs = variantSolverPrefs(input.variant, input.drinkableOk);
   const rx = prescribe(input.foods, {
-    targetKcal: input.targetKcal,
-    targetProteinG: input.targetProteinG,
+    targetKcal: variantMealTarget(input.targetKcal, input.variant),
+    targetProteinG: variantProteinTarget(input.targetProteinG, input.variant),
     excludedTokens: input.excludedTokens,
     pantryTokens: input.pantryTokens,
     prepTimeMaxMin: input.prepTimeMaxMin,

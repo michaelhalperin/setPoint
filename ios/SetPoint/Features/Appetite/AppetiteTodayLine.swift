@@ -74,56 +74,63 @@ struct AppetiteTodayLine: View {
     }
 
     private var askRow: some View {
-        HStack(spacing: 10) {
-            Text("Appetite today?")
-                .font(Typography.data(14, weight: .bold))
-                .foregroundStyle(Palette.ink)
-            Spacer(minLength: 8)
-            HStack(spacing: 6) {
-                ForEach([("HUNGRY", "Hungry"), ("NORMAL", "Normal"), ("LOW", "Low")], id: \.0) { id, title in
+        GlassCard(spacing: 14) {
+            Text("Morning · appetite").sectionLabelStyle()
+            Headline("How’s your appetite today?", tail: "I’ll shape the plates.", size: 26)
+            HStack(spacing: 8) {
+                ForEach(Self.options, id: \.id) { option in
                     Button {
-                        pick(id)
+                        pick(option.id)
                     } label: {
-                        Text(title)
-                            .font(Typography.data(12, weight: .bold))
-                            .foregroundStyle(Palette.ink)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background(Palette.surface, in: Capsule())
+                        VStack(spacing: 6) {
+                            FuelOrb(size: option.orb, breathing: false, glow: 0.25)
+                                .frame(height: 30)
+                            Text(option.title)
+                                .font(Typography.data(15, weight: .medium))
+                                .foregroundStyle(Palette.ink)
+                            Text(option.note)
+                                .font(Typography.data(11, weight: .regular))
+                                .foregroundStyle(Palette.inkSoft)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
+                        }
+                        .padding(.vertical, 16)
+                        .padding(.horizontal, 6)
+                        .frame(maxWidth: .infinity)
+                        .glass(radius: 18, fill: Color.white.opacity(0.05), stroke: Color.white.opacity(0.10))
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(PressableCard())
                     .disabled(busy)
+                    .accessibilityLabel("\(option.title), \(option.note)")
                 }
             }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Palette.surfaceSunk, in: Capsule())
     }
+
+    private static let options: [(id: String, title: String, note: String, orb: CGFloat)] = [
+        ("HUNGRY", "Hungry", "Bigger plates", 30),
+        ("NORMAL", "Normal", "As planned", 22),
+        ("LOW", "Low", "5 small meals", 15),
+    ]
 
     private func answeredRow(_ level: String) -> some View {
         HStack(spacing: 8) {
-            if level == "LOW" {
-                Image(systemName: "cup.and.saucer.fill")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(Palette.inkSoft)
-            }
+            Circle().fill(Palette.amber).frame(width: 6, height: 6)
             Text(answeredCopy(level))
-                .font(Typography.data(14, weight: .semibold))
+                .font(Typography.data(14, weight: .regular))
                 .foregroundStyle(Palette.ink)
                 .lineLimit(1)
                 .minimumScaleFactor(0.85)
             Spacer(minLength: 8)
             Button("Change") { changing = true }
-                .font(Typography.data(13, weight: .bold))
-                .foregroundStyle(Palette.accent)
+                .font(Typography.data(13, weight: .medium))
+                .foregroundStyle(Palette.amber)
                 .buttonStyle(.plain)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
+        .padding(.horizontal, 16)
+        .frame(minHeight: 44)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Palette.surfaceSunk, in: Capsule())
+        .glassCapsule()
     }
 
     private func answeredCopy(_ level: String) -> String {

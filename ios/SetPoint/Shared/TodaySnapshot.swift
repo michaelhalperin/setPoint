@@ -1,7 +1,7 @@
 import Foundation
 
 enum AppGroup {
-    static let id = "group.com.setpoint.app"
+    static let id = "group.com.michaelhalperin.setpoint"
     static let snapshotKey = "todaySnapshot"
     private static let legacyTokenKey = "sessionToken"
 

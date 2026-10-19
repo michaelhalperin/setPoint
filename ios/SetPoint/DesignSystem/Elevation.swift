@@ -1,8 +1,8 @@
 import SwiftUI
 
-/// Depth (Pass 0). Warm, soft, wide shadows — never a hard drop. The tint is
-/// `ink`, not black, so cards feel like they're lifting off a warm paper ground
-/// rather than floating in a void.
+/// Depth on the dark ground. Glass surfaces don't cast shadows — they're
+/// separated by their 9% border — so only floating things (sheets, the nav, a
+/// lifted card) get a soft black shadow.
 enum Elevation {
     case flat
     case resting
@@ -11,20 +11,12 @@ enum Elevation {
 
     var shadows: [(color: Color, radius: CGFloat, y: CGFloat)] {
         switch self {
-        case .flat:
+        case .flat, .resting:
             return []
-        case .resting:
-            return [(.init(hex: 0x2B2622, opacity: 0.06), 14, 6)]
         case .floating:
-            return [
-                (.init(hex: 0x2B2622, opacity: 0.10), 28, 14),
-                (.init(hex: 0x2B2622, opacity: 0.05), 6, 2),
-            ]
+            return [(.black.opacity(0.45), 28, 14)]
         case .lifted:
-            return [
-                (.init(hex: 0x2B2622, opacity: 0.16), 44, 26),
-                (.init(hex: 0x2B2622, opacity: 0.06), 8, 3),
-            ]
+            return [(.black.opacity(0.6), 44, 24)]
         }
     }
 }

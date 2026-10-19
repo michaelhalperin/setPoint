@@ -12,6 +12,7 @@ import { requireAuth, type AuthedRequest } from '../auth/index.js';
 import { getPrisma } from '../db/client.js';
 import { applyPlanProposal, ProposalNotApplicableError } from '../checkins/applyProposal.js';
 import { proposalFromOutcome } from '../checkins/proposals.js';
+import { startCheckIn } from '../checkins/startCheckIn.js';
 import { startTalk } from '../checkins/startTalk.js';
 import { excludedTokensFor, loadStapleFoods } from '../solver/index.js';
 import { publicPrescription, solveCheckInVariant } from '../checkins/variants.js';
@@ -85,6 +86,22 @@ export async function checkInRoutes(app: FastifyInstance): Promise<void> {
   if (devToolsEnabled) {
     app.post('/start-talk', async (req) => {
       return startTalk(getPrisma(), (req as AuthedRequest).userId);
+    });
+
+    // Debug: open a real meal check-in (with plate) without waiting for the score job.
+    app.post('/start-check-in', async (req) => {
+      try {
+        return await startCheckIn(getPrisma(), (req as AuthedRequest).userId);
+      } catch (err) {
+        const status =
+          err && typeof err === 'object' && 'statusCode' in err && typeof (err as { statusCode: unknown }).statusCode === 'number'
+            ? (err as { statusCode: number }).statusCode
+            : null;
+        if (status === 409) {
+          throw app.httpErrors.conflict(err instanceof Error ? err.message : 'conflict');
+        }
+        throw err;
+      }
     });
   }
 

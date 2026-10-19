@@ -3,6 +3,8 @@ import { STAPLE_FOODS } from '../data/stapleFoods.js';
 import {
   publicPrescription,
   solveCheckInVariant,
+  variantMealTarget,
+  variantProteinTarget,
   variantSolverPrefs,
 } from './variants.js';
 
@@ -34,7 +36,16 @@ describe('check-in variants', () => {
     expect(variantSolverPrefs('smaller', false).preferDrinkable).toBe(false);
   });
 
-  it('builds full and smaller plates at the same target, honouring exclusions', () => {
+  it('halves the meal target for not-hungry', () => {
+    expect(variantMealTarget(670, 'full')).toBe(670);
+    expect(variantMealTarget(670, 'smaller')).toBe(340);
+    expect(variantMealTarget(300, 'smaller')).toBe(200);
+    expect(variantProteinTarget(40, 'full')).toBe(40);
+    expect(variantProteinTarget(40, 'smaller')).toBe(20);
+    expect(variantProteinTarget(null, 'smaller')).toBeNull();
+  });
+
+  it('builds different full and smaller plates, honouring exclusions', () => {
     const excluded = ['dairy', 'egg', 'gluten'];
     const full = solveCheckInVariant({ ...base, excludedTokens: excluded, variant: 'full' });
     const smaller = solveCheckInVariant({ ...base, excludedTokens: excluded, variant: 'smaller' });
@@ -44,8 +55,11 @@ describe('check-in variants', () => {
 
     expect(full.totals.kcal).toBeGreaterThan(0);
     expect(smaller.totals.kcal).toBeGreaterThan(0);
-    // Same target — totals land in the same band.
-    expect(Math.abs(full.totals.kcal - smaller.totals.kcal)).toBeLessThan(full.totals.kcal * 0.5);
+    // Not hungry is a smaller bite — meaningfully under the full plate.
+    expect(smaller.totals.kcal).toBeLessThan(full.totals.kcal * 0.75);
+    expect(
+      full.items.map((i) => `${i.quantity}:${i.name}`).join('|'),
+    ).not.toEqual(smaller.items.map((i) => `${i.quantity}:${i.name}`).join('|'));
 
     for (const plate of [full, smaller]) {
       for (const item of plate.items) {

@@ -1,9 +1,15 @@
 # SetPoint
 
-An iOS app that helps people who unintentionally under-eat keep a minimum
-fueling rhythm. Meal behavior decides whether a check-in is due. Fresh HRV/RHR,
-when enabled, may adjust confidence on an already-due check-in — it never
-independently diagnoses under-fueling.
+An iOS app for people who train and can't eat enough. It closes the daily gap:
+a check-in when a meal is skipped or too light for where the day should be, a
+one-tap calorie-dense top-up after a small meal, and one evening check-in when
+the day is still short. Meal behavior decides when a check-in is due
+(`backend/src/engine/mealSchedule.ts` + `gap.ts`). Fresh HRV/RHR, when enabled,
+may adjust confidence on an already-due check-in — it never independently
+diagnoses under-fueling.
+
+Meal check-ins, top-ups and the evening close are free. A subscription
+(`SUBSCRIPTION_GATE=true`) adds training check-ins and calendar-aware timing.
 
 See [`BETA.md`](./BETA.md) for release gates and [`backend/COMPLIANCE.md`](./backend/COMPLIANCE.md)
 for privacy and App Store notes.

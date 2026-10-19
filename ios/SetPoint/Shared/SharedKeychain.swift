@@ -4,7 +4,7 @@ import Security
 /// The session token in the Keychain, shared with the widget extension and App Intents
 /// through the app group. Never stored in plain `UserDefaults`, shared or not.
 enum SharedKeychain {
-    private static let service = "com.setpoint.app"
+    private static let service = "com.michaelhalperin.setpoint"
     private static let account = "session-token"
 
     private static var itemQuery: [String: Any] {

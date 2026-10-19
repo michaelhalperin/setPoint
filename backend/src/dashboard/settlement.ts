@@ -6,6 +6,7 @@ import { classifyDay, type DayKind } from './classify.js';
 import { buildWeekRecord, type WeekRecord } from './record.js';
 import { OnboardingIncompleteError } from './home.js';
 import { trainingForLocalDay } from '../training/day.js';
+import { buildGapMetrics } from '../metrics/gapMetrics.js';
 
 export type SettlementDeps = {
   prisma: PrismaClient;
@@ -46,6 +47,11 @@ export type SettlementView = {
     provisional: true;
   };
   weekSummary: string;
+  /**
+   * The week's headline: how many settled days actually reached (95% of)
+   * their target, and how short the others ran on average.
+   */
+  gap: { closedDays: number; totalDays: number; avgShortfallKcal: number | null };
   /** Null when the user has no weight goal (MAINTAIN or none set). */
   weightGoal: WeightGoalView | null;
   /** How each meal went this week, with or without a check-in. */
@@ -154,6 +160,7 @@ export async function buildSettlement(deps: SettlementDeps, userId: string): Pro
       provisional: true,
     },
     weekSummary: weekSummary(days, goal),
+    gap: weekGap(days),
     weightGoal: buildWeightGoal(profile, user.weightEntries[0] ?? null, now),
     record,
     targetReview: suggestion
@@ -169,6 +176,11 @@ export async function buildSettlement(deps: SettlementDeps, userId: string): Pro
         }
       : null,
   };
+}
+
+function weekGap(days: SettlementDay[]): SettlementView['gap'] {
+  const { days: d } = buildGapMetrics(days, []);
+  return { closedDays: d.closed, totalDays: d.total, avgShortfallKcal: d.avgShortfallKcal };
 }
 
 const WEIGH_IN_STALE_MS = 7 * 24 * 3_600_000;

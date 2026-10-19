@@ -103,38 +103,22 @@ struct BarcodeProductSheet: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Space.md) {
+        VStack(alignment: .leading, spacing: 14) {
             Capsule()
-                .fill(Palette.inkFaint.opacity(0.4))
+                .fill(Color.white.opacity(0.18))
                 .frame(width: 40, height: 5)
                 .frame(maxWidth: .infinity)
 
             HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Exact")
-                        .font(Typography.data(11, weight: .bold))
-                        .foregroundStyle(Palette.background)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Palette.dayOnTrack, in: Capsule())
-                    Text(product.food.name)
-                        .font(Typography.voice(24, weight: .medium))
-                        .foregroundStyle(Palette.ink)
-                    if let brand = product.food.brand, !brand.isEmpty {
-                        Text(brand)
-                            .font(Typography.data(14))
-                            .foregroundStyle(Palette.inkSoft)
-                    }
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Found").sectionLabelStyle(Palette.positive)
+                    Headline(product.food.name, size: 26)
+                    Text(detailLine)
+                        .font(Typography.data(13, weight: .regular))
+                        .foregroundStyle(Palette.inkSoft)
                 }
-                Spacer()
-                Button(action: onSave) {
-                    Image(systemName: "star")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(Palette.accent)
-                        .frame(width: 44, height: 44)
-                        .background(Palette.accentTint, in: Circle())
-                }
-                .accessibilityLabel("Save as my meal")
+                Spacer(minLength: 8)
+                RoundIconButton("star", label: "Save as my meal", action: onSave)
             }
 
             HStack(spacing: 8) {
@@ -144,70 +128,66 @@ struct BarcodeProductSheet: View {
                 macroTile("Fat", value: "\(Int(portion.fatG.rounded())) g")
             }
 
-            HStack {
-                Text("Amount")
-                    .font(Typography.data(14, weight: .semibold))
-                    .foregroundStyle(Palette.inkSoft)
-                Spacer()
-                Button {
-                    product.servings = max(0.5, (product.servings * 2 - 1) / 2)
-                } label: {
-                    Image(systemName: "minus")
-                        .font(.system(size: 14, weight: .bold))
-                        .frame(width: 36, height: 36)
-                        .background(Palette.surfaceSunk, in: Circle())
-                }
-                Text(product.servings == product.servings.rounded() ? "\(Int(product.servings))" : String(format: "%.1f", product.servings))
-                    .font(Typography.data(22, weight: .heavy))
-                    .foregroundStyle(Palette.ink)
-                    .monospacedDigit()
-                    .frame(minWidth: 36)
-                // No serving size on the label: each step is 100 g.
-                Text((product.food.servingG ?? 0) > 0 ? "servings" : "× 100 g")
-                    .font(Typography.data(13))
-                    .foregroundStyle(Palette.inkFaint)
-                Button {
-                    product.servings = min(20, product.servings + 0.5)
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.system(size: 14, weight: .bold))
-                        .frame(width: 36, height: 36)
-                        .background(Palette.surfaceSunk, in: Circle())
-                }
+            GlassList {
+                StepperRow(
+                    name: (product.food.servingG ?? 0) > 0 ? "Servings" : "Amount",
+                    // No serving size on the label: each step is 100 g.
+                    note: (product.food.servingG ?? 0) > 0 ? nil : "× 100 g",
+                    value: product.servings == product.servings.rounded() ? "\(Int(product.servings))" : String(format: "%.1f", product.servings),
+                    canDown: product.servings > 0.5,
+                    canUp: product.servings < 20,
+                    onDown: { product.servings = max(0.5, (product.servings * 2 - 1) / 2) },
+                    onUp: { product.servings = min(20, product.servings + 0.5) }
+                )
             }
-            .foregroundStyle(Palette.ink)
 
-            ActionButton(title: "Log for \(slotTitle.lowercased())", busy: logging, busyTitle: "Logging", action: onLog)
-
-            Button("Not this", action: onClose)
-                .font(Typography.data(14, weight: .semibold))
-                .foregroundStyle(Palette.inkSoft)
-                .frame(maxWidth: .infinity)
+            VStack(spacing: 4) {
+                ActionButton(
+                    title: "Log \(portion.kcal) kcal · \(slotTitle.lowercased())",
+                    busy: logging,
+                    busyTitle: "Logging",
+                    symbol: "plus",
+                    action: onLog
+                )
+                Button("Not this", action: onClose)
+                    .font(Typography.data(14, weight: .regular))
+                    .foregroundStyle(Palette.inkSoft)
+                    .frame(maxWidth: .infinity, minHeight: 40)
+            }
         }
         .padding(.horizontal, Space.gutter)
         .padding(.top, Space.sm)
         .padding(.bottom, Space.md)
         .background {
             UnevenRoundedRectangle(topLeadingRadius: 32, topTrailingRadius: 32, style: .continuous)
-                .fill(Palette.background)
+                .fill(Palette.sheet)
                 .ignoresSafeArea(edges: .bottom)
         }
     }
 
+    private var detailLine: String {
+        var parts: [String] = []
+        if let brand = product.food.brand, !brand.isEmpty { parts.append(brand) }
+        parts.append("\(Int(portion.grams.rounded())) g")
+        return parts.joined(separator: " · ")
+    }
+
     private func macroTile(_ label: String, value: String) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(label).sectionLabelStyle()
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label)
+                .font(Typography.mono(9))
+                .tracking(1.1)
+                .textCase(.uppercase)
+                .foregroundStyle(Palette.inkFaint)
             Text(value)
-                .font(Typography.data(18, weight: .heavy))
+                .font(Typography.data(18, weight: .regular))
                 .foregroundStyle(Palette.ink)
-                .monospacedDigit()
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
         }
-        .padding(12)
+        .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Palette.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Palette.hairline))
+        .glass(radius: 14)
     }
 }
 

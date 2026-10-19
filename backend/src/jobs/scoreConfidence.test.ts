@@ -125,6 +125,7 @@ function makeFakePrisma(users: AnyRow[], opts: { seedFoods?: boolean } = {}) {
     dietaryRestriction: collection(dietaryRestrictions, 'dr'),
     prescription: collection(prescriptions, 'rx'),
     calendarBusyBlock: { findMany: async () => [] },
+    calendarKeep: { findMany: async () => [] },
     workout: collection(workouts, 'wo'),
     dayAppetite: { findUnique: async () => null },
   };
@@ -512,6 +513,109 @@ describe('runScoreConfidenceJob', () => {
       });
 
       expect(summary.checkInsCreated).toBe(0);
+    });
+  });
+  describe('closing the daily gap', () => {
+    const at = (iso: string, kcal: number) => ({ userId: 'u1', loggedAt: new Date(iso), kcal, proteinG: 20, source: 'TEXT' });
+    const breakfast = at('2026-07-01T12:10:00Z', 500); // 08:10 New York
+
+    it('follows up a light lunch with a top-up check-in', async () => {
+      const fake = makeFakePrisma([baseUser()], { seedFoods: true });
+      fake.meal.create({ data: breakfast });
+      fake.meal.create({ data: at('2026-07-01T17:05:00Z', 200) }); // 13:05, a 200 kcal lunch
+
+      const summary = await runScoreConfidenceJob({
+        prisma: fake as unknown as PrismaClient,
+        push,
+        voice,
+        now: new Date('2026-07-01T18:20:00Z'), // 14:20
+      });
+
+      expect(summary.checkInsCreated).toBe(1);
+      expect(fake.__tables.checkIns[0]).toMatchObject({ kind: 'TOP_UP', slot: 'lunch' });
+      expect(fake.__tables.checkIns[0]!.message).toMatch(/^Lunch was light\. Add .+ to stay on pace\.$/);
+      expect(voice.checkInMessage).not.toHaveBeenCalled();
+    });
+
+    it('leaves a real lunch alone', async () => {
+      const fake = makeFakePrisma([baseUser()], { seedFoods: true });
+      fake.meal.create({ data: breakfast });
+      fake.meal.create({ data: at('2026-07-01T17:05:00Z', 700) });
+
+      const summary = await runScoreConfidenceJob({
+        prisma: fake as unknown as PrismaClient,
+        push,
+        voice,
+        now: new Date('2026-07-01T18:20:00Z'),
+      });
+
+      expect(summary.checkInsCreated).toBe(0);
+    });
+
+    it('closes the day in the evening when it is still well short', async () => {
+      const fake = makeFakePrisma([baseUser()], { seedFoods: true });
+      fake.meal.create({ data: breakfast });
+      fake.meal.create({ data: at('2026-07-01T17:05:00Z', 600) });
+      fake.meal.create({ data: at('2026-07-01T23:10:00Z', 600) }); // 19:10 dinner; day at 1,700 of 2,200
+
+      const early = await runScoreConfidenceJob({
+        prisma: fake as unknown as PrismaClient,
+        push,
+        voice,
+        now: new Date('2026-07-02T00:20:00Z'), // 20:20 — the close comes at 20:30
+      });
+      expect(early.checkInsCreated).toBe(0);
+
+      const summary = await runScoreConfidenceJob({
+        prisma: fake as unknown as PrismaClient,
+        push,
+        voice,
+        now: new Date('2026-07-02T00:35:00Z'), // 20:35
+      });
+      expect(summary.checkInsCreated).toBe(1);
+      expect(fake.__tables.checkIns[0]).toMatchObject({ kind: 'CLOSE', slot: 'close', episodeKey: '2026-07-01:close' });
+      expect(fake.__tables.checkIns[0]!.message).toMatch(/^You're 500 kcal short today\./);
+      expect(fake.__tables.prescriptions).toHaveLength(1);
+    });
+
+    it('lets an unanswered close lapse without counting a miss', async () => {
+      const fake = makeFakePrisma([baseUser()]);
+      fake.__tables.checkIns.push({
+        id: 'ci_close',
+        userId: 'u1',
+        kind: 'CLOSE',
+        slot: 'close',
+        status: 'PENDING',
+        tier: 1,
+        deferCount: 0,
+        deliveryStatus: 'SENT',
+        createdAt: hoursAgo(5),
+        deliveredAt: hoursAgo(5),
+      });
+
+      const summary = await runScoreConfidenceJob({ prisma: fake as unknown as PrismaClient, push, voice, now: NOW });
+
+      expect(summary.misses).toBe(0);
+      expect(fake.__tables.checkIns.find((c) => c.id === 'ci_close')).toMatchObject({ status: 'EXPIRED' });
+    });
+
+    it('stops after the daily check-in budget is spent', async () => {
+      const fake = makeFakePrisma([baseUser()], { seedFoods: true });
+      for (let i = 0; i < 4; i += 1) {
+        fake.__tables.checkIns.push({
+          id: `ci_${i}`,
+          userId: 'u1',
+          status: 'LOGGED',
+          tier: 1,
+          kind: 'MEAL',
+          createdAt: new Date('2026-07-01T12:30:00Z'),
+        });
+      }
+
+      const summary = await runScoreConfidenceJob({ prisma: fake as unknown as PrismaClient, push, voice, now: NOW });
+
+      expect(summary.checkInsCreated).toBe(0);
+      expect(summary.skipped.daily_cap).toBe(1);
     });
   });
 });

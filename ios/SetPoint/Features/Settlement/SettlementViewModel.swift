@@ -11,6 +11,11 @@ final class SettlementViewModel {
     }
 
     var phase: Phase = .loading
+    /// A refresh failed while the week was showing: keep it and say when it's from.
+    private(set) var staleSince: Date?
+    private var loadedAt: Date?
+    /// Debug previews show sample data and never touch the network.
+    private var isPreview = false
     var loggingWeight = false
     var weighInError: String?
     var applyingTargetReview = false
@@ -29,15 +34,22 @@ final class SettlementViewModel {
     }
 
     func load() async {
+        if isPreview { return }
         do {
             async let history: WeightHistoryResponse? = try? api.get("/api/weight", query: ["limit": "30"])
             let s: SettlementResponse = try await api.get("/api/settlement")
             weights = (await history)?.entries.reversed() ?? []
             phase = .loaded(s)
+            loadedAt = Date()
+            staleSince = nil
         } catch APIError.unauthorized {
             onUnauthorized()
         } catch {
-            phase = .failed(UserFacingError.message(for: error, fallback: "Couldn't load. Try again."))
+            if case .loaded = phase {
+                staleSince = loadedAt ?? Date()
+            } else {
+                phase = .failed(UserFacingError.message(for: error, fallback: "Couldn’t load your week."))
+            }
         }
     }
 
@@ -136,9 +148,17 @@ final class SettlementViewModel {
     }
 
     #if DEBUG
+    static func previewedLoading() -> SettlementViewModel {
+        let vm = SettlementViewModel(api: AppEnvironment.preview().api, onUnauthorized: {})
+        vm.phase = .loading
+        vm.isPreview = true
+        return vm
+    }
+
     static func previewed(_ response: SettlementResponse) -> SettlementViewModel {
         let vm = SettlementViewModel(api: AppEnvironment.preview().api, onUnauthorized: {})
         vm.phase = .loaded(response)
+        vm.isPreview = true
         return vm
     }
     #endif
@@ -186,6 +206,7 @@ extension SettlementResponse {
             lastWeighInAt: "2026-09-05T08:00:00.000Z",
             needsWeighIn: false
         ),
+        gap: .init(closedDays: 4, totalDays: 6, avgShortfallKcal: 1870),
         record: .init(
             days: [
                 .init(date: "2026-09-02", slots: ["on_time", "after_check_in", "on_time"]),

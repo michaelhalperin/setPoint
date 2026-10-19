@@ -1,3 +1,4 @@
+import { AccountNotFoundError } from '../account/deleteAccount.js';
 import type { PrismaClient } from '@prisma/client';
 import {
   applyCalendarShift,
@@ -20,6 +21,10 @@ import {
   extraAppetiteSlots,
   nextAppetitePlate,
   localDateISO,
+  GAP_CONFIG,
+  closeCheckIn,
+  currentMealSlot,
+  topUpGap,
   type Goal,
   type ScheduledCheckIn,
   type SlotName,
@@ -33,6 +38,7 @@ import type { PhotoStore } from '../photos/store.js';
 import { homeFraming, type FramingState } from './classify.js';
 import { buildDay, type DayView } from './day.js';
 import { mealWindow } from '../managerVoice/fallback.js';
+import { excludedTokensFor, loadStapleFoods, namedSummary, pickTopUp } from '../solver/index.js';
 
 export type HomeDeps = {
   prisma: PrismaClient;
@@ -73,6 +79,22 @@ export type HomeView = {
    * Null in quiet mode, while paused, while one is already open, or once the day is covered.
    */
   nextCheckIn: ScheduledCheckIn | null;
+  /**
+   * After a light meal: one or two calorie-dense add-ons that bring the day
+   * back toward pace, ready to log in one tap. Null when on pace, in quiet
+   * mode, or while a check-in is open.
+   */
+  topUp: null | {
+    slot: SlotName;
+    behindKcal: number;
+    totalKcal: number;
+    totalProteinG: number;
+    /** What gets logged when the user taps Add. */
+    logText: string;
+    items: { name: string; servingDesc: string; quantity: number; kcal: number; proteinG: number; carbsG: number; fatG: number }[];
+  };
+  /** The evening close-the-gap check-in, if the day is still short at that time. Null in quiet mode. */
+  closeCheckIn: { dueMin: number; gapKcal: number } | null;
   needsWeighIn: boolean;
   busyBlocks: { startMin: number; endMin: number }[];
   movedSlots: { slot: SlotName; fromMin: number; toMin: number }[];
@@ -130,12 +152,14 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
     where: { id: userId },
     include: { onboarding: true, safetyScreening: true, escalationState: true, weightEntries: { orderBy: { measuredAt: 'desc' }, take: 1 } },
   });
-  if (!user?.onboarding) throw new OnboardingIncompleteError('onboarding not complete');
+  // A valid token for a deleted account — the app should sign out, not start onboarding.
+  if (!user) throw new AccountNotFoundError('account not found');
+  if (!user.onboarding) throw new OnboardingIncompleteError('onboarding not complete');
 
   const profile = user.onboarding;
   const dayStart = startOfLocalDay(now, user.timezone);
 
-  const [todayMeals, lastMeal, activeCheckIn, todayCheckIns, lastWeighIn, busyRows, dayAppetite, smallerCount] = await Promise.all([
+  const [todayMeals, lastMeal, activeCheckIn, todayCheckIns, lastWeighIn, busyRows, dayAppetite, smallerCount, keepRows] = await Promise.all([
     prisma.meal.findMany({
       where: { userId, loggedAt: { gte: dayStart } },
       orderBy: { loggedAt: 'asc' },
@@ -185,6 +209,12 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
         createdAt: { gte: new Date(now.getTime() - 7 * 86_400_000) },
       },
     }),
+    profile.calendarEnabled
+      ? prisma.calendarKeep.findMany({
+          where: { userId, localDate: localDateISO(now, user.timezone) },
+          select: { slot: true },
+        })
+      : Promise.resolve([]),
   ]);
 
   const consumedKcal = todayMeals.reduce((acc, m) => acc + m.kcal, 0);
@@ -234,6 +264,7 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
   const calendarPrefs = prefsFromProfile(profile);
   const todayBusy = toMinuteBlocks(busyRows, dayStart, user.timezone);
   const weekday = localWeekday(now, user.timezone);
+  const keptSlots = new Set(keepRows.map((k) => k.slot));
   const escalation = user.escalationState;
 
   const checksRunning =
@@ -242,7 +273,9 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
     !(escalation?.backedOffUntil && escalation.backedOffUntil > now) &&
     activeCheckIn === null;
   const checkedSlotsToday = todayCheckIns
-    .filter((c) => c.tier < TIER.CONVERSATION && c.kind !== 'REFUEL' && c.kind !== 'PRE_WORKOUT')
+    .filter(
+      (c) => c.tier < TIER.CONVERSATION && c.kind !== 'REFUEL' && c.kind !== 'PRE_WORKOUT' && c.kind !== 'CLOSE',
+    )
     .map((c) => slotNameOf(c.slot) ?? checkInSlotAt(localMinute(c.createdAt), times))
     .filter((slot): slot is SlotName => slot !== null);
   const scheduled = checksRunning
@@ -254,22 +287,67 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
         consumedKcal,
         targetKcal,
         extraSlots,
+        lightRule: GAP_CONFIG,
       })
     : null;
-  const shifted = scheduled
-    ? withOverdue(applyCalendarShift(scheduled, times, todayBusy, calendarPrefs, weekday)!, mins)
+  const shifted = scheduled?.light
+    ? { ...scheduled, movedFromMin: null, busy: null }
+    : scheduled
+    ? withOverdue(applyCalendarShift(scheduled, times, todayBusy, calendarPrefs, weekday, keptSlots)!, mins)
     : null;
   const nextCheckIn =
     shifted && !isWithinQuietHours(shifted.dueMin, profile.quietHoursStartMin, profile.quietHoursEndMin)
-      ? { slot: shifted.slot, mealMin: shifted.mealMin, dueMin: shifted.dueMin, overdue: shifted.overdue }
+      ? {
+          slot: shifted.slot,
+          mealMin: shifted.mealMin,
+          dueMin: shifted.dueMin,
+          overdue: shifted.overdue,
+          ...(shifted.light ? { light: true } : {}),
+        }
       : null;
+
+  const lastCheckInAt = todayCheckIns.reduce<Date | null>(
+    (acc, c) => (acc === null || c.createdAt > acc ? c.createdAt : acc),
+    null,
+  );
+  const evening =
+    checksRunning && (!nextCheckIn || nextCheckIn.slot !== 'dinner')
+      ? closeCheckIn({
+          nowMin: mins,
+          times,
+          quietStartMin: profile.quietHoursStartMin,
+          consumedKcal,
+          targetKcal,
+          closedToday: todayCheckIns.some((c) => c.kind === 'CLOSE'),
+          minSinceLastCheckIn: lastCheckInAt ? Math.floor((now.getTime() - lastCheckInAt.getTime()) / 60_000) : null,
+        })
+      : null;
+
+  const slotNow = currentMealSlot(mins, times);
+  const topUpNeed =
+    enforcementEnabled && activeCheckIn === null
+      ? topUpGap({
+          currentSlot: slotNow,
+          loggedInSlot: day.slots.some((s) => s.slot === slotNow && s.mealIds.length > 0),
+          consumedKcal,
+          targetKcal,
+          extra: false,
+        })
+      : null;
+  const topUpRx = topUpNeed
+    ? pickTopUp((await loadStapleFoods(prisma)).solverFoods, {
+        targetKcal: topUpNeed.topUpKcal,
+        excludedTokens: await excludedTokensFor(prisma, userId, profile.dislikedFoods),
+        drinkableOk: profile.drinkableOk ?? true,
+      })
+    : null;
   const busyBlocks = calendarPrefs.enabled
     ? qualifyingBusyBlocks(todayBusy, calendarPrefs, weekday).map((b) => ({
         startMin: b.startMin,
         endMin: b.endMin,
       }))
     : [];
-  const movedSlots = movedSlotsToday(times, SCHEDULE_CONFIG.graceMin, todayBusy, calendarPrefs, weekday);
+  const movedSlots = movedSlotsToday(times, SCHEDULE_CONFIG.graceMin, todayBusy, calendarPrefs, weekday, keptSlots);
   const trainingRows = workoutHomeRows(trainingDay.workouts, user.timezone, dayStart);
   const firstSession = trainingDay.workouts[0];
   const refuelUntilMin = firstSession
@@ -329,6 +407,26 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
     quietHours: { startMin: profile.quietHoursStartMin, endMin: profile.quietHoursEndMin },
     day,
     nextCheckIn,
+    topUp:
+      topUpNeed && topUpRx
+        ? {
+            slot: topUpNeed.slot,
+            behindKcal: topUpNeed.behindKcal,
+            totalKcal: topUpRx.totalKcal,
+            totalProteinG: topUpRx.totalProteinG,
+            logText: `Top-up: ${namedSummary(topUpRx)}`,
+            items: topUpRx.items.map((i) => ({
+              name: i.name,
+              servingDesc: i.servingDesc,
+              quantity: i.quantity,
+              kcal: i.kcal,
+              proteinG: i.proteinG,
+              carbsG: i.carbsG,
+              fatG: i.fatG,
+            })),
+          }
+        : null,
+    closeCheckIn: evening && !evening.overdue ? { dueMin: evening.dueMin, gapKcal: evening.gapKcal } : null,
     busyBlocks,
     movedSlots,
     training: {

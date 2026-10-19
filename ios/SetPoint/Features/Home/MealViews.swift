@@ -10,6 +10,8 @@ struct SearchComposer: View {
     var photoNamespace: Namespace.ID?
     var photoGeometryID = "photo-log-image"
     var prompt = "What did you eat?"
+    /// Typing on its own: the words are the big text on the sheet.
+    var large = false
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var pickerItem: PhotosPickerItem?
@@ -34,7 +36,8 @@ struct SearchComposer: View {
             HStack(alignment: .bottom, spacing: 8) {
                 HStack(spacing: 8) {
                     TextField(prompt, text: $model.text, axis: .vertical)
-                        .font(Typography.data(16))
+                        .font(large ? Typography.display(26) : Typography.data(16))
+                        .tracking(large ? -0.7 : 0)
                         .lineLimit(1 ... 4)
                         .focused(focused)
                         .submitLabel(.send)
@@ -54,9 +57,9 @@ struct SearchComposer: View {
                             .accessibilityHidden(true)
                     }
                 }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(Palette.surfaceSunk, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                .glass(radius: 25, fill: Color.white.opacity(0.05), stroke: Color.white.opacity(0.10))
 
                 cameraButton
 
@@ -69,7 +72,7 @@ struct SearchComposer: View {
             if case let .failed(message) = model.phase {
                 Text(message)
                     .font(Typography.data(13))
-                    .foregroundStyle(Palette.accent)
+                    .foregroundStyle(Palette.danger)
                     .padding(.leading, 14)
             }
         }
@@ -122,10 +125,11 @@ struct SearchComposer: View {
     private var cameraButton: some View {
         PhotosPicker(selection: $pickerItem, matching: .images, photoLibrary: .shared()) {
             Image(systemName: "camera")
-                .font(.system(size: 15, weight: .semibold))
+                .font(.system(size: 17, weight: .regular))
                 .foregroundStyle(Palette.ink)
-                .frame(width: 34, height: 34)
-                .background(Palette.surfaceSunk, in: Circle())
+                .frame(width: 50, height: 50)
+                .background(Circle().fill(Color.white.opacity(0.05)))
+                .overlay(Circle().strokeBorder(Color.white.opacity(0.10)))
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
@@ -135,12 +139,11 @@ struct SearchComposer: View {
 
     private var sendButton: some View {
         Button(action: submit) {
-            Image(systemName: "arrow.up")
-                .font(.system(size: 14, weight: .bold))
-                .foregroundStyle(.white)
-                .frame(width: 34, height: 34)
-                .background(Palette.accent, in: Circle())
-                .contentShape(Circle())
+            EmberBall(size: 50, glow: true) {
+                Image(systemName: "arrow.up")
+                    .font(.system(size: 17, weight: .semibold))
+            }
+            .contentShape(Circle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Log")
@@ -176,249 +179,151 @@ struct MealDetailSheet: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var detent: PresentationDetent = .medium
     @State private var removing = false
     @State private var error: String?
     @State private var photo: UIImage?
 
-    private var expanded: Bool { detent == .large }
-
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: 18) {
+                Text("Logged \(MealFormat.time(meal.loggedAt)) · \(meal.sourceLabel.lowercased())")
+                    .sectionLabelStyle()
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 8)
+
                 if let photo {
                     Image(uiImage: photo)
                         .resizable()
                         .scaledToFill()
                         .frame(maxWidth: .infinity)
-                        .frame(height: expanded ? 220 : 128)
-                        .clipped()
+                        .frame(height: 170)
+                        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Palette.hairline))
                 }
 
-                VStack(alignment: .leading, spacing: 0) {
-                    glance
-                    VStack(alignment: .leading, spacing: Space.md) {
-                        plate
-                        notesBlock
-                        meta
-                        if expanded {
-                            saveAsMealButton
-                                .staggerReveal(expanded, index: 4, rise: 8)
+                VStack(alignment: .leading, spacing: 6) {
+                    Headline(meal.title, size: 32)
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Text(meal.kcal.formatted())
+                            .font(.system(size: 52, weight: .light))
+                            .tracking(-2)
+                            .foregroundStyle(Palette.ink)
+                            .contentTransition(.numericText(value: Double(meal.kcal)))
+                        Text("kcal")
+                            .font(Typography.data(16, weight: .regular))
+                            .foregroundStyle(Palette.inkSoft)
+                        Spacer()
+                        if let confidence = meal.parseConfidence {
+                            Text(confidenceLine(confidence))
+                                .font(Typography.data(12, weight: .regular))
+                                .foregroundStyle(confidence >= 0.7 ? Palette.positive : Palette.amber)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .background((confidence >= 0.7 ? Palette.positive : Palette.amber).opacity(0.12), in: Capsule())
                         }
-                        removeControl
                     }
-                    .padding(.top, expanded ? Space.md : 0)
-                    .frame(maxHeight: expanded ? nil : 0, alignment: .top)
-                    .clipped()
-                    .allowsHitTesting(expanded)
-                    .accessibilityHidden(!expanded)
                 }
-                .padding(.horizontal, Space.gutter)
-                .padding(.top, photo == nil ? Space.lg : Space.md)
-                .padding(.bottom, Space.lg)
+                .appearIn(0, rise: 14)
+
+                HStack(spacing: 8) {
+                    macroTile("Protein", meal.proteinG)
+                    macroTile("Carbs", meal.carbsG)
+                    macroTile("Fat", meal.fatG)
+                }
+                .appearIn(1, rise: 14)
+
+                let items = meal.items ?? []
+                if !items.isEmpty {
+                    GlassList {
+                        ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+                            if index > 0 { ListDivider() }
+                            HStack(alignment: .firstTextBaseline) {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(item.name)
+                                        .font(Typography.data(15, weight: .regular))
+                                        .foregroundStyle(Palette.ink)
+                                    if !item.quantity.isEmpty {
+                                        Text(item.quantity)
+                                            .font(Typography.data(12, weight: .regular))
+                                            .foregroundStyle(Palette.inkFaint)
+                                    }
+                                }
+                                Spacer(minLength: 8)
+                                Text("\(item.kcal)")
+                                    .font(Typography.mono(13))
+                                    .foregroundStyle(Palette.inkSoft)
+                            }
+                            .padding(.vertical, 12)
+                        }
+                    }
+                    .appearIn(2, rise: 14)
+                }
+
+                if let notes = meal.notes, !notes.isEmpty {
+                    Text(notes)
+                        .font(Typography.data(13, weight: .regular))
+                        .foregroundStyle(Palette.inkFaint)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                VStack(spacing: 4) {
+                    if onSaveAsMeal != nil {
+                        ActionButton(title: "Save as my meal", kind: .secondary) { onSaveAsMeal?() }
+                    }
+                    if onRemove != nil {
+                        Button(action: beginRemoval) {
+                            HStack(spacing: 8) {
+                                if removing { BusyDots(tint: Palette.danger) }
+                                Text(removing ? "Removing · updating totals" : "Delete this meal")
+                            }
+                            .font(Typography.data(14, weight: .regular))
+                            .foregroundStyle(Palette.danger)
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(removing)
+                    }
+                    if let error {
+                        Text(error)
+                            .font(Typography.data(13, weight: .regular))
+                            .foregroundStyle(Palette.danger)
+                    }
+                }
+                .appearIn(3, rise: 14)
             }
+            .padding(.horizontal, Space.gutter)
+            .padding(.bottom, Space.lg)
         }
-        .scrollDisabled(!expanded)
         .scrollBounceBehavior(.basedOnSize)
         .scrollIndicators(.hidden)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background(Palette.background.ignoresSafeArea())
-        .presentationDetents([.medium, .large], selection: $detent)
+        .presentationDetents([.large])
         .presentationDragIndicator(.visible)
-        .presentationBackground(Palette.background)
-        .animation(Motion.adaptive(Motion.sheet, reduceMotion: reduceMotion), value: expanded)
+        .presentationBackground(Palette.sheet)
+        .presentationCornerRadius(32)
+        .animation(Motion.adaptive(Motion.snappy, reduceMotion: reduceMotion), value: removing)
         .task { photo = await MealPhotoCache.shared.image(for: meal) }
     }
 
-    private var glance: some View {
-        VStack(alignment: .leading, spacing: Space.sm) {
-            VStack(alignment: .leading, spacing: Space.xs) {
-                Text(meal.title)
-                    .font(Typography.voice(expanded ? 28 : 24))
-                    .foregroundStyle(Palette.ink)
-                    .lineSpacing(2)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                Text(expanded ? MealFormat.when(meal.loggedAt) : MealFormat.time(meal.loggedAt))
-                    .font(Typography.data(13))
-                    .foregroundStyle(Palette.inkFaint)
-            }
-
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text("\(meal.kcal)")
-                    .font(Typography.data(expanded ? 40 : 32, weight: .semibold))
-                    .foregroundStyle(Palette.ink)
-                    .monospacedDigit()
-                    .contentTransition(.numericText(value: Double(meal.kcal)))
-                Text("kcal")
-                    .font(Typography.data(15))
-                    .foregroundStyle(Palette.inkFaint)
-            }
-
-            HStack(spacing: 0) {
-                macroStat("Protein", meal.proteinG)
-                macroStat("Carbs", meal.carbsG)
-                macroStat("Fat", meal.fatG)
-            }
-
-            if !expanded {
-                saveAsMealButton
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var saveAsMealButton: some View {
-        if onSaveAsMeal != nil {
-            Button {
-                onSaveAsMeal?()
-            } label: {
-                Label("Save as my meal", systemImage: "star")
-                    .font(Typography.data(14, weight: .semibold))
-                    .foregroundStyle(Palette.ink)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 13)
-                    .background(Palette.surfaceSunk, in: RoundedRectangle(cornerRadius: Radius.md, style: .continuous))
-            }
-            .buttonStyle(.plain)
-        }
-    }
-
-    private func macroStat(_ label: String, _ grams: Double) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(label)
-                .font(Typography.data(11, weight: .semibold))
-                .foregroundStyle(Palette.inkFaint)
-                .textCase(.uppercase)
-                .tracking(0.5)
-            Text("\(Int(grams.rounded())) g")
-                .font(Typography.data(17, weight: .semibold))
-                .foregroundStyle(Palette.ink)
-                .monospacedDigit()
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    @ViewBuilder
-    private var plate: some View {
-        let items = meal.items ?? []
-        if !items.isEmpty {
-            VStack(alignment: .leading, spacing: Space.sm) {
-                Text("Items")
-                    .sectionLabelStyle()
-                    .staggerReveal(expanded, index: 0, rise: 8)
-
-                VStack(spacing: 0) {
-                    ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
-                        if index > 0 { Divider().overlay(Palette.hairline) }
-                        HStack(alignment: .firstTextBaseline) {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(item.name)
-                                    .font(Typography.data(15))
-                                    .foregroundStyle(Palette.ink)
-                                if !item.quantity.isEmpty {
-                                    Text(item.quantity)
-                                        .font(Typography.data(12))
-                                        .foregroundStyle(Palette.inkFaint)
-                                }
-                            }
-                            Spacer(minLength: 8)
-                            Text("\(item.kcal) kcal")
-                                .font(Typography.data(13))
-                                .foregroundStyle(Palette.inkSoft)
-                                .monospacedDigit()
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 12)
-                    }
-                }
-                .background(Palette.surfaceSunk, in: RoundedRectangle(cornerRadius: Radius.md, style: .continuous))
-                .staggerReveal(expanded, index: 1, rise: 10)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var notesBlock: some View {
-        if let notes = meal.notes, !notes.isEmpty {
-            Text(notes)
-                .font(Typography.voice(16))
-                .foregroundStyle(Palette.inkSoft)
-                .lineSpacing(2)
-                .fixedSize(horizontal: false, vertical: true)
-                .staggerReveal(expanded, index: 2, rise: 8)
-        }
-    }
-
-    private var meta: some View {
+    private func macroTile(_ label: String, _ grams: Double) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("From \(meal.sourceLabel.lowercased())")
-                .font(Typography.data(13))
+            Text(label)
+                .font(Typography.mono(9))
+                .tracking(1.1)
+                .textCase(.uppercase)
                 .foregroundStyle(Palette.inkFaint)
-            if let confidence = meal.parseConfidence {
-                Text(confidenceLine(confidence))
-                    .font(Typography.data(13))
-                    .foregroundStyle(Palette.inkFaint)
-            }
+            Text("\(Int(grams.rounded())) g")
+                .font(Typography.data(18, weight: .regular))
+                .foregroundStyle(Palette.ink)
         }
-        .staggerReveal(expanded, index: 3, rise: 8)
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glass(radius: 14)
     }
 
     private func confidenceLine(_ value: Double) -> String {
         if value < 0.45 { return "Rough estimate" }
         if value < 0.7 { return "Typical estimate" }
         return "High confidence"
-    }
-
-    @ViewBuilder
-    private var removeControl: some View {
-        if onRemove != nil {
-            VStack(alignment: .leading, spacing: Space.xs) {
-                if let error {
-                    Text(error)
-                        .font(Typography.data(13))
-                        .foregroundStyle(Palette.accent)
-                }
-
-                if removing {
-                    HStack(spacing: Space.sm) {
-                        ProgressView()
-                            .tint(Palette.accent)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Removing meal")
-                                .font(Typography.data(14, weight: .semibold))
-                                .foregroundStyle(Palette.ink)
-                            Text("Updating totals…")
-                                .font(Typography.data(11))
-                                .foregroundStyle(Palette.inkFaint)
-                        }
-                        Spacer()
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 13)
-                    .background(Palette.accentTint, in: RoundedRectangle(cornerRadius: Radius.md, style: .continuous))
-                    .transition(.opacity)
-                    .accessibilityElement(children: .combine)
-                    .accessibilityLabel("Removing meal and updating today's totals")
-                } else {
-                    Button {
-                        beginRemoval()
-                    } label: {
-                        Label("Remove meal", systemImage: "trash")
-                            .font(Typography.data(14, weight: .semibold))
-                            .foregroundStyle(Palette.accentDeep)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 13)
-                            .background(Palette.accentTint, in: RoundedRectangle(cornerRadius: Radius.md, style: .continuous))
-                    }
-                    .buttonStyle(.plain)
-                    .transition(.opacity)
-                }
-            }
-            .animation(Motion.adaptive(Motion.snappy, reduceMotion: reduceMotion), value: removing)
-            .padding(.top, Space.xs)
-            .staggerReveal(expanded, index: 4, rise: 8)
-        }
     }
 
     private func beginRemoval() {

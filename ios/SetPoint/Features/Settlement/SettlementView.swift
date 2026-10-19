@@ -21,7 +21,6 @@ struct SettlementView: View {
             }
         }
         .toolbar(.hidden, for: .navigationBar)
-        .toolbar(.visible, for: .tabBar)
         .task {
             if model == nil {
                 let vm = SettlementViewModel(api: env.api, onUnauthorized: { env.auth.handleUnauthorized() })
@@ -57,21 +56,43 @@ struct SettlementView: View {
         let stations = s.weekStations
         return ScrollView {
             VStack(alignment: .leading, spacing: Space.md) {
-                if let range = dateRange(stations) {
-                    Text(range)
-                        .font(Typography.data(13, weight: .bold))
-                        .foregroundStyle(Palette.inkFaint)
-                        .accessibilityAddTraits(.isHeader)
-                        .appearIn(0)
+                Headline("Progress", tail: dateRange(stations).map { "· \($0)" }, size: 36)
+                    .appearIn(0)
+
+                if let since = model.staleSince {
+                    StaleBanner(since: since) { Task { await model.load() } }
                 }
 
-                WeekDials(stations: stations, record: s.record) { selectedStation = $0 }
-                    .padding(.bottom, Space.xs)
+                if s.days.count < 3 {
+                    WeekOneCard(settledDays: s.days.count, today: s.today, needsWeighIn: s.weightGoal?.needsWeighIn ?? model.weights.isEmpty)
+                        .appearIn(1, rise: 14)
+                } else {
+                    DaysClosedCard(gap: s.gap, stations: stations) { selectedStation = $0 }
+                        .appearIn(1, rise: 14)
+                }
+
+                if let goal = s.weightGoal {
+                    WeightTrendCard(goal: goal, entries: model.weights, busy: model.loggingWeight) {
+                        showingWeighIn = true
+                    }
+                    .appearIn(2, rise: 14)
+                    if let err = model.weighInError {
+                        Text(err)
+                            .font(Typography.data(13, weight: .regular))
+                            .foregroundStyle(Palette.danger)
+                    }
+                }
+
+                if let review = s.targetReview {
+                    TargetReviewCard(review: review, busy: model.applyingTargetReview) {
+                        Task { await model.acceptTargetReview(review) }
+                    } onLater: {
+                        Task { await model.dismissTargetReview() }
+                    }
+                    .appearIn(3, rise: 14)
+                }
 
                 if let record = s.record {
-                    RecordCard(record: record)
-                        .appearIn(1)
-
                     if let pattern = record.pattern, !PatternMemory.isDismissed(pattern), !patternHandled {
                         PatternCard(
                             pattern: pattern,
@@ -90,63 +111,44 @@ struct SettlementView: View {
                             }
                         )
                         .transition(.opacity.combined(with: .scale(scale: 0.97)))
-                        .appearIn(2)
+                        .appearIn(4, rise: 14)
                     }
-                }
 
-                if let goal = s.weightGoal {
-                    WeightTrendCard(goal: goal, entries: model.weights, busy: model.loggingWeight) {
-                        showingWeighIn = true
-                    }
-                    .appearIn(3)
-                    if let err = model.weighInError {
-                        Text(err)
-                            .font(Typography.data(13, weight: .semibold))
-                            .foregroundStyle(Palette.accentDeep)
-                    }
+                    RecordCard(record: record)
+                        .appearIn(5, rise: 14)
                 }
-
-                if let review = s.targetReview {
-                    TargetReviewCard(review: review, busy: model.applyingTargetReview) {
-                        Task { await model.acceptTargetReview(review) }
-                    } onLater: {
-                        Task { await model.dismissTargetReview() }
-                    }
-                    .appearIn(4)
-                }
-
-                IntakeStrip(stations: stations)
-                    .appearIn(4)
 
                 NavigationLink {
                     BurnScreen()
                 } label: {
-                    SettingsCard {
-                        HStack(spacing: 12) {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Your burn")
-                                    .font(Typography.data(17, weight: .bold))
-                                    .foregroundStyle(Palette.ink)
-                                Text("What you really spend, from meals and the scale.")
-                                    .font(Typography.data(13))
-                                    .foregroundStyle(Palette.inkSoft)
-                            }
-                            Spacer(minLength: 0)
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 13, weight: .bold))
-                                .foregroundStyle(Palette.inkFaint)
+                    HStack(spacing: 12) {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("What you really burn")
+                                .font(Typography.data(15, weight: .medium))
+                                .foregroundStyle(Palette.ink)
+                            Text("From what you eat and the scale")
+                                .font(Typography.data(13, weight: .regular))
+                                .foregroundStyle(Palette.inkSoft)
                         }
+                        Spacer(minLength: 0)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(Color(hex: 0x52525B))
                     }
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 16)
+                    .glass(radius: 24, fill: Color.white.opacity(0.03))
                 }
-                .buttonStyle(.plain)
-                .appearIn(5)
+                .buttonStyle(PressableCard())
+                .appearIn(6, rise: 14)
             }
             .padding(.horizontal, Space.gutter)
-            .padding(.top, Space.md)
+            .padding(.top, Space.sm)
             .padding(.bottom, Space.xl)
         }
         .scrollBounceBehavior(.basedOnSize)
         .refreshable { await model.load() }
+        .background(alignment: .top) { AmbientGlow(tone: .ember, strength: 0.6).offset(y: -140).ignoresSafeArea() }
         .background(Palette.background.ignoresSafeArea())
         .sheet(item: $selectedStation) { station in
             DayMealsSheet(station: station, model: model)
@@ -177,112 +179,161 @@ struct SettlementView: View {
     }
 }
 
+/// Progress while it loads: the real title, ghost bars rising and falling, a
+/// line drawing itself where the weight goes.
 private struct SettlementSkeletonView: View {
-    private let wash = Palette.background.opacity(0.28)
-    private let washStrong = Palette.background.opacity(0.42)
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: Space.md) {
-                SkeletonBlock(width: 92, height: 13)
-
-                weekDials
-                    .padding(.bottom, Space.xs)
-
-                record
-                weight
-                intake
-            }
-            .padding(.horizontal, Space.gutter)
-            .padding(.top, Space.md)
-            .padding(.bottom, Space.xl)
-        }
-        .scrollBounceBehavior(.basedOnSize)
-        .scrollDisabled(true)
-        .background(Palette.background.ignoresSafeArea())
-        .skeletonLoading()
-    }
-
-    private var weekDials: some View {
-        HStack(spacing: 0) {
-            ForEach(0..<7, id: \.self) { index in
-                VStack(spacing: 6) {
-                    MiniDayDial(marks: [], today: index == 6)
-                        .frame(width: 44, height: 44)
-                    SkeletonBlock(width: 10, height: 12)
-                }
-                .frame(maxWidth: .infinity)
-            }
-        }
-    }
-
-    private var record: some View {
-        VStack(alignment: .leading, spacing: Space.md) {
-            VStack(alignment: .leading, spacing: 8) {
-                SkeletonBlock(width: 240, height: 28, radius: 8, tint: washStrong)
-                SkeletonBlock(width: 196, height: 28, radius: 8, tint: wash)
-            }
-            HStack(spacing: Space.sm) {
-                recordStat
-                recordStat
-                recordStat
-            }
-        }
-        .padding(22)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Palette.accent, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
-    }
-
-    private var recordStat: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            SkeletonBlock(width: 36, height: 34, radius: 8, tint: washStrong)
-            SkeletonBlock(width: 52, height: 12, tint: wash)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private var weight: some View {
-        VStack(alignment: .leading, spacing: Space.sm) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline) {
-                SkeletonBlock(width: 88, height: 36, radius: 8)
+                Headline("Progress", size: 36)
                 Spacer()
-                SkeletonBlock(width: 72, height: 26, radius: Radius.pill)
+                HStack(spacing: 6) {
+                    Circle().fill(Palette.amber).frame(width: 6, height: 6)
+                    Text("COUNTING").font(Typography.mono(10)).tracking(1.1).foregroundStyle(Palette.inkFaint)
+                }
             }
-            Capsule().fill(Palette.surfaceSunk).frame(height: 54)
-            HStack {
-                SkeletonBlock(width: 72, height: 12)
+            TimelineView(.animation(paused: reduceMotion)) { ctx in
+                let t = ctx.date.timeIntervalSinceReferenceDate
+                VStack(alignment: .leading, spacing: 14) {
+                    SkeletonBlock(width: 210, height: 24, radius: 8)
+                    HStack(alignment: .bottom, spacing: 10) {
+                        ForEach(Array([50, 64, 40, 70, 58, 30, 44].enumerated()), id: \.offset) { i, h in
+                            let wave = reduceMotion ? 1 : 0.35 + 0.65 * (1 + sin(t * 2 * .pi / 1.6 - Double(i) * 0.7)) / 2
+                            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                                .fill(LinearGradient(colors: [Palette.amber.opacity(0.28), Palette.amber.opacity(0.06)], startPoint: .top, endPoint: .bottom))
+                                .frame(maxWidth: 34)
+                                .frame(height: CGFloat(h) * wave)
+                                .frame(maxWidth: .infinity)
+                        }
+                    }
+                    .frame(height: 76, alignment: .bottom)
+                }
+                .padding(18)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .glass(radius: 26)
+            }
+            HStack(spacing: 14) {
+                SkeletonBlock(width: 80, height: 28, radius: 8)
                 Spacer()
-                SkeletonBlock(width: 108, height: 12)
+                SkeletonBlock(width: 140, height: 20, radius: 8)
             }
-            SkeletonBlock(height: 52, radius: Radius.md)
+            .padding(18)
+            .glass(radius: 24)
+            .shimmering()
+            VStack(alignment: .leading, spacing: 10) {
+                SkeletonBlock(width: 200, height: 14)
+                SkeletonBlock(height: 10).opacity(0.6)
+            }
+            .padding(18)
+            .glass(radius: 24)
+            .shimmering()
+            Spacer(minLength: 0)
         }
-        .padding(18)
-        .background {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(Palette.surface)
-                .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(Palette.hairline))
+        .padding(.horizontal, Space.gutter)
+        .padding(.top, Space.sm)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background(alignment: .top) { AmbientGlow(tone: .ember, strength: 0.4).offset(y: -140).ignoresSafeArea() }
+        .background(Palette.background.ignoresSafeArea())
+        .accessibilityElement()
+        .accessibilityLabel("Loading progress")
+    }
+}
+
+/// The first days, before there's a week to read: day N of 7, and what unlocks when.
+private struct WeekOneCard: View {
+    let settledDays: Int
+    let today: SettlementResponse.Today
+    let needsWeighIn: Bool
+
+    private var fraction: Double {
+        guard today.kcalTarget > 0 else { return 0 }
+        return min(1, Double(today.kcalConsumed) / Double(today.kcalTarget))
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Headline("Day \(settledDays + 1) of 7.", tail: "Patterns need a week.", size: 32)
+            HStack(spacing: 0) {
+                ForEach(0..<7, id: \.self) { i in
+                    VStack(spacing: 6) {
+                        if i < settledDays {
+                            Circle().fill(Palette.amber).frame(width: 14, height: 14)
+                                .frame(width: 42, height: 42)
+                        } else if i == settledDays {
+                            ZStack {
+                                Circle().fill(AngularGradient(colors: [Palette.amber, Palette.amber], center: .center, startAngle: .degrees(0), endAngle: .degrees(360 * fraction)))
+                                Circle().trim(from: fraction, to: 1).stroke(Color.white.opacity(0.08), lineWidth: 4).rotationEffect(.degrees(-90))
+                                FuelOrb(size: 34, breathing: false, glow: 0.3)
+                            }
+                            .frame(width: 42, height: 42)
+                            .shadow(color: Palette.amber.opacity(0.35), radius: 10)
+                        } else {
+                            Circle().strokeBorder(Color.white.opacity(0.16), style: StrokeStyle(lineWidth: 1.5, dash: [3, 3]))
+                                .frame(width: 32, height: 32)
+                                .frame(width: 42, height: 42)
+                        }
+                        Text(i == settledDays ? "TODAY" : label(i))
+                            .font(Typography.mono(10))
+                            .foregroundStyle(i == settledDays ? Palette.amber : Color(hex: 0x52525B))
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+            }
+            .accessibilityElement()
+            .accessibilityLabel("Day \(settledDays + 1) of 7")
+
+            VStack(alignment: .leading, spacing: 0) {
+                step(when: "Tonight", title: "Today closes", note: "You’ll see how close you got. \(today.kcalConsumed.formatted()) of \(today.kcalTarget.formatted()) so far.", lit: true, last: false)
+                step(when: needsWeighIn ? "This week" : "Sunday", title: needsWeighIn ? "First weigh-in" : "Next weigh-in", note: "Starts your weight line. One a week is enough.", lit: false, last: false)
+                step(when: "After 7 days", title: "One thing to fix", note: "Late meals, light breakfasts, what works on low days.", lit: false, last: true)
+            }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .glass(radius: 24)
         }
     }
 
-    private var intake: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                SkeletonBlock(width: 56, height: 11)
-                Spacer()
-                SkeletonBlock(width: 132, height: 13)
-            }
-            HStack(spacing: 5) {
-                ForEach(0..<7, id: \.self) { _ in
-                    Capsule().fill(Palette.surfaceSunk).frame(height: 6)
+    private func label(_ i: Int) -> String {
+        let date = Calendar.current.date(byAdding: .day, value: i - settledDays, to: .now) ?? .now
+        return String(date.formatted(.dateTime.weekday(.narrow)))
+    }
+
+    private func step(when: String, title: String, note: String, lit: Bool, last: Bool) -> some View {
+        HStack(alignment: .top, spacing: 14) {
+            VStack(spacing: 4) {
+                Group {
+                    if lit {
+                        EmberDot(size: 12)
+                    } else {
+                        Circle().strokeBorder(Color.white.opacity(0.3), lineWidth: 1.5).frame(width: 12, height: 12)
+                    }
+                }
+                .padding(.top, 2)
+                if !last {
+                    Rectangle().fill(Color.white.opacity(0.14)).frame(width: 1.5)
+                        .mask(VStack(spacing: 3) { ForEach(0..<20, id: \.self) { _ in Rectangle().frame(height: 3) } })
                 }
             }
+            .frame(width: 14)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(when.uppercased())
+                    .font(Typography.mono(10))
+                    .tracking(1)
+                    .foregroundStyle(lit ? Palette.amber : Palette.inkFaint)
+                Text(title)
+                    .font(Typography.data(15, weight: .regular))
+                    .foregroundStyle(Palette.ink)
+                Text(note)
+                    .font(Typography.data(12, weight: .regular))
+                    .foregroundStyle(Palette.inkSoft)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.bottom, last ? 0 : 16)
         }
-        .padding(16)
-        .background {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Palette.surface)
-                .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Palette.hairline))
-        }
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -299,35 +350,28 @@ private struct DayMealsSheet: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Space.md) {
-                VStack(alignment: .leading, spacing: Space.xs) {
-                    Text(station.title)
-                        .font(Typography.voice(24))
-                        .foregroundStyle(Palette.ink)
-
-                    if !station.isToday {
-                        Text(station.kindLabel)
-                            .font(Typography.data(13, weight: .medium))
-                            .foregroundStyle(Palette.day(station.kind))
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(station.title).sectionLabelStyle()
+                    Headline(
+                        "\(station.kcalConsumed.formatted()) of \(station.kcalTarget.formatted()).",
+                        tail: station.isToday ? "So far today." : station.kindLabel + ".",
+                        size: 34
+                    )
+                    GeometryReader { geo in
+                        Capsule().fill(Color.white.opacity(0.08))
+                            .overlay(alignment: .leading) {
+                                Capsule()
+                                    .fill(LinearGradient(colors: [Palette.ember, Palette.amber], startPoint: .leading, endPoint: .trailing))
+                                    .frame(width: max(6, geo.size.width * station.fill))
+                            }
                     }
-
-                    HStack(alignment: .firstTextBaseline, spacing: 6) {
-                        Text("\(station.kcalConsumed)")
-                            .font(Typography.data(36, weight: .semibold))
-                            .foregroundStyle(Palette.ink)
-                            .monospacedDigit()
-                        Text("/ \(station.kcalTarget) kcal")
-                            .font(Typography.data(15))
-                            .foregroundStyle(Palette.inkFaint)
-                    }
-                    .padding(.top, 4)
-
+                    .frame(height: 6)
                     if let line = station.summaryLine {
                         Text(line)
-                            .font(Typography.voice(16))
+                            .font(Typography.data(14, weight: .regular))
                             .foregroundStyle(Palette.inkSoft)
-                            .lineSpacing(2)
+                            .lineSpacing(3)
                             .fixedSize(horizontal: false, vertical: true)
-                            .padding(.top, 4)
                     }
                 }
 
@@ -343,27 +387,25 @@ private struct DayMealsSheet: View {
                                 SkeletonBlock(width: 62, height: 14)
                             }
                             .padding(14)
-                            .background(Palette.surface, in: RoundedRectangle(cornerRadius: Radius.md, style: .continuous))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
-                                    .strokeBorder(Palette.hairline)
-                            )
+                            .glass(radius: Radius.lg)
                         }
                     }
                     .padding(.top, Space.xs)
                     .skeletonLoading()
                 } else if meals.isEmpty {
-                    Text("No meals logged.")
-                        .font(Typography.data(14))
-                        .foregroundStyle(Palette.inkFaint)
+                    Text("Nothing logged that day.")
+                        .font(Typography.data(14, weight: .regular))
+                        .foregroundStyle(Palette.inkSoft)
+                        .frame(maxWidth: .infinity)
+                        .padding(28)
+                        .background {
+                            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                                .strokeBorder(Color.white.opacity(0.12), style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                        }
                 } else {
                     ForEach(meals) { meal in
                         Button { selectedMeal = meal } label: {
-                            TimelineMealRow(
-                                title: meal.title,
-                                detail: MealFormat.time(meal.loggedAt),
-                                kcal: meal.kcal
-                            )
+                            TodayMealRow(meal: meal)
                         }
                         .buttonStyle(PressableCard())
                     }
@@ -372,10 +414,9 @@ private struct DayMealsSheet: View {
             .padding(Space.gutter)
         }
         .scrollBounceBehavior(.basedOnSize)
-        .background(Palette.background.ignoresSafeArea())
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
-        .presentationBackground(Palette.background)
+        .presentationBackground(Palette.sheet)
         .task {
             meals = await model.meals(on: station.date)
             loading = false

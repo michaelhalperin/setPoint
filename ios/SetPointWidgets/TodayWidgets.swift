@@ -26,7 +26,7 @@ struct SetPointTodayWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "SetPointTodayWidget", provider: TodayWidgetProvider()) { entry in
             SetPointTodayWidgetView(entry: entry)
-                .containerBackground(for: .widget) { WidgetChrome.paper }
+                .containerBackground(for: .widget) { WidgetChrome.background }
         }
         .configurationDisplayName("Today")
         .description("Calories left, the next check-in, and your usual meals.")
@@ -42,7 +42,7 @@ struct SetPointLockWidget: Widget {
         }
         .configurationDisplayName("Check-in")
         .description("The next check-in on the Lock Screen.")
-        .supportedFamilies([.accessoryCircular, .accessoryRectangular])
+        .supportedFamilies([.accessoryCircular, .accessoryRectangular, .accessoryInline])
     }
 }
 
@@ -68,6 +68,8 @@ struct SetPointLockWidgetView: View {
         switch family {
         case .accessoryRectangular:
             TodayLockRectangularView(snapshot: entry.snapshot)
+        case .accessoryInline:
+            TodayLockInlineView(snapshot: entry.snapshot)
         default:
             TodayLockCircularView(snapshot: entry.snapshot)
         }

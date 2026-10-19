@@ -57,6 +57,11 @@ describe('HTTP contracts', () => {
     expect(res.statusCode).toBe(401);
   });
 
+  it('rejects unauthenticated start-check-in', async () => {
+    const res = await app.inject({ method: 'POST', url: '/api/checkins/start-check-in' });
+    expect(res.statusCode).toBe(401);
+  });
+
   it('rejects unauthenticated burn insights', async () => {
     const res = await app.inject({ method: 'GET', url: '/api/insights/burn' });
     expect(res.statusCode).toBe(401);

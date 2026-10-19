@@ -12,67 +12,73 @@ struct SafetyStep: View {
     private var remainingBehind: Int { min(2, total - 1 - model.safetyIndex) }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Space.lg) {
-            StepHeadline(text: "Quick and private.", detail: "Six yes-or-no questions.")
+        VStack(alignment: .leading, spacing: Space.md) {
+            StepTitle(
+                label: "Safety · private",
+                text: "Six yes-or-no questions.",
+                tail: "Quick, and only for you.",
+                detail: "Pushing someone to eat isn’t always safe. If it isn’t for you, I stay quiet.",
+                size: 32
+            )
 
             ZStack {
                 if remainingBehind >= 2 {
-                    backCard(color: Palette.stackedCardFar, rotation: -4, y: 22, scale: 0.9)
+                    backCard(fill: 0.025, stroke: 0.05, inset: 22, drop: 26)
                 }
                 if remainingBehind >= 1 {
-                    backCard(color: Palette.stackedCardNear, rotation: 3, y: 11, scale: 0.95)
+                    backCard(fill: 0.035, stroke: 0.07, inset: 11, drop: 13)
                 }
                 frontCard
                     .id(model.safetyIndex)
                     .transition(.asymmetric(
-                        insertion: .scale(scale: 0.94).combined(with: .opacity),
+                        insertion: .offset(y: 16).combined(with: .opacity),
                         removal: .offset(x: -80).combined(with: .opacity)
                     ))
             }
-            .frame(height: 330)
+            .frame(height: 300)
+            .padding(.bottom, 26)
             .animation(Motion.adaptive(Motion.morph, reduceMotion: reduceMotion), value: model.safetyIndex)
-            .appearIn(2)
+            .appearIn(1, rise: 14)
 
             HStack(spacing: 8) {
-                Image(systemName: "checkmark.shield.fill")
-                    .foregroundStyle(Palette.dayOnTrack)
-                Text("Keeps check-ins safe for you")
-                    .foregroundStyle(Palette.inkSoft)
+                Image(systemName: "lock")
+                    .font(.system(size: 12, weight: .medium))
+                Text("Answers stay on your phone")
             }
-            .font(Typography.data(15, weight: .semibold))
+            .font(Typography.data(13, weight: .regular))
+            .foregroundStyle(Palette.inkSoft)
             .frame(maxWidth: .infinity)
-            .appearIn(3)
+            .appearIn(2)
         }
     }
 
     private var frontCard: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        VStack(alignment: .leading, spacing: 16) {
             HStack {
-                Image(systemName: "lock.fill")
-                    .font(.system(size: 14, weight: .semibold))
+                Image(systemName: "lock")
+                    .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(Palette.inkFaint)
                 Spacer()
                 Text("\(model.safetyIndex + 1) / \(total)")
-                    .font(Typography.data(13, weight: .bold))
+                    .font(Typography.mono(12))
                     .foregroundStyle(Palette.inkFaint)
-                    .monospacedDigit()
             }
-            Spacer(minLength: Space.sm)
             Text(question.text)
-                .font(Typography.voice(26))
+                .font(Typography.data(question == .medical ? 20 : 24, weight: .light))
+                .tracking(-0.4)
+                .lineSpacing(3)
                 .foregroundStyle(Palette.ink)
-                .lineSpacing(2)
                 .fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: Space.sm)
+                .frame(maxHeight: .infinity, alignment: .topLeading)
 
             if model.submitting {
                 HStack(spacing: 10) {
-                    ProgressView()
+                    BusyDots(tint: Palette.amber)
                     Text("Building your plan…")
-                        .font(Typography.data(15, weight: .semibold))
+                        .font(Typography.data(15, weight: .regular))
                         .foregroundStyle(Palette.inkSoft)
                 }
-                .frame(maxWidth: .infinity, minHeight: 58)
+                .frame(maxWidth: .infinity, minHeight: 54)
             } else if question == .medical {
                 HStack(spacing: 8) {
                     answerButton("No", value: false)
@@ -86,44 +92,40 @@ struct SafetyStep: View {
                 }
             }
         }
-        .padding(24)
+        .padding(22)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background {
-            RoundedRectangle(cornerRadius: 30, style: .continuous)
-                .fill(Palette.surface)
-                .elevation(.lifted)
-                .overlay(RoundedRectangle(cornerRadius: 30, style: .continuous).strokeBorder(Palette.hairline))
+            RoundedRectangle(cornerRadius: 26, style: .continuous)
+                .fill(Color(hex: 0x18181C))
+                .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous).strokeBorder(Color.white.opacity(0.10)))
         }
-        .padding(.horizontal, 4)
         .accessibilityElement(children: .contain)
     }
 
-    private func backCard(color: Color, rotation: Double, y: CGFloat, scale: CGFloat) -> some View {
-        RoundedRectangle(cornerRadius: 30, style: .continuous)
-            .fill(color)
-            .scaleEffect(scale)
-            .rotationEffect(.degrees(rotation))
-            .offset(y: y)
+    private func backCard(fill: Double, stroke: Double, inset: CGFloat, drop: CGFloat) -> some View {
+        RoundedRectangle(cornerRadius: 26, style: .continuous)
+            .fill(Color.white.opacity(fill))
+            .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous).strokeBorder(Color.white.opacity(stroke)))
+            .padding(.horizontal, inset)
+            .offset(y: drop)
             .transition(.opacity)
             .accessibilityHidden(true)
     }
 
     private func answerButton(_ title: String, value: Bool) -> some View {
-        let chosen = model.safetyAnswer(question) == value
+        let chosen = model.safetyAnswer(question) == value && title != "Not sure"
         return Button {
-            UISelectionFeedbackGenerator().selectionChanged()
+            Haptics.select()
             model.answerSafety(value)
         } label: {
             Text(title)
-                .font(Typography.data(title == "Not sure" ? 14 : 18, weight: .bold))
-                .foregroundStyle(Palette.ink)
-                .frame(maxWidth: .infinity, minHeight: 58)
-                .background(Palette.surfaceSunk, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-                .overlay {
-                    if chosen && title != "Not sure" {
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .strokeBorder(Palette.accent, lineWidth: 2)
-                    }
+                .font(Typography.data(title == "Not sure" ? 14 : 16, weight: .regular))
+                .foregroundStyle(chosen ? Palette.onBone : Palette.ink)
+                .frame(maxWidth: .infinity, minHeight: 54)
+                .background {
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(chosen ? Palette.ink : Color.white.opacity(0.06))
+                        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Color.white.opacity(chosen ? 0 : 0.10)))
                 }
         }
         .buttonStyle(PressableCard())

@@ -3,6 +3,7 @@ import {
   applyCalendarShift,
   DEFAULT_CALENDAR_PREFS,
   headsUpCopy,
+  movedSlotsToday,
   qualifyingBusyBlocks,
   shiftDueForBusy,
   toMinuteBlocks,
@@ -125,5 +126,18 @@ describe('toMinuteBlocks', () => {
     const due: ScheduledCheckIn = { slot: 'lunch', mealMin: 780, dueMin: 825, overdue: false };
     expect(applyCalendarShift(due, times, blocks, prefsOn, 1)?.movedFromMin).toBeNull();
     expect(applyCalendarShift(due, times, blocks, { ...prefsOn, includeAllDay: true }, 1)?.movedFromMin).toBe(825);
+  });
+});
+
+describe('kept slots', () => {
+  const scheduled: ScheduledCheckIn = { slot: 'lunch', mealMin: 780, dueMin: 825, overdue: false };
+  const busy = [{ startMin: 720, endMin: 930 }];
+
+  it('a kept lunch keeps its usual check-in', () => {
+    const moved = applyCalendarShift(scheduled, times, busy, prefsOn, 2);
+    const kept = applyCalendarShift(scheduled, times, busy, prefsOn, 2, new Set(['lunch']));
+    expect(moved?.dueMin).toBe(675);
+    expect(kept).toMatchObject({ dueMin: 825, movedFromMin: null, busy: null });
+    expect(movedSlotsToday(times, 45, busy, prefsOn, 2, new Set(['lunch']))).toEqual([]);
   });
 });

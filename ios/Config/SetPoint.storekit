@@ -34,7 +34,7 @@
           },
           "localizations" : [
             {
-              "description" : "Check-ins, calendar, training and appetite.",
+              "description" : "Training refuels, training-day targets and calendar timing.",
               "displayName" : "Yearly",
               "locale" : "en_US"
             }
@@ -54,7 +54,7 @@
           "internalID" : "monthly",
           "localizations" : [
             {
-              "description" : "Check-ins, calendar, training and appetite.",
+              "description" : "Training refuels, training-day targets and calendar timing.",
               "displayName" : "Monthly",
               "locale" : "en_US"
             }

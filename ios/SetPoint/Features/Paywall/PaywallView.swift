@@ -12,103 +12,116 @@ struct PaywallView: View {
     private var store: SubscriptionStore { env.subscription }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Stay covered.")
-                    .font(Typography.display(40))
-                    .foregroundStyle(Palette.background)
-                Text("Check-ins, calendar, training and appetite.")
-                    .font(Typography.data(16, weight: .semibold))
-                    .foregroundStyle(Palette.onAccentVoice)
-            }
-            .padding(Space.lg)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Palette.accent)
-
-            ScrollView {
-                VStack(alignment: .leading, spacing: Space.md) {
-                    feature(symbol: "bell.fill", title: "Check-ins when a meal slips")
-                    feature(symbol: "calendar", title: "Eat before you're busy")
-                    feature(symbol: "dumbbell.fill", title: "Fuel around training")
-
-                    HStack(spacing: Space.sm) {
-                        planCard(
-                            title: "Yearly",
-                            price: priceLine(store.yearly, unit: "year"),
-                            badge: trialBadge(store.yearly),
-                            selected: store.selectedYearly
-                        ) { store.selectedYearly = true }
-                        planCard(
-                            title: "Monthly",
-                            price: priceLine(store.monthly, unit: "month"),
-                            badge: trialBadge(store.monthly),
-                            selected: !store.selectedYearly
-                        ) { store.selectedYearly = false }
+        ScrollView {
+            VStack(alignment: .leading, spacing: Space.md) {
+                ZStack {
+                    ZStack {
+                        RadialGradient(colors: [Palette.ember.opacity(0.4), .clear], center: UnitPoint(x: 0.35, y: 0.5), startRadius: 0, endRadius: 200)
+                        RadialGradient(colors: [Palette.haze.opacity(0.4), .clear], center: UnitPoint(x: 0.7, y: 0.45), startRadius: 0, endRadius: 200)
                     }
-
-                    // The trial timeline only when the selected plan really starts one for this Apple ID.
-                    if let days = trialDays {
-                        VStack(alignment: .leading, spacing: 8) {
-                            timelineRow("Today", "Trial starts")
-                            if days >= 3 { timelineRow("Day \(days - 2)", "Reminder") }
-                            timelineRow("Day \(days)", "Billed")
-                        }
-                        .padding(16)
-                        .background(Palette.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    .blur(radius: 30)
+                    FuelOrb(size: 130, glow: 0.5).offset(x: -45, y: -12)
+                    FuelOrb(size: 120, glow: 0.5, haze: true).offset(x: 45, y: 14).blendMode(.screen)
+                }
+                .frame(height: 230)
+                .frame(maxWidth: .infinity)
+                .overlay(alignment: .topTrailing) {
+                    RoundIconButton("xmark", label: "Close") {
+                        onSkip()
+                        dismiss()
                     }
+                }
 
-                    if let error = store.error {
-                        Text(error)
-                            .font(Typography.data(13, weight: .semibold))
-                            .foregroundStyle(Palette.accentDeep)
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("SetPoint Pro").sectionLabelStyle()
+                    Headline("Fuel the training.", tail: "Meal check-ins stay free.", size: 40)
+                }
+                .appearIn(0, rise: 16)
+
+                VStack(alignment: .leading, spacing: 12) {
+                    feature(symbol: "bolt.heart.fill", title: "Refuel check-ins after every workout")
+                    feature(symbol: "dumbbell.fill", title: "More food on training days")
+                    feature(symbol: "calendar", title: "Eat before you’re busy")
+                }
+                .appearIn(1, rise: 16)
+
+                HStack(spacing: Space.sm) {
+                    planCard(
+                        title: "Yearly",
+                        price: priceLine(store.yearly, unit: "year"),
+                        badge: trialBadge(store.yearly),
+                        selected: store.selectedYearly
+                    ) { store.selectedYearly = true }
+                    planCard(
+                        title: "Monthly",
+                        price: priceLine(store.monthly, unit: "month"),
+                        badge: trialBadge(store.monthly),
+                        selected: !store.selectedYearly
+                    ) { store.selectedYearly = false }
+                }
+
+                // The trial timeline only when the selected plan really starts one for this Apple ID.
+                if let days = trialDays {
+                    VStack(alignment: .leading, spacing: 8) {
+                        timelineRow("Today", "Trial starts")
+                        if days >= 3 { timelineRow("Day \(days - 2)", "Reminder") }
+                        timelineRow("Day \(days)", "Billed")
                     }
+                    .padding(16)
+                    .glass(radius: 20)
+                }
 
-                    ActionButton(
-                        title: purchaseTitle,
-                        busy: store.purchasing,
-                        busyTitle: "Starting"
-                    ) {
-                        Task {
-                            if await store.purchase(using: env.api) {
-                                onFinished()
-                                dismiss()
-                            }
-                        }
-                    }
-                    .disabled(store.selectedProduct == nil)
+                if let error = store.error {
+                    Text(error)
+                        .font(Typography.data(13, weight: .regular))
+                        .foregroundStyle(Palette.danger)
+                }
 
-                    Text(renewalDisclosure)
-                        .font(Typography.data(12))
-                        .foregroundStyle(Palette.inkFaint)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    HStack {
-                        Button("Restore") {
-                            Task { await store.restore(using: env.api) }
-                        }
-                        Spacer()
-                        Button("Terms") {
-                            openURL(APIConfig.baseURL.appending(path: "terms"))
-                        }
-                        Spacer()
-                        Button("Privacy") {
-                            openURL(APIConfig.baseURL.appending(path: "privacy"))
-                        }
-                        Spacer()
-                        Button("Not now") {
-                            onSkip()
+                ActionButton(
+                    title: purchaseTitle,
+                    busy: store.purchasing,
+                    busyTitle: "Starting"
+                ) {
+                    Task {
+                        if await store.purchase(using: env.api) {
+                            onFinished()
                             dismiss()
                         }
                     }
-                    .font(Typography.data(14, weight: .semibold))
-                    .foregroundStyle(Palette.inkSoft)
-                    .padding(.bottom, Space.lg)
                 }
-                .padding(.horizontal, Space.gutter)
-                .padding(.top, Space.md)
+                .disabled(store.selectedProduct == nil)
+
+                Text(renewalDisclosure)
+                    .font(Typography.data(12))
+                    .foregroundStyle(Palette.inkFaint)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                HStack {
+                    Button("Restore") {
+                        Task { await store.restore(using: env.api) }
+                    }
+                    Spacer()
+                    Button("Terms") {
+                        openURL(APIConfig.baseURL.appending(path: "terms"))
+                    }
+                    Spacer()
+                    Button("Privacy") {
+                        openURL(APIConfig.baseURL.appending(path: "privacy"))
+                    }
+                    Spacer()
+                    Button("Not now") {
+                        onSkip()
+                        dismiss()
+                    }
+                }
+                .font(Typography.data(14, weight: .semibold))
+                .foregroundStyle(Palette.inkSoft)
+                .padding(.bottom, Space.lg)
             }
-            .background(Palette.background)
+            .padding(.horizontal, Space.gutter)
+            .padding(.top, Space.md)
         }
+        .scrollBounceBehavior(.basedOnSize)
         .background(Palette.background.ignoresSafeArea())
         .task { await store.refresh(using: env.api) }
     }
@@ -140,7 +153,7 @@ struct PaywallView: View {
     }
 
     private func priceLine(_ product: Product?, unit: String) -> String {
-        guard let product else { return "—" }
+        guard let product else { return "…" }
         return "\(product.displayPrice)/\(unit)"
     }
 
@@ -157,11 +170,11 @@ struct PaywallView: View {
     private func feature(symbol: String, title: String) -> some View {
         HStack(spacing: 12) {
             Image(systemName: symbol)
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(Palette.accent)
+                .font(.system(size: 15, weight: .regular))
+                .foregroundStyle(Palette.hazeSoft)
                 .frame(width: 28)
             Text(title)
-                .font(Typography.data(16, weight: .semibold))
+                .font(Typography.data(15, weight: .regular))
                 .foregroundStyle(Palette.ink)
         }
     }
@@ -169,27 +182,22 @@ struct PaywallView: View {
     private func planCard(title: String, price: String, badge: String?, selected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: 6) {
-                if let badge {
-                    Text(badge)
-                        .font(Typography.data(10, weight: .heavy))
-                        .foregroundStyle(Palette.background)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Palette.accent, in: Capsule())
-                }
                 Text(title)
-                    .font(Typography.data(16, weight: .bold))
+                    .font(Typography.data(15, weight: .medium))
                     .foregroundStyle(Palette.ink)
                 Text(price)
-                    .font(Typography.data(20, weight: .bold))
-                    .foregroundStyle(Palette.ink)
+                    .font(Typography.mono(13))
+                    .foregroundStyle(Palette.inkSoft)
+                Text(badge ?? " ")
+                    .font(Typography.data(11, weight: .regular))
+                    .foregroundStyle(Palette.amber)
             }
             .padding(14)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Palette.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .strokeBorder(selected ? Palette.accent : Palette.hairline, lineWidth: selected ? 2 : 1)
+            .glass(
+                radius: 20,
+                fill: selected ? Color.white.opacity(0.09) : Palette.glass,
+                stroke: selected ? Color.white.opacity(0.4) : Palette.hairline
             )
         }
         .buttonStyle(.plain)
@@ -198,7 +206,7 @@ struct PaywallView: View {
     private func timelineRow(_ day: String, _ label: String) -> some View {
         HStack {
             Text(day)
-                .font(Typography.data(14, weight: .bold))
+                .font(Typography.mono(13))
                 .foregroundStyle(Palette.ink)
             Spacer()
             Text(label)

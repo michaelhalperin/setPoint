@@ -1,3 +1,4 @@
+import { AccountNotFoundError } from '../account/deleteAccount.js';
 import type { PrismaClient } from '@prisma/client';
 import type { Goal } from '../engine/types.js';
 import { normalizeToken } from '../solver/exclusions.js';
@@ -74,6 +75,8 @@ export async function runOnboarding(
   const now = deps.now ?? new Date();
   const { prisma } = deps;
 
+  const account = await prisma.user.findUnique({ where: { id: userId }, select: { id: true } });
+  if (!account) throw new AccountNotFoundError('account not found');
   const existing = await prisma.onboardingProfile.findUnique({ where: { userId } });
   if (existing?.completedAt) throw new AlreadyOnboardedError('already onboarded');
 

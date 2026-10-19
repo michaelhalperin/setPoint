@@ -14,6 +14,10 @@ Wearable Smart stays **off** until it proves incremental value.
 
 ## Metrics to watch (`GET /api/admin/metrics`)
 
+The headline number is `gap.days.gapClosedRate`: the share of settled days that
+reached 95% of their target. `gap.byKind` shows how each kind of check-in ended
+(`MEAL`, `TOP_UP` for a light meal, `CLOSE` for the evening, `REFUEL`).
+
 Notification send success, opened/answered rate, explicit wrong-time rate,
 “already ate” rate, meal-correction rate, suggestion swap/rejection rate,
 escalation rate, opt-out rate, week-2 retention, target-progress stability.

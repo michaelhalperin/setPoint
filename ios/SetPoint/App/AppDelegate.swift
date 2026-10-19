@@ -33,7 +33,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
             if CalendarManager.shared.api == nil {
                 CalendarManager.shared.api = HealthKitManager.shared.api
             }
-            await CalendarManager.shared.uploadBusy()
+            await CalendarManager.shared.sync()
         }
         return true
     }

@@ -55,6 +55,7 @@ final class AuthStore {
             Task { await PushManager.shared.unregister(sessionToken: sessionToken) }
         }
         HealthKitManager.shared.clearAccountSyncState()
+        CalendarManager.shared.clearAccountState()
         OnboardingViewModel.clearProgress()
         OfflineMealQueue.clear()
     }

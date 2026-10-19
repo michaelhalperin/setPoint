@@ -23,6 +23,9 @@ struct ConversationView: View {
             Palette.background
                 .opacity(1.0 - Double(dismissProgress) * 0.4)
                 .ignoresSafeArea()
+            AmbientGlow(tone: .haze, strength: 0.8, height: 380)
+                .offset(x: -60, y: -80)
+                .ignoresSafeArea()
 
             VStack(spacing: 0) {
                 grabber
@@ -51,8 +54,8 @@ struct ConversationView: View {
 
     private var grabber: some View {
         Capsule()
-            .fill(Palette.inkFaint.opacity(0.4))
-            .frame(width: 36, height: 5)
+            .fill(Color.white.opacity(0.18))
+            .frame(width: 40, height: 5)
             .frame(maxWidth: .infinity)
             .padding(.top, 8)
             .padding(.bottom, 6)
@@ -86,52 +89,28 @@ struct ConversationView: View {
     private func conversation(_ model: ConversationViewModel) -> some View {
         ScrollViewReader { proxy in
             ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: 16) {
                     HStack {
-                        Text("Let’s talk")
-                            .sectionLabelStyle(Palette.accent)
-                        Spacer()
-                        Button(action: onDismiss) {
-                            Image(systemName: "xmark")
-                                .font(.system(size: 15, weight: .semibold))
-                                .foregroundStyle(Palette.inkSoft)
-                                .frame(width: 34, height: 34)
-                                .background(Palette.surfaceSunk, in: Circle())
+                        HStack(spacing: 8) {
+                            Circle().fill(Palette.haze).frame(width: 7, height: 7).shadow(color: Palette.haze, radius: 4)
+                            Text("Let’s talk").sectionLabelStyle(Palette.hazeSoft)
                         }
-                        .accessibilityLabel("Close")
+                        Spacer()
+                        RoundIconButton("xmark", label: "Close", action: onDismiss)
                     }
 
-                    Text("Rough few days.")
-                        .font(Typography.display(40))
-                        .foregroundStyle(Palette.ink)
-                        .accessibilityAddTraits(.isHeader)
-                        .appearIn(0)
+                    Headline("Rough few days.", tail: "Let’s fix the plan, not you.", size: 40)
+                        .appearIn(0, rise: 16)
 
                     if let opener = model.messages.first, opener.role == "assistant" {
                         Text(opener.content)
-                            .font(Typography.voice(19))
-                            .foregroundStyle(Palette.inkSoft)
-                            .lineSpacing(2)
+                            .font(Typography.display(24))
+                            .tracking(-0.6)
+                            .foregroundStyle(Color(hex: 0xD4D4D8))
+                            .lineSpacing(1)
                             .fixedSize(horizontal: false, vertical: true)
                             .id(opener.id)
                             .appearIn(1)
-                    }
-
-                    if model.messages.count == 1, !model.resolved, !model.sending {
-                        VStack(spacing: 10) {
-                            ForEach(Array(QuickFix.all.enumerated()), id: \.element.title) { index, fix in
-                                Button {
-                                    model.draft = fix.message
-                                    Task { await model.send() }
-                                } label: {
-                                    QuickFixCard(fix: fix)
-                                }
-                                .buttonStyle(PressableCard())
-                                .appearIn(2 + index)
-                            }
-                        }
-                        .padding(.top, 4)
-                        .transition(.opacity)
                     }
 
                     ForEach(Array(model.messages.dropFirst().enumerated()), id: \.element.id) { index, message in
@@ -141,51 +120,81 @@ struct ConversationView: View {
                     }
 
                     if model.sending {
-                        MessageBubble(message: ConversationMessage(role: "assistant", content: "…", at: nil))
-                            .redacted(reason: .placeholder)
-                            .id("typing")
+                        HStack(spacing: 8) {
+                            BusyDots(tint: Palette.hazeSoft)
+                            Text("Thinking it over")
+                                .font(Typography.data(13, weight: .regular))
+                                .foregroundStyle(Palette.inkFaint)
+                        }
+                        .id("typing")
                     }
 
                     if let err = model.sendError {
                         Text(err)
-                            .font(Typography.data(13, weight: .semibold))
-                            .foregroundStyle(Palette.accentDeep)
+                            .font(Typography.data(13, weight: .regular))
+                            .foregroundStyle(Palette.amber)
                     }
 
                     if let proposal = model.pendingProposal, !model.resolved {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(proposal.title)
-                                .font(Typography.data(16, weight: .bold))
-                                .foregroundStyle(Palette.ink)
+                        CalloutCard(haze: true, spacing: 12) {
+                            Text("What I’d change").sectionLabelStyle(Palette.hazeSoft)
+                            Headline(proposal.title, size: 24)
                             Text(proposal.summary)
-                                .font(Typography.data(14))
+                                .font(Typography.data(14, weight: .regular))
                                 .foregroundStyle(Palette.inkSoft)
-                            ActionButton(title: "Apply this", busy: model.confirming) {
-                                Task { await model.confirmProposal() }
+                                .fixedSize(horizontal: false, vertical: true)
+                            HStack(spacing: 8) {
+                                Button {
+                                    Task { await model.confirmProposal() }
+                                } label: {
+                                    BusyLabel(title: "Do it", busy: model.confirming, tint: Palette.onBone)
+                                        .font(Typography.data(15, weight: .medium))
+                                        .foregroundStyle(Palette.onBone)
+                                        .frame(maxWidth: .infinity, minHeight: 46)
+                                        .background(Palette.ink, in: Capsule())
+                                }
+                                .buttonStyle(PressableCard())
+                                .disabled(model.confirming)
+                                Button { composerFocused = true } label: {
+                                    Text("Something else")
+                                        .font(Typography.data(14, weight: .regular))
+                                        .foregroundStyle(Palette.ink)
+                                        .frame(maxWidth: .infinity, minHeight: 46)
+                                        .glassCapsule(fill: Color.white.opacity(0.06), stroke: Color.white.opacity(0.10))
+                                }
+                                .buttonStyle(PressableCard())
                             }
                         }
-                        .padding(14)
-                        .background(Palette.surfaceSunk.opacity(0.7), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                         .id("proposal")
+                        .appearIn()
                     }
 
                     if model.resolved, let summary = model.outcomeSummary {
-                        HStack(alignment: .top, spacing: 10) {
-                            Image(systemName: model.outcomeIcon)
-                                .font(.system(size: 16, weight: .medium))
-                                .foregroundStyle(Palette.accent)
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(model.outcomeTitle)
-                                    .sectionLabelStyle(Palette.accent)
-                                Text(summary)
-                                    .font(Typography.data(14))
-                                    .foregroundStyle(Palette.ink)
-                                    .fixedSize(horizontal: false, vertical: true)
+                        VStack(spacing: 12) {
+                            ZStack {
+                                FuelOrb(size: 54, glow: 0.6, haze: true)
+                                Image(systemName: model.outcomeIcon)
+                                    .font(.system(size: 20, weight: .semibold))
+                                    .foregroundStyle(Color(hex: 0x0F0E2A))
                             }
+                            Text(model.outcomeTitle)
+                                .font(Typography.display(22))
+                                .foregroundStyle(Palette.ink)
+                                .multilineTextAlignment(.center)
+                            Text(summary)
+                                .font(Typography.data(14, weight: .regular))
+                                .foregroundStyle(Palette.inkSoft)
+                                .multilineTextAlignment(.center)
+                                .fixedSize(horizontal: false, vertical: true)
                         }
-                        .padding(14)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Palette.surfaceSunk.opacity(0.7), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .padding(.vertical, 22)
+                        .padding(.horizontal, 16)
+                        .frame(maxWidth: .infinity)
+                        .background {
+                            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                .fill(LinearGradient(colors: [Palette.haze.opacity(0.12), Palette.haze.opacity(0.02)], startPoint: .top, endPoint: .bottom))
+                        }
+                        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(Palette.hazeSoft.opacity(0.30)))
                         .padding(.top, 8)
                         .appearIn()
                         .id("outcome")
@@ -204,13 +213,41 @@ struct ConversationView: View {
 
         Group {
             if model.resolved {
-                ActionButton(title: "Done") { onResolved() }
+                ActionButton(title: "Back to today") { onResolved() }
                     .padding(.horizontal, 20)
                     .padding(.bottom, 12)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             } else {
-                composer(model)
-                    .transition(.opacity)
+                VStack(alignment: .leading, spacing: 10) {
+                    if model.messages.count == 1, !model.sending {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                ForEach(QuickFix.all, id: \.title) { fix in
+                                    Button {
+                                        model.draft = fix.message
+                                        Task { await model.send() }
+                                    } label: {
+                                        HStack(spacing: 6) {
+                                            Image(systemName: fix.symbol).font(.system(size: 12, weight: .regular))
+                                            Text(fix.title).font(Typography.data(13, weight: .regular))
+                                        }
+                                        .foregroundStyle(Palette.hazeSoft)
+                                        .padding(.horizontal, 14)
+                                        .frame(height: 36)
+                                        .overlay(Capsule().strokeBorder(Palette.hazeSoft.opacity(0.35)))
+                                        .contentShape(Capsule())
+                                    }
+                                    .buttonStyle(PressableCard())
+                                    .accessibilityHint(fix.detail)
+                                }
+                            }
+                            .padding(.horizontal, 20)
+                        }
+                        .transition(.opacity)
+                    }
+                    composer(model)
+                }
+                .transition(.opacity)
             }
         }
         .animation(Motion.adaptive(Motion.morph, reduceMotion: reduceMotion), value: model.resolved)
@@ -220,25 +257,28 @@ struct ConversationView: View {
     private func composer(_ model: ConversationViewModel) -> some View {
         HStack(spacing: 10) {
             TextField(model.messages.count == 1 ? "Or tell me what’s going on…" : "Reply…", text: Binding(get: { model.draft }, set: { model.draft = $0 }), axis: .vertical)
-                .font(Typography.data(15))
+                .font(Typography.data(15, weight: .regular))
                 .lineLimit(1 ... 4)
-                .padding(12)
-                .background(Palette.surfaceSunk, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                 .focused($composerFocused)
 
             Button {
                 composerFocused = false
                 Task { await model.send() }
             } label: {
-                Image(systemName: "arrow.up.circle.fill")
-                    .font(.system(size: 30))
-                    .foregroundStyle(canSend(model) ? Palette.accent : Palette.inkFaint)
+                Image(systemName: "arrow.up")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(canSend(model) ? Palette.onBone : Palette.inkFaint)
+                    .frame(width: 36, height: 36)
+                    .background(Circle().fill(canSend(model) ? Palette.ink : Color.white.opacity(0.10)))
             }
             .disabled(!canSend(model))
         }
+        .padding(.leading, 18)
+        .padding(.trailing, 8)
+        .padding(.vertical, 8)
+        .glass(radius: 26, fill: Color.white.opacity(0.05), stroke: Color.white.opacity(0.10))
         .padding(.horizontal, 20)
         .padding(.vertical, 12)
-        .background(Palette.background)
     }
 
     private func canSend(_ model: ConversationViewModel) -> Bool {
@@ -268,7 +308,7 @@ private struct ConversationSkeletonView: View {
                 HStack {
                     SkeletonBlock(width: 72, height: 12)
                     Spacer()
-                    Circle().fill(Palette.surfaceSunk).frame(width: 34, height: 34)
+                    Circle().fill(Color.white.opacity(0.06)).frame(width: 34, height: 34)
                 }
 
                 VStack(alignment: .leading, spacing: 8) {
@@ -294,7 +334,7 @@ private struct ConversationSkeletonView: View {
 
             HStack(spacing: 10) {
                 SkeletonBlock(height: 44, radius: 14)
-                Circle().fill(Palette.surfaceSunk).frame(width: 30, height: 30)
+                Circle().fill(Color.white.opacity(0.06)).frame(width: 30, height: 30)
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
@@ -307,7 +347,7 @@ private struct ConversationSkeletonView: View {
 
     private var quickFix: some View {
         HStack(spacing: 14) {
-            Circle().fill(Palette.surfaceSunk).frame(width: 44, height: 44)
+            Circle().fill(Color.white.opacity(0.06)).frame(width: 44, height: 44)
             VStack(alignment: .leading, spacing: 6) {
                 SkeletonBlock(width: 132, height: 16)
                 SkeletonBlock(width: 188, height: 13)
@@ -341,62 +381,32 @@ private struct QuickFix {
     ]
 }
 
-private struct QuickFixCard: View {
-    let fix: QuickFix
-
-    var body: some View {
-        HStack(spacing: 14) {
-            Image(systemName: fix.symbol)
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(Palette.accent)
-                .frame(width: 44, height: 44)
-                .background(Palette.accentTint, in: Circle())
-            VStack(alignment: .leading, spacing: 2) {
-                Text(fix.title)
-                    .font(Typography.data(16, weight: .bold))
-                    .foregroundStyle(Palette.ink)
-                Text(fix.detail)
-                    .font(Typography.data(13))
-                    .foregroundStyle(Palette.inkSoft)
-            }
-            Spacer(minLength: 0)
-            Image(systemName: "arrow.right")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(Palette.inkFaint)
-        }
-        .padding(16)
-        .background {
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(Palette.surface)
-                .elevation(.resting)
-                .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Palette.hairline))
-        }
-    }
-}
-
 private struct MessageBubble: View {
     let message: ConversationMessage
 
     private var isUser: Bool { message.role == "user" }
 
+    /// The manager speaks in big light lines; your reply is a small haze bubble.
     var body: some View {
-        HStack {
-            if isUser { Spacer(minLength: 40) }
+        if isUser {
+            HStack {
+                Spacer(minLength: 60)
+                Text(message.content)
+                    .font(Typography.data(14, weight: .regular))
+                    .foregroundStyle(Palette.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(Palette.haze.opacity(0.16), in: UnevenRoundedRectangle(topLeadingRadius: 18, bottomLeadingRadius: 18, bottomTrailingRadius: 6, topTrailingRadius: 18, style: .continuous))
+                    .overlay(UnevenRoundedRectangle(topLeadingRadius: 18, bottomLeadingRadius: 18, bottomTrailingRadius: 6, topTrailingRadius: 18, style: .continuous).strokeBorder(Palette.hazeSoft.opacity(0.30)))
+            }
+        } else {
             Text(message.content)
-                .font(isUser ? Typography.data(15) : Typography.voice(17))
+                .font(Typography.display(22))
+                .tracking(-0.5)
                 .foregroundStyle(Palette.ink)
                 .fixedSize(horizontal: false, vertical: true)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(
-                    isUser ? Palette.accentSoft.opacity(0.6) : Palette.surface,
-                    in: RoundedRectangle(cornerRadius: 16, style: .continuous)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .strokeBorder(Palette.ink.opacity(isUser ? 0 : 0.05))
-                )
-            if !isUser { Spacer(minLength: 40) }
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 }

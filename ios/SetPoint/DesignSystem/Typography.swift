@@ -1,74 +1,83 @@
 import SwiftUI
 import UIKit
 
-/// Plan §6: a distinct, slightly editorial voice for anything the manager "says"
-/// (check-ins, prescriptions, notes), visually separated from the cold data
-/// (ledger numbers, macros).
-///
-/// The voice is **Fraunces** (bundled, SIL OFL — see Resources/Fonts/OFL.txt),
-/// an optical serif tuned soft and un-wonky. Data stays on SF Rounded. If the
-/// bundled face somehow fails to load, `Font.custom` falls back to the system
-/// serif on its own.
+/// Design v2: one sans family and one mono. Headlines are *light* and tight, with
+/// a dim tail (see `Headline`). Numbers, times and labels are mono. Everything
+/// scales with Dynamic Type.
 enum Typography {
-    // Bundled family name + PostScript faces.
-    private static let voiceFamily = "Fraunces"
-    private static let voiceMedium = "Fraunces-Medium"
-    private static let voiceItalic = "Fraunces-Italic"
-
-    /// The manager speaking — editorial serif. `weight: .medium`/`.semibold`
-    /// swaps to the Medium cut; anything lighter uses Regular.
-    private static let heavier: Set<Font.Weight> = [.medium, .semibold, .bold, .heavy, .black]
-
+    /// The manager speaking — plain sans. Big lines go light, like a headline.
     static func voice(_ size: CGFloat = 19, weight: Font.Weight = .regular) -> Font {
-        let face = heavier.contains(weight) ? voiceMedium : voiceFamily
-        return .custom(face, size: size, relativeTo: .body)
+        let w: Font.Weight = (weight == .regular && size >= 22) ? .light : weight
+        return scaled(size, weight: w, design: .default, style: .body)
     }
 
-    /// The manager, emphatic — serif italic (used sparingly, e.g. a single
-    /// stressed phrase).
+    /// Emphasis inside a manager line — the same face, a step lighter.
     static func voiceItalic(_ size: CGFloat = 19) -> Font {
-        .custom(voiceItalic, size: size, relativeTo: .body)
+        scaled(size, weight: .light, design: .default, style: .body)
     }
 
-    /// Cold data — ledger, macros, counts. Scales with Dynamic Type.
+    /// Interface text — buttons, rows, body. Design v2 never goes heavier than
+    /// medium, and big numbers (24pt and up) are always light.
     static func data(_ size: CGFloat, weight: Font.Weight = .medium) -> Font {
-        let uiWeight: UIFont.Weight = {
-            switch weight {
-            case .ultraLight: return .ultraLight
-            case .thin: return .thin
-            case .light: return .light
-            case .regular: return .regular
-            case .medium: return .medium
-            case .semibold: return .semibold
-            case .bold: return .bold
-            case .heavy: return .heavy
-            case .black: return .black
-            default: return .medium
-            }
-        }()
-        let base = UIFont.systemFont(ofSize: size, weight: uiWeight)
-        let rounded = base.fontDescriptor.withDesign(.rounded).flatMap { UIFont(descriptor: $0, size: size) } ?? base
-        return Font(UIFontMetrics(forTextStyle: .body).scaledFont(for: rounded))
+        scaled(size, weight: capped(weight, size: size), design: .default, style: .body)
     }
 
-    /// The hero ledger number — big, confident, rounded (Fraunces figures read
-    /// too delicate at display size).
-    static let hero = Font.system(size: 58, weight: .semibold, design: .rounded)
+    private static func capped(_ weight: Font.Weight, size: CGFloat) -> Font.Weight {
+        if size >= 24 { return .light }
+        switch weight {
+        case .semibold, .bold, .heavy, .black: return .medium
+        default: return weight
+        }
+    }
 
-    /// A large serif display line — the onboarding "you're set", step headers.
+    /// Numbers, times, units and labels.
+    static func mono(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
+        scaled(size, weight: weight, design: .monospaced, style: .body)
+    }
+
+    /// The orb's number.
+    static let hero = Font.system(size: 46, weight: .light)
+
+    /// A large light display line — screen titles, onboarding steps.
     static func display(_ size: CGFloat = 30) -> Font {
-        .custom(voiceFamily, size: size, relativeTo: .largeTitle)
+        scaled(size, weight: .light, design: .default, style: .largeTitle)
     }
 
-    static let sectionLabel = Font.system(size: 12, weight: .semibold, design: .rounded)
+    static let sectionLabel = Font.system(size: 11, weight: .regular, design: .monospaced)
+
+    private static func scaled(_ size: CGFloat, weight: Font.Weight, design: UIFontDescriptor.SystemDesign, style: UIFont.TextStyle) -> Font {
+        let base = UIFont.systemFont(ofSize: size, weight: uiWeight(weight))
+        let font = base.fontDescriptor.withDesign(design).map { UIFont(descriptor: $0, size: size) } ?? base
+        return Font(UIFontMetrics(forTextStyle: style).scaledFont(for: font))
+    }
+
+    private static func uiWeight(_ weight: Font.Weight) -> UIFont.Weight {
+        switch weight {
+        case .ultraLight: return .ultraLight
+        case .thin: return .thin
+        case .light: return .light
+        case .regular: return .regular
+        case .medium: return .medium
+        case .semibold: return .semibold
+        case .bold: return .bold
+        case .heavy: return .heavy
+        case .black: return .black
+        default: return .regular
+        }
+    }
 }
 
 extension View {
-    /// Uppercase, tracked, faint — a quiet section header.
+    /// Mono, uppercase, tracked, faint — a label above a section.
     func sectionLabelStyle(_ color: Color = Palette.inkFaint) -> some View {
         self.font(Typography.sectionLabel)
-            .tracking(1.4)
+            .tracking(1.3)
             .textCase(.uppercase)
             .foregroundStyle(color)
+    }
+
+    /// Tight tracking for a light display line (-3.5% of the size).
+    func displayTracking(_ size: CGFloat) -> some View {
+        tracking(-0.035 * size)
     }
 }
