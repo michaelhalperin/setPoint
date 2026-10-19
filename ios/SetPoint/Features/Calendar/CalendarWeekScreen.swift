@@ -25,6 +25,19 @@ struct CalendarWeekView: View {
                     .appearIn(1, rise: 14)
 
                 CalendarLegend().appearIn(2)
+            } else if let error = calendar.weekError {
+                Headline("Calendar.", tail: "Couldn’t read your week.", size: 38)
+                    .appearIn(0, rise: 16)
+                VStack(alignment: .leading, spacing: 14) {
+                    Text(error)
+                        .font(Typography.data(14, weight: .regular))
+                        .foregroundStyle(Palette.inkSoft)
+                        .fixedSize(horizontal: false, vertical: true)
+                    ActionButton(title: "Try again", kind: .secondary) {
+                        Task { await calendar.sync() }
+                    }
+                }
+                .frame(maxWidth: .infinity, minHeight: 200, alignment: .center)
             } else {
                 Headline("Calendar.", tail: "Reading your week…", size: 38)
                 BusyDots(tint: Palette.amber).frame(maxWidth: .infinity, minHeight: 200)

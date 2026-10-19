@@ -26,6 +26,8 @@ final class CalendarManager {
     private(set) var refreshing = false
     private(set) var mealsMovedThisWeek = 0
     private(set) var week: CalendarWeekResponse?
+    /// The week couldn't be fetched and there's none to show — the screen offers a retry.
+    private(set) var weekError: String?
     private(set) var preview: CalendarPreviewResponse?
     var leadMin = 45
     var minBlockMin = 60
@@ -262,6 +264,7 @@ final class CalendarManager {
         resyncTask?.cancel()
         refreshing = false
         week = nil
+        weekError = nil
         preview = nil
         mealsMovedThisWeek = 0
         setEnabled(false)
@@ -276,8 +279,16 @@ final class CalendarManager {
 
     func refreshWeek() async {
         guard !isPreview, let api else { return }
-        guard let response: CalendarWeekResponse = try? await api.get("/api/calendar/week") else { return }
-        apply(response)
+        weekError = nil
+        do {
+            let response: CalendarWeekResponse = try await api.get("/api/calendar/week")
+            apply(response)
+        } catch {
+            // Keep a week already on screen; only an empty screen needs the error.
+            if week == nil {
+                weekError = UserFacingError.message(for: error, fallback: "Your calendar settings are safe. Try again in a moment.")
+            }
+        }
     }
 
     private func apply(_ response: CalendarWeekResponse) {
