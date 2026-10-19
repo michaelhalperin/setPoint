@@ -16,7 +16,7 @@ export function normalizeToken(raw: string): string {
  *   - the token is a lifestyle diet the food does not satisfy, or
  *   - the token appears in the food's name (catches "beef", "pork", "shrimp", ...).
  */
-export function isFoodExcluded(food: SolverFood, tokens: string[]): boolean {
+export function isFoodExcluded(food: Pick<SolverFood, 'name' | 'tags' | 'allergens'>, tokens: string[]): boolean {
   const name = food.name.toLowerCase();
 
   for (const raw of tokens) {

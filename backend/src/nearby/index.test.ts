@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { sampleVenues } from '../data/nearbyVenues.js';
+import { NEARBY_VENUES, sampleVenues } from '../data/nearbyVenues.js';
 import { distanceKm, rankNearby, type NearbyVenue } from './index.js';
 
 const here = { lat: 32.06, lng: 34.77 };
@@ -21,6 +21,13 @@ describe('rankNearby', () => {
     expect(ranked.map((v) => v.name)).not.toContain('Lavash Lane');
   });
 
+  it('keeps a vegetarian to vegetarian and vegan dishes', () => {
+    const ranked = rankNearby(NEARBY_VENUES, { lat: 32.08, lng: 34.78, gapKcal: 700, avoid: new Set(['vegetarian']) });
+    const dishes = ranked.flatMap((v) => v.dishes);
+    expect(dishes.length).toBeGreaterThan(0);
+    for (const d of dishes) expect(d.tags?.some((t) => t === 'vegan' || t === 'vegetarian')).toBe(true);
+  });
+
   it('keeps only places within the radius', () => {
     const far: NearbyVenue = {
       id: 'far', name: 'Far away', lat: here.lat + 0.2, lng: here.lng, woltUrl: null,
@@ -31,5 +38,31 @@ describe('rankNearby', () => {
 
   it('measures distance in km', () => {
     expect(distanceKm(here.lat, here.lng, here.lat + 0.009, here.lng)).toBeCloseTo(1, 1);
+  });
+});
+
+describe('NEARBY_VENUES', () => {
+  const dishes = NEARBY_VENUES.flatMap((v) => v.dishes.map((d) => ({ venue: v, dish: d })));
+
+  it('has around a hundred dishes, each opening Wolt on itself', () => {
+    expect(dishes.length).toBeGreaterThanOrEqual(100);
+    for (const { venue, dish } of dishes) {
+      expect(dish.woltUrl).toBe(`${venue.woltUrl}/itemid-${dish.id}`);
+    }
+  });
+
+  it('has unique ids and believable numbers', () => {
+    expect(new Set(NEARBY_VENUES.map((v) => v.id)).size).toBe(NEARBY_VENUES.length);
+    expect(new Set(dishes.map(({ dish }) => dish.id)).size).toBe(dishes.length);
+    for (const { dish } of dishes) {
+      expect(dish.kcal).toBeGreaterThanOrEqual(300);
+      expect(dish.kcal).toBeLessThanOrEqual(1300);
+      const fromMacros = dish.proteinG * 4 + (dish.carbsG ?? 0) * 4 + (dish.fatG ?? 0) * 9;
+      expect(Math.abs(fromMacros - dish.kcal) / dish.kcal).toBeLessThan(0.15);
+    }
+  });
+
+  it('sits in central Tel Aviv', () => {
+    for (const v of NEARBY_VENUES) expect(distanceKm(32.08, 34.78, v.lat, v.lng)).toBeLessThan(5);
   });
 });

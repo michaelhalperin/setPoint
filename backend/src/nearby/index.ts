@@ -4,6 +4,8 @@
  * Wolt link the app opens, and the user adds it and pays there.
  */
 
+import { isFoodExcluded } from '../solver/exclusions.js';
+
 export type DishKind = 'BOWL' | 'WRAP' | 'DRINK' | 'PLATE';
 
 export type NearbyDish = {
@@ -16,6 +18,8 @@ export type NearbyDish = {
   kind: DishKind;
   /** Allergen tokens, same vocabulary as DietaryRestriction.token ("peanut", "dairy"). */
   allergens: string[];
+  /** 'vegan' or 'vegetarian' when the dish is; fish dishes count for pescatarians by allergen. */
+  tags?: string[];
   /** Opens Wolt on this dish. Null for sample data. */
   woltUrl: string | null;
 };
@@ -52,8 +56,9 @@ export function distanceKm(aLat: number, aLng: number, bLat: number, bLng: numbe
 }
 
 /**
- * Venues within reach, each with its dishes that avoid the user's hard
- * exclusions, closest to the gap first. Venues sort by their best dish's fit,
+ * Venues within reach, each with its dishes that pass the user's hard
+ * exclusions (allergens, vegan/vegetarian/pescatarian, foods named outright),
+ * closest to the gap first. Venues sort by their best dish's fit,
  * then distance.
  */
 export function rankNearby(
@@ -62,11 +67,12 @@ export function rankNearby(
 ): RankedVenue[] {
   const radius = opts.radiusKm ?? NEARBY_RADIUS_KM;
   const fit = (d: NearbyDish) => Math.abs(d.kcal - opts.gapKcal);
+  const avoid = [...opts.avoid];
   return venues
     .map((v) => {
       const km = distanceKm(opts.lat, opts.lng, v.lat, v.lng);
       const dishes = v.dishes
-        .filter((d) => !d.allergens.some((a) => opts.avoid.has(a)))
+        .filter((d) => !isFoodExcluded({ name: d.name, allergens: d.allergens, tags: d.tags ?? [] }, avoid))
         .sort((a, b) => fit(a) - fit(b) || b.proteinG - a.proteinG);
       return { id: v.id, name: v.name, distanceKm: Math.round(km * 10) / 10, woltUrl: v.woltUrl, dishes };
     })
