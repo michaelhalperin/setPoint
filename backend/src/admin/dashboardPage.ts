@@ -102,6 +102,20 @@ tr:last-child td { border-bottom: none; }
 .created .code { font-family: var(--mono); font-size: 22px; letter-spacing: 0.12em; }
 pre { margin: 0; font-family: var(--mono); font-size: 12px; white-space: pre-wrap; word-break: break-word; color: var(--soft); }
 details summary { cursor: pointer; color: var(--soft); }
+.meals { display: grid; gap: 12px; align-items: start; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+.meal { display: flex; flex-direction: column; gap: 10px; padding: 14px; }
+.meal img { width: 100%; height: 160px; object-fit: cover; border-radius: 14px; cursor: zoom-in; display: block; background: #111; }
+.meal .title { font-size: 15px; line-height: 1.3; }
+.meal .items { color: var(--soft); font-size: 12px; line-height: 1.5; }
+.macros { display: flex; gap: 12px; font-family: var(--mono); font-size: 12px; color: var(--soft); flex-wrap: wrap; }
+.macros b { color: var(--ink); font-weight: 500; }
+.linkish { background: none; border: none; padding: 0; color: var(--amber); cursor: pointer; text-align: left; }
+.linkish:hover { text-decoration: underline; }
+.lightbox { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 20; cursor: zoom-out; padding: 24px; }
+.lightbox img { max-width: 100%; max-height: 100%; border-radius: 16px; }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; font-size: 13px; }
+.kv dt { color: var(--faint); }
+.kv dd { margin: 0; }
 @media (max-width: 640px) { .funnel-row { grid-template-columns: 110px 1fr 50px; } .kpi .value { font-size: 26px; } }
 </style>
 </head>
@@ -112,7 +126,7 @@ details summary { cursor: pointer; color: var(--soft); }
 (function () {
   'use strict';
   var KEY = 'setpoint.admin.secret';
-  var state = { secret: null, tab: 'overview', status: null, range: 14, cohort: '', userFilter: { q: '', role: '', cohort: '', pending: false } };
+  var state = { secret: null, tab: 'overview', status: null, range: 14, cohort: '', userFilter: { q: '', role: '', cohort: '', pending: false }, person: null, mealFilter: { cohort: '', source: '' } };
   var root = document.getElementById('app');
 
   try { state.secret = sessionStorage.getItem(KEY); } catch (e) { state.secret = null; }
@@ -219,7 +233,7 @@ details summary { cursor: pointer; color: var(--soft); }
   }
 
   // ---------- shell ----------
-  var TABS = [['overview', 'Overview'], ['users', 'Users'], ['invites', 'Invites'], ['flags', 'Flags'], ['health', 'Health']];
+  var TABS = [['overview', 'Overview'], ['users', 'Users'], ['meals', 'Meals'], ['invites', 'Invites'], ['flags', 'Flags'], ['health', 'Health']];
   var main;
 
   function renderShell() {
@@ -233,12 +247,13 @@ details summary { cursor: pointer; color: var(--soft); }
     ));
     var nav = h('nav', { 'aria-label': 'Sections' });
     TABS.forEach(function (t) {
-      nav.appendChild(h('button', { 'aria-current': state.tab === t[0] ? 'page' : null, text: t[1], onclick: function () { state.tab = t[0]; renderShell(); } }));
+      nav.appendChild(h('button', { 'aria-current': state.tab === t[0] ? 'page' : null, text: t[1], onclick: function () { state.tab = t[0]; state.person = null; renderShell(); } }));
     });
     root.appendChild(nav);
     main = h('main');
     root.appendChild(main);
-    ({ overview: renderOverview, users: renderUsers, invites: renderInvites, flags: renderFlags, health: renderHealth })[state.tab]();
+    if (state.person) { renderPerson(state.person); return; }
+    ({ overview: renderOverview, users: renderUsers, meals: renderMeals, invites: renderInvites, flags: renderFlags, health: renderHealth })[state.tab]();
   }
 
   function loading() { clear(main); main.appendChild(h('div', { class: 'empty', text: 'Loading…' })); }
@@ -250,8 +265,8 @@ details summary { cursor: pointer; color: var(--soft); }
     var to = new Date();
     var from = new Date(to.getTime() - state.range * 86400000);
     var q = '?from=' + encodeURIComponent(from.toISOString()) + '&to=' + encodeURIComponent(to.toISOString()) + (state.cohort ? '&cohort=' + encodeURIComponent(state.cohort) : '');
-    Promise.all([api('/analytics' + q), refreshStatus()]).then(function (r) {
-      var a = r[0], s = r[1];
+    Promise.all([api('/analytics' + q), refreshStatus(), api('/nutrition' + q)]).then(function (r) {
+      var a = r[0], s = r[1], n = r[2];
       clear(main);
 
       var rangeSel = h('select', { 'aria-label': 'Range', onchange: function (e) { state.range = Number(e.target.value); renderOverview(); } },
@@ -274,6 +289,16 @@ details summary { cursor: pointer; color: var(--soft); }
         kpi('Days fully eaten', pct(a.days.fullyEatenRate), a.days.fullyEaten + ' of ' + a.days.settled + ' settled days')
       ));
 
+      var byGoal = Object.keys(n.weight.byGoal).map(function (g) {
+        var x = n.weight.byGoal[g];
+        return g.charAt(0) + g.slice(1).toLowerCase() + ' ' + signedKg(x.avgKgPerWeek) + ' (' + x.people + ')';
+      }).join(' · ');
+      main.appendChild(h('div', { class: 'grid kpis section' },
+        kpi('Calories vs target', pct(n.calories.avgShareOfTarget), n.calories.daysWithFood + ' settled days with food · ' + n.calories.missedDays + ' missed'),
+        kpi('Protein vs target', pct(n.protein.avgShareOfTarget), n.protein.avgGramsPerDay !== null ? n.protein.avgGramsPerDay + ' g a day on average' : 'no meals yet'),
+        kpi('Weight change', n.weight.avgKgPerWeek === null ? '—' : signedKg(n.weight.avgKgPerWeek) + '/wk', n.weight.people ? n.weight.people + ' people · ' + byGoal : 'needs two weigh-ins a person')
+      ));
+
       var f = a.funnel;
       var steps = [['Signed up', f.signedUp], ['Finished setup', f.onboarded], ['Logged a meal', f.loggedAMeal], ['Answered a check-in', f.answeredACheckIn], ['Had a fully eaten day', f.hadAFullDay]];
       var funnel = h('div', { class: 'panel' }, h('div', { class: 'label', style: 'margin-bottom: 10px', text: 'Funnel · people who signed up in this range' }));
@@ -293,6 +318,16 @@ details summary { cursor: pointer; color: var(--soft); }
 
       main.appendChild(h('div', { class: 'grid section', style: 'grid-template-columns: repeat(auto-fit, minmax(340px, 1fr))' }, funnel, chart));
 
+      var calPanel = h('div', { class: 'panel chart' }, h('div', { class: 'label', style: 'margin-bottom: 10px', text: 'Calories eaten vs target · settled days' }),
+        n.calories.daily.length ? shareChart(n.calories.daily) : h('div', { class: 'muted', text: 'No settled days in this range yet.' }));
+      var screens = a.screens || [];
+      var screenPanel = h('div', { class: 'panel' }, h('div', { class: 'label', style: 'margin-bottom: 6px', text: 'Screens' }),
+        screens.length ? h('div', { class: 'table-wrap' }, h('table', null,
+          h('thead', null, h('tr', null, h('th', { text: 'Screen' }), h('th', { text: 'Views' }), h('th', { text: 'People' }))),
+          h('tbody', null, screens.map(function (x) { return h('tr', null, h('td', { class: 'mono', text: x.screen }), h('td', { class: 'mono', text: fmtNum(x.views) }), h('td', { class: 'mono', text: fmtNum(x.users) })); }))))
+          : h('div', { class: 'muted', text: 'No screen views yet — they start with the next app build.' }));
+      main.appendChild(h('div', { class: 'grid section', style: 'grid-template-columns: repeat(auto-fit, minmax(340px, 1fr))' }, calPanel, screenPanel));
+
       var rows = Object.keys(totals).sort().map(function (name) {
         return h('tr', null, h('td', { class: 'mono', text: name }), h('td', { class: 'mono', text: fmtNum(totals[name].events) }), h('td', { class: 'mono', text: fmtNum(totals[name].users) }));
       });
@@ -306,6 +341,27 @@ details summary { cursor: pointer; color: var(--soft); }
 
   function kpi(label, value, sub) {
     return h('div', { class: 'panel kpi' }, h('div', { class: 'label', text: label }), h('div', { class: 'value', text: value }), h('div', { class: 'sub', text: sub }));
+  }
+
+  function signedKg(x) { return x === null || x === undefined ? '—' : (x > 0 ? '+' : '') + x.toFixed(2) + ' kg'; }
+
+  /** Bars of a share of target per day, with the 100% line. */
+  function shareChart(rows) {
+    var W = 600, H = 180, pad = 22;
+    var max = Math.max(1.2, Math.max.apply(null, rows.map(function (r) { return r.avgShareOfTarget || 0; })));
+    var s = svg('svg', { viewBox: '0 0 ' + W + ' ' + H, preserveAspectRatio: 'none', role: 'img', 'aria-label': 'Average share of calorie target eaten per day' });
+    var step = (W - pad) / rows.length, bw = Math.max(2, step * 0.6);
+    var y100 = H - pad - (1 / max) * (H - pad * 2);
+    rows.forEach(function (r, i) {
+      var v = r.avgShareOfTarget || 0;
+      var bh = (v / max) * (H - pad * 2);
+      s.appendChild(svg('rect', { x: pad + i * step + (step - bw) / 2, y: H - pad - bh, width: bw, height: Math.max(0, bh), rx: 2, fill: v >= 0.9 ? '#86EFAC' : '#FF7A3D', opacity: 0.85 }));
+    });
+    s.appendChild(svg('line', { x1: pad, y1: y100, x2: W, y2: y100, stroke: 'rgba(255,255,255,0.45)', 'stroke-dasharray': '4 4' }));
+    var t = svg('text', { x: 0, y: y100 + 4, fill: '#8B8B94', 'font-size': 11, 'font-family': 'Geist Mono, monospace' });
+    t.textContent = '100%';
+    s.appendChild(t);
+    return s;
   }
 
   function dailyChart(daily, from, to) {
@@ -411,7 +467,7 @@ details summary { cursor: pointer; color: var(--soft); }
     }
     drawAccess();
     return h('tr', null,
-      h('td', null, h('div', { text: u.email || '—' }), h('div', { class: 'mono muted', style: 'font-size: 10px', text: u.id })),
+      h('td', null, h('button', { class: 'linkish', text: u.email || '(no email)', onclick: function () { openPerson(u.id); } }), h('div', { class: 'mono muted', style: 'font-size: 10px', text: u.id })),
       h('td', null, role),
       h('td', null, cohort),
       access,
@@ -419,6 +475,181 @@ details summary { cursor: pointer; color: var(--soft); }
       h('td', { class: 'mono', text: fmtNum(u._count ? u._count.meals : 0) }),
       h('td', { class: 'mono soft', text: u.inviteCode ? u.inviteCode.code : '—' }),
       h('td', { class: 'mono soft', text: fmtDate(u.createdAt) }));
+  }
+
+  // ---------- meals ----------
+  var SOURCES = [['', 'Any way'], ['TEXT', 'Typed'], ['PHOTO', 'Photo'], ['SAVED', 'Usual'], ['BARCODE', 'Barcode'], ['PRESCRIPTION', 'Check-in plate']];
+  function sourceLabel(src) { for (var i = 0; i < SOURCES.length; i++) if (SOURCES[i][0] === src) return SOURCES[i][1]; return src; }
+
+  function openPerson(id) { state.person = id; renderShell(); window.scrollTo(0, 0); }
+
+  function lightbox(url) {
+    var box = h('div', { class: 'lightbox', role: 'dialog', 'aria-label': 'Meal photo', onclick: function () { box.remove(); } }, h('img', { src: url, alt: 'Meal photo' }));
+    document.body.appendChild(box);
+  }
+
+  function mealCard(m, showUser) {
+    var when = new Date(m.loggedAt);
+    var items = (m.items || []).map(function (it) { return it.name + (it.quantity ? ' (' + it.quantity + ')' : '') + ' · ' + it.kcal; }).join(' / ');
+    return h('div', { class: 'panel meal' },
+      m.photoUrl ? h('img', { src: m.photoUrl, alt: m.summary || 'Meal photo', loading: 'lazy', onclick: function () { lightbox(m.photoUrl); } }) : null,
+      h('div', { class: 'row', style: 'gap: 6px' },
+        h('span', { class: 'badge', text: sourceLabel(m.source) }),
+        m.fixed ? h('span', { class: 'badge haze', text: 'Fixed' }) : null,
+        m.parseConfidence !== null && m.parseConfidence < 0.45 ? h('span', { class: 'badge lit', text: 'Rough estimate' }) : null,
+        h('span', { class: 'spacer' }),
+        h('span', { class: 'mono muted', text: when.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) + ' ' + when.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) })),
+      h('div', { class: 'title', text: m.summary || '(no description)' }),
+      items ? h('div', { class: 'items', text: items }) : null,
+      h('div', { class: 'macros' }, h('span', null, h('b', { text: fmtNum(m.kcal) }), ' kcal'), h('span', null, h('b', { text: Math.round(m.proteinG) }), ' g protein'), h('span', { text: Math.round(m.carbsG) + ' g carbs' }), h('span', { text: Math.round(m.fatG) + ' g fat' })),
+      m.notes ? h('div', { class: 'items', text: m.notes }) : null,
+      showUser && m.user ? h('button', { class: 'linkish', style: 'font-size: 13px', text: (m.user.email || m.user.id) + (m.user.cohort ? ' · ' + m.user.cohort : ''), onclick: function () { openPerson(m.user.id); } }) : null);
+  }
+
+  function renderMeals() {
+    var f = state.mealFilter;
+    loading();
+    Promise.all([state.status ? Promise.resolve(state.status) : refreshStatus()]).then(function (r) {
+      var s = r[0];
+      clear(main);
+      main.appendChild(h('div', { class: 'row', style: 'margin-bottom: 14px' },
+        h('select', { 'aria-label': 'Cohort', onchange: function (e) { f.cohort = e.target.value; renderMeals(); } },
+          h('option', { value: '', text: 'Everyone' }),
+          s.cohorts.map(function (c) { return h('option', { value: c.cohort, selected: f.cohort === c.cohort ? true : null, text: c.cohort }); })),
+        h('select', { 'aria-label': 'How it was logged', onchange: function (e) { f.source = e.target.value; renderMeals(); } },
+          SOURCES.map(function (x) { return h('option', { value: x[0], selected: f.source === x[0] ? true : null, text: x[1] }); }))));
+      var grid = h('div', { class: 'meals' });
+      var more = h('div', { style: 'margin-top: 16px; text-align: center' });
+      main.appendChild(grid);
+      main.appendChild(more);
+      function load(before) {
+        var qs = ['limit=60'];
+        if (f.cohort) qs.push('cohort=' + encodeURIComponent(f.cohort));
+        if (f.source) qs.push('source=' + f.source);
+        if (before) qs.push('before=' + encodeURIComponent(before));
+        clear(more);
+        more.appendChild(h('span', { class: 'muted', text: 'Loading…' }));
+        api('/meals?' + qs.join('&')).then(function (res) {
+          res.meals.forEach(function (m) { grid.appendChild(mealCard(m, true)); });
+          clear(more);
+          if (!grid.children.length) more.appendChild(h('div', { class: 'empty', text: 'No meals logged yet.' }));
+          else if (res.nextBefore) more.appendChild(h('button', { class: 'btn', text: 'Load more', onclick: function () { load(res.nextBefore); } }));
+        }).catch(fail);
+      }
+      load(null);
+    }).catch(fail);
+  }
+
+  // ---------- one person ----------
+  function renderPerson(id) {
+    loading();
+    api('/users/' + encodeURIComponent(id) + '/profile').then(function (p) {
+      clear(main);
+      var u = p.user, o = u.onboarding;
+      main.appendChild(h('div', { class: 'row', style: 'margin-bottom: 14px' },
+        h('button', { class: 'btn small', text: '← Back', onclick: function () { state.person = null; renderShell(); } }),
+        h('span', { style: 'font-size: 18px', text: u.email || u.id }),
+        h('span', { class: 'badge', text: u.role.toLowerCase() }),
+        u.cohort ? h('span', { class: 'badge haze', text: u.cohort }) : null,
+        u.accessGrantedAt ? null : h('span', { class: 'badge lit', text: 'Waiting for an invite' })));
+
+      var weightNow = p.weights.length ? p.weights[p.weights.length - 1].weightKg : (o ? o.weightKg : null);
+      var plan = h('div', { class: 'panel' }, h('div', { class: 'label', style: 'margin-bottom: 10px', text: 'Plan' }),
+        o ? h('dl', { class: 'kv' },
+          h('dt', { text: 'Goal' }), h('dd', { text: o.goal.charAt(0) + o.goal.slice(1).toLowerCase() + (o.paceKgPerWeek ? ' · ' + o.paceKgPerWeek + ' kg/wk' : '') }),
+          h('dt', { text: 'Calories' }), h('dd', { text: fmtNum(o.dailyKcalTarget) + ' kcal a day' }),
+          h('dt', { text: 'Protein' }), h('dd', { text: o.dailyProteinTargetG ? o.dailyProteinTargetG + ' g a day' : '—' }),
+          h('dt', { text: 'Weight' }), h('dd', { text: (o.startWeightKg || '—') + ' → ' + (weightNow || '—') + ' kg' + (o.targetWeightKg ? ' · target ' + o.targetWeightKg : '') }),
+          h('dt', { text: 'Appetite' }), h('dd', { text: (o.appetiteMode || '').toLowerCase() }),
+          h('dt', { text: 'Setup' }), h('dd', { text: o.completedAt ? 'Done ' + fmtDate(o.completedAt) : 'Not finished' }))
+          : h('div', { class: 'muted', text: 'Hasn’t finished setup.' }),
+        h('dl', { class: 'kv', style: 'margin-top: 12px' },
+          h('dt', { text: 'Joined' }), h('dd', { text: fmtDate(u.createdAt) + (u.inviteCode ? ' · code ' + u.inviteCode.code : '') }),
+          h('dt', { text: 'Last active' }), h('dd', { text: p.lastActive ? new Date(p.lastActive.at).toLocaleString('en-GB') + ' · ' + p.lastActive.event : '—' }),
+          h('dt', { text: 'Meals logged' }), h('dd', { text: fmtNum(p.mealCount) }),
+          h('dt', { text: 'Time zone' }), h('dd', { text: u.timezone })));
+
+      var days = h('div', { class: 'panel chart' }, h('div', { class: 'label', style: 'margin-bottom: 10px', text: 'Last 14 days · eaten vs target' }), personChart(p.days),
+        h('div', { class: 'legend' },
+          h('span', null, h('span', { class: 'dot', style: 'background: var(--ember)' }), 'Eaten'),
+          h('span', null, h('span', { class: 'dot', style: 'background: rgba(255,255,255,0.6)' }), 'Target'),
+          h('span', null, h('span', { class: 'dot', style: 'background: var(--haze)' }), 'Protein vs target')));
+      main.appendChild(h('div', { class: 'grid', style: 'grid-template-columns: repeat(auto-fit, minmax(340px, 1fr))' }, plan, days));
+
+      var dayRows = p.days.slice().reverse().map(function (d) {
+        return h('tr', null,
+          h('td', { class: 'mono', text: d.date }),
+          h('td', { class: 'mono', text: fmtNum(d.kcal) + (d.targetKcal ? ' / ' + fmtNum(d.targetKcal) : '') }),
+          h('td', { class: 'mono', text: d.proteinG + (d.targetProteinG ? ' / ' + d.targetProteinG + ' g' : ' g') }),
+          h('td', { class: 'mono', text: String(d.meals) }),
+          h('td', null, d.kind ? h('span', { class: 'badge ' + ({ ON_TRACK: 'good', OVER: 'good', UNDER: 'lit', MISSED: 'bad' }[d.kind] || ''), text: d.kind.replace('_', ' ').toLowerCase() }) : null));
+      });
+      var weightPanel = h('div', { class: 'panel chart' }, h('div', { class: 'label', style: 'margin-bottom: 10px', text: 'Weight · last 6 months' }),
+        p.weights.length >= 2 ? weightChart(p.weights) : h('div', { class: 'muted', text: p.weights.length ? 'One weigh-in: ' + p.weights[0].weightKg + ' kg on ' + fmtDate(p.weights[0].measuredAt) : 'No weigh-ins.' }));
+      main.appendChild(h('div', { class: 'grid section', style: 'grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); align-items: start' },
+        h('div', { class: 'panel table-wrap' }, h('table', null,
+          h('thead', null, h('tr', null, ['Day', 'Calories', 'Protein', 'Meals', 'Result'].map(function (t) { return h('th', { text: t }); }))),
+          h('tbody', null, dayRows))),
+        weightPanel));
+
+      var checkRows = p.checkIns.map(function (c) {
+        return h('tr', null,
+          h('td', { class: 'mono', text: new Date(c.createdAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) }),
+          h('td', { class: 'soft', text: c.kind.toLowerCase() + (c.slot ? ' · ' + c.slot : '') + (c.tier > 1 ? ' · tier ' + c.tier : '') }),
+          h('td', null, h('span', { class: 'badge', text: c.status.toLowerCase() })),
+          h('td', { class: 'soft', text: c.feedbackPositive === true ? '👍' : c.feedbackPositive === false ? '👎' : '' }));
+      });
+      main.appendChild(h('div', { class: 'panel table-wrap section' }, h('div', { class: 'label', style: 'margin-bottom: 6px', text: 'Check-ins · last 14 days' }),
+        checkRows.length ? h('table', null, h('thead', null, h('tr', null, ['When', 'Kind', 'Status', 'Feedback'].map(function (t) { return h('th', { text: t }); }))), h('tbody', null, checkRows))
+          : h('div', { class: 'muted', text: 'No check-ins.' })));
+
+      main.appendChild(h('div', { class: 'section' }, h('h2', { text: 'Meals' + (p.mealCount > p.meals.length ? ' · latest ' + p.meals.length + ' of ' + fmtNum(p.mealCount) : '') })));
+      main.appendChild(p.meals.length ? h('div', { class: 'meals' }, p.meals.map(function (m) { return mealCard(m, false); })) : h('div', { class: 'empty', text: 'No meals yet.' }));
+    }).catch(fail);
+  }
+
+  function personChart(days) {
+    var W = 600, H = 180, pad = 22;
+    var max = Math.max(1, Math.max.apply(null, days.map(function (d) { return Math.max(d.kcal, d.targetKcal || 0); })));
+    var s = svg('svg', { viewBox: '0 0 ' + W + ' ' + H, preserveAspectRatio: 'none', role: 'img', 'aria-label': 'Calories eaten against target per day' });
+    var step = (W - pad) / days.length, bw = Math.max(3, step * 0.55);
+    var pts = [];
+    days.forEach(function (d, i) {
+      var x = pad + i * step + (step - bw) / 2;
+      var bh = (d.kcal / max) * (H - pad * 2);
+      s.appendChild(svg('rect', { x: x, y: H - pad - bh, width: bw, height: Math.max(0, bh), rx: 2, fill: d.targetKcal && d.kcal >= 0.9 * d.targetKcal ? '#86EFAC' : '#FF7A3D', opacity: d.kind === 'TODAY' ? 0.5 : 0.85 }));
+      if (d.targetKcal) {
+        var ty = H - pad - (d.targetKcal / max) * (H - pad * 2);
+        s.appendChild(svg('line', { x1: x - 2, y1: ty, x2: x + bw + 2, y2: ty, stroke: 'rgba(255,255,255,0.6)', 'stroke-width': 2 }));
+      }
+      if (d.targetProteinG) pts.push((x + bw / 2).toFixed(1) + ',' + (H - pad - Math.min(1.5, d.proteinG / d.targetProteinG) / 1.5 * (H - pad * 2)).toFixed(1));
+    });
+    if (pts.length > 1) s.appendChild(svg('polyline', { points: pts.join(' '), fill: 'none', stroke: '#818CF8', 'stroke-width': 2, 'vector-effect': 'non-scaling-stroke' }));
+    var t = svg('text', { x: 0, y: pad - 6, fill: '#8B8B94', 'font-size': 11, 'font-family': 'Geist Mono, monospace' });
+    t.textContent = fmtNum(max) + ' kcal';
+    s.appendChild(t);
+    return s;
+  }
+
+  function weightChart(rows) {
+    var W = 600, H = 180, pad = 26;
+    var ws = rows.map(function (r) { return r.weightKg; });
+    var lo = Math.min.apply(null, ws) - 0.5, hi = Math.max.apply(null, ws) + 0.5;
+    var t0 = new Date(rows[0].measuredAt).getTime(), t1 = new Date(rows[rows.length - 1].measuredAt).getTime();
+    var span = Math.max(1, t1 - t0);
+    var s = svg('svg', { viewBox: '0 0 ' + W + ' ' + H, preserveAspectRatio: 'none', role: 'img', 'aria-label': 'Weight over time' });
+    var pts = rows.map(function (r) {
+      var x = pad + ((new Date(r.measuredAt).getTime() - t0) / span) * (W - pad * 2);
+      var y = H - pad - ((r.weightKg - lo) / (hi - lo)) * (H - pad * 2);
+      return x.toFixed(1) + ',' + y.toFixed(1);
+    });
+    s.appendChild(svg('polyline', { points: pts.join(' '), fill: 'none', stroke: '#FFB86B', 'stroke-width': 2, 'vector-effect': 'non-scaling-stroke' }));
+    [[hi - 0.5, pad], [lo + 0.5, H - pad]].forEach(function (v) {
+      var t = svg('text', { x: 0, y: v[1], fill: '#8B8B94', 'font-size': 11, 'font-family': 'Geist Mono, monospace' });
+      t.textContent = v[0].toFixed(1);
+      s.appendChild(t);
+    });
+    return s;
   }
 
   // ---------- invites ----------

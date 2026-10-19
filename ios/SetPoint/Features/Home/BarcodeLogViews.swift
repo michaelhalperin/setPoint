@@ -8,6 +8,11 @@ struct BarcodeScannerView: View {
     var onCancel: () -> Void
 
     var body: some View {
+        screenBody.trackScreen("barcode_scanner")
+    }
+
+    @ViewBuilder
+    private var screenBody: some View {
         ZStack(alignment: .topLeading) {
             Palette.ink.ignoresSafeArea()
             if DataScannerViewController.isSupported, DataScannerViewController.isAvailable {

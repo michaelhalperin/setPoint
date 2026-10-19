@@ -17,7 +17,19 @@ struct MainTabView: View {
     /// A just-logged meal opened from the "Logged · Fix" toast.
     @State private var fixing: MealSummary?
 
-    enum Tab: Hashable, CaseIterable { case today, training, week, you }
+    enum Tab: Hashable, CaseIterable {
+        case today, training, week, you
+
+        /// The name in analytics.
+        var screenName: String {
+            switch self {
+            case .today: return "today"
+            case .training: return "train"
+            case .week: return "progress"
+            case .you: return "you"
+            }
+        }
+    }
 
     var body: some View {
         Group {
@@ -85,6 +97,7 @@ struct MainTabView: View {
             home = h
             await h.load()
             Analytics.send(.appOpened, api: env.api)
+            Analytics.screen(selection.screenName, api: env.api)
             await env.flags.refresh(using: env.api)
             await env.subscription.refresh(using: env.api)
         }
@@ -162,6 +175,7 @@ struct MainTabView: View {
     }
 
     private func select(_ tab: Tab) {
+        if tab != selection { Analytics.screen(tab.screenName, api: env.api) }
         env.chrome.logPanelOpen = false
         visited.insert(tab)
         selection = tab

@@ -1,8 +1,10 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
 
 /**
- * Product analytics in our own database. Events say what someone did, never what
- * they ate: props are a few short codes (a meal's source, a check-in answer).
+ * Product analytics in our own database: what someone did and which screens they
+ * opened. Props are a few short codes (a meal's source, a check-in answer, a
+ * screen name). What people ate and weighed isn't copied here — the dashboard
+ * reads it from the meals and weigh-ins themselves (see nutrition.ts).
  * Recording never fails the request it rides on.
  */
 export const EVENTS = [
@@ -16,12 +18,13 @@ export const EVENTS = [
   'order_nearby_opened',
   'wolt_opened',
   'app_opened',
+  'screen_viewed',
 ] as const;
 
 export type EventName = (typeof EVENTS)[number];
 
 /** The only events the app may send itself; the rest are recorded where they happen. */
-export const CLIENT_EVENTS = ['app_opened', 'wolt_opened'] as const satisfies readonly EventName[];
+export const CLIENT_EVENTS = ['app_opened', 'wolt_opened', 'screen_viewed'] as const satisfies readonly EventName[];
 
 export type EventProps = Record<string, string | number | boolean>;
 
@@ -79,6 +82,7 @@ const FULL_DAY_KINDS = new Set(['ON_TRACK', 'OVER']);
 export function summarizeEvents(rows: EventRow[]) {
   const byName = new Map<string, { events: number; users: Set<string> }>();
   const byDay = new Map<string, { users: Set<string>; meals: number; checkIns: number }>();
+  const byScreen = new Map<string, { views: number; users: Set<string> }>();
   const usersWith = (name: string) => byName.get(name)?.users ?? new Set<string>();
   let settledDays = 0;
   let fullDays = 0;
@@ -96,6 +100,16 @@ export function summarizeEvents(rows: EventRow[]) {
     if (row.name === 'meal_logged') d.meals += 1;
     if (row.name === 'check_in_answered') d.checkIns += 1;
     byDay.set(day, d);
+
+    if (row.name === 'screen_viewed') {
+      const screen = (row.props as { screen?: unknown } | null)?.screen;
+      if (typeof screen === 'string') {
+        const s = byScreen.get(screen) ?? { views: 0, users: new Set<string>() };
+        s.views += 1;
+        if (row.userId) s.users.add(row.userId);
+        byScreen.set(screen, s);
+      }
+    }
 
     if (row.name === 'day_settled') {
       settledDays += 1;
@@ -123,5 +137,8 @@ export function summarizeEvents(rows: EventRow[]) {
       hadAFullDay: inFunnel(fullDayUsers),
     },
     days: { settled: settledDays, fullyEaten: fullDays, fullyEatenRate: settledDays ? fullDays / settledDays : null },
+    screens: [...byScreen]
+      .map(([screen, v]) => ({ screen, views: v.views, users: v.users.size }))
+      .sort((a, b) => b.views - a.views),
   };
 }

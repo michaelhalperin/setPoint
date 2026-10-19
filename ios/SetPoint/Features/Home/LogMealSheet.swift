@@ -342,6 +342,11 @@ struct PhotoParseConfirm: View {
     }
 
     var body: some View {
+        screenBody.trackScreen("photo_confirm")
+    }
+
+    @ViewBuilder
+    private var screenBody: some View {
         GeometryReader { geo in
             ZStack(alignment: .top) {
                 Color(hex: 0x050506).ignoresSafeArea()
@@ -1122,10 +1127,12 @@ struct MealCorrectionEditor: View {
 #if DEBUG
 #Preview("Confirm") {
     PhotoParseConfirmPreview(model: .samplePhotoConfirm)
+        .environment(AppEnvironment.preview())
 }
 
 #Preview("Parsing") {
     PhotoParseConfirmPreview(model: .samplePhotoParsing)
+        .environment(AppEnvironment.preview())
 }
 
 private struct PhotoParseConfirmPreview: View {

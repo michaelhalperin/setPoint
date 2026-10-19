@@ -200,6 +200,11 @@ struct MealDetailSheet: View {
     }
 
     var body: some View {
+        screenBody.trackScreen("meal_detail")
+    }
+
+    @ViewBuilder
+    private var screenBody: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 Text("Logged \(MealFormat.time(meal.loggedAt)) · \(meal.sourceLabel.lowercased())")

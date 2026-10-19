@@ -17,6 +17,11 @@ struct MealFixView: View {
     @State private var photo: UIImage?
 
     var body: some View {
+        screenBody.trackScreen("fix_meal")
+    }
+
+    @ViewBuilder
+    private var screenBody: some View {
         MealCorrectionEditor(
             meal: meal,
             photo: photo,

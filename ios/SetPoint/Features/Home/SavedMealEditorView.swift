@@ -174,6 +174,11 @@ struct SavedMealEditorView: View {
     ]
 
     var body: some View {
+        screenBody.trackScreen("saved_meal_editor")
+    }
+
+    @ViewBuilder
+    private var screenBody: some View {
         InnerScreen(spacing: 16) {
             ScreenHeader(label: draft.existingId == nil ? "My meal" : "Edit meal")
 

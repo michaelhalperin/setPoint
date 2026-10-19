@@ -23,6 +23,9 @@ describe('summarizeEvents', () => {
     { userId: 'a', name: 'day_settled', props: { kind: 'ON_TRACK' }, occurredAt: at('2026-10-12') },
     { userId: 'b', name: 'day_settled', props: { kind: 'UNDER' }, occurredAt: at('2026-10-12') },
     { userId: 'c', name: 'meal_logged', props: { source: 'TEXT' }, occurredAt: at('2026-10-12') },
+    { userId: 'a', name: 'screen_viewed', props: { screen: 'today' }, occurredAt: at('2026-10-12') },
+    { userId: 'a', name: 'screen_viewed', props: { screen: 'today' }, occurredAt: at('2026-10-12') },
+    { userId: 'b', name: 'screen_viewed', props: { screen: 'train' }, occurredAt: at('2026-10-12') },
   ];
   const summary = summarizeEvents(rows);
 
@@ -43,7 +46,14 @@ describe('summarizeEvents', () => {
     expect(summary.daily).toEqual([
       { date: '2026-10-10', activeUsers: 2, mealsLogged: 0, checkInsAnswered: 0 },
       { date: '2026-10-11', activeUsers: 1, mealsLogged: 2, checkInsAnswered: 1 },
-      { date: '2026-10-12', activeUsers: 1, mealsLogged: 1, checkInsAnswered: 0 },
+      { date: '2026-10-12', activeUsers: 3, mealsLogged: 1, checkInsAnswered: 0 },
+    ]);
+  });
+
+  it('counts views and people per screen', () => {
+    expect(summary.screens).toEqual([
+      { screen: 'today', views: 2, users: 1 },
+      { screen: 'train', views: 1, users: 1 },
     ]);
   });
 });

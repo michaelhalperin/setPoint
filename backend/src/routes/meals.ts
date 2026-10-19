@@ -135,7 +135,7 @@ export async function mealRoutes(app: FastifyInstance): Promise<void> {
         id,
         input,
       );
-      await track(getPrisma(), (req as AuthedRequest).userId, 'meal_fixed', { source: meal.source });
+      await track(getPrisma(), (req as AuthedRequest).userId, 'meal_fixed', { source: meal.source, mealId: meal.id });
       return { meal };
     } catch (err) {
       if (err instanceof MealNotFoundError) throw app.httpErrors.notFound(err.message);

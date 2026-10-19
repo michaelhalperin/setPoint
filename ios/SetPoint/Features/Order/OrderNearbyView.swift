@@ -62,6 +62,11 @@ struct OrderNearbyView: View {
     @State private var location = LocationOnce()
 
     var body: some View {
+        screenBody.trackScreen("order_nearby")
+    }
+
+    @ViewBuilder
+    private var screenBody: some View {
         InnerScreen(glow: .haze, spacing: 16) {
             ScreenHeader(label: "Order nearby")
 

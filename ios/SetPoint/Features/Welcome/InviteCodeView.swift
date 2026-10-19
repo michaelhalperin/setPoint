@@ -14,6 +14,11 @@ struct InviteCodeView: View {
     private var trimmed: String { code.trimmingCharacters(in: .whitespacesAndNewlines) }
 
     var body: some View {
+        screenBody.trackScreen("invite")
+    }
+
+    @ViewBuilder
+    private var screenBody: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text("SetPoint").sectionLabelStyle()
                 .frame(maxWidth: .infinity)

@@ -9,6 +9,11 @@ struct OnboardingFlow: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
+        screenBody.trackScreen("onboarding")
+    }
+
+    @ViewBuilder
+    private var screenBody: some View {
         ZStack {
             Palette.background.ignoresSafeArea()
 

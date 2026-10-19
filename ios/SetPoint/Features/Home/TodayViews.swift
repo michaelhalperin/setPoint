@@ -320,6 +320,11 @@ struct LogDock: View {
     @State private var keyboardUp = false
 
     var body: some View {
+        screenBody.trackScreen("log_panel")
+    }
+
+    @ViewBuilder
+    private var screenBody: some View {
         VStack(alignment: .leading, spacing: 14) {
             Capsule()
                 .fill(Color.white.opacity(0.18))

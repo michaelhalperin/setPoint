@@ -537,6 +537,7 @@ extension HomeResponse {
         ),
         onSaveAsMeal: {}
     )
+    .environment(AppEnvironment.preview())
 }
 
 extension HomeResponse {

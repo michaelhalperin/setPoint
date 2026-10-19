@@ -21,7 +21,7 @@ export async function adminPageRoutes(app: FastifyInstance): Promise<void> {
           "style-src 'unsafe-inline' https://fonts.googleapis.com",
           'font-src https://fonts.gstatic.com',
           "connect-src 'self'",
-          "img-src 'self' data:",
+          "img-src 'self' data: https:",
           "frame-ancestors 'none'",
           "base-uri 'none'",
           "form-action 'none'",

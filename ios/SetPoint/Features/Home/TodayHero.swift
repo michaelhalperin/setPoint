@@ -750,6 +750,11 @@ struct CheckInTakeover: View {
     var onOrder: (() -> Void)? = nil
 
     var body: some View {
+        screenBody.trackScreen("check_in")
+    }
+
+    @ViewBuilder
+    private var screenBody: some View {
         VStack(alignment: .leading, spacing: 18) {
             HStack(spacing: 8) {
                 ZStack {

@@ -11,6 +11,11 @@ struct TodayDayView: View {
     let onLog: () -> Void
 
     var body: some View {
+        screenBody.trackScreen("today_day")
+    }
+
+    @ViewBuilder
+    private var screenBody: some View {
         let moment = TodayMoment.resolve(home)
         InnerScreen(spacing: 18) {
             ScreenHeader(label: "Today · \(date.formatted(.dateTime.day().month(.abbreviated)))")

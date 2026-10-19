@@ -10,8 +10,8 @@
 import { env } from '../env.js';
 
 /** Bump when the substance changes; the app can compare it to what a user accepted. */
-export const LEGAL_VERSION = '2026-09-14-subscription';
-export const LEGAL_EFFECTIVE_DATE = 'September 14, 2026';
+export const LEGAL_VERSION = '2026-10-19-usage-and-review';
+export const LEGAL_EFFECTIVE_DATE = 'October 19, 2026';
 
 const SUPPORT = env.SUPPORT_EMAIL;
 
@@ -77,6 +77,7 @@ never sell your data or use health data for advertising.</p>
   <li><strong>Derived biosignal values (Smart mode only)</strong> — if you connect Apple Health, the app reads your heart-rate variability and resting heart rate <em>on your device</em>, converts them to a normalized deviation from your own baseline, and may send only that derived number. Raw heart-rate time series never leave your phone. These values may adjust an already-due check-in; they are not a diagnosis of under-fueling.</li>
   <li><strong>Check-in activity</strong> — when check-ins fire, whether you logged, deferred, or missed them, and any thumbs up/down you give. Used to operate the escalation logic and to tune the detection thresholds during the beta.</li>
   <li><strong>Device push token</strong> — an Apple-issued identifier used to deliver check-in notifications and Live Activities.</li>
+  <li><strong>How you use the app</strong> — which screens you open and the actions you take (for example signing up, finishing setup, logging or fixing a meal, answering a check-in, opening a dish in Wolt), with the time. Kept in our own database, linked to your account, and never sent to an analytics or advertising company.</li>
 </ul>
 
 <h2>How we use it</h2>
@@ -86,8 +87,10 @@ never sell your data or use health data for advertising.</p>
   <li>To deliver notifications and Live Activities.</li>
   <li>To improve the accuracy of the detection formula in aggregate during the closed beta.</li>
   <li>To respond to your support requests.</li>
+  <li>To understand how the app is used and make it better — for example, which screens help people eat enough and where they get stuck.</li>
 </ul>
-<p>We do not use your information for advertising or profiling, and we do not sell it.</p>
+<p><strong>Review by the SetPoint team.</strong> Members of the SetPoint team can see the meals you log (including their text and photos), your calorie and protein numbers, your weight entries, your check-in answers, and how you use the app, linked to your account. We look at this to support you, to check that estimates and check-ins are working, and to improve the app. Access is limited to the people who run SetPoint.</p>
+<p>We do not use your information for advertising, and we do not sell it.</p>
 
 <h2>Calendar</h2>
 <p>If you connect a calendar, SetPoint reads event times on your device and uploads

@@ -11,7 +11,8 @@ const body = z.object({
 
 /** The few events only the app can see (opened the app, opened Wolt). */
 export async function eventRoutes(app: FastifyInstance): Promise<void> {
-  app.addHook('preHandler', requireAuth(app));
+  // Open to accounts waiting for an invite, so the invite screen counts too.
+  app.addHook('preHandler', requireAuth(app, { allowPendingInvite: true }));
 
   app.post('/', async (req) => {
     const { name, props } = body.parse(req.body);
