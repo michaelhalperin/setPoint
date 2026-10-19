@@ -14,15 +14,18 @@ struct HomeContent: View {
     @Environment(AppEnvironment.self) private var env
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
+    /// Today before a known meal (a usual, a repeat) was shown as eaten — put back
+    /// if the server refuses it, or swapped for the real meal when it lands.
+    @State private var beforeKnownMeal: HomeResponse?
     @State private var logger: LogMealViewModel?
     @State private var showingCheckIn = false
     @State private var selectedMeal: MealSummary?
     @State private var choosingSnooze = false
     @State private var showingPaywall = false
-    @State private var checkInBusy = false
-    @State private var checkInError: String?
     @State private var topUpBusy = false
     @State private var logOpen = false
+    @State private var showingDay = false
+    @State private var showingOrder = false
     @AppStorage("topUpDismissed") private var topUpDismissed = ""
     @FocusState private var composerFocused: Bool
     @Namespace private var photoLogNamespace
@@ -129,16 +132,45 @@ struct HomeContent: View {
         }
         .animation(Motion.adaptive(Motion.morph, reduceMotion: reduceMotion), value: logger?.confirmingPhoto == true)
         .animation(Motion.adaptive(Motion.sheet, reduceMotion: reduceMotion), value: logOpen)
+        .navigationDestination(isPresented: $showingDay) {
+            if let home = loadedHome {
+                TodayDayView(
+                    home: home,
+                    pending: pendingMeal,
+                    date: now,
+                    onOpenMeal: { meal in selectedMeal = meal },
+                    onLogMissed: { slot in
+                        showingDay = false
+                        logMissed(slot)
+                    },
+                    onLog: {
+                        showingDay = false
+                        openLog()
+                    }
+                )
+            }
+        }
+        .fullScreenCover(isPresented: $showingOrder) {
+            if let home = loadedHome {
+                NavigationStack {
+                    OrderNearbyView(
+                        gapKcal: OrderNearbyContext.gap(home),
+                        slotTitle: OrderNearbyContext.slotTitle(home)
+                    ) {
+                        Task { await model.load(showSpinner: false) }
+                    }
+                }
+            }
+        }
         .sheet(item: $selectedMeal) { meal in
             MealDetailSheet(
                 meal: meal,
-                onRemove: {
-                    try await model.removeMeal(id: meal.id)
-                },
+                onRemove: { deleteMeal(meal) },
                 onSaveAsMeal: {
                     logger?.openEditor(from: meal)
                     selectedMeal = nil
-                }
+                },
+                onFixed: { Task { await model.load(showSpinner: false) } }
             )
         }
         .fullScreenCover(isPresented: scannerPresented) {
@@ -211,6 +243,9 @@ struct HomeContent: View {
             if startComposerExpanded {
                 openLog(focus: true)
             }
+            if previewLogger == nil {
+                await logger?.loadSavedMeals()
+            }
 
             await env.push.syncAuthorizationStatus()
         }
@@ -261,7 +296,7 @@ struct HomeContent: View {
         case .loading:
             HomeSkeletonView()
         case let .failed(message):
-            RetryState(message: message, retry: { Task { await model.load() } }, onLog: { openLog(focus: true) })
+            RetryState(message: message, retry: { Task { await model.load() } }, onLog: { openLog() })
         case .needsOnboarding:
             HomeSkeletonView() // onboarding is presented by MainTabView
         case let .loaded(home):
@@ -278,12 +313,13 @@ struct HomeContent: View {
                         home: home,
                         checkIn: checkIn,
                         moment: moment,
-                        busy: checkInBusy,
-                        error: checkInError,
+                        busy: false,
+                        error: nil,
                         onOpen: openCheckIn,
                         onAteThis: ateThis,
                         onAlreadyAte: alreadyAte,
-                        onSnooze: { choosingSnooze = true }
+                        onSnooze: { choosingSnooze = true },
+                        onOrder: orderAction
                     )
                     .transition(.opacity)
                 } else {
@@ -294,49 +330,46 @@ struct HomeContent: View {
                         if home.enforcementEnabled, env.push.authorizationStatus == .denied {
                             NotificationsOffBanner()
                         }
-                        TodayHero(home: home, moment: moment, date: now) {
-                            Task { await model.load(showSpinner: false) }
-                        }
+                        TodayHero(
+                            home: home,
+                            moment: moment,
+                            date: now,
+                            picks: picks(for: home, moment: moment),
+                            loggingPickID: loggingPickID,
+                            onAppetiteChanged: { await model.load(showSpinner: false) },
+                            onOpenDay: { showingDay = true },
+                            onPick: logPick,
+                            onLog: { openLog() },
+                            onOpenCheckIn: openCheckIn,
+                            onOrder: orderAction
+                        )
                     }
                     .padding(.horizontal, Space.gutter)
-                    .padding(.top, Space.xs)
                     .transition(.opacity)
                 }
 
                 VStack(alignment: .leading, spacing: Space.lg) {
-                    if !moment.takesOver {
-                        if AppetiteTodayVisibility.resolve(home: home) != .ask {
-                            AppetiteTodayLine(home: home) {
-                                Task { await model.load(showSpinner: false) }
-                            }
-                            .appearIn(0)
-                        }
-
-                        if let topUp = home.topUp, topUpDismissed != TopUpDismissal.key(for: topUp, now: now) {
-                            TopUpCard(
-                                topUp: topUp,
-                                busy: topUpBusy,
-                                onAdd: { addTopUp(topUp) },
-                                onDismiss: { topUpDismissed = TopUpDismissal.key(for: topUp, now: now) }
-                            )
-                            .transition(.opacity.combined(with: .move(edge: .top)))
-                        }
+                    if !moment.takesOver, let topUp = home.topUp, topUpDismissed != TopUpDismissal.key(for: topUp, now: now) {
+                        TopUpCard(
+                            topUp: topUp,
+                            busy: topUpBusy,
+                            onAdd: { addTopUp(topUp) },
+                            onDismiss: { topUpDismissed = TopUpDismissal.key(for: topUp, now: now) }
+                        )
+                        .transition(.opacity.combined(with: .move(edge: .top)))
                     }
 
-                    FuelStrip(home: home, moment: moment)
-                        .appearIn(1)
-
-                    MealLog(
-                        home: home,
-                        pending: pendingMeal,
-                        landingNamespace: photoLogNamespace,
-                        landingCardID: photoLandingCardID,
-                        onOpenMeal: { meal in
-                            selectedMeal = meal
-                        },
-                        onLogMissed: logMissed
-                    )
-                    .appearIn(2)
+                    if moment.takesOver {
+                        MealLog(
+                            home: home,
+                            pending: pendingMeal,
+                            landingNamespace: photoLogNamespace,
+                            landingCardID: photoLandingCardID,
+                            onOpenMeal: { meal in selectedMeal = meal },
+                            onLogMissed: logMissed
+                        )
+                        .appearIn(2)
+                    }
                 }
                 .padding(.horizontal, Space.gutter)
             }
@@ -373,18 +406,72 @@ struct HomeContent: View {
                         currentSlot: TodayLayout.slot(forMinute: home.day?.nowMin ?? TodayLayout.minuteOfDay(from: now), times: home.resolvedMealTimes),
                         photoNamespace: photoLogNamespace,
                         photoGeometryID: Self.photoImageID,
-                        onClose: closeLog
-                    ) {
-                        Task { await logger.submit() }
-                    }
+                        onClose: closeLog,
+                        onSubmit: { Task { await logger.submit() } },
+                        onOrder: env.flags.isOn(.orderNearby) ? {
+                            closeLog()
+                            openOrder()
+                        } : nil
+                    )
                     .transition(.move(edge: .bottom))
                 } else {
-                    LogStatusToast(logger: logger, onRetry: { openLog(focus: true) })
+                    LogStatusToast(
+                        logger: logger,
+                        onRetry: { openLog() },
+                        onDelete: {
+                            logger.clearAfterSuccess()
+                        }
+                    )
                         .padding(.bottom, 8)
                         .frame(maxWidth: .infinity)
                 }
             }
         }
+    }
+
+    // MARK: Order nearby
+
+    /// Deleting is instant: the sheet closes and the meal leaves Today now. If the
+    /// server says no, it comes back with "Didn't save · Try again".
+    private func deleteMeal(_ meal: MealSummary) {
+        Task {
+            do {
+                try await model.removeMeal(id: meal.id)
+            } catch APIError.unauthorized {
+                return
+            } catch {
+                Haptics.nudge()
+                env.chrome.reportFailure(retry: { deleteMeal(meal) })
+            }
+        }
+    }
+
+    /// Order nearby, when its flag is on for this user.
+    private var orderAction: (() -> Void)? {
+        env.flags.isOn(.orderNearby) ? openOrder : nil
+    }
+
+    private func openOrder() {
+        Haptics.nudge()
+        showingOrder = true
+    }
+
+    // MARK: Picks
+
+    /// The "Pick one" rows on Today's next card.
+    private func picks(for home: HomeResponse, moment: TodayMoment) -> [SavedMeal] {
+        let target = home.appetite?.nextPlate?.kcal ?? home.day?.pace?.next?.suggestedKcal
+        return TodayPicks.resolve(saved: logger?.savedMeals ?? [], moment: moment, targetKcal: target)
+    }
+
+    private var loggingPickID: String? {
+        guard let logger, case .parsing = logger.phase else { return nil }
+        return logger.savedMeals.first { $0.name == logger.submittedPrompt }?.id
+    }
+
+    private func logPick(_ meal: SavedMeal) {
+        Haptics.nudge()
+        Task { await logger?.logSaved(meal) }
     }
 
     // MARK: Actions
@@ -425,24 +512,40 @@ struct HomeContent: View {
     }
 
     private func coverRefuel() {
-        guard let checkIn = activeCheckIn, !checkInBusy else { return }
-        checkInBusy = true
-        checkInError = nil
+        guard let checkIn = activeCheckIn else { return }
+        answerCheckIn(retry: coverRefuel) {
+            try await CheckInActions.cover(checkInID: checkIn.id, api: env.api)
+        }
+    }
+
+    /// Check-in answers are instant: the check-in leaves Today now and the request
+    /// goes out behind it. If the server says no, it comes back with "Didn't save ·
+    /// Try again". `change` adds anything else that should show at once.
+    private func answerCheckIn(
+        retry: @escaping () -> Void,
+        change: (HomeResponse) -> HomeResponse = { $0 },
+        then: @escaping () async -> Void = {},
+        send: @escaping () async throws -> Void
+    ) {
+        let before = model.applyNow { change($0.closingCheckIn) }
+        closeCheckIn()
         Task {
             do {
-                try await CheckInActions.cover(checkInID: checkIn.id, api: env.api)
-                closeCheckIn()
+                try await send()
+                await then()
                 await model.load(showSpinner: false)
+            } catch APIError.unauthorized {
+                return
             } catch {
-                checkInError = UserFacingError.message(for: error, fallback: "Couldn't close that. Try again.")
+                if let before { model.restore(before) }
+                Haptics.nudge()
+                env.chrome.reportFailure(retry: retry)
             }
-            checkInBusy = false
         }
     }
 
     /// After "I already ate": open the dock at the meal's time so logging it is one step.
     private func offerQuickLog(for checkIn: HomeResponse.ActiveCheckIn) {
-        Task { await model.load(showSpinner: false) }
         if let slot = checkIn.slot.flatMap(MealSlot.init(rawValue:)) {
             let times = loadedHome?.resolvedMealTimes ?? .standard
             let at = slot == .breakfast ? times.breakfastMin : slot == .lunch ? times.lunchMin : times.dinnerMin
@@ -452,18 +555,11 @@ struct HomeContent: View {
     }
 
     private func alreadyAte() {
-        guard let checkIn = activeCheckIn, !checkInBusy else { return }
-        checkInBusy = true
-        checkInError = nil
-        Task {
-            do {
-                try await CheckInActions.alreadyAte(checkInID: checkIn.id, api: env.api)
-                offerQuickLog(for: checkIn)
-            } catch {
-                checkInError = UserFacingError.message(for: error, fallback: "Couldn't close that. Try again.")
-            }
-            checkInBusy = false
+        guard let checkIn = activeCheckIn else { return }
+        answerCheckIn(retry: alreadyAte) {
+            try await CheckInActions.alreadyAte(checkInID: checkIn.id, api: env.api)
         }
+        offerQuickLog(for: checkIn)
     }
 
     private func addTopUp(_ topUp: HomeResponse.TopUp) {
@@ -496,34 +592,40 @@ struct HomeContent: View {
     }
 
     private func ateThis() {
-        guard let prescription = activeCheckIn?.prescription, !checkInBusy else { return }
-        checkInBusy = true
-        checkInError = nil
-        Task {
-            do {
-                try await CheckInActions.eat(prescriptionID: prescription.id, api: env.api)
-                Haptics.landed()
-                env.changes.mealsChanged()
-                await model.load(showSpinner: false)
-            } catch {
-                checkInError = UserFacingError.message(for: error, fallback: "Couldn't log that. Try again.")
-            }
-            checkInBusy = false
+        guard let checkIn = activeCheckIn, let prescription = checkIn.prescription else { return }
+        Haptics.landed()
+        // The plate shows on Today now; the reload swaps in the real meal.
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let plate = MealSummary(
+            id: "pending-\(prescription.id)",
+            loggedAt: formatter.string(from: Date()),
+            kcal: prescription.totalKcal,
+            proteinG: prescription.totalProteinG,
+            carbsG: 0,
+            fatG: 0,
+            source: "PRESCRIPTION",
+            summary: prescription.items.map(\.name).joined(separator: ", "),
+            photoUrl: nil,
+            notes: nil,
+            items: nil,
+            parseConfidence: nil
+        )
+        let slot = checkIn.slot.flatMap(MealSlot.init(rawValue:))
+            ?? TodayLayout.slot(forMinute: loadedHome?.day?.nowMin ?? TodayLayout.minuteOfDay(from: now), times: loadedHome?.resolvedMealTimes ?? .standard)
+        answerCheckIn(
+            retry: ateThis,
+            change: { $0.inserting(plate, into: slot) },
+            then: { env.changes.mealsChanged() }
+        ) {
+            try await CheckInActions.eat(prescriptionID: prescription.id, api: env.api)
         }
     }
 
     private func snooze(minutes: Int) {
-        guard let checkIn = activeCheckIn, !checkInBusy else { return }
-        checkInBusy = true
-        checkInError = nil
-        Task {
-            do {
-                try await CheckInActions.snooze(checkInID: checkIn.id, minutes: minutes, api: env.api)
-                await model.load(showSpinner: false)
-            } catch {
-                checkInError = UserFacingError.message(for: error, fallback: "Couldn't snooze. Try again.")
-            }
-            checkInBusy = false
+        guard let checkIn = activeCheckIn else { return }
+        answerCheckIn(retry: { snooze(minutes: minutes) }) {
+            try await CheckInActions.snooze(checkInID: checkIn.id, minutes: minutes, api: env.api)
         }
     }
 
@@ -533,8 +635,20 @@ struct HomeContent: View {
         case .parsing:
             composerFocused = false
             withAnimation(Motion.adaptive(Motion.sheet, reduceMotion: reduceMotion)) { logOpen = false }
+            if let meal = logger?.pendingKnownMeal {
+                let slot = pendingSlot
+                beforeKnownMeal = model.applyNow { $0.inserting(meal, into: slot) }
+            }
         case .failed:
-            openLog(focus: true)
+            if logger?.pendingKnownMeal != nil {
+                if let before = beforeKnownMeal { model.restore(before) }
+                beforeKnownMeal = nil
+                logger?.dropFailedKnown()
+                Haptics.nudge()
+                env.chrome.reportFailure(retry: { Task { await logger?.retryKnown() } })
+                return
+            }
+            openLog()
         case .queued:
             composerFocused = false
             withAnimation(Motion.adaptive(Motion.sheet, reduceMotion: reduceMotion)) { logOpen = false }
@@ -543,7 +657,11 @@ struct HomeContent: View {
             withAnimation(Motion.adaptive(Motion.sheet, reduceMotion: reduceMotion)) { logOpen = false }
             Haptics.landed()
             if logged.fromPhoto { return }
+            // Swap the shown-early copy for the real meal in the same frame.
+            if let before = beforeKnownMeal { model.restore(before) }
+            beforeKnownMeal = nil
             landLoggedMeal()
+            env.chrome.noteLogged(mealID: logged.mealId, kcal: logged.kcal, title: logged.summary)
             logger?.clearAfterSuccess()
             Task { await model.load(showSpinner: false) }
         case .compose:
@@ -621,6 +739,8 @@ struct HomeContent: View {
         let slot = pendingSlot
         switch logger?.phase {
         case .parsing:
+            // A known meal is already on Today as eaten.
+            if logger?.pendingKnownMeal != nil { return nil }
             let title = logger?.submittedPrompt ?? ""
             return .parsing(title: title.isEmpty ? "Estimating…" : title, slot: slot)
         case let .logged(logged):

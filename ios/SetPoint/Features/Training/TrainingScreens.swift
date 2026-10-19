@@ -17,10 +17,10 @@ struct TrainingScreen: View {
     var body: some View {
         SettingsScreen(
             title: "Train",
-            subtitle: "· this week",
             accessory: AnyView(RoundIconButton("plus", label: "Add a session") { adding = true }),
             showsBack: !isTabRoot,
-            glow: .haze
+            glow: .haze,
+            showsHeadline: false
         ) {
             if let week {
                 content(week)
@@ -38,111 +38,21 @@ struct TrainingScreen: View {
 
     @ViewBuilder
     private func content(_ week: TrainingWeekResponse) -> some View {
-        HStack(spacing: 10) {
-            statTile("Fueled", value: "\(week.fueledWell.good)", unit: "of \(week.fueledWell.total) sessions")
-            statTile("Extra food earned", value: "+\(week.days.reduce(0) { $0 + $1.bumpKcal }.formatted())", unit: "kcal")
-        }
-        .appearIn(1, rise: 14)
+        Text(weekLine(week))
+            .font(Typography.mono(11))
+            .tracking(1.3)
+            .foregroundStyle(Palette.inkFaint)
 
-        VStack(spacing: 6) {
-            ForEach(Array(week.days.enumerated()), id: \.element.id) { index, day in
-                dayRow(day, week: week)
-                    .appearIn(2 + index, rise: 10)
-            }
-        }
+        TrainTodayCard(today: week.today)
+            .appearIn(1, rise: 14)
 
-        howItWorks(week).appearIn(9, rise: 14)
-    }
+        TrainWeekCard(week: week, todayISO: todayISO, selected: $openDay)
+            .appearIn(2, rise: 14)
 
-    private func statTile(_ label: String, value: String, unit: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(label)
-                .font(Typography.mono(10))
-                .tracking(1.2)
-                .textCase(.uppercase)
-                .foregroundStyle(Palette.inkFaint)
-            HStack(alignment: .firstTextBaseline, spacing: 5) {
-                Text(value)
-                    .font(Typography.data(24, weight: .light))
-                    .foregroundStyle(Palette.ink)
-                Text(unit)
-                    .font(Typography.data(13, weight: .regular))
-                    .foregroundStyle(Palette.inkSoft)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-            }
-        }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .glass(radius: 20)
-    }
+        healthRow
+            .appearIn(3, rise: 14)
 
-    /// One row per day: the session (or rest) and what it adds. Today opens to
-    /// show the fuel around the session.
-    private func dayRow(_ day: TrainingWeekResponse.Day, week: TrainingWeekResponse) -> some View {
-        let isToday = day.date == todayISO
-        let open = openDay == day.date || (openDay == nil && isToday && !day.rest)
-        return Button {
-            withAnimation(Motion.settle) { openDay = open ? "" : day.date }
-        } label: {
-            VStack(alignment: .leading, spacing: 0) {
-                HStack(spacing: 12) {
-                    Text(weekdayShort(day.date))
-                        .font(Typography.mono(11))
-                        .foregroundStyle(isToday ? Palette.hazeSoft : Palette.inkFaint)
-                        .frame(width: 34, alignment: .leading)
-                    Text(dayTitle(day))
-                        .font(Typography.data(15, weight: .regular))
-                        .foregroundStyle(day.rest ? Palette.inkSoft : Palette.ink)
-                    Spacer(minLength: 8)
-                    Text(day.rest ? "rest" : "+\(day.bumpKcal) kcal")
-                        .font(Typography.data(12, weight: .regular))
-                        .foregroundStyle(day.rest ? Palette.inkFaint : Palette.hazeSoft)
-                }
-                if open, isToday {
-                    VStack(alignment: .leading, spacing: 10) {
-                        ForEach(week.today.timeline) { event in
-                            HStack(spacing: 10) {
-                                Circle()
-                                    .fill(event.kind == "workout" ? Palette.haze : event.kind == "refuel" ? Palette.hazeSoft : Palette.amber)
-                                    .frame(width: 7, height: 7)
-                                Text(formatMinutes(event.atMin))
-                                    .font(Typography.mono(11))
-                                    .foregroundStyle(Palette.inkSoft)
-                                    .frame(width: 44, alignment: .leading)
-                                Text(event.label)
-                                    .font(Typography.data(14, weight: .regular))
-                                    .foregroundStyle(Palette.ink)
-                                Spacer(minLength: 0)
-                                if event.nudge == true {
-                                    Text("nudge")
-                                        .font(Typography.mono(10))
-                                        .foregroundStyle(Palette.hazeSoft)
-                                }
-                            }
-                        }
-                        Text("\(week.today.targetKcal.formatted()) kcal today = \(week.today.baseKcal.formatted()) + \(week.today.bumpKcal)")
-                            .font(Typography.mono(11))
-                            .foregroundStyle(Palette.inkFaint)
-                            .padding(.top, 2)
-                    }
-                    .padding(.leading, 46)
-                    .padding(.top, 12)
-                    .transition(.opacity.combined(with: .move(edge: .top)))
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 14)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .glass(
-                radius: 20,
-                fill: isToday ? Palette.haze.opacity(0.08) : (day.rest ? Color.white.opacity(0.025) : Palette.glass),
-                stroke: isToday ? Palette.haze.opacity(0.35) : Palette.hairline
-            )
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(PressableCard())
-        .accessibilityLabel("\(weekdayShort(day.date)), \(dayTitle(day)), \(day.rest ? "rest" : "plus \(day.bumpKcal) calories")")
+        howItWorks(week).appearIn(4, rise: 14)
     }
 
     private var todayISO: String {
@@ -153,15 +63,46 @@ struct TrainingScreen: View {
         return f.string(from: .now)
     }
 
-    private func dayTitle(_ day: TrainingWeekResponse.Day) -> String {
-        guard let first = day.workouts.first else { return day.rest ? "Rest" : "Training" }
-        let kind: String
-        switch first.kind {
-        case "CARDIO": kind = "Cardio"
-        case "MIXED": kind = "Mixed"
-        default: kind = "Strength"
+    /// "13–19 OCT · 4 SESSIONS"
+    private func weekLine(_ week: TrainingWeekResponse) -> String {
+        let sessions = week.days.reduce(0) { $0 + $1.workouts.count }
+        var utc = Date.FormatStyle.dateTime
+        utc.timeZone = TimeZone(secondsFromGMT: 0)!
+        var range = ""
+        if let first = week.days.first.flatMap({ WeekStation.parse($0.date) }),
+           let last = week.days.last.flatMap({ WeekStation.parse($0.date) }) {
+            range = "\(first.formatted(utc.day()))–\(last.formatted(utc.day().month(.abbreviated))) · "
         }
-        return "\(kind) · \(formatMinutes(first.startMin))"
+        return (range + (sessions == 1 ? "1 session" : "\(sessions) sessions")).uppercased()
+    }
+
+    /// Where sessions come from, and a way to add one by hand.
+    private var healthRow: some View {
+        Button { adding = true } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "heart.fill")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(Color(hex: 0xFF375F))
+                    .frame(width: 34, height: 34)
+                    .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.white))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(env.health.connected ? "Sessions come from Apple Health" : "Apple Health is off")
+                        .font(Typography.data(15, weight: .regular))
+                        .foregroundStyle(Palette.ink)
+                    Text(env.health.connected ? "Did one without your watch? Add it." : "Add sessions here, or turn it on in You.")
+                        .font(Typography.data(12, weight: .regular))
+                        .foregroundStyle(Palette.inkSoft)
+                }
+                Spacer(minLength: 8)
+                Text("Add")
+                    .font(Typography.data(13, weight: .medium))
+                    .foregroundStyle(Palette.hazeSoft)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .glass(radius: 22, fill: Color.white.opacity(0.03))
+        }
+        .buttonStyle(PressableCard())
     }
 
     private func howItWorks(_ week: TrainingWeekResponse) -> some View {
@@ -301,19 +242,6 @@ struct TrainingScreen: View {
             self.error = UserFacingError.message(for: error, fallback: "Couldn’t add that session. Try again.")
         }
     }
-
-    private func weekdayShort(_ iso: String) -> String {
-        let parts = iso.split(separator: "-")
-        guard parts.count == 3,
-              let y = Int(parts[0]), let m = Int(parts[1]), let d = Int(parts[2])
-        else { return "·" }
-        var comps = DateComponents()
-        comps.year = y
-        comps.month = m
-        comps.day = d
-        guard let date = Calendar.current.date(from: comps) else { return "·" }
-        return date.formatted(.dateTime.weekday(.abbreviated))
-    }
 }
 
 /// The Training tab without a subscription: what it does, and the way in.
@@ -321,7 +249,7 @@ struct TrainingLockedView: View {
     @State private var showingPaywall = false
 
     var body: some View {
-        SettingsScreen(title: "Train", subtitle: "· with Pro", showsBack: false, glow: .haze) {
+        SettingsScreen(title: "Train", showsBack: false, glow: .haze, showsHeadline: false) {
             VStack(alignment: .leading, spacing: Space.md) {
                 lockedRow("figure.strengthtraining.traditional", "Training days get more food", "Your target rises with the session, so the extra burn doesn’t widen the gap.")
                 lockedRow("bolt.heart", "Refuel right after", "When Apple Health saves a workout, a refuel check-in follows within minutes.")
@@ -425,33 +353,46 @@ struct RefuelSheet: View {
 
 #if DEBUG
 extension TrainingWeekResponse {
-    static let sample = TrainingWeekResponse(
-        addCalories: true,
-        preWorkoutNudgeMin: 90,
-        fueledWell: .init(good: 4, total: 5),
-        days: (0..<7).map { i in
-            .init(
-                date: String(format: "2026-09-%02d", 14 + i),
-                bumpKcal: i == 0 ? 350 : 0,
-                rest: i != 0,
-                workouts: i == 0
-                    ? [.init(id: "w1", kind: "STRENGTH", source: "PLANNED", start: "2026-09-14T15:00:00Z", startMin: 1020, durationMin: 60, activeKcal: 350)]
-                    : []
+    static var sample: TrainingWeekResponse {
+        let f = DateFormatter()
+        f.calendar = Calendar(identifier: .gregorian)
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "yyyy-MM-dd"
+        // Six days back to today: lift, rest, run, rest, lift, rest, run planned today.
+        let plan: [(kind: String, source: String, startMin: Int, duration: Int, bump: Int)?] = [
+            ("STRENGTH", "HEALTHKIT", 1050, 60, 280), nil, ("CARDIO", "HEALTHKIT", 1020, 50, 420), nil,
+            ("STRENGTH", "HEALTHKIT", 1080, 55, 260), nil, ("CARDIO", "PLANNED", 1020, 60, 350),
+        ]
+        let days: [Day] = plan.enumerated().map { i, session in
+            let date = f.string(from: Calendar.current.date(byAdding: .day, value: i - 6, to: .now) ?? .now)
+            guard let session else { return .init(date: date, bumpKcal: 0, rest: true, workouts: []) }
+            return .init(
+                date: date,
+                bumpKcal: session.bump,
+                rest: false,
+                workouts: [.init(id: "w\(i)", kind: session.kind, source: session.source, start: "\(date)T15:00:00Z", startMin: session.startMin, durationMin: session.duration, activeKcal: session.source == "HEALTHKIT" ? session.bump + 60 : nil)]
             )
-        },
-        today: .init(
-            baseKcal: 3120,
-            bumpKcal: 350,
-            targetKcal: 3470,
-            workouts: [.init(id: "w1", kind: "STRENGTH", source: "PLANNED", start: "2026-09-14T15:00:00Z", startMin: 1020, durationMin: 60, activeKcal: 350)],
-            dinnerMin: 1170,
-            timeline: [
-                .init(kind: "before", atMin: 930, label: "Before you train", nudge: true),
-                .init(kind: "workout", atMin: 1020, label: "Workout"),
-                .init(kind: "refuel", atMin: 1080, label: "Refuel window"),
-                .init(kind: "dinner", atMin: 1170, label: "Dinner"),
-            ]
+        }
+        let today = days[6].workouts
+        return TrainingWeekResponse(
+            addCalories: true,
+            preWorkoutNudgeMin: 90,
+            fueledWell: .init(good: 3, total: 4),
+            days: days,
+            today: .init(
+                baseKcal: 3100,
+                bumpKcal: 350,
+                targetKcal: 3450,
+                workouts: today,
+                dinnerMin: 1170,
+                timeline: [
+                    .init(kind: "before", atMin: 930, label: "Before you train", nudge: true),
+                    .init(kind: "workout", atMin: 1020, label: "Workout"),
+                    .init(kind: "refuel", atMin: 1080, label: "Refuel window"),
+                    .init(kind: "dinner", atMin: 1170, label: "Dinner"),
+                ]
+            )
         )
-    )
+    }
 }
 #endif

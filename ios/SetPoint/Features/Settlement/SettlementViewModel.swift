@@ -159,6 +159,15 @@ final class SettlementViewModel {
         let vm = SettlementViewModel(api: AppEnvironment.preview().api, onUnauthorized: {})
         vm.phase = .loaded(response)
         vm.isPreview = true
+        if let goal = response.weightGoal, let start = goal.startWeightKg, let now = goal.currentWeightKg, !response.days.isEmpty {
+            // Weekly weigh-ins from the start weight to today's, with a little wobble.
+            let wobble = [0, 0.15, -0.1, 0.2, -0.05, 0.1, 0]
+            vm.weights = (0..<7).map { i in
+                let date = Calendar.current.date(byAdding: .day, value: (i - 6) * 7, to: .now) ?? .now
+                let kg = start + (now - start) * Double(i) / 6 + wobble[i]
+                return .init(id: "w\(i)", weightKg: (kg * 10).rounded() / 10, measuredAt: ISO8601DateFormatter().string(from: date))
+            }
+        }
         return vm
     }
     #endif

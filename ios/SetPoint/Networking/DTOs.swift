@@ -7,19 +7,21 @@ import UIKit
 struct AuthResponse: Decodable {
     let token: String
     let userId: String
+    /// Sign-up is invite-only and this account hasn't been let in yet.
+    var needsInvite: Bool? = nil
 }
 
 struct HomeResponse: Decodable {
     let goal: String
     let mode: String
     let enforcementEnabled: Bool
-    let ledger: Ledger
+    var ledger: Ledger
     let framing: Framing
     let managerNote: String
-    let meals: [MealSummary]
+    var meals: [MealSummary]
     /// Usual breakfast / lunch / dinner minutes-from-midnight. Older payloads omit this.
     let mealTimes: MealTimesPayload?
-    let activeCheckIn: ActiveCheckIn?
+    var activeCheckIn: ActiveCheckIn?
     /// Today's meal-time slots, where now sits, and pace. Older payloads omit it.
     var day: Day? = nil
     /// The check-in coming if nothing is logged. Nil in quiet mode, while paused,
@@ -987,4 +989,32 @@ struct DeleteAccountRequest: Encodable {
 struct DeleteAccountResponse: Decodable {
     let deleted: Bool
     let appleTokenRevoked: Bool
+}
+
+/// GET /api/nearby — places near the user, each with dishes sized to the gap, best first.
+struct NearbyResponse: Decodable {
+    let gapKcal: Int
+    /// Made-up places (no Wolt links) while the real list is empty.
+    let sample: Bool
+    let venues: [Venue]
+
+    struct Venue: Decodable, Identifiable, Hashable {
+        let id: String
+        let name: String
+        let distanceKm: Double
+        let woltUrl: String?
+        let dishes: [Dish]
+    }
+
+    struct Dish: Decodable, Identifiable, Hashable {
+        let id: String
+        let name: String
+        let kcal: Int
+        let proteinG: Double
+        var carbsG: Double? = nil
+        var fatG: Double? = nil
+        /// BOWL · WRAP · DRINK · PLATE
+        let kind: String
+        let woltUrl: String?
+    }
 }

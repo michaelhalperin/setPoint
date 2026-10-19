@@ -495,7 +495,11 @@ struct RhythmSettingsView: View {
                 quietEnd: model.quietHours.endMin,
                 selected: $selected,
                 minute: minute(of:),
-                note: note(for:)
+                note: note(for:),
+                onMove: { item, minute in
+                    if selected != item { selected = item }
+                    setMinute(minute, for: item)
+                }
             )
             .frame(width: 300, height: 300)
             .frame(maxWidth: .infinity)
@@ -580,14 +584,18 @@ struct RhythmSettingsView: View {
     private func shift(_ delta: Int) {
         UISelectionFeedbackGenerator().selectionChanged()
         withAnimation(Motion.settle) {
-            switch selected {
-            case let .meal(slot):
-                setTime(activeTimes[slot] + delta, slot: slot)
-            case .quietStart:
-                model.quietHours.startMin = MealTimeEditing.snap(model.quietHours.startMin + delta)
-            case .quietEnd:
-                model.quietHours.endMin = MealTimeEditing.snap(model.quietHours.endMin + delta)
-            }
+            setMinute(minute(of: selected) + delta, for: selected)
+        }
+    }
+
+    private func setMinute(_ minute: Int, for item: DialItem) {
+        switch item {
+        case let .meal(slot):
+            setTime(minute, slot: slot)
+        case .quietStart:
+            model.quietHours.startMin = MealTimeEditing.snap(minute)
+        case .quietEnd:
+            model.quietHours.endMin = MealTimeEditing.snap(minute)
         }
     }
 
@@ -658,7 +666,7 @@ struct RhythmSettingsView: View {
 }
 
 /// The day as a clock: noon at the top, night at the bottom. Meals are lit dots on
-/// the ring, quiet hours a haze arc; the selected one is read out in the middle.
+/// the ring, quiet hours a haze arc; drag a ball around the ring to set its time.
 private struct MealClock: View {
     let times: MealTimesPayload
     let quietStart: Int
@@ -666,7 +674,9 @@ private struct MealClock: View {
     @Binding var selected: RhythmSettingsView.DialItem
     let minute: (RhythmSettingsView.DialItem) -> Int
     let note: (RhythmSettingsView.DialItem) -> String
+    let onMove: (RhythmSettingsView.DialItem, Int) -> Void
 
+    @State private var dragging: RhythmSettingsView.DialItem?
     private let radius: CGFloat = 128
 
     var body: some View {
@@ -676,17 +686,21 @@ private struct MealClock: View {
                 Circle().stroke(Color.white.opacity(0.08), lineWidth: 2)
                     .frame(width: radius * 2, height: radius * 2)
                     .position(c)
+                    .allowsHitTesting(false)
                 arc(from: times.breakfastMin, to: times.dinnerMin, center: c)
                     .stroke(Palette.amber.opacity(0.55), style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
+                    .allowsHitTesting(false)
                 arc(from: quietStart, to: quietEnd, center: c)
                     .stroke(Palette.haze.opacity(0.6), style: StrokeStyle(lineWidth: 12, lineCap: .round))
                     .shadow(color: Palette.haze.opacity(0.7), radius: 10)
+                    .allowsHitTesting(false)
 
                 ForEach([(720, 12), (1080, 18), (0, 0), (360, 6)], id: \.0) { m, hour in
                     Text(DialClock.cardinalLabel(hour))
                         .font(Typography.mono(10))
                         .foregroundStyle(Palette.inkFaint)
                         .position(point(m, r: 102, c: c))
+                        .allowsHitTesting(false)
                 }
 
                 VStack(spacing: 6) {
@@ -705,33 +719,71 @@ private struct MealClock: View {
                 }
                 .frame(width: 170)
                 .position(c)
+                .allowsHitTesting(false)
                 .accessibilityElement(children: .combine)
 
                 ForEach(RhythmSettingsView.DialItem.order, id: \.self) { item in
-                    let on = item == selected
-                    Button { selected = item } label: {
-                        Group {
-                            if item.isQuiet {
-                                Circle()
-                                    .fill(on ? Color(hex: 0xE0E7FF) : Palette.haze)
-                                    .frame(width: on ? 22 : 14, height: on ? 22 : 14)
-                                    .shadow(color: Palette.haze.opacity(0.9), radius: on ? 9 : 4)
-                            } else if on {
-                                EmberDot(size: 30)
-                            } else {
-                                Circle().fill(Palette.amber).frame(width: 16, height: 16)
-                                    .shadow(color: Palette.amber.opacity(0.55), radius: 4)
-                            }
-                        }
-                        .frame(width: 44, height: 44)
+                    let on = item == selected || dragging == item
+                    knob(item, on: on)
+                        .scaleEffect(dragging == item ? 1.14 : 1)
+                        .frame(width: 48, height: 48)
                         .contentShape(Circle())
-                    }
-                    .buttonStyle(.plain)
-                    .position(point(minute(item), r: radius, c: c))
-                    .accessibilityLabel("\(item.title) \(formatMinutes(minute(item)))")
-                    .accessibilityAddTraits(on ? .isSelected : [])
+                        .position(point(minute(item), r: radius, c: c))
+                        .gesture(drag(item, center: c))
+                        .accessibilityLabel("\(item.title) \(formatMinutes(minute(item)))")
+                        .accessibilityHint("Drag around the clock to change the time")
+                        .accessibilityAddTraits(on ? .isSelected : [])
+                        .accessibilityAdjustableAction { direction in
+                            let delta = direction == .increment ? 15 : -15
+                            onMove(item, minute(item) + delta)
+                        }
                 }
             }
+            .coordinateSpace(name: "mealClock")
+        }
+    }
+
+    @ViewBuilder
+    private func knob(_ item: RhythmSettingsView.DialItem, on: Bool) -> some View {
+        if item.isQuiet {
+            Circle()
+                .fill(on ? Color(hex: 0xE0E7FF) : Palette.haze)
+                .frame(width: on ? 22 : 14, height: on ? 22 : 14)
+                .shadow(color: Palette.haze.opacity(0.9), radius: on ? 9 : 4)
+        } else if on {
+            EmberDot(size: 30)
+        } else {
+            Circle().fill(Palette.amber).frame(width: 16, height: 16)
+                .shadow(color: Palette.amber.opacity(0.55), radius: 4)
+        }
+    }
+
+    private func drag(_ item: RhythmSettingsView.DialItem, center: CGPoint) -> some Gesture {
+        DragGesture(minimumDistance: 0, coordinateSpace: .named("mealClock"))
+            .onChanged { value in
+                dragging = item
+                selected = item
+                let next = snappedMinute(at: value.location, center: center, for: item)
+                guard next != minute(item) else { return }
+                UISelectionFeedbackGenerator().selectionChanged()
+                onMove(item, next)
+            }
+            .onEnded { _ in dragging = nil }
+    }
+
+    /// MealClock has noon at the top; `MealTimeEditing.minute` assumes midnight at the top.
+    private func snappedMinute(at location: CGPoint, center: CGPoint, for item: RhythmSettingsView.DialItem) -> Int {
+        let raw = (MealTimeEditing.minute(at: location, center: center) + 720) % 1440
+        switch item {
+        case let .meal(slot):
+            return MealTimeEditing.clamp(
+                raw, slot: slot,
+                breakfast: times.breakfastMin,
+                lunch: times.lunchMin,
+                dinner: times.dinnerMin
+            )
+        case .quietStart, .quietEnd:
+            return MealTimeEditing.snap(raw)
         }
     }
 

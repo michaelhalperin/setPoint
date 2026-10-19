@@ -69,11 +69,23 @@ struct RulerPicker: View {
     /// False when the screen shows the number itself.
     var showsValue = true
 
+    /// Value at gesture start — tape tracks the finger continuously from here.
     @State private var dragStartValue: Double?
+    /// Finger travel in points; drives the tape 1:1 while dragging.
+    @State private var dragPixels: CGFloat = 0
+    /// Last stepped value that fired a tick haptic.
+    @State private var lastTick: Double?
+    @State private var tickFeedback = UISelectionFeedbackGenerator()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private let pxPerStep: CGFloat = 16
     private let tickAreaHeight: CGFloat = 64
+
+    /// Live position under the cursor — fractional during a drag, snapped otherwise.
+    private var displayValue: Double {
+        guard let start = dragStartValue else { return value }
+        return clamp(start - Double(dragPixels / pxPerStep) * step)
+    }
 
     var body: some View {
         VStack(spacing: Space.md) {
@@ -129,7 +141,7 @@ struct RulerPicker: View {
 
     private func tape(width: CGFloat) -> some View {
         let totalSteps = Int(((range.upperBound - range.lowerBound) / step).rounded())
-        let offset = width / 2 - CGFloat((value - range.lowerBound) / step) * pxPerStep - pxPerStep / 2
+        let offset = width / 2 - CGFloat((displayValue - range.lowerBound) / step) * pxPerStep - pxPerStep / 2
         return HStack(spacing: 0) {
             ForEach(0 ... totalSteps, id: \.self) { i in
                 let v = range.lowerBound + Double(i) * step
@@ -148,6 +160,8 @@ struct RulerPicker: View {
             }
         }
         .offset(x: offset)
+        // Finger owns the motion while dragging; spring only for the settle snap.
+        .animation(dragStartValue == nil ? Motion.adaptive(Motion.settle, reduceMotion: reduceMotion) : nil, value: displayValue)
     }
 
     private var edgeFade: some View {
@@ -165,20 +179,65 @@ struct RulerPicker: View {
     private var drag: some Gesture {
         DragGesture(minimumDistance: 1)
             .onChanged { g in
-                let base = dragStartValue ?? value
-                if dragStartValue == nil { dragStartValue = value }
-                let deltaSteps = (g.translation.width / pxPerStep).rounded(.towardZero)
-                let proposed = base - Double(deltaSteps) * step
-                setValue(min(range.upperBound, max(range.lowerBound, proposed)))
+                let start: Double
+                if let existing = dragStartValue {
+                    start = existing
+                } else {
+                    start = value
+                    dragStartValue = value
+                    lastTick = value
+                    tickFeedback.prepare()
+                }
+                // 1:1 with the finger — no step quantization while moving.
+                // Read continuous from the gesture directly; @State may lag one frame.
+                dragPixels = g.translation.width
+                let continuous = clamp(start - Double(g.translation.width / pxPerStep) * step)
+                let snapped = snap(continuous)
+                if snapped != value {
+                    var t = Transaction()
+                    t.disablesAnimations = true
+                    withTransaction(t) { value = snapped }
+                }
+                if snapped != lastTick {
+                    lastTick = snapped
+                    if !reduceMotion {
+                        tickFeedback.selectionChanged()
+                        tickFeedback.prepare()
+                    }
+                }
             }
-            .onEnded { _ in dragStartValue = nil }
+            .onEnded { g in
+                let start = dragStartValue ?? value
+                // Project a little past the finger so a flick keeps rolling.
+                let projected = clamp(start - Double(g.predictedEndTranslation.width / pxPerStep) * step)
+                let target = snap(projected)
+                // Animate the tape to the snap while still in drag coords, then
+                // clear — so the fractional remainder settles instead of jumping.
+                let targetPixels = CGFloat((start - target) / step) * pxPerStep
+                withAnimation(Motion.adaptive(Motion.settle, reduceMotion: reduceMotion)) {
+                    dragPixels = targetPixels
+                    value = target
+                } completion: {
+                    dragPixels = 0
+                    dragStartValue = nil
+                    lastTick = nil
+                }
+            }
     }
 
     private func setValue(_ raw: Double) {
-        let snapped = (raw / step).rounded() * step
+        let snapped = snap(raw)
         guard snapped != value else { return }
         value = snapped
-        if !reduceMotion { UISelectionFeedbackGenerator().selectionChanged() }
+        if !reduceMotion { tickFeedback.selectionChanged() }
+    }
+
+    private func snap(_ raw: Double) -> Double {
+        (raw / step).rounded() * step
+    }
+
+    private func clamp(_ raw: Double) -> Double {
+        min(range.upperBound, max(range.lowerBound, raw))
     }
 }
 

@@ -138,6 +138,10 @@ actor APIClient {
             throw APIError.unauthorized
         default:
             let parsed = try? Self.decoder.decode(APIErrorBody.self, from: data)
+            if http.statusCode == 403, parsed?.message == "invite_required" {
+                // The account is waiting for an invite code: show that screen.
+                await MainActor.run { NotificationCenter.default.post(name: AuthStore.inviteRequired, object: nil) }
+            }
             throw APIError.http(status: http.statusCode, message: parsed?.message ?? parsed?.error)
         }
     }

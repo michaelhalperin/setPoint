@@ -173,15 +173,31 @@ private struct OptionalMatchedGeometry: ViewModifier {
 /// Meal listing → detail. Medium detent is the glance (photo, name, kcal);
 /// large reveals the breakdown and remove.
 struct MealDetailSheet: View {
-    let meal: MealSummary
     var onRemove: (() async throws -> Void)?
     var onSaveAsMeal: (() -> Void)? = nil
+    /// After a fix is saved, so the presenter can reload its list.
+    var onFixed: (() -> Void)? = nil
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var removing = false
     @State private var error: String?
     @State private var photo: UIImage?
+    /// The meal as shown — replaced by the corrected one after a fix.
+    @State private var meal: MealSummary
+    @State private var fixing = false
+
+    init(
+        meal: MealSummary,
+        onRemove: (() async throws -> Void)? = nil,
+        onSaveAsMeal: (() -> Void)? = nil,
+        onFixed: (() -> Void)? = nil
+    ) {
+        _meal = State(initialValue: meal)
+        self.onRemove = onRemove
+        self.onSaveAsMeal = onSaveAsMeal
+        self.onFixed = onFixed
+    }
 
     var body: some View {
         ScrollView {
@@ -267,8 +283,12 @@ struct MealDetailSheet: View {
                 }
 
                 VStack(spacing: 4) {
-                    if onSaveAsMeal != nil {
-                        ActionButton(title: "Save as my meal", kind: .secondary) { onSaveAsMeal?() }
+                    HStack(spacing: 10) {
+                        ActionButton(title: "Fix", kind: .secondary) { fixing = true }
+                            .disabled(removing)
+                        if onSaveAsMeal != nil {
+                            ActionButton(title: "Save as my meal", kind: .secondary) { onSaveAsMeal?() }
+                        }
                     }
                     if onRemove != nil {
                         Button(action: beginRemoval) {
@@ -302,6 +322,20 @@ struct MealDetailSheet: View {
         .presentationCornerRadius(32)
         .animation(Motion.adaptive(Motion.snappy, reduceMotion: reduceMotion), value: removing)
         .task { photo = await MealPhotoCache.shared.image(for: meal) }
+        .fullScreenCover(isPresented: $fixing) {
+            MealFixView(
+                meal: meal,
+                onSaved: { corrected in
+                    meal = corrected
+                    onFixed?()
+                },
+                onRemove: {
+                    fixing = false
+                    beginRemoval()
+                },
+                onClose: { fixing = false }
+            )
+        }
     }
 
     private func macroTile(_ label: String, _ grams: Double) -> some View {

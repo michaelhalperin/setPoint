@@ -300,8 +300,7 @@ struct TodayMealRow: View {
 
 /// Logging: a sheet that rises from the nav's "+". Type it, snap it, scan it,
 /// tap a usual, or — when you don't remember — pick a rough size. While the
-/// field is being typed into, it shrinks to the field and recents so it fits
-/// above the keyboard.
+/// keyboard is up, it shrinks to the field and recents so it fits above it.
 struct LogDock: View {
     @Bindable var logger: LogMealViewModel
     var focused: FocusState<Bool>.Binding
@@ -313,9 +312,12 @@ struct LogDock: View {
     let photoGeometryID: String
     let onClose: () -> Void
     let onSubmit: () -> Void
+    /// Order nearby. Nil hides the tile.
+    var onOrder: (() -> Void)? = nil
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var size = 1
+    @State private var keyboardUp = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -369,6 +371,12 @@ struct LogDock: View {
         }
         .animation(Motion.adaptive(Motion.snappy, reduceMotion: reduceMotion), value: typing)
         .animation(Motion.adaptive(Motion.snappy, reduceMotion: reduceMotion), value: logger.backdate)
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
+            keyboardUp = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+            keyboardUp = false
+        }
     }
 
     /// The foods in what's typed so far — "two eggs, toast and a banana" → three chips.
@@ -404,8 +412,10 @@ struct LogDock: View {
         .transition(.opacity)
     }
 
+    /// Compact only while the on-screen keyboard is actually up and the field has
+    /// it — not just because there's text left over or a hardware keyboard is in use.
     private var typing: Bool {
-        focused.wrappedValue || !logger.text.isEmpty || logger.photo != nil
+        keyboardUp && focused.wrappedValue
     }
 
     private var title: String {
@@ -444,22 +454,30 @@ struct LogDock: View {
                 logger.mode = .scan
                 logger.openScanner()
             }
+            if let onOrder {
+                tile("Order", "bag", lit: true) {
+                    focused.wrappedValue = false
+                    onOrder()
+                }
+            }
         }
     }
 
-    private func tile(_ title: String, _ symbol: String, action: @escaping () -> Void) -> some View {
+    private func tile(_ title: String, _ symbol: String, lit: Bool = false, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
                 Image(systemName: symbol)
                     .font(.system(size: 16, weight: .regular))
+                    .foregroundStyle(lit ? Palette.hazeSoft : Palette.ink)
                 Text(title)
                     .font(Typography.data(14, weight: .regular))
+                    .lineLimit(1)
                 Spacer(minLength: 0)
             }
             .foregroundStyle(Palette.ink)
-            .padding(.horizontal, 14)
+            .padding(.horizontal, 12)
             .frame(height: 48)
-            .glass(radius: 16)
+            .glass(radius: 16, fill: lit ? Palette.haze.opacity(0.10) : Palette.glass, stroke: lit ? Palette.haze.opacity(0.5) : Palette.hairline)
         }
         .buttonStyle(PressableCard())
         .disabled(logger.phase == .parsing)
@@ -469,7 +487,13 @@ struct LogDock: View {
     @ViewBuilder
     private var usuals: some View {
         let saved = Array(logger.savedMeals.prefix(4))
-        let recents = Array(logger.recents.prefix(max(0, 4 - saved.count)))
+        // A recent that's just a saved meal again would show twice.
+        let savedNames = Set(saved.map { $0.name.lowercased() })
+        let recents = Array(
+            logger.recents
+                .filter { !savedNames.contains(($0.summary ?? "").lowercased()) }
+                .prefix(max(0, 4 - saved.count))
+        )
         if !saved.isEmpty || !recents.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
@@ -573,11 +597,38 @@ struct LogDock: View {
                 + Text("Pick a size.").foregroundColor(Palette.inkSoft))
                 .font(Typography.data(14, weight: .regular))
             SegmentedPills(options: [0, 1, 2], selection: $size, title: { sizes[$0].0 })
-            ActionButton(title: "Log a \(sizes[size].0.lowercased()) \(slot.title.lowercased()) · ~\(kcal.formatted()) kcal", kind: .secondary) {
+            // The one lit button on the panel: everything else is glass.
+            Button {
                 focused.wrappedValue = false
                 Task { await logger.logEstimate(slot: slot, kcal: kcal) }
+            } label: {
+                HStack(spacing: 10) {
+                    Text("Log a \(sizes[size].0.lowercased()) \(slot.title.lowercased())")
+                        .font(Typography.data(15, weight: .semibold))
+                    Spacer(minLength: 8)
+                    Text("~\(kcal.formatted()) kcal")
+                        .font(Typography.mono(13))
+                        .contentTransition(.numericText(value: Double(kcal)))
+                    Image(systemName: "plus")
+                        .font(.system(size: 13, weight: .bold))
+                        .frame(width: 30, height: 30)
+                        .background(Circle().fill(Color.black.opacity(0.14)))
+                }
+                .foregroundStyle(Color(hex: 0x1A0A04))
+                .padding(.leading, 20)
+                .padding(.trailing, 10)
+                .frame(height: 52)
+                .background {
+                    Capsule().fill(LinearGradient(colors: [Color(hex: 0xFFC48A), Palette.ember], startPoint: .topLeading, endPoint: .bottomTrailing))
+                }
+                .overlay(Capsule().strokeBorder(Color.white.opacity(0.25), lineWidth: 1))
+                .shadow(color: Palette.ember.opacity(0.45), radius: 14, y: 4)
+                .contentShape(Capsule())
             }
+            .buttonStyle(PressableCard())
             .disabled(logger.phase == .parsing)
+            .opacity(logger.phase == .parsing ? 0.6 : 1)
+            .accessibilityLabel("Log a \(sizes[size].0.lowercased()) \(slot.title.lowercased()), about \(kcal) kilocalories")
         }
         .padding(14)
         .glass(radius: 20, fill: Color.white.opacity(0.03))
@@ -589,11 +640,12 @@ struct LogDock: View {
 struct LogStatusToast: View {
     @Bindable var logger: LogMealViewModel
     var onRetry: (() -> Void)? = nil
+    var onDelete: (() -> Void)? = nil
 
     var body: some View {
         Group {
             switch logger.phase {
-            case .parsing:
+            case .parsing where logger.pendingKnownMeal == nil:
                 working
             case let .queued(message):
                 card(stroke: Palette.hazeSoft.opacity(0.30)) {
@@ -628,8 +680,15 @@ struct LogStatusToast: View {
                         Text(message)
                             .font(Typography.data(12, weight: .regular))
                             .foregroundStyle(Palette.inkSoft)
-                        if let onRetry {
-                            BonePill(title: "Say it again", action: onRetry)
+                        if onRetry != nil || onDelete != nil {
+                            HStack(spacing: 8) {
+                                if let onRetry {
+                                    BonePill(title: "Say it again", action: onRetry)
+                                }
+                                if let onDelete {
+                                    BonePill(title: "Delete", action: onDelete)
+                                }
+                            }
                         }
                     }
                 }

@@ -58,7 +58,9 @@ final class HomeViewModel {
         }
     }
 
+    /// Deletes a meal. It leaves Today at once; if the server says no, it comes back.
     func removeMeal(id: String) async throws {
+        let before = applyNow { $0.removing(id) }
         do {
             try await api.delete("/api/meals/\(id)")
             onMealChanged()
@@ -67,7 +69,26 @@ final class HomeViewModel {
         } catch APIError.unauthorized {
             onUnauthorized()
             throw APIError.unauthorized
+        } catch {
+            if let before { restore(before) }
+            throw error
         }
+    }
+
+    /// Shows a change on Today before the server confirms it. Returns what was
+    /// there, to put back with `restore` if the request fails.
+    @discardableResult
+    func applyNow(_ change: (HomeResponse) -> HomeResponse) -> HomeResponse? {
+        guard case let .loaded(home) = phase else { return nil }
+        let updated = change(home)
+        phase = .loaded(updated)
+        TodaySnapshotSync.write(home: updated)
+        return home
+    }
+
+    func restore(_ home: HomeResponse) {
+        phase = .loaded(home)
+        TodaySnapshotSync.write(home: home)
     }
 
     func applyLoggedMeal(_ meal: MealSummary, slot: MealSlot) {

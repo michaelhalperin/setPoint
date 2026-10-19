@@ -15,6 +15,8 @@ struct SettingsScreen<Content: View>: View {
     var glow: AmbientGlow.Tone = .ember
     /// A headline that differs from the label ("Your plan." under "Edit plan").
     var headline: String? = nil
+    /// False on tab roots — the tab bar already names the screen.
+    var showsHeadline: Bool = true
     @ViewBuilder var content: Content
 
     @Environment(\.dismiss) private var dismiss
@@ -22,26 +24,31 @@ struct SettingsScreen<Content: View>: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                if showsBack || accessory != nil {
+                if showsBack {
                     ZStack {
-                        if accessory == nil {
-                            Text(title).sectionLabelStyle()
-                                .lineLimit(1)
-                                .padding(.horizontal, 56)
-                        }
+                        Text(title).sectionLabelStyle()
+                            .lineLimit(1)
+                            .padding(.horizontal, 56)
                         HStack {
-                            if showsBack {
-                                RoundIconButton("chevron.left", label: "Back") { dismiss() }
-                            }
+                            RoundIconButton("chevron.left", label: "Back") { dismiss() }
                             Spacer(minLength: 0)
-                            if let accessory { accessory }
                         }
                     }
                     .frame(minHeight: 40)
                 }
 
-                Headline(headline ?? title, tail: subtitle, size: 34)
+                if showsHeadline || accessory != nil {
+                    HStack(alignment: .center, spacing: 12) {
+                        if showsHeadline {
+                            Headline(headline ?? title, tail: subtitle, size: 34)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        } else {
+                            Spacer(minLength: 0)
+                        }
+                        if let accessory { accessory }
+                    }
                     .appearIn(0, rise: 16)
+                }
 
                 content
             }

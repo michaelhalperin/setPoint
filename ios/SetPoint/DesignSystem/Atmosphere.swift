@@ -107,20 +107,36 @@ extension EmberBall where Label == Image {
 }
 
 /// The progress ring around the orb: a faint track and an amber arc that glows.
+/// Past the target, a bone overflow arc runs a second lap — white on amber, not
+/// another orange, so “over” reads at a glance.
 struct OrbRing: View {
     var progress: Double
     var lineWidth: CGFloat = 4
     var tint: Color = Palette.amber
+    /// Drawn on top when `progress` exceeds 1 — defaults to bone for contrast.
+    var overflowTint: Color = Palette.ink
     var track: Color = Palette.idleRing
+
+    private var filled: Double { min(1, max(0, progress)) }
+    /// Second lap, capped at one full turn past the target.
+    private var overflow: Double { max(0, min(1, progress - 1)) }
 
     var body: some View {
         ZStack {
             Circle().stroke(track, lineWidth: lineWidth)
             Circle()
-                .trim(from: 0, to: min(1, max(0, progress)))
+                .trim(from: 0, to: filled)
                 .stroke(tint, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
                 .rotationEffect(.degrees(-90))
                 .shadow(color: tint.opacity(0.55), radius: 8)
+            if overflow > 0.002 {
+                // Second lap in bone — white on amber, not another orange.
+                Circle()
+                    .trim(from: 0, to: overflow)
+                    .stroke(overflowTint, style: StrokeStyle(lineWidth: lineWidth + 1, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                    .shadow(color: overflowTint.opacity(0.4), radius: 6)
+            }
         }
         .accessibilityHidden(true)
     }
@@ -137,10 +153,12 @@ struct FuelOrbDial<Center: View>: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var shown: Double = 0
 
+    private var over: Bool { progress > 1.002 }
+
     var body: some View {
         ZStack {
             OrbRing(progress: shown, tint: tint)
-            FuelOrb(size: size - 60, dimmed: dimmed)
+            FuelOrb(size: size - 60, dimmed: dimmed, glow: over ? 0.55 : 0.4)
             center
                 .shadow(color: .black.opacity(0.55), radius: 8, y: 2)
         }
@@ -314,7 +332,45 @@ struct RoundIconButton: View {
     }
 }
 
-/// A small glass capsule with a status dot: "On pace · 2 of 4 meals".
+/// A short vertical tick — status without a glowing LED.
+struct StatusTick: View {
+    var color: Color
+
+    var body: some View {
+        Capsule(style: .continuous)
+            .fill(color)
+            .frame(width: 3, height: 12)
+            .accessibilityHidden(true)
+    }
+}
+
+/// Appetite as three rising bars — how full the day feels (low / normal / hungry).
+struct AppetiteBars: View {
+    /// `LOW`, `NORMAL`, or `HUNGRY`.
+    var level: String
+
+    private var lit: Int {
+        switch level {
+        case "LOW": return 1
+        case "HUNGRY": return 3
+        default: return 2
+        }
+    }
+
+    var body: some View {
+        HStack(alignment: .bottom, spacing: 2) {
+            ForEach(0..<3, id: \.self) { i in
+                Capsule(style: .continuous)
+                    .fill(i < lit ? Palette.amber : Color.white.opacity(0.14))
+                    .frame(width: 3, height: CGFloat(6 + i * 3))
+            }
+        }
+        .frame(height: 12)
+        .accessibilityHidden(true)
+    }
+}
+
+/// A small glass capsule with a status tick: "On pace · 2 of 4 meals".
 struct StatusPill<Trailing: View>: View {
     var dot: Color
     var text: String
@@ -322,7 +378,7 @@ struct StatusPill<Trailing: View>: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            Circle().fill(dot).frame(width: 6, height: 6)
+            StatusTick(color: dot)
             Text(text)
                 .font(Typography.data(13, weight: .regular))
                 .foregroundStyle(Palette.ink)

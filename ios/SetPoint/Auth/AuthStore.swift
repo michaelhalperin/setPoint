@@ -9,6 +9,8 @@ final class AuthStore {
         case loading
         case signedOut
         case signedIn(userId: String)
+        /// Signed in, but sign-up is invite-only and this account needs a code.
+        case needsInvite
     }
 
     private(set) var status: Status = .loading
@@ -18,11 +20,14 @@ final class AuthStore {
     /// Posted by API clients that live outside `AppEnvironment` (e.g. the one
     /// HealthKit uses on a background launch) when the session is rejected.
     static let sessionExpired = Notification.Name("com.setpoint.app.sessionExpired")
+    /// Posted when the API says this account still needs an invite code.
+    static let inviteRequired = Notification.Name("com.setpoint.app.inviteRequired")
 
     private let tokenStore: TokenStore
     private let baseURL: URL
     private let session: URLSession
     @ObservationIgnored private var expiryObserver: NSObjectProtocol?
+    @ObservationIgnored private var inviteObserver: NSObjectProtocol?
 
     init(
         tokenStore: TokenStore,
@@ -36,6 +41,14 @@ final class AuthStore {
             forName: Self.sessionExpired, object: nil, queue: .main
         ) { [weak self] _ in
             MainActor.assumeIsolated { self?.handleUnauthorized() }
+        }
+        inviteObserver = NotificationCenter.default.addObserver(
+            forName: Self.inviteRequired, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self, self.tokenStore.read() != nil else { return }
+                self.status = .needsInvite
+            }
         }
     }
 
@@ -58,6 +71,7 @@ final class AuthStore {
         CalendarManager.shared.clearAccountState()
         OnboardingViewModel.clearProgress()
         OfflineMealQueue.clear()
+        FeatureFlags.clearStored()
     }
 
     /// Called by the caller when any request comes back 401.
@@ -83,6 +97,42 @@ final class AuthStore {
                 "identityToken": identityToken,
                 "authorizationCode": String(data: credential.authorizationCode ?? Data(), encoding: .utf8) ?? "",
             ].filter { !$0.value.isEmpty })
+        }
+    }
+
+    /// Redeems an invite code for the signed-in account. Nil on success (the
+    /// session is swapped for a full one and the app opens); otherwise a line to show.
+    func redeemInvite(_ code: String) async -> String? {
+        guard let token = tokenStore.read() else {
+            signOut()
+            return nil
+        }
+        var request = URLRequest(url: baseURL.appending(path: "/api/auth/invite"))
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.httpBody = try? JSONEncoder().encode(["code": code])
+        do {
+            let (data, response) = try await session.data(for: request)
+            let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+            switch status {
+            case 200 ..< 300:
+                let auth = try JSONDecoder().decode(AuthResponse.self, from: data)
+                tokenStore.write(auth.token)
+                self.status = .signedIn(userId: auth.userId)
+                return nil
+            case 400:
+                return "That code didn’t work. Check it and try again."
+            case 401:
+                signOut()
+                return nil
+            case 429:
+                return "Too many tries. Wait a minute, then try again."
+            default:
+                return "Couldn’t check the code. Try again in a moment."
+            }
+        } catch {
+            return UserFacingError.message(for: error, fallback: "Couldn’t check the code. Try again in a moment.")
         }
     }
 
@@ -120,7 +170,7 @@ final class AuthStore {
             if path.hasSuffix("/dev") {
                 UserDefaults.standard.set(auth.userId, forKey: Self.devUserKey)
             }
-            status = .signedIn(userId: auth.userId)
+            status = auth.needsInvite == true ? .needsInvite : .signedIn(userId: auth.userId)
             return true
         } catch {
             lastError = UserFacingError.message(for: error, fallback: "Sign-in failed.")

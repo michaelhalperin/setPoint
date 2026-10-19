@@ -383,6 +383,13 @@ final class SettingsViewModel {
         weekendMealTimes.resolved(from: mealTimes)
     }
 
+    /// Any per-slot weekend override is set (null means same as weekdays).
+    var hasWeekendMealOverrides: Bool {
+        weekendMealTimes.breakfastMin != nil
+            || weekendMealTimes.lunchMin != nil
+            || weekendMealTimes.dinnerMin != nil
+    }
+
     func applyWeekendSuggestion() {
         guard let suggestion = weekendSuggestion else { return }
         weekendMealTimes.breakfastMin = suggestion.breakfastMin

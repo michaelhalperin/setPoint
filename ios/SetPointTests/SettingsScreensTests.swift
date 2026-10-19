@@ -64,7 +64,9 @@ final class SettingsScreensTests: XCTestCase {
 
     func testWeekendMealTimesDirtyAndSaveNote() {
         let vm = SettingsViewModel.previewed()
+        XCTAssertFalse(vm.hasWeekendMealOverrides)
         vm.weekendMealTimes.breakfastMin = 600
+        XCTAssertTrue(vm.hasWeekendMealOverrides)
         XCTAssertTrue(vm.mealTimesDirty)
         XCTAssertEqual(
             vm.mealTimesSaveNote,

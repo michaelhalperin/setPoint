@@ -14,6 +14,7 @@ final class AppEnvironment {
     let changes = AppDataChanges()
     let chrome = AppChrome()
     let subscription = SubscriptionStore()
+    let flags = FeatureFlags()
 
     init(tokenStore: TokenStore = SessionTokenStore()) {
         let auth = AuthStore(tokenStore: tokenStore)
@@ -66,8 +67,65 @@ final class AppDataChanges {
 final class AppChrome {
     var navHidden = false
     private(set) var logRequest = 0
+    /// The log panel open over a tab other than Today (see `LogAnywhere`).
+    var logPanelOpen = false
+    /// A tab asked for from inside a screen (Today's avatar → You).
+    private(set) var tabRequest: MainTabView.Tab?
 
     func requestLog() {
         logRequest &+= 1
+    }
+
+    func requestTab(_ tab: MainTabView.Tab) {
+        tabRequest = tab
+    }
+
+    func clearTabRequest() {
+        tabRequest = nil
+    }
+
+    /// The meal that just landed, for the "Logged · Fix" toast.
+    struct JustLogged: Equatable {
+        let mealID: String
+        let kcal: Int
+        let title: String
+        /// Tells two logs of the same meal apart, so each gets its own few seconds.
+        let token = UUID()
+    }
+
+    private(set) var justLogged: JustLogged?
+
+    func noteLogged(mealID: String, kcal: Int, title: String?) {
+        justLogged = JustLogged(mealID: mealID, kcal: kcal, title: title ?? "Logged meal")
+    }
+
+    func clearJustLogged() {
+        justLogged = nil
+    }
+
+    /// An action that showed on screen at once but the server then refused — it
+    /// has been put back, and this offers to try again.
+    struct ActionFailure: Equatable {
+        let id = UUID()
+        let message: String
+    }
+
+    private(set) var failure: ActionFailure?
+    @ObservationIgnored private var retryAction: (() -> Void)?
+
+    func reportFailure(_ message: String = "Didn’t save", retry: (() -> Void)?) {
+        retryAction = retry
+        failure = ActionFailure(message: message)
+    }
+
+    func retryFailure() {
+        let retry = retryAction
+        clearFailure()
+        retry?()
+    }
+
+    func clearFailure() {
+        failure = nil
+        retryAction = nil
     }
 }

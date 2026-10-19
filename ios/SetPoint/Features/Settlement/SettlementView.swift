@@ -7,6 +7,7 @@ struct SettlementView: View {
     @State private var showingWeighIn = false
     @State private var selectedStation: WeekStation?
     @State private var patternHandled = false
+    @State private var patternApplied = false
 
     init(previewModel: SettlementViewModel? = nil) {
         _model = State(initialValue: previewModel)
@@ -56,31 +57,52 @@ struct SettlementView: View {
         let stations = s.weekStations
         return ScrollView {
             VStack(alignment: .leading, spacing: Space.md) {
-                Headline("Progress", tail: dateRange(stations).map { "· \($0)" }, size: 36)
-                    .appearIn(0)
-
                 if let since = model.staleSince {
                     StaleBanner(since: since) { Task { await model.load() } }
                 }
 
-                if s.days.count < 3 {
-                    WeekOneCard(settledDays: s.days.count, today: s.today, needsWeighIn: s.weightGoal?.needsWeighIn ?? model.weights.isEmpty)
-                        .appearIn(1, rise: 14)
-                } else {
-                    DaysClosedCard(gap: s.gap, stations: stations) { selectedStation = $0 }
-                        .appearIn(1, rise: 14)
-                }
-
                 if let goal = s.weightGoal {
-                    WeightTrendCard(goal: goal, entries: model.weights, busy: model.loggingWeight) {
+                    WeightJourneyCard(goal: goal, entries: model.weights, busy: model.loggingWeight) {
                         showingWeighIn = true
                     }
-                    .appearIn(2, rise: 14)
+                    .appearIn(1, rise: 14)
                     if let err = model.weighInError {
                         Text(err)
                             .font(Typography.data(13, weight: .regular))
                             .foregroundStyle(Palette.danger)
                     }
+                }
+
+                if s.days.count < 3 {
+                    WeekOneCard(settledDays: s.days.count, today: s.today, needsWeighIn: s.weightGoal?.needsWeighIn ?? model.weights.isEmpty)
+                        .appearIn(2, rise: 14)
+                } else {
+                    DayOrbsCard(gap: s.gap, stations: stations) { selectedStation = $0 }
+                        .appearIn(2, rise: 14)
+                }
+
+                if let record = s.record {
+                    LandedCard(
+                        record: record,
+                        pattern: visiblePattern(record),
+                        patternApplied: patternApplied,
+                        patternBusy: model.applyingPattern,
+                        onApply: {
+                            guard let pattern = record.pattern else { return }
+                            Task {
+                                if await model.applyPattern(pattern) {
+                                    Haptics.landed()
+                                    withAnimation(Motion.settle) { patternApplied = true }
+                                }
+                            }
+                        },
+                        onKeep: {
+                            guard let pattern = record.pattern else { return }
+                            PatternMemory.dismiss(pattern)
+                            withAnimation(Motion.settle) { patternHandled = true }
+                        }
+                    )
+                    .appearIn(3, rise: 14)
                 }
 
                 if let review = s.targetReview {
@@ -89,39 +111,15 @@ struct SettlementView: View {
                     } onLater: {
                         Task { await model.dismissTargetReview() }
                     }
-                    .appearIn(3, rise: 14)
-                }
-
-                if let record = s.record {
-                    if let pattern = record.pattern, !PatternMemory.isDismissed(pattern), !patternHandled {
-                        PatternCard(
-                            pattern: pattern,
-                            busy: model.applyingPattern,
-                            onApply: {
-                                Task {
-                                    if await model.applyPattern(pattern) {
-                                        Haptics.landed()
-                                        withAnimation(Motion.settle) { patternHandled = true }
-                                    }
-                                }
-                            },
-                            onKeep: {
-                                PatternMemory.dismiss(pattern)
-                                withAnimation(Motion.settle) { patternHandled = true }
-                            }
-                        )
-                        .transition(.opacity.combined(with: .scale(scale: 0.97)))
-                        .appearIn(4, rise: 14)
-                    }
-
-                    RecordCard(record: record)
-                        .appearIn(5, rise: 14)
+                    .appearIn(4, rise: 14)
                 }
 
                 NavigationLink {
                     BurnScreen()
                 } label: {
                     HStack(spacing: 12) {
+                        FuelOrb(size: 34, breathing: false, glow: 0.4)
+                            .frame(width: 34, height: 34)
                         VStack(alignment: .leading, spacing: 3) {
                             Text("What you really burn")
                                 .font(Typography.data(15, weight: .medium))
@@ -140,7 +138,7 @@ struct SettlementView: View {
                     .glass(radius: 24, fill: Color.white.opacity(0.03))
                 }
                 .buttonStyle(PressableCard())
-                .appearIn(6, rise: 14)
+                .appearIn(5, rise: 14)
             }
             .padding(.horizontal, Space.gutter)
             .padding(.top, Space.sm)
@@ -165,13 +163,12 @@ struct SettlementView: View {
         }
     }
 
-    /// "8 – 14 Sep"
-    private func dateRange(_ stations: [WeekStation]) -> String? {
-        guard let first = stations.first.flatMap({ WeekStation.parse($0.date) }),
-              let last = stations.last.flatMap({ WeekStation.parse($0.date) }) else { return nil }
-        var utc = Date.FormatStyle.dateTime
-        utc.timeZone = TimeZone(secondsFromGMT: 0)!
-        return "\(first.formatted(utc.day())) – \(last.formatted(utc.day().month(.abbreviated)))"
+    /// The late-meal pattern while it's open, and after it's applied (to show "Moved").
+    private func visiblePattern(_ record: SettlementResponse.Record) -> SettlementResponse.Record.Pattern? {
+        guard let pattern = record.pattern else { return nil }
+        if patternApplied { return pattern }
+        if patternHandled || PatternMemory.isDismissed(pattern) { return nil }
+        return pattern
     }
 
     private func reachedBinding(_ model: SettlementViewModel) -> Binding<Bool> {
@@ -179,20 +176,16 @@ struct SettlementView: View {
     }
 }
 
-/// Progress while it loads: the real title, ghost bars rising and falling, a
-/// line drawing itself where the weight goes.
+/// Progress while it loads: ghost bars rising and falling, a line drawing
+/// itself where the weight goes.
 private struct SettlementSkeletonView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline) {
-                Headline("Progress", size: 36)
-                Spacer()
-                HStack(spacing: 6) {
-                    Circle().fill(Palette.amber).frame(width: 6, height: 6)
-                    Text("COUNTING").font(Typography.mono(10)).tracking(1.1).foregroundStyle(Palette.inkFaint)
-                }
+            HStack(spacing: 6) {
+                Circle().fill(Palette.amber).frame(width: 6, height: 6)
+                Text("COUNTING").font(Typography.mono(10)).tracking(1.1).foregroundStyle(Palette.inkFaint)
             }
             TimelineView(.animation(paused: reduceMotion)) { ctx in
                 let t = ctx.date.timeIntervalSinceReferenceDate
@@ -422,10 +415,14 @@ private struct DayMealsSheet: View {
             loading = false
         }
         .sheet(item: $selectedMeal) { meal in
-            MealDetailSheet(meal: meal) {
-                try await model.removeMeal(id: meal.id)
-                meals = await model.meals(on: station.date)
-            }
+            MealDetailSheet(
+                meal: meal,
+                onRemove: {
+                    try await model.removeMeal(id: meal.id)
+                    meals = await model.meals(on: station.date)
+                },
+                onFixed: { Task { meals = await model.meals(on: station.date) } }
+            )
         }
     }
 }

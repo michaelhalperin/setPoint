@@ -51,6 +51,7 @@ targets:
         LSApplicationQueriesSchemes: ["x-apple-health"]
         NSCameraUsageDescription: "Take a photo of a meal or scan a barcode to log it."
         NSPhotoLibraryUsageDescription: "Attach a photo of a meal to log it."
+        NSLocationWhenInUseUsageDescription: "Find places near you with a dish that fits what you still need. Your location is used for that search only and isn't stored."
         SentryDSN: $(SENTRY_DSN)
         CFBundleURLTypes:
           - CFBundleURLName: com.michaelhalperin.setpoint

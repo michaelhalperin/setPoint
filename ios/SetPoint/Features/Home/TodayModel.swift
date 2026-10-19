@@ -273,33 +273,24 @@ enum TodayLayout {
 extension HomeResponse {
     /// Drop a just-logged meal into the local home so Today doesn't wait on a
     /// round-trip — and so it lands under the slot it was logged for.
+    /// Today with a meal added — shown before the server confirms. Copies
+    /// everything else across, so appetite, training and the rest stay put.
     func inserting(_ meal: MealSummary, into slot: MealSlot) -> HomeResponse {
         guard !meals.contains(where: { $0.id == meal.id }) else { return self }
-        let remainingProtein = ledger.remainingProteinG.map { $0 - meal.proteinG }
-        return HomeResponse(
-            goal: goal,
-            mode: mode,
-            enforcementEnabled: enforcementEnabled,
-            ledger: .init(
-                consumedKcal: ledger.consumedKcal + meal.kcal,
-                targetKcal: ledger.targetKcal,
-                remainingKcal: ledger.remainingKcal - meal.kcal,
-                consumedProteinG: ledger.consumedProteinG + meal.proteinG,
-                targetProteinG: ledger.targetProteinG,
-                remainingProteinG: remainingProtein,
-                mealsToday: ledger.mealsToday + 1,
-                lastMealAt: meal.loggedAt
-            ),
-            framing: framing,
-            managerNote: managerNote,
-            meals: meals + [meal],
-            mealTimes: mealTimes,
-            activeCheckIn: activeCheckIn,
-            day: day?.inserting(meal, into: slot),
-            nextCheckIn: nextCheckIn,
-            needsWeighIn: needsWeighIn,
-            quietHours: quietHours
+        var copy = self
+        copy.ledger = .init(
+            consumedKcal: ledger.consumedKcal + meal.kcal,
+            targetKcal: ledger.targetKcal,
+            remainingKcal: ledger.remainingKcal - meal.kcal,
+            consumedProteinG: ledger.consumedProteinG + meal.proteinG,
+            targetProteinG: ledger.targetProteinG,
+            remainingProteinG: ledger.remainingProteinG.map { $0 - meal.proteinG },
+            mealsToday: ledger.mealsToday + 1,
+            lastMealAt: meal.loggedAt
         )
+        copy.meals = meals + [meal]
+        copy.day = day?.inserting(meal, into: slot)
+        return copy
     }
 }
 
@@ -321,3 +312,44 @@ extension HomeResponse.Day {
         )
     }
 }
+
+extension HomeResponse {
+    /// Today without one meal — shown the moment it's deleted, before the server
+    /// confirms. The reload that follows puts the exact numbers back.
+    func removing(_ mealID: String) -> HomeResponse {
+        guard let meal = meals.first(where: { $0.id == mealID }) else { return self }
+        var copy = self
+        copy.meals.removeAll { $0.id == mealID }
+        copy.ledger = .init(
+            consumedKcal: max(0, ledger.consumedKcal - meal.kcal),
+            targetKcal: ledger.targetKcal,
+            remainingKcal: ledger.remainingKcal + meal.kcal,
+            consumedProteinG: max(0, ledger.consumedProteinG - meal.proteinG),
+            targetProteinG: ledger.targetProteinG,
+            remainingProteinG: ledger.remainingProteinG.map { $0 + meal.proteinG },
+            mealsToday: max(0, ledger.mealsToday - 1),
+            lastMealAt: copy.meals.last?.loggedAt
+        )
+        if let day {
+            copy.day = HomeResponse.Day(
+                nowMin: day.nowMin,
+                slots: day.slots.map { s in
+                    guard s.mealIds.contains(mealID) else { return s }
+                    let ids = s.mealIds.filter { $0 != mealID }
+                    let state = !ids.isEmpty ? s.state : (s.atMin > day.nowMin ? "upcoming" : "missed")
+                    return .init(slot: s.slot, atMin: s.atMin, state: state, mealIds: ids, kcal: max(0, s.kcal - meal.kcal))
+                },
+                pace: day.pace
+            )
+        }
+        return copy
+    }
+
+    /// Today with the open check-in answered — the takeover goes at once.
+    var closingCheckIn: HomeResponse {
+        var copy = self
+        copy.activeCheckIn = nil
+        return copy
+    }
+}
+

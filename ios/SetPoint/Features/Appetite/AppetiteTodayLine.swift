@@ -44,7 +44,7 @@ enum AppetiteTodayVisibility: Equatable {
 /// Slim capsule under Today's headline: ask Hungry/Normal/Low, or show today's answer.
 struct AppetiteTodayLine: View {
     let home: HomeResponse
-    var onChanged: () -> Void = {}
+    var onChanged: () async -> Void = {}
 
     @Environment(AppEnvironment.self) private var env
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -115,7 +115,7 @@ struct AppetiteTodayLine: View {
 
     private func answeredRow(_ level: String) -> some View {
         HStack(spacing: 8) {
-            Circle().fill(Palette.amber).frame(width: 6, height: 6)
+            AppetiteBars(level: level)
             Text(answeredCopy(level))
                 .font(Typography.data(14, weight: .regular))
                 .foregroundStyle(Palette.ink)
@@ -150,7 +150,7 @@ struct AppetiteTodayLine: View {
             struct Body: Encodable { let level: String }
             do {
                 try await env.api.put("/api/appetite/today", Body(level: level))
-                onChanged()
+                await onChanged()
             } catch {
                 optimisticLevel = nil
                 changing = true

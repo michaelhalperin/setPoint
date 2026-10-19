@@ -45,6 +45,8 @@
 	<string>SetPoint reads your height, weight, age and sex to set daily targets, and your body weight to track progress. Heart-rate variability and resting heart rate are optional: they may slightly adjust a check-in that is already due from a missed meal. They never diagnose under-fueling on their own.</string>
 	<key>NSHealthUpdateUsageDescription</key>
 	<string>SetPoint writes meals you log (calories, protein, carbs and fat) into Apple Health so they stay in one place. Weight you log in SetPoint can be written too if you turn that on.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Find places near you with a dish that fits what you still need. Your location is used for that search only and isn't stored.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Attach a photo of a meal to log it.</string>
 	<key>NSSupportsLiveActivities</key>

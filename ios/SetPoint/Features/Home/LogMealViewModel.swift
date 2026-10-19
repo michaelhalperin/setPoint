@@ -30,6 +30,16 @@ final class LogMealViewModel {
     }
 
     private(set) var phase: Phase = .compose
+    /// A usual, repeat, top-up or estimate on its way: its numbers are known, so
+    /// Today shows it as eaten now instead of "working it out". Cleared once the
+    /// screen has handled the result.
+    private(set) var pendingKnownMeal: MealSummary?
+    /// What to send again from "Didn't save · Try again".
+    private enum KnownLog {
+        case macros(summary: String, kcal: Int, proteinG: Double?, carbsG: Double?, fatG: Double?, source: String, backdate: Backdate?)
+        case saved(SavedMeal, backdate: Backdate?)
+    }
+    @ObservationIgnored private var lastKnown: KnownLog?
     private(set) var removing = false
     private(set) var savingCorrection = false
     /// What the user sent — kept for the timeline skeleton after the field clears.
@@ -225,6 +235,8 @@ final class LogMealViewModel {
         submittedSlot = snapshotBackdate?.slot
         submittedLoggedAt = snapshotBackdate?.at ?? Date()
         backdate = nil
+        lastKnown = .macros(summary: summary, kcal: kcal, proteinG: proteinG, carbsG: carbsG, fatG: fatG, source: source, backdate: snapshotBackdate)
+        pendingKnownMeal = knownMeal(summary: summary, kcal: kcal, proteinG: proteinG ?? 0, carbsG: carbsG ?? 0, fatG: fatG ?? 0, source: source)
         phase = .parsing
         do {
             let res: LogMealResponse = try await api.post(
@@ -276,6 +288,15 @@ final class LogMealViewModel {
         submittedSlot = snapshotBackdate?.slot
         submittedLoggedAt = snapshotBackdate?.at ?? Date()
         backdate = nil
+        lastKnown = .saved(meal, backdate: snapshotBackdate)
+        pendingKnownMeal = knownMeal(
+            summary: meal.name,
+            kcal: meal.kcal,
+            proteinG: meal.proteinG,
+            carbsG: meal.carbsG,
+            fatG: meal.fatG,
+            source: "SAVED"
+        )
         phase = .parsing
         do {
             let res: LogMealResponse = try await api.post(
@@ -519,6 +540,48 @@ final class LogMealViewModel {
         actionError = nil
         submittedSlot = nil
         submittedLoggedAt = nil
+        pendingKnownMeal = nil
+    }
+
+    /// A known meal the server refused: the screen has put Today back and offers
+    /// "Try again", so the panel doesn't reopen on an error.
+    func dropFailedKnown() {
+        backdate = nil
+        submittedPrompt = ""
+        reset()
+    }
+
+    /// "Try again" for a known meal: sends it again, at the same time it was meant for.
+    func retryKnown() async {
+        switch lastKnown {
+        case let .macros(summary, kcal, proteinG, carbsG, fatG, source, snapshot):
+            backdate = snapshot
+            await logMacros(summary: summary, kcal: kcal, proteinG: proteinG, carbsG: carbsG, fatG: fatG, source: source)
+        case let .saved(meal, snapshot):
+            backdate = snapshot
+            await logSaved(meal)
+        case nil:
+            break
+        }
+    }
+
+    private func knownMeal(summary: String, kcal: Int, proteinG: Double, carbsG: Double, fatG: Double, source: String) -> MealSummary {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return MealSummary(
+            id: "pending-\(UUID().uuidString)",
+            loggedAt: formatter.string(from: submittedLoggedAt ?? Date()),
+            kcal: kcal,
+            proteinG: proteinG,
+            carbsG: carbsG,
+            fatG: fatG,
+            source: source,
+            summary: summary,
+            photoUrl: nil,
+            notes: nil,
+            items: nil,
+            parseConfidence: nil
+        )
     }
 
     private func writeLoggedMealToHealth() async {
@@ -572,6 +635,7 @@ final class LogMealViewModel {
         phase = .compose
         actionError = nil
         removing = false
+        pendingKnownMeal = nil
     }
 
     #if DEBUG

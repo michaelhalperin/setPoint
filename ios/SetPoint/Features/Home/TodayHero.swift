@@ -1,8 +1,9 @@
 import SwiftUI
 
-// The top of Today. The fuel orb — how much of the day's food is in — with the
-// one thing that matters now in a glass card under it, and the day's plates as a
-// strip of dots. When a check-in fires, the top of Today becomes the check-in.
+// The top of Today, one screen: the date with today's appetite, the fuel orb, a
+// pace pill that opens the day's meals, one card for what's next (pick a usual
+// and tap when it's eaten), and the day's plates as a strip of dots. When a
+// check-in fires, the top of Today becomes the check-in.
 
 // MARK: - Orb hero
 
@@ -10,13 +11,31 @@ struct TodayHero: View {
     let home: HomeResponse
     let moment: TodayMoment
     let date: Date
-    /// Reload after the morning appetite answer.
-    var onAppetiteChanged: () -> Void = {}
+    /// Saved meals that fit the next slot — the "Pick one" rows.
+    var picks: [SavedMeal] = []
+    /// The pick being logged right now, if any.
+    var loggingPickID: String? = nil
+    /// Reload after an appetite answer.
+    var onAppetiteChanged: () async -> Void = {}
+    var onOpenDay: () -> Void = {}
+    var onPick: (SavedMeal) -> Void = { _ in }
+    var onLog: () -> Void = {}
+    var onOpenCheckIn: () -> Void = {}
+    /// Order nearby — no food at hand. Nil hides the pill.
+    var onOrder: (() -> Void)? = nil
 
     @Environment(AppEnvironment.self) private var env
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var appetiteOpen = false
+    @State private var appetiteOptimistic: String?
+    @State private var appetiteBusy = false
+
+    private var appetiteLevel: String {
+        appetiteOptimistic ?? home.appetite?.level ?? "NORMAL"
+    }
 
     var body: some View {
-        VStack(spacing: Space.md) {
+        VStack(spacing: Space.sm) {
             header
             FuelOrbDial(progress: progress, dimmed: moment == .quiet) {
                 VStack(spacing: 2) {
@@ -25,34 +44,65 @@ struct TodayHero: View {
                         .tracking(-1.8)
                         .foregroundStyle(Palette.ink)
                         .contentTransition(.numericText(value: Double(home.ledger.consumedKcal)))
-                    Text("of \(home.ledger.targetKcal.formatted()) kcal")
+                    Text(orbCaption)
                         .font(Typography.mono(12))
-                        .foregroundStyle(Color(hex: 0xFDE6CF))
+                        .foregroundStyle(overTarget ? Palette.ink : Color(hex: 0xFDE6CF))
+                        .contentTransition(.opacity)
                 }
                 .accessibilityElement(children: .combine)
-                .accessibilityLabel("\(home.ledger.consumedKcal) of \(home.ledger.targetKcal) kilocalories")
+                .accessibilityLabel(orbAccessibility)
             }
             .padding(.top, Space.xs)
 
-            StatusPill(dot: statusDot, text: statusText) {
-                Text("·").foregroundStyle(Palette.inkFaint)
-                Text(mealsLine)
-                    .font(Typography.data(13, weight: .regular))
-                    .foregroundStyle(Palette.inkSoft)
-            }
-
-            Group {
-                if AppetiteTodayVisibility.resolve(home: home) == .ask {
-                    AppetiteTodayLine(home: home, onChanged: onAppetiteChanged)
-                } else {
-                    momentCard
+            Button(action: onOpenDay) {
+                StatusPill(dot: statusDot, text: statusText) {
+                    Text("·").foregroundStyle(Palette.inkFaint)
+                    Text(mealsLine)
+                        .font(Typography.data(13, weight: .regular))
+                        .foregroundStyle(Palette.inkSoft)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(Palette.inkFaint)
                 }
             }
-            .padding(.top, Space.xs)
-            .appearIn(1, rise: 16)
+            .buttonStyle(PressableCard())
+            .accessibilityHint("Shows today’s meals")
 
-            PlateStrip(home: home)
-                .padding(.top, Space.xxs)
+                Group {
+                    if AppetiteTodayVisibility.resolve(home: home) == .ask {
+                        AppetiteTodayLine(home: home, onChanged: {
+                            appetiteBusy = true
+                            await onAppetiteChanged()
+                            appetiteBusy = false
+                        })
+                    } else {
+                        momentCard
+                    }
+                }
+                .appearIn(1, rise: 16)
+
+            PlateStrip(home: home, loading: appetiteBusy)
+                .padding(.top, Space.sm)
+        }
+        // Overlay keeps the menu floating — it must not grow the hero layout.
+        .overlay(alignment: .topTrailing) {
+            if appetiteOpen {
+                ZStack(alignment: .topTrailing) {
+                    Color.black.opacity(0.55)
+                        .ignoresSafeArea()
+                        .onTapGesture { appetiteOpen = false }
+                    AppetiteDropdown(level: appetiteLevel) { level in
+                        appetiteOpen = false
+                        pickAppetite(level)
+                    }
+                    .padding(.top, 44)
+                }
+                .transition(.opacity)
+            }
+        }
+        .animation(Motion.adaptive(Motion.snappy, reduceMotion: reduceMotion), value: appetiteOpen)
+        .onChange(of: home.appetite?.level) { _, synced in
+            if synced == appetiteOptimistic { appetiteOptimistic = nil }
         }
     }
 
@@ -72,22 +122,28 @@ struct TodayHero: View {
                     .foregroundStyle(Palette.inkFaint)
             }
             Spacer(minLength: 8)
-            HStack(spacing: 8) {
-                if let block = home.busyBlocks?.first {
-                    chip(dot: Palette.inkSoft, "Busy \(formatBusyRange(block.startMin, block.endMin))")
+            if home.enforcementEnabled, home.appetite != nil {
+                AppetiteChip(level: appetiteLevel, open: appetiteOpen) {
+                    appetiteOpen.toggle()
                 }
-                if let training = home.training, !training.workouts.isEmpty {
-                    NavigationLink {
-                        if env.subscription.entitled {
-                            TrainingScreen()
-                        } else {
-                            PaywallView()
-                        }
-                    } label: {
-                        chip(dot: Palette.haze, training.bumpKcal > 0 ? "Training +\(training.bumpKcal)" : "Training")
-                    }
-                    .buttonStyle(PressableCard())
-                }
+            }
+        }
+        .zIndex(1)
+    }
+
+    private func pickAppetite(_ value: String) {
+        guard value != appetiteLevel else { return }
+        Haptics.select()
+        appetiteOptimistic = value
+        appetiteBusy = true
+        Task {
+            struct Body: Encodable { let level: String }
+            defer { appetiteBusy = false }
+            do {
+                try await env.api.put("/api/appetite/today", Body(level: value))
+                await onAppetiteChanged()
+            } catch {
+                appetiteOptimistic = nil
             }
         }
     }
@@ -95,33 +151,31 @@ struct TodayHero: View {
     private var subline: String {
         let day = date.formatted(.dateTime.day().month(.abbreviated))
         if moment == .quiet { return "\(day) · quiet mode" }
-        if let appetite = home.appetite, appetite.didAnswerToday {
-            switch appetite.level {
-            case "LOW": return "\(day) · low appetite"
-            case "HUNGRY": return "\(day) · hungry"
-            default: break
-            }
-        }
+        if let training = home.training, !training.workouts.isEmpty { return "\(day) · training day" }
         return day
-    }
-
-    private func chip(dot: Color, _ text: String) -> some View {
-        HStack(spacing: 6) {
-            Circle().fill(dot).frame(width: 6, height: 6)
-            Text(text)
-                .font(Typography.data(12, weight: .regular))
-                .foregroundStyle(Palette.ink)
-                .lineLimit(1)
-        }
-        .padding(.horizontal, 12)
-        .frame(height: 34)
-        .glassCapsule(fill: Color.white.opacity(0.05), stroke: Color.white.opacity(0.10))
     }
 
     // MARK: Status
 
     private var progress: Double {
         Double(home.ledger.consumedKcal) / Double(max(home.ledger.targetKcal, 1))
+    }
+
+    private var overTarget: Bool { home.ledger.consumedKcal > home.ledger.targetKcal }
+
+    private var overBy: Int { home.ledger.consumedKcal - home.ledger.targetKcal }
+
+    private var orbCaption: String {
+        overTarget
+            ? "+\(overBy.formatted()) over"
+            : "of \(home.ledger.targetKcal.formatted()) kcal"
+    }
+
+    private var orbAccessibility: String {
+        if overTarget {
+            return "\(home.ledger.consumedKcal) of \(home.ledger.targetKcal) kilocalories, \(overBy) over"
+        }
+        return "\(home.ledger.consumedKcal) of \(home.ledger.targetKcal) kilocalories"
     }
 
     private var behind: Bool { home.day?.pace?.status == "behind" }
@@ -146,19 +200,17 @@ struct TodayHero: View {
     }
 
     private var mealsLine: String {
-        let slots = home.day?.slots ?? []
-        guard !slots.isEmpty else {
-            return home.ledger.mealsToday == 1 ? "1 meal" : "\(home.ledger.mealsToday) meals"
+        switch home.ledger.mealsToday {
+        case 0: return "nothing yet"
+        case 1: return "1 meal"
+        case let n: return "\(n) meals"
         }
-        let logged = slots.filter { $0.slotState == .logged }.count
-        return "\(logged) of \(slots.count) meals"
     }
 
     // MARK: Moment card
 
-    @ViewBuilder
     private var momentCard: some View {
-        GlassCard(spacing: 10) {
+        GlassCard(spacing: 12) {
             HStack(alignment: .firstTextBaseline) {
                 Text(momentLabel).sectionLabelStyle()
                 Spacer(minLength: 8)
@@ -168,14 +220,7 @@ struct TodayHero: View {
                         .foregroundStyle(Palette.amber)
                 }
             }
-            Headline(TodayCopy.headline(moment), tail: tail, size: 26)
-                .contentTransition(.opacity)
-            if !home.managerNote.isEmpty, home.activeCheckIn == nil {
-                Text(home.managerNote)
-                    .font(Typography.voice(15))
-                    .foregroundStyle(Palette.inkSoft)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+            momentBody
             if home.needsWeighIn == true {
                 HStack(spacing: 6) {
                     Image(systemName: "scalemass")
@@ -189,10 +234,125 @@ struct TodayHero: View {
         }
     }
 
+    @ViewBuilder
+    private var momentBody: some View {
+        switch moment {
+        case let .watching(_, _, _, light) where !light && !picks.isEmpty:
+            Headline("Pick one.", tail: "Tap when it’s eaten.", size: 24)
+            VStack(spacing: 8) {
+                ForEach(Array(picks.enumerated()), id: \.element.id) { index, meal in
+                    pickRow(meal, primary: index == 0)
+                }
+                orLinks("Something else")
+            }
+        case .watching:
+            Headline(TodayCopy.headline(moment), tail: tail, size: 24)
+                .contentTransition(.opacity)
+            orLinks("Log it")
+        case .snoozed:
+            Headline(TodayCopy.headline(moment), tail: "Eat sooner and I’ll stay quiet.", size: 26)
+            HStack(spacing: 10) {
+                if home.activeCheckIn != nil {
+                    ActionButton(title: "Open it now", action: onOpenCheckIn)
+                }
+                ActionButton(title: "I ate", kind: .secondary, action: onLog)
+            }
+        default:
+            Headline(TodayCopy.headline(moment), tail: tail, size: 26)
+                .contentTransition(.opacity)
+            ActionButton(title: "Log something extra", kind: .secondary, action: onLog)
+                .padding(.top, 4)
+        }
+    }
+
+    private func pickRow(_ meal: SavedMeal, primary: Bool) -> some View {
+        let logging = loggingPickID == meal.id
+        return Button { onPick(meal) } label: {
+            HStack(spacing: 12) {
+                (Text(meal.name)
+                    + Text(isUsual(meal) ? "  · your usual" : "")
+                        .font(Typography.data(12, weight: .regular))
+                        .foregroundColor(Palette.inkFaint))
+                    .font(Typography.data(15, weight: .regular))
+                    .foregroundStyle(Palette.ink)
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Text(meal.kcal.formatted())
+                    .font(Typography.mono(12))
+                    .foregroundStyle(Palette.inkSoft)
+                ZStack {
+                    Circle().fill(primary ? Palette.ink : Color.white.opacity(0.10))
+                    if logging {
+                        ProgressView()
+                            .controlSize(.small)
+                            .tint(primary ? Palette.onBone : Palette.ink)
+                    } else {
+                        Image(systemName: "plus")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(primary ? Palette.onBone : Palette.ink)
+                    }
+                }
+                .frame(width: 34, height: 34)
+            }
+            .padding(.leading, 16)
+            .padding(.trailing, 8)
+            .frame(height: 50)
+            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white.opacity(0.05)))
+            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Color.white.opacity(0.08)))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PressableCard())
+        .disabled(loggingPickID != nil)
+        .accessibilityLabel("Log \(meal.name), \(meal.kcal) kilocalories")
+    }
+
+    /// "Order nearby" beside the plain log link, when ordering is on offer.
+    @ViewBuilder
+    private func orLinks(_ title: String) -> some View {
+        if let onOrder {
+            HStack(spacing: 8) {
+                Button(action: onOrder) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "mappin.and.ellipse")
+                            .font(.system(size: 12, weight: .semibold))
+                        Text("Order nearby")
+                            .font(Typography.data(14, weight: .regular))
+                    }
+                    .foregroundStyle(Palette.hazeSoft)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 40)
+                    .glassCapsule(fill: Palette.haze.opacity(0.10), stroke: Palette.haze.opacity(0.45))
+                }
+                .buttonStyle(PressableCard())
+                somethingElse(title)
+                    .frame(maxWidth: .infinity)
+            }
+        } else {
+            somethingElse(title)
+        }
+    }
+
+    private func somethingElse(_ title: String) -> some View {
+        Button(action: onLog) {
+            Text("\(title) →")
+                .font(Typography.data(14, weight: .regular))
+                .foregroundStyle(Palette.inkSoft)
+                .frame(maxWidth: .infinity)
+                .frame(height: 40)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func isUsual(_ meal: SavedMeal) -> Bool {
+        guard case let .watching(slot, _, _, _) = moment else { return false }
+        return meal.useCount > 0 && meal.suggestSlot == slot
+    }
+
     private var tail: String? {
         if let detail = TodayCopy.detail(moment, home: home, now: date) { return detail }
         if case let .watching(_, dueMin, _, _) = moment {
-            return "Check-in at \(formatMinutes(dueMin)) if it’s not logged."
+            return "Check-in at \(clock24(dueMin)) if it’s not logged."
         }
         return nil
     }
@@ -202,13 +362,14 @@ struct TodayHero: View {
         case let .watching(slot, dueMin, overdue, light):
             let title = TodayCopy.slotTitle(slot)
             if overdue { return "Checking in · \(title)" }
-            if light { return "Top-up · back \(formatMinutes(dueMin))" }
+            if light { return "Top-up · back \(clock24(dueMin))" }
             let at = home.nextCheckIn?.mealMin ?? dueMin
             let moved = !(home.movedSlots ?? []).isEmpty
-            return "Next · \(title) · \(formatMinutes(at))" + (moved ? " · moved" : "")
+            return "Next · \(title) · \(clock24(at))" + (moved ? " · moved" : "")
         case let .snoozed(until):
-            return "Snoozed · back \(until?.formatted(date: .omitted, time: .shortened) ?? "later")"
-        case .covered: return "Day closed"
+            let back = until.map { clock24(TodayLayout.minuteOfDay(from: $0)) } ?? "later"
+            return "Snoozed · back \(back)"
+        case .covered: return "Today"
         case .quiet: return "Today"
         case .toGo: return "Still to go"
         case .checkIn, .conversation: return "Check-in"
@@ -223,86 +384,333 @@ struct TodayHero: View {
     }
 }
 
-// MARK: - Plate strip
+// MARK: - Picks
 
-/// The day's plates as dots on a line: amber when eaten, a pulsing ember ring
-/// for the one due now, a dim ring for a missed one, faint for later.
-struct PlateStrip: View {
-    let home: HomeResponse
+enum TodayPicks {
+    /// Up to two saved meals for the next slot: ones saved for that slot (most used
+    /// first), then any-time meals closest to the plate's size. A meal saved for a
+    /// different slot (oats at dinner) never shows.
+    static func resolve(saved: [SavedMeal], moment: TodayMoment, targetKcal: Int?) -> [SavedMeal] {
+        guard case let .watching(slot, _, _, light) = moment, !light else { return [] }
+        let forSlot = saved
+            .filter { $0.suggestSlot == slot }
+            .sorted { ($0.suggested ? 1 : 0, $0.useCount) > ($1.suggested ? 1 : 0, $1.useCount) }
+        let anyTime = saved
+            .filter { $0.suggestSlot == nil }
+            .sorted { a, b in
+                guard let target = targetKcal else { return a.useCount > b.useCount }
+                return abs(a.kcal - target) < abs(b.kcal - target)
+            }
+        return Array((forSlot + anyTime).prefix(2))
+    }
+}
 
-    private struct Plate: Identifiable {
-        let id: String
-        let atMin: Int
-        let state: SlotState
-        let snack: Bool
+// MARK: - Appetite chip + dropdown
+
+/// Header trigger — opens the custom appetite panel over Today.
+private struct AppetiteChip: View {
+    let level: String
+    var open: Bool
+    let action: () -> Void
+
+    private var label: String {
+        switch level {
+        case "LOW": return "Appetite low"
+        case "HUNGRY": return "Hungry"
+        default: return "Normal appetite"
+        }
     }
 
-    private var plates: [Plate] {
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 7) {
+                AppetiteBars(level: level)
+                Text(label)
+                    .font(Typography.data(12, weight: .regular))
+                    .foregroundStyle(Palette.ink)
+                    .lineLimit(1)
+                Image(systemName: open ? "xmark" : "ellipsis")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(Palette.inkFaint)
+                    .frame(width: 12)
+            }
+            .padding(.horizontal, 12)
+            .frame(height: 34)
+            .glassCapsule(
+                fill: open ? Color.white.opacity(0.10) : Color.white.opacity(0.05),
+                stroke: open ? Color.white.opacity(0.18) : Color.white.opacity(0.10)
+            )
+        }
+        .buttonStyle(PressableCard())
+        .accessibilityLabel("Appetite: \(label)")
+        .accessibilityHint(open ? "Closes the menu" : "Opens appetite options")
+        .accessibilityAddTraits(open ? .isSelected : [])
+    }
+}
+
+/// Custom appetite picker — not a system Menu.
+private struct AppetiteDropdown: View {
+    let level: String
+    let onPick: (String) -> Void
+
+    private static let options: [(id: String, title: String, note: String)] = [
+        ("HUNGRY", "Hungry", "Bigger plates today"),
+        ("NORMAL", "Normal", "As planned"),
+        ("LOW", "Low", "Smaller, denser meals"),
+    ]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Today’s appetite")
+                .font(Typography.mono(10))
+                .tracking(1.2)
+                .textCase(.uppercase)
+                .foregroundStyle(Palette.inkFaint)
+                .padding(.horizontal, 12)
+                .padding(.top, 10)
+                .padding(.bottom, 2)
+
+            ForEach(Self.options, id: \.id) { option in
+                let selected = level == option.id
+                Button {
+                    onPick(option.id)
+                } label: {
+                    HStack(spacing: 12) {
+                        AppetiteBars(level: option.id)
+                            .frame(width: 14)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(option.title)
+                                .font(Typography.data(15, weight: selected ? .medium : .regular))
+                                .foregroundStyle(Palette.ink)
+                            Text(option.note)
+                                .font(Typography.data(12, weight: .regular))
+                                .foregroundStyle(Palette.inkSoft)
+                        }
+                        Spacer(minLength: 8)
+                        if selected {
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(Palette.amber)
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background {
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(selected ? Color.white.opacity(0.08) : Color.clear)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(selected ? .isSelected : [])
+            }
+        }
+        .padding(6)
+        .frame(width: 248)
+        .background {
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(Palette.surfaceRaised)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .strokeBorder(Palette.hairlineHi)
+                )
+        }
+        .accessibilityLabel("Appetite options")
+    }
+}
+
+// MARK: - Plate strip
+
+/// The day's plates as dots on a line: amber when eaten, a lit ring for the one
+/// due now, faint rings for later, and training as a haze square.
+struct PlateStrip: View {
+    let home: HomeResponse
+    /// True while appetite is saving — the hour line reshapes for the new day.
+    var loading = false
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private enum Kind { case meal(SlotState), snack(SlotState), training }
+
+    private struct Stop: Identifiable {
+        let id: String
+        let atMin: Int
+        let kind: Kind
+    }
+
+    private var stops: [Stop] {
         let now = home.day?.nowMin ?? 0
-        var out = (home.day?.slots ?? []).map { slot -> Plate in
+        var out = (home.day?.slots ?? []).map { slot -> Stop in
             var state = slot.slotState
             if state == .missed, !home.enforcementEnabled { state = .upcoming }
-            return Plate(id: slot.slot, atMin: slot.atMin, state: state, snack: false)
+            return Stop(id: slot.slot, atMin: slot.atMin, kind: .meal(state))
         }
         for extra in home.appetite?.extraSlots ?? [] {
-            out.append(Plate(id: extra.slot, atMin: extra.atMin, state: extra.atMin < now ? .logged : .upcoming, snack: true))
+            out.append(Stop(id: extra.slot, atMin: extra.atMin, kind: .snack(extra.atMin < now ? .logged : .upcoming)))
+        }
+        for workout in home.training?.workouts ?? [] {
+            out.append(Stop(id: "training-\(workout.id)", atMin: workout.startMin, kind: .training))
         }
         return out.sorted { $0.atMin < $1.atMin }
     }
 
     var body: some View {
-        let plates = plates
-        if !plates.isEmpty {
+        let stops = stops
+        let count = max(stops.count, 3)
+        ZStack {
+            if !stops.isEmpty {
+                strip(stops)
+                    .opacity(loading ? 0.22 : 1)
+            }
+            if loading {
+                loadingStrip(count: count)
+                    .transition(.opacity)
+            }
+        }
+        .animation(Motion.adaptive(Motion.settle, reduceMotion: reduceMotion), value: loading)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(loading ? "Updating meal times" : accessibilitySummary(stops))
+    }
+
+    private func strip(_ stops: [Stop]) -> some View {
+        HStack(alignment: .top, spacing: 0) {
+            ForEach(stops) { stop in
+                VStack(spacing: 6) {
+                    dot(stop)
+                        .frame(width: 13, height: 13)
+                    Text(clock24(stop.atMin))
+                        .font(Typography.mono(10))
+                        .foregroundStyle(labelColor(stop))
+                }
+                .frame(maxWidth: .infinity)
+            }
+        }
+        .background(alignment: .top) {
+            GeometryReader { geo in
+                let inset = geo.size.width / CGFloat(stops.count) / 2
+                Rectangle()
+                    .fill(Color.white.opacity(0.10))
+                    .frame(width: max(0, geo.size.width - inset * 2), height: 1)
+                    .offset(x: inset, y: 6)
+            }
+        }
+    }
+
+    /// Traveling amber pulse across placeholder hour marks while the day reshapes.
+    private func loadingStrip(count: Int) -> some View {
+        LoopingPhase(period: 1.35, still: 0.35) { t in
             HStack(alignment: .top, spacing: 0) {
-                ForEach(plates) { plate in
+                ForEach(0..<count, id: \.self) { i in
+                    let wave = Phase.window(t, Double(i) / Double(count) * 0.55, Double(i) / Double(count) * 0.55 + 0.18, Double(i) / Double(count) * 0.55 + 0.22, Double(i) / Double(count) * 0.55 + 0.4)
                     VStack(spacing: 6) {
-                        dot(plate)
-                            .frame(width: 18, height: 18)
-                        Text(formatMinutes(plate.atMin))
-                            .font(Typography.mono(10))
-                            .foregroundStyle(plate.state == .now ? Palette.amber : Palette.inkFaint)
+                        Circle()
+                            .strokeBorder(Palette.amber.opacity(0.25 + 0.55 * wave), lineWidth: 1.5)
+                            .background(Circle().fill(Palette.amber.opacity(0.12 * wave)))
+                            .frame(width: 13, height: 13)
+                            .scaleEffect(0.88 + 0.14 * wave)
+                        Capsule()
+                            .fill(Color.white.opacity(0.06 + 0.14 * wave))
+                            .frame(width: 30, height: 7)
                     }
                     .frame(maxWidth: .infinity)
                 }
             }
-            .padding(.horizontal, 4)
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(accessibilitySummary(plates))
+            .background(alignment: .top) {
+                GeometryReader { geo in
+                    let inset = geo.size.width / CGFloat(count) / 2
+                    let track = max(0, geo.size.width - inset * 2)
+                    ZStack(alignment: .leading) {
+                        Rectangle()
+                            .fill(Color.white.opacity(0.08))
+                            .frame(height: 1)
+                        Capsule()
+                            .fill(
+                                LinearGradient(
+                                    colors: [Palette.amber.opacity(0), Palette.amber, Palette.amber.opacity(0)],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                            .frame(width: min(56, track * 0.35), height: 2)
+                            .offset(x: t * max(0, track - min(56, track * 0.35)))
+                    }
+                    .frame(width: track, height: 2)
+                    .offset(x: inset, y: 5.5)
+                }
+            }
         }
     }
 
     @ViewBuilder
-    private func dot(_ plate: Plate) -> some View {
-        let size: CGFloat = plate.snack ? 8 : 12
-        switch plate.state {
-        case .logged:
-            Circle()
-                .fill(plate.snack ? Palette.amber.opacity(0.5) : Palette.amber)
-                .frame(width: size, height: size)
-                .shadow(color: Palette.amber.opacity(0.6), radius: 6)
-        case .now:
-            ZStack {
-                PingRing(color: Palette.ember)
-                Circle().strokeBorder(Palette.ember, lineWidth: 2).frame(width: size, height: size)
-            }
-        case .missed:
-            Circle().strokeBorder(Palette.ember.opacity(0.55), lineWidth: 1.5).frame(width: size, height: size)
-        case .upcoming:
-            Circle().fill(Color.white.opacity(0.2)).frame(width: plate.snack ? 6 : 8, height: plate.snack ? 6 : 8)
+    private func dot(_ stop: Stop) -> some View {
+        switch stop.kind {
+        case .training:
+            RoundedRectangle(cornerRadius: 4, style: .continuous)
+                .fill(Palette.haze)
+                .shadow(color: Palette.haze.opacity(0.7), radius: 5)
+        case let .meal(state):
+            ring(state, size: 13)
+        case let .snack(state):
+            ring(state, size: 9)
         }
     }
 
-    private func accessibilitySummary(_ plates: [Plate]) -> String {
-        plates.map { plate in
-            let name = TodayCopy.slotTitle(plate.id)
-            let state: String
-            switch plate.state {
-            case .logged: state = "eaten"
-            case .now: state = "due now"
-            case .missed: state = "missed"
-            case .upcoming: state = "later"
+    @ViewBuilder
+    private func ring(_ state: SlotState, size: CGFloat) -> some View {
+        switch state {
+        case .logged:
+            Circle()
+                .fill(Palette.amber)
+                .frame(width: size, height: size)
+                .shadow(color: Palette.amber.opacity(0.6), radius: 4)
+        case .now:
+            Circle()
+                .fill(Palette.background)
+                .overlay(Circle().strokeBorder(Palette.amber, lineWidth: 2))
+                .frame(width: size, height: size)
+                .shadow(color: Palette.amber.opacity(0.8), radius: 6)
+        case .missed:
+            Circle()
+                .fill(Palette.background)
+                .overlay(Circle().strokeBorder(Palette.ember.opacity(0.6), lineWidth: 1.5))
+                .frame(width: size, height: size)
+        case .upcoming:
+            Circle()
+                .fill(Palette.background)
+                .overlay(Circle().strokeBorder(Color.white.opacity(0.3), lineWidth: 1.5))
+                .frame(width: size, height: size)
+        }
+    }
+
+    private func labelColor(_ stop: Stop) -> Color {
+        switch stop.kind {
+        case .training: return Palette.hazeSoft
+        case let .meal(state), let .snack(state):
+            switch state {
+            case .now: return Palette.ink
+            case .logged: return Palette.inkSoft
+            default: return Palette.inkFaint
             }
-            return "\(name) \(formatMinutes(plate.atMin)), \(state)"
+        }
+    }
+
+    private func accessibilitySummary(_ stops: [Stop]) -> String {
+        stops.map { stop in
+            switch stop.kind {
+            case .training:
+                return "Training \(clock24(stop.atMin))"
+            case let .meal(state), let .snack(state):
+                let name = TodayCopy.slotTitle(stop.id)
+                let word: String
+                switch state {
+                case .logged: word = "eaten"
+                case .now: word = "due now"
+                case .missed: word = "missed"
+                case .upcoming: word = "later"
+                }
+                return "\(name) \(clock24(stop.atMin)), \(word)"
+            }
         }
         .joined(separator: "; ")
     }
@@ -338,6 +746,8 @@ struct CheckInTakeover: View {
     let onAteThis: () -> Void
     let onAlreadyAte: () -> Void
     let onSnooze: () -> Void
+    /// Order nearby, for when there's nothing to eat where you are. Nil hides it.
+    var onOrder: (() -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -390,6 +800,14 @@ struct CheckInTakeover: View {
         }
     }
 
+    private var orderDetail: String {
+        let kcal = checkIn.prescription?.totalKcal ?? max(0, home.ledger.remainingKcal)
+        switch CheckInFlavor(kind: checkIn.kind ?? "MEAL") {
+        case .close: return "A dinner near you that fits \(kcal.formatted()) kcal"
+        default: return "Places near you that fit \(kcal.formatted()) kcal"
+        }
+    }
+
     @ViewBuilder
     private var actions: some View {
         if checkIn.tier >= 3 {
@@ -410,6 +828,39 @@ struct CheckInTakeover: View {
                     ActionButton(title: "Snooze", kind: .secondary, action: onSnooze)
                 }
                 .disabled(busy)
+                if let onOrder {
+                    Button(action: onOrder) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "mappin.and.ellipse")
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundStyle(Palette.hazeSoft)
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text("No food here? Order something")
+                                    .font(Typography.data(15, weight: .regular))
+                                    .foregroundStyle(Palette.ink)
+                                Text(orderDetail)
+                                    .font(Typography.data(12, weight: .regular))
+                                    .foregroundStyle(Palette.inkSoft)
+                            }
+                            Spacer(minLength: 8)
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(Palette.inkFaint)
+                        }
+                        .padding(.horizontal, 16)
+                        .frame(height: 54)
+                        .background {
+                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                .fill(LinearGradient(colors: [Palette.haze.opacity(0.12), Palette.haze.opacity(0.04)], startPoint: .top, endPoint: .bottom))
+                        }
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                .strokeBorder(Palette.haze.opacity(0.5))
+                        }
+                    }
+                    .buttonStyle(PressableCard())
+                    .disabled(busy)
+                }
             }
         }
     }

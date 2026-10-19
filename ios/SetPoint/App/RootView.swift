@@ -42,6 +42,8 @@ struct RootView: View {
             WelcomeView()
         case .signedIn:
             MainTabView()
+        case .needsInvite:
+            InviteCodeView()
         }
     }
 }
@@ -65,6 +67,7 @@ enum DebugPreviewStub {
     case home(HomeResponse)
     case homeModel(HomeViewModel)
     case welcome
+    case invite
     case onboarding(OnboardingViewModel.Step)
     case prescription
     case conversation(resolved: Bool)
@@ -92,6 +95,7 @@ enum DebugPreviewStub {
     case settingsAppetite
     case widgets
     case burn
+    case orderNearby
     case paywall
     case settingsAccount
     case settingsDelete
@@ -113,12 +117,14 @@ enum DebugPreviewStub {
             }
         case let .home(response):
             NavigationStack {
-                HomeContent(model: .previewed(.loaded(response)))
+                HomeContent(model: .previewed(.loaded(response)), previewLogger: .sampleQuickLog)
                     .toolbar(.hidden, for: .navigationBar)
                     .safeAreaInset(edge: .bottom, spacing: 0) {
                         StubNav()
                     }
             }
+        case .invite:
+            InviteCodeView()
         case .welcome:
             WelcomeView()
         case let .onboarding(step):
@@ -225,6 +231,10 @@ enum DebugPreviewStub {
             NavigationStack { AppetiteSettingsView(previewHistory: .sample, previewMode: "SMALL_FREQUENT") }
         case .widgets:
             WidgetsStubHost()
+        case .orderNearby:
+            NavigationStack {
+                OrderNearbyView(gapKcal: 700, slotTitle: "Lunch", preview: .sample)
+            }
         case .burn:
             NavigationStack { BurnScreen(preview: .sample) }
         case .paywall:
@@ -266,6 +276,7 @@ enum DebugPreviewStub {
         case "home-light": return .home(.sampleLightCheckIn)
         case "home-close": return .home(.sampleClose)
         case "welcome", "welcome-notice", "welcome-plan", "welcome-quiet": return .welcome
+        case "invite": return .invite
         case "onboarding-goal", "onboarding-target": return .onboarding(.goal)
         case "onboarding", "onboarding-about": return .onboarding(.about)
         case "onboarding-rhythm": return .onboarding(.rhythm)
@@ -327,6 +338,7 @@ enum DebugPreviewStub {
         case "settings-appetite", "appetite-record": return .settingsAppetite
         case "widgets": return .widgets
         case "burn": return .burn
+        case "order-nearby": return .orderNearby
         case "paywall": return .paywall
         case "settings-goal": return .settingsGoal
         case "settings-meal-times": return .settingsMealTimes

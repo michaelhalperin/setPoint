@@ -70,9 +70,8 @@ struct SettingsView: View {
     private func profile(_ model: SettingsViewModel) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                HStack(alignment: .firstTextBaseline) {
-                    Headline("You", size: 36)
-                    Spacer(minLength: 8)
+                HStack {
+                    Spacer(minLength: 0)
                     NavigationLink { GoalSettingsView(model: model) } label: {
                         Text("Edit plan")
                             .font(Typography.data(13, weight: .regular))
@@ -290,7 +289,7 @@ struct SettingsView: View {
         return first + "\n" + second
     }
 
-    /// On or paused, drawn as the three meal check-ins a day — or a quiet line.
+    /// On or paused — one card: the day's three meal check-ins, and a sliding switch.
     private func checkInsSection(_ model: SettingsViewModel) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
@@ -304,15 +303,17 @@ struct SettingsView: View {
             .padding(.horizontal, 4)
 
             if model.enforcementEnabled {
-                HStack(spacing: 8) {
-                    checkInTile(title: "On", caption: "After each meal time", dots: 3, selected: !model.checkInsPaused) {
-                        Task { await model.setCheckInsPaused(false) }
-                    }
-                    checkInTile(title: "Paused", caption: "Plan still updates", dots: 0, selected: model.checkInsPaused) {
-                        Task { await model.setCheckInsPaused(true) }
-                    }
+                CheckInModeSwitch(
+                    paused: model.checkInsPaused,
+                    mealMinutes: [
+                        model.mealTimes.breakfastMin,
+                        model.mealTimes.lunchMin,
+                        model.mealTimes.dinnerMin,
+                    ],
+                    busy: model.saving
+                ) { paused in
+                    Task { await model.setCheckInsPaused(paused) }
                 }
-                .disabled(model.saving)
             }
 
             Text(checkInsDetail(model))
@@ -323,53 +324,17 @@ struct SettingsView: View {
         }
     }
 
-    private func checkInTile(title: String, caption: String, dots: Int, selected: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 4) {
-                    if dots == 0 {
-                        Image(systemName: "pause.fill")
-                            .font(.system(size: 9, weight: .bold))
-                            .foregroundStyle(selected ? Palette.onBone : Palette.inkFaint)
-                    }
-                    ForEach(0..<dots, id: \.self) { _ in
-                        Circle()
-                            .fill(selected ? Palette.ember : Color.white.opacity(0.25))
-                            .frame(width: 6, height: 6)
-                            .shadow(color: Palette.ember.opacity(selected ? 0.8 : 0), radius: 3)
-                    }
-                }
-                .frame(height: 14)
-                Text(title)
-                    .font(Typography.data(15, weight: .medium))
-                Text(caption.uppercased())
-                    .font(Typography.mono(10))
-                    .opacity(0.7)
-            }
-            .foregroundStyle(selected ? Palette.onBone : Palette.ink)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 14)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(selected ? Palette.ink : Color.white.opacity(0.035))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .strokeBorder(selected ? Palette.ink : Color.white.opacity(0.08))
-            )
-        }
-        .buttonStyle(PressableCard())
-        .accessibilityAddTraits(selected ? .isSelected : [])
-    }
-
     /// Each setting as a tile with a small picture of its current value.
     private func setupGrid(_ model: SettingsViewModel) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Your setup").sectionLabelStyle().padding(.horizontal, 4)
             LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
                 NavigationLink { RhythmSettingsView(model: model) } label: {
-                    SetupTile(title: "Meal times", value: mealTimesSubtitle(model)) {
+                    SetupTile(
+                        title: "Meal times",
+                        value: mealTimesSubtitle(model),
+                        badge: model.hasWeekendMealOverrides ? "Weekends" : nil
+                    ) {
                         HStack(alignment: .center, spacing: 6) {
                             ForEach([model.mealTimes.breakfastMin, model.mealTimes.lunchMin, model.mealTimes.dinnerMin], id: \.self) { minute in
                                 Circle().fill(Palette.amber).frame(width: 8, height: 8)
@@ -507,9 +472,11 @@ struct SettingsView: View {
     }
 
     private func mealTimesSubtitle(_ model: SettingsViewModel) -> String {
-        [model.mealTimes.breakfastMin, model.mealTimes.lunchMin, model.mealTimes.dinnerMin]
+        let times = [model.mealTimes.breakfastMin, model.mealTimes.lunchMin, model.mealTimes.dinnerMin]
             .map(formatMinutes)
             .joined(separator: " · ")
+        guard model.hasWeekendMealOverrides else { return times }
+        return "\(times) · \(WeekendDays.summary(model.weekendDays))"
     }
 
     private func restrictionsSubtitle(_ model: SettingsViewModel) -> String {
@@ -539,6 +506,8 @@ private struct SetupTile<Mark: View>: View {
     let value: String
     var valueColor: Color = Palette.inkSoft
     var isNew = false
+    /// Quiet status chip (e.g. "Weekends") — muted vs the amber NEW badge.
+    var badge: String? = nil
     var showsChevron = true
     @ViewBuilder var mark: Mark
 
@@ -554,6 +523,13 @@ private struct SetupTile<Mark: View>: View {
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
                         .background(Palette.amber, in: Capsule())
+                } else if let badge {
+                    Text(badge)
+                        .font(Typography.mono(9, weight: .medium))
+                        .foregroundStyle(Palette.inkFaint)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.white.opacity(0.08), in: Capsule())
                 }
             }
             VStack(alignment: .leading, spacing: 2) {
@@ -637,16 +613,183 @@ func enforcementNote(_ reason: String?) -> String {
     }
 }
 
+/// How check-ins run: the day's three meal moments as a lit ribbon, with a
+/// sliding On / Paused switch underneath.
+private struct CheckInModeSwitch: View {
+    let paused: Bool
+    let mealMinutes: [Int]
+    var busy = false
+    let onChange: (Bool) -> Void
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Namespace private var segmentNS
+
+    private var listening: Bool { !paused }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            dayRibbon
+            modeSwitch
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glass(radius: 24, fill: Color.white.opacity(0.035))
+        .opacity(busy ? 0.55 : 1)
+        .disabled(busy)
+        .animation(Motion.adaptive(Motion.settle, reduceMotion: reduceMotion), value: paused)
+        .accessibilityElement(children: .contain)
+    }
+
+    /// Three meal check-ins on a day line — ember when listening, a quiet hush when paused.
+    private var dayRibbon: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(listening ? "Listening" : "Quiet")
+                    .font(Typography.data(15, weight: .medium))
+                    .foregroundStyle(Palette.ink)
+                    .contentTransition(.opacity)
+                Spacer(minLength: 8)
+                Text(listening ? "After each meal" : "Plan still updates")
+                    .font(Typography.data(12, weight: .regular))
+                    .foregroundStyle(Palette.inkSoft)
+                    .contentTransition(.opacity)
+            }
+
+            GeometryReader { geo in
+                let width = geo.size.width
+                let ys: CGFloat = 11
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(listening ? Palette.ember.opacity(0.22) : Color.white.opacity(0.06))
+                        .frame(height: 2)
+                        .frame(maxWidth: .infinity)
+                        .offset(y: ys - 1)
+
+                    if listening {
+                        Capsule()
+                            .fill(
+                                LinearGradient(
+                                    colors: [Palette.ember.opacity(0.15), Palette.ember.opacity(0.55), Palette.ember.opacity(0.15)],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                            .frame(height: 2)
+                            .frame(maxWidth: .infinity)
+                            .offset(y: ys - 1)
+                    }
+
+                    HStack(spacing: 0) {
+                        ForEach(Array(mealMinutes.enumerated()), id: \.offset) { index, minute in
+                            mealNode(minute: minute)
+                            if index < mealMinutes.count - 1 { Spacer(minLength: 0) }
+                        }
+                    }
+                    .frame(width: width)
+                }
+            }
+            .frame(height: 36)
+        }
+        .accessibilityHidden(true)
+    }
+
+    private func mealNode(minute: Int) -> some View {
+        VStack(spacing: 6) {
+            ZStack {
+                if listening {
+                    Circle()
+                        .fill(Palette.ember.opacity(0.28))
+                        .frame(width: 18, height: 18)
+                        .blur(radius: reduceMotion ? 0 : 2)
+                }
+                Circle()
+                    .fill(listening ? Palette.ember : Color.white.opacity(0.06))
+                    .frame(width: listening ? 9 : 8, height: listening ? 9 : 8)
+                    .overlay {
+                        if !listening {
+                            Circle().strokeBorder(Color.white.opacity(0.22), lineWidth: 1.2)
+                        }
+                    }
+                    .shadow(color: Palette.ember.opacity(listening ? 0.7 : 0), radius: listening ? 5 : 0)
+            }
+            .frame(width: 18, height: 18)
+
+            Text(formatMinutes(minute))
+                .font(Typography.mono(9))
+                .foregroundStyle(listening ? Palette.inkSoft : Palette.inkFaint)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+    }
+
+    private var modeSwitch: some View {
+        HStack(spacing: 0) {
+            modeOption(title: "On", selected: listening) {
+                guard paused else { return }
+                Haptics.select()
+                onChange(false)
+            }
+            modeOption(title: "Paused", selected: paused) {
+                guard !paused else { return }
+                Haptics.select()
+                onChange(true)
+            }
+        }
+        .padding(4)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color.white.opacity(0.05))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(Color.white.opacity(0.07))
+        )
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Check-ins")
+    }
+
+    private func modeOption(title: String, selected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(Typography.data(14, weight: selected ? .medium : .regular))
+                .foregroundStyle(selected ? Palette.onBone : Palette.inkSoft)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 11)
+                .background {
+                    if selected {
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(Palette.ink)
+                            .matchedGeometryEffect(id: "checkInMode", in: segmentNS)
+                    }
+                }
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+}
+
+/// Matches the loaded You layout: Edit plan, goal orb card, check-in switch, setup grid.
 private struct SettingsSkeletonView: View {
     private let wash = Color.white.opacity(0.06)
     private let washStrong = Color.white.opacity(0.1)
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: Space.md) {
-                plan
+            VStack(alignment: .leading, spacing: 14) {
+                HStack {
+                    Spacer(minLength: 0)
+                    Capsule().fill(washStrong).frame(width: 88, height: 36)
+                }
+
+                goalCard
                 checkIns
-                rows
+                setupGrid
+                proCard
+                Capsule()
+                    .strokeBorder(Color.white.opacity(0.08))
+                    .frame(height: 48)
+                    .overlay(SkeletonBlock(width: 110, height: 14).padding(.leading, 18), alignment: .leading)
             }
             .padding(Space.gutter)
         }
@@ -655,113 +798,140 @@ private struct SettingsSkeletonView: View {
         .skeletonLoading()
     }
 
-    private var plan: some View {
-        VStack(alignment: .leading, spacing: Space.md) {
-            HStack {
-                SkeletonBlock(width: 72, height: 10, tint: wash)
-                Spacer()
-                SkeletonBlock(width: 32, height: 13, tint: wash)
+    private var goalCard: some View {
+        HStack(spacing: 18) {
+            ZStack {
+                Circle()
+                    .stroke(washStrong, lineWidth: 8)
+                    .frame(width: 112, height: 112)
+                Circle()
+                    .fill(wash)
+                    .frame(width: 80, height: 80)
+                VStack(spacing: 4) {
+                    SkeletonBlock(width: 44, height: 20, radius: 6, tint: washStrong)
+                    SkeletonBlock(width: 36, height: 8, tint: wash)
+                }
             }
-            SkeletonBlock(width: 196, height: 30, radius: 8, tint: washStrong)
-            Capsule().fill(wash).frame(height: 18)
-            HStack(spacing: Space.md) {
-                planMetric(width: 64)
-                planMetric(width: 48)
-                planMetric(width: 52)
-                Spacer(minLength: 0)
-            }
-        }
-        .padding(22)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .glass(radius: 28)
-    }
+            .frame(width: 112, height: 112)
 
-    private func planMetric(width: CGFloat) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            SkeletonBlock(width: width, height: 24, radius: 6, tint: washStrong)
-            SkeletonBlock(width: width - 8, height: 10, tint: wash)
+            VStack(alignment: .leading, spacing: 8) {
+                SkeletonBlock(width: 96, height: 10, tint: wash)
+                SkeletonBlock(width: 120, height: 26, radius: 8, tint: washStrong)
+                SkeletonBlock(width: 108, height: 11, tint: wash)
+                SkeletonBlock(width: 132, height: 11, tint: wash)
+            }
+            Spacer(minLength: 0)
         }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background {
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(LinearGradient(colors: [Palette.ember.opacity(0.08), Color.white.opacity(0.02)], startPoint: .topLeading, endPoint: .bottomTrailing))
+        }
+        .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous).strokeBorder(Color(hex: 0xFF8A50, opacity: 0.18)))
     }
 
     private var checkIns: some View {
-        HStack(spacing: Space.sm) {
-            mutedDial
-                .frame(width: 124, height: 124)
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                SkeletonBlock(width: 108, height: 10, tint: wash)
+                Spacer()
+                SkeletonBlock(width: 92, height: 10, tint: wash)
+            }
+            .padding(.horizontal, 4)
 
-            VStack(alignment: .leading, spacing: Space.xs) {
+            VStack(alignment: .leading, spacing: 16) {
                 HStack {
-                    SkeletonBlock(width: 92, height: 18)
+                    SkeletonBlock(width: 72, height: 15, tint: washStrong)
                     Spacer()
-                    Capsule().fill(Palette.surfaceSunk).frame(width: 51, height: 31)
+                    SkeletonBlock(width: 96, height: 12, tint: wash)
                 }
-                SkeletonBlock(width: 168, height: 13)
-                SkeletonBlock(width: 128, height: 13)
-                SkeletonBlock(width: 118, height: 24, radius: Radius.pill)
+                ZStack(alignment: .top) {
+                    Capsule()
+                        .fill(wash)
+                        .frame(height: 2)
+                        .padding(.horizontal, 18)
+                        .padding(.top, 8)
+                    HStack {
+                        ForEach(0..<3, id: \.self) { _ in
+                            VStack(spacing: 6) {
+                                Circle()
+                                    .strokeBorder(washStrong, lineWidth: 1.5)
+                                    .frame(width: 9, height: 9)
+                                SkeletonBlock(width: 28, height: 8, tint: wash)
+                            }
+                            .frame(maxWidth: .infinity)
+                        }
+                    }
+                }
+                .frame(height: 36)
+
+                HStack(spacing: 4) {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(washStrong)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 38)
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(wash)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 38)
+                }
+                .padding(4)
+                .background(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(Color.white.opacity(0.05))
+                )
+            }
+            .padding(16)
+            .glass(radius: 24, fill: Color.white.opacity(0.035))
+
+            SkeletonBlock(width: 220, height: 12, tint: wash)
+                .padding(.horizontal, 4)
+        }
+    }
+
+    private var setupGrid: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            SkeletonBlock(width: 84, height: 10, tint: wash)
+                .padding(.horizontal, 4)
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
+                ForEach(0..<6, id: \.self) { i in
+                    setupTile(markWidth: [48, 40, 36, 44, 28, 56][i])
+                }
             }
         }
-        .padding(16)
-        .background {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(Palette.surface)
-                .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(Palette.hairline))
-        }
     }
 
-    private var mutedDial: some View {
-        GeometryReader { geo in
-            let size = min(geo.size.width, geo.size.height)
-            let r = size * 0.33
-            let c = CGPoint(x: geo.size.width / 2, y: geo.size.height / 2)
-            ZStack {
-                Circle()
-                    .stroke(Palette.surfaceSunk, lineWidth: size * 0.076)
-                    .frame(width: r * 2, height: r * 2)
-                    .position(c)
-                ForEach([480, 780, 1140], id: \.self) { minute in
-                    let angle = CGFloat(minute) / 1440 * 2 * .pi
-                    Circle()
-                        .fill(Palette.surface)
-                        .overlay(Circle().strokeBorder(Palette.hairline, lineWidth: 1.5))
-                        .frame(width: size * 0.13, height: size * 0.13)
-                        .position(x: c.x + r * sin(angle), y: c.y - r * cos(angle))
-                }
+    private func setupTile(markWidth: CGFloat) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            SkeletonBlock(width: markWidth, height: 18, radius: 6, tint: washStrong)
+            VStack(alignment: .leading, spacing: 4) {
+                SkeletonBlock(width: 72, height: 14, tint: washStrong)
+                SkeletonBlock(width: 88, height: 11, tint: wash)
             }
+            Spacer(minLength: 0)
         }
+        .padding(14)
+        .frame(maxWidth: .infinity, minHeight: 104, alignment: .topLeading)
+        .glass(radius: 22)
     }
 
-    private var rows: some View {
-        VStack(spacing: 0) {
-            youRow(titleWidth: 118, valueWidth: 96)
-            divider
-            youRow(titleWidth: 92, valueWidth: 128)
-            divider
-            youRow(titleWidth: 124, valueWidth: 48)
-            divider
-            youRow(titleWidth: 72, valueWidth: 0)
-        }
-        .background {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(Palette.surface)
-                .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(Palette.hairline))
-        }
-    }
-
-    private var divider: some View {
-        Divider().overlay(Palette.hairline).padding(.leading, 66)
-    }
-
-    private func youRow(titleWidth: CGFloat, valueWidth: CGFloat) -> some View {
+    private var proCard: some View {
         HStack(spacing: 14) {
-            Circle().fill(Palette.surfaceSunk).frame(width: 36, height: 36)
-            SkeletonBlock(width: titleWidth, height: 16)
-            Spacer(minLength: 8)
-            if valueWidth > 0 {
-                SkeletonBlock(width: valueWidth, height: 14)
+            Circle().fill(Palette.haze.opacity(0.2)).frame(width: 38, height: 38)
+            VStack(alignment: .leading, spacing: 4) {
+                SkeletonBlock(width: 96, height: 14, tint: washStrong)
+                SkeletonBlock(width: 168, height: 11, tint: wash)
             }
-            SkeletonBlock(width: 8, height: 12, radius: 3)
+            Spacer(minLength: 0)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 16)
+        .background {
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(LinearGradient(colors: [Palette.haze.opacity(0.12), Palette.haze.opacity(0.02)], startPoint: .topLeading, endPoint: .bottomTrailing))
+        }
+        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(Palette.hazeSoft.opacity(0.22)))
     }
 }
 

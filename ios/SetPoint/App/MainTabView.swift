@@ -8,11 +8,14 @@ import SwiftUI
 /// float over content and only appear on each tab's root screen.
 struct MainTabView: View {
     @Environment(AppEnvironment.self) private var env
+    @Environment(\.scenePhase) private var scenePhase
     @State private var home: HomeViewModel?
     @State private var onboarding: OnboardingViewModel?
     @State private var selection = Tab.today
     @State private var visited: Set<Tab> = [.today]
     @State private var deepLinkCheckInID: String?
+    /// A just-logged meal opened from the "Logged · Fix" toast.
+    @State private var fixing: MealSummary?
 
     enum Tab: Hashable, CaseIterable { case today, training, week, you }
 
@@ -28,6 +31,19 @@ struct MainTabView: View {
                                 .accessibilityHidden(selection != tab)
                         }
                     }
+                }
+                .modifier(LogAnywhere(home: home))
+                .overlay(alignment: .bottom) { justLoggedToast(home: home) }
+                .fullScreenCover(item: $fixing) { meal in
+                    MealFixView(
+                        meal: meal,
+                        onSaved: { _ in Task { await home.load(showSpinner: false) } },
+                        onRemove: {
+                            fixing = nil
+                            Task { try? await home.removeMeal(id: meal.id) }
+                        },
+                        onClose: { fixing = nil }
+                    )
                 }
                 .fullScreenCover(isPresented: needsOnboarding) {
                     OnboardingFlow(model: onboarding)
@@ -46,6 +62,14 @@ struct MainTabView: View {
             guard pending else { return }
             select(.today)
         }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { Analytics.send(.appOpened, api: env.api) }
+        }
+        .onChange(of: env.chrome.tabRequest) { _, tab in
+            guard let tab else { return }
+            select(tab)
+            env.chrome.clearTabRequest()
+        }
         .task {
             guard home == nil else { return }
             let h = HomeViewModel(
@@ -60,6 +84,8 @@ struct MainTabView: View {
             )
             home = h
             await h.load()
+            Analytics.send(.appOpened, api: env.api)
+            await env.flags.refresh(using: env.api)
             await env.subscription.refresh(using: env.api)
         }
     }
@@ -94,15 +120,62 @@ struct MainTabView: View {
         }
     }
 
+    @ViewBuilder
+    private func justLoggedToast(home: HomeViewModel) -> some View {
+        Group {
+            if let failure = env.chrome.failure, !env.chrome.logPanelOpen {
+                ActionFailedToast(failure: failure) { env.chrome.retryFailure() }
+                    .padding(.horizontal, 40)
+                    .padding(.bottom, 96)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .task(id: failure.id) {
+                        try? await Task.sleep(for: .seconds(6))
+                        if env.chrome.failure?.id == failure.id { env.chrome.clearFailure() }
+                    }
+            } else if let logged = env.chrome.justLogged, !env.chrome.logPanelOpen, !env.chrome.navHidden {
+                JustLoggedToast(logged: logged) {
+                    env.chrome.clearJustLogged()
+                    Task { fixing = await meal(logged.mealID, in: home) }
+                }
+                .padding(.horizontal, 40)
+                .padding(.bottom, 96)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .task(id: logged.token) {
+                    try? await Task.sleep(for: .seconds(5))
+                    if env.chrome.justLogged?.token == logged.token { env.chrome.clearJustLogged() }
+                }
+            }
+        }
+        .animation(Motion.snappy, value: env.chrome.justLogged)
+        .animation(Motion.snappy, value: env.chrome.failure)
+    }
+
+    /// The logged meal as Today has it — after one reload if Today hasn't caught up.
+    private func meal(_ id: String, in home: HomeViewModel) async -> MealSummary? {
+        func find() -> MealSummary? {
+            if case let .loaded(response) = home.phase { return response.meals.first { $0.id == id } }
+            return nil
+        }
+        if let found = find() { return found }
+        await home.load(showSpinner: false)
+        return find()
+    }
+
     private func select(_ tab: Tab) {
+        env.chrome.logPanelOpen = false
         visited.insert(tab)
         selection = tab
     }
 
+    /// The "+": log right where you are. On Today it's Today's own panel; on any
+    /// other tab the panel rises over that screen and the meal lands on Today.
     private func openLog() {
         Haptics.nudge()
-        select(.today)
-        env.chrome.requestLog()
+        if selection == .today {
+            env.chrome.requestLog()
+        } else {
+            env.chrome.logPanelOpen = true
+        }
     }
 
     private var needsOnboarding: Binding<Bool> {

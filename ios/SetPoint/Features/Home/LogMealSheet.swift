@@ -611,7 +611,7 @@ struct PhotoParseConfirm: View {
     }
 }
 
-private struct EditableMealItem: Identifiable {
+struct EditableMealItem: Identifiable {
     let id = UUID()
     var name: String
     var quantity: String
@@ -621,6 +621,15 @@ private struct EditableMealItem: Identifiable {
     var fatG: String
 
     init(_ item: LogMealResponse.Parsed.Item) {
+        name = item.name
+        quantity = item.quantity
+        kcal = String(item.kcal)
+        proteinG = Self.number(item.proteinG)
+        carbsG = Self.number(item.carbsG)
+        fatG = Self.number(item.fatG)
+    }
+
+    init(_ item: MealSummary.Item) {
         name = item.name
         quantity = item.quantity
         kcal = String(item.kcal)
@@ -663,9 +672,10 @@ private struct EditableMealItem: Identifiable {
     }
 }
 
-/// Fix a photo meal on the photo itself: each food is a tag on the plate. Tap one
-/// to change how much there was or take it out; add what the photo missed.
-private struct MealCorrectionEditor: View {
+/// Fix a meal on its plate: each food is a tag. Tap one to change how much
+/// there was or take it out; add what's missing. Used right after a photo is
+/// read, and from any logged meal (see `MealFixView`) — then there may be no photo.
+struct MealCorrectionEditor: View {
     let photo: UIImage?
     let originalKcal: Int
     let saving: Bool
@@ -700,15 +710,67 @@ private struct MealCorrectionEditor: View {
         onSave: @escaping (String, [MealCorrectionRequest.Item]) async -> Bool,
         onRemove: @escaping () -> Void
     ) {
+        self.init(
+            summary: logged.summary ?? "",
+            kcal: logged.kcal,
+            items: logged.items.map(EditableMealItem.init),
+            photo: photo,
+            saving: saving,
+            error: error,
+            onCancel: onCancel,
+            onSave: onSave,
+            onRemove: onRemove
+        )
+    }
+
+    init(
+        meal: MealSummary,
+        photo: UIImage?,
+        saving: Bool,
+        error: String?,
+        onCancel: @escaping () -> Void,
+        onSave: @escaping (String, [MealCorrectionRequest.Item]) async -> Bool,
+        onRemove: @escaping () -> Void
+    ) {
+        // A meal logged without a breakdown (a rough size, a usual) starts as one
+        // food holding its totals, so the portion buttons work from there.
+        let items = meal.items ?? []
+        let start = items.isEmpty
+            ? [MealSummary.Item(name: meal.title, quantity: "", kcal: meal.kcal, proteinG: meal.proteinG, carbsG: meal.carbsG, fatG: meal.fatG)]
+            : items
+        self.init(
+            summary: meal.summary ?? "",
+            kcal: meal.kcal,
+            items: start.map(EditableMealItem.init),
+            photo: photo,
+            saving: saving,
+            error: error,
+            onCancel: onCancel,
+            onSave: onSave,
+            onRemove: onRemove
+        )
+    }
+
+    private init(
+        summary: String,
+        kcal: Int,
+        items: [EditableMealItem],
+        photo: UIImage?,
+        saving: Bool,
+        error: String?,
+        onCancel: @escaping () -> Void,
+        onSave: @escaping (String, [MealCorrectionRequest.Item]) async -> Bool,
+        onRemove: @escaping () -> Void
+    ) {
         self.photo = photo
-        self.originalKcal = logged.kcal
+        self.originalKcal = kcal
         self.saving = saving
         self.error = error
         self.onCancel = onCancel
         self.onSave = onSave
         self.onRemove = onRemove
-        let start = logged.items.isEmpty ? [EditableMealItem()] : logged.items.map(EditableMealItem.init)
-        _summary = State(initialValue: logged.summary ?? "")
+        let start = items.isEmpty ? [EditableMealItem()] : items
+        _summary = State(initialValue: summary)
         _items = State(initialValue: start)
         _selected = State(initialValue: start.first?.id)
     }
@@ -929,7 +991,7 @@ private struct MealCorrectionEditor: View {
             }
 
             HStack {
-                Button(items.count > 1 ? "Not in the photo · remove" : "Clear it") {
+                Button(items.count > 1 ? (photo == nil ? "Not in it · remove" : "Not in the photo · remove") : "Clear it") {
                     if items.count > 1 {
                         let id = item.id
                         items.removeAll { $0.id == id }
