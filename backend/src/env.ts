@@ -62,6 +62,8 @@ const schema = z.object({
   // App Store Connect — required to accept production (App Store) purchases.
   APP_BUNDLE_ID: z.string().default('com.michaelhalperin.setpoint'),
   APPLE_APP_APPLE_ID: z.string().default(''),
+  // Order nearby: "true" adds made-up places around the user, for trying the screen.
+  NEARBY_SAMPLE_VENUES: z.string().default(''),
 });
 
 const parsed = schema.safeParse(process.env);

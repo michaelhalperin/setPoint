@@ -20,6 +20,7 @@ import { dashboardRoutes } from './routes/dashboard.js';
 import { healthRoutes } from './routes/health.js';
 import { legalRoutes } from './routes/legal.js';
 import { mealRoutes } from './routes/meals.js';
+import { nearbyRoutes } from './routes/nearby.js';
 import { foodRoutes } from './routes/foods.js';
 import { pushTokenRoutes } from './routes/pushTokens.js';
 import { savedMealRoutes } from './routes/savedMeals.js';
@@ -121,6 +122,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   await app.register(mealRoutes, { prefix: '/api/meals' });
   await app.register(savedMealRoutes, { prefix: '/api/saved-meals' });
   await app.register(foodRoutes, { prefix: '/api/foods' });
+  await app.register(nearbyRoutes, { prefix: '/api/nearby' });
   await app.register(calendarRoutes, { prefix: '/api/calendar' });
   await app.register(workoutRoutes, { prefix: '/api/workouts' });
   await app.register(appetiteRoutes, { prefix: '/api/appetite' });
