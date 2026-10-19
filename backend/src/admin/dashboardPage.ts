@@ -212,8 +212,7 @@ details summary { cursor: pointer; color: var(--soft); }
     } },
       h('div', { class: 'label', text: 'SetPoint · Admin' }),
       h('h1', null, 'Owner’s dashboard. ', h('span', { text: 'Sign in with the admin secret.' })),
-      input, btn, err,
-      h('div', { class: 'muted', style: 'font-size: 12px', text: 'The secret is ADMIN_SECRET in Vercel (or CRON_SECRET if that isn’t set). It stays in this tab only.' })
+      input, btn, err
     );
     root.appendChild(form);
     input.focus();
