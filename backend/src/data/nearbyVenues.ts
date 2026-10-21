@@ -1,4 +1,5 @@
 import type { NearbyVenue } from '../nearby/index.js';
+import { ISRAEL_VENUES } from './nearbyVenuesIsrael.js';
 
 /**
  * The real list: places near our users, their dishes with our kcal and macro
@@ -7,7 +8,7 @@ import type { NearbyVenue } from '../nearby/index.js';
  * dish link that stops opening means the dish is gone and should come out.
  * Allergens are read from the menu text; when a menu doesn't say, it's a guess.
  */
-export const NEARBY_VENUES: NearbyVenue[] = [
+const CENTRAL_TEL_AVIV_VENUES: NearbyVenue[] = [
   {
     id: 'wolt-pick-a-poke-tel-aviv',
     name: 'Pick A Poke',
@@ -353,6 +354,9 @@ export const NEARBY_VENUES: NearbyVenue[] = [
     ],
   },
 ];
+
+/** Everywhere we cover: central Tel Aviv, then the rest of Israel (nearbyVenuesIsrael.ts). */
+export const NEARBY_VENUES: NearbyVenue[] = [...CENTRAL_TEL_AVIV_VENUES, ...ISRAEL_VENUES];
 
 /**
  * Made-up places for trying the screen (NEARBY_SAMPLE_VENUES=true). They're

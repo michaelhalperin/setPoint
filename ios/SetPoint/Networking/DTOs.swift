@@ -1039,6 +1039,9 @@ struct NearbyResponse: Decodable {
     /// Made-up places (no Wolt links) while the real list is empty.
     let sample: Bool
     let venues: [Venue]
+    /// With no places in reach: kinds of dish sized to the gap, each opening a
+    /// Wolt search near the user. Older servers leave it out.
+    var suggestions: [Dish]? = nil
 
     struct Venue: Decodable, Identifiable, Hashable {
         let id: String

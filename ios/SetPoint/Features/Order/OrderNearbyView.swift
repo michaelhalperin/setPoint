@@ -182,7 +182,7 @@ struct OrderNearbyView: View {
     private var metaLine: String {
         var parts = [slotTitle.uppercased()]
         if case let .loaded(response) = phase {
-            parts.append("\(response.venues.count) PLACES WITHIN 3 KM")
+            parts.append(response.venues.isEmpty ? "NONE ON OUR LIST WITHIN 3 KM" : "\(response.venues.count) PLACES WITHIN 3 KM")
             if response.sample { parts.append("SAMPLE PLACES") }
         } else {
             parts.append("WITHIN 3 KM")
@@ -214,7 +214,9 @@ struct OrderNearbyView: View {
     @ViewBuilder
     private func loaded(_ response: NearbyResponse) -> some View {
         let pool = pool(response)
-        if response.venues.isEmpty {
+        if response.venues.isEmpty, let ideas = response.suggestions, !ideas.isEmpty {
+            fallback(ideas)
+        } else if response.venues.isEmpty {
             notice(
                 "No places near you yet.",
                 "We’re adding places area by area. Until then, log something you have at home."
@@ -258,6 +260,120 @@ struct OrderNearbyView: View {
     }
 
     // MARK: Hero
+
+    // MARK: Nothing on our list nearby
+
+    /// Kinds of dish that fit the gap, each opening Wolt's search near the user.
+    @ViewBuilder
+    private func fallback(_ ideas: [NearbyResponse.Dish]) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Nothing on our list near you yet.")
+                .font(Typography.data(15, weight: .regular))
+                .foregroundStyle(Palette.ink)
+            Text("Here’s what to look for. Wolt shows what’s open around you.")
+                .font(Typography.data(13, weight: .regular))
+                .foregroundStyle(Palette.inkSoft)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.horizontal, 4)
+        .appearIn(1)
+
+        if let first = ideas.first {
+            ideaCard(first).appearIn(1, rise: 14)
+        }
+
+        if ideas.count > 1 {
+            Text("Or look for").sectionLabelStyle()
+                .padding(.horizontal, 4)
+                .padding(.top, 4)
+                .appearIn(2)
+            VStack(spacing: 0) {
+                ForEach(Array(ideas.dropFirst().enumerated()), id: \.element.id) { index, idea in
+                    if index > 0 { Rectangle().fill(Color.white.opacity(0.06)).frame(height: 1) }
+                    ideaRow(idea)
+                }
+            }
+            .glass(radius: 22, fill: Color.white.opacity(0.035), stroke: Color.white.opacity(0.08))
+            .appearIn(3, rise: 12)
+        }
+
+        Text("Calories are a typical estimate for this kind of dish. SetPoint never orders, pays, or sees your Wolt account.")
+            .font(Typography.data(12, weight: .regular))
+            .foregroundStyle(Palette.inkFaint)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.horizontal, 4)
+            .padding(.top, 2)
+    }
+
+    private func ideaCard(_ idea: NearbyResponse.Dish) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 6) {
+                Circle().fill(Palette.hazeSoft).frame(width: 6, height: 6)
+                Text("LOOK FOR").font(Typography.mono(10)).tracking(1.2).foregroundStyle(Palette.hazeSoft)
+            }
+            HStack(spacing: 18) {
+                fillRing(idea.kcal)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(idea.name)
+                        .font(Typography.data(20, weight: .regular))
+                        .tracking(-0.4)
+                        .foregroundStyle(Palette.ink)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text("About \(idea.kcal.formatted()) kcal · \(Int(idea.proteinG.rounded())) g protein")
+                        .font(Typography.data(13, weight: .regular))
+                        .foregroundStyle(Palette.inkSoft)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            ActionButton(title: "Search Wolt for it", kind: .primary, symbol: "magnifyingglass") { search(idea) }
+        }
+        .padding(18)
+        .background {
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(LinearGradient(colors: [Palette.haze.opacity(0.14), Color.white.opacity(0.03)], startPoint: .topLeading, endPoint: UnitPoint(x: 0.6, y: 0.9)))
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: 28, style: .continuous).strokeBorder(Palette.haze.opacity(0.40))
+        }
+        .accessibilityElement(children: .contain)
+    }
+
+    private func ideaRow(_ idea: NearbyResponse.Dish) -> some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(idea.name)
+                    .font(Typography.data(14, weight: .regular))
+                    .foregroundStyle(Palette.ink)
+                Text("About \(idea.kcal.formatted()) kcal · \(Int(idea.proteinG.rounded())) g protein")
+                    .font(Typography.data(12, weight: .regular))
+                    .foregroundStyle(Palette.inkFaint)
+            }
+            Spacer(minLength: 8)
+            Button { search(idea) } label: {
+                Label("Search", systemImage: "magnifyingglass")
+                    .font(Typography.data(13, weight: .medium))
+                    .foregroundStyle(Palette.hazeSoft)
+                    .padding(.horizontal, 14)
+                    .frame(minHeight: 36)
+                    .background(Palette.haze.opacity(0.14), in: Capsule())
+                    .overlay(Capsule().strokeBorder(Palette.haze.opacity(0.40)))
+            }
+            .buttonStyle(PressableCard())
+            .frame(minHeight: 44)
+            .accessibilityLabel("Search Wolt for \(idea.name)")
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+    }
+
+    private func search(_ idea: NearbyResponse.Dish) {
+        guard let raw = idea.woltUrl, let url = URL(string: raw) else { return }
+        Haptics.nudge()
+        if preview == nil {
+            Analytics.send(.woltOpened, props: ["venueId": "wolt-search", "dishId": idea.id], api: env.api)
+        }
+        openURL(url)
+    }
 
     private func heroCard(_ hero: Candidate, canShuffle: Bool, shuffle: @escaping () -> Void) -> some View {
         let dish = hero.dish
@@ -694,8 +810,25 @@ struct OrderNearbyView: View {
 
 #if DEBUG
 extension NearbyResponse {
+    /// The live-list preview, or, with `-nothingNearby`, what someone far from every listed place sees.
+    static var sample: NearbyResponse {
+        ProcessInfo.processInfo.arguments.contains("-nothingNearby") ? nothingNearby : liveSample
+    }
+
+    /// Nothing on our list in reach: kinds of dish to search Wolt for.
+    static let nothingNearby = NearbyResponse(
+        gapKcal: 700,
+        sample: false,
+        venues: [],
+        suggestions: [
+            .init(id: "generic-poke", name: "A salmon or chicken poke bowl", kcal: 700, proteinG: 38, carbsG: 85, fatG: 20, kind: "BOWL", woltUrl: "https://wolt.com/en/isr/eilat/search?q=poke"),
+            .init(id: "generic-shawarma-pita", name: "Shawarma in a pita", kcal: 750, proteinG: 42, carbsG: 68, fatG: 32, kind: "WRAP", woltUrl: "https://wolt.com/en/isr/eilat/search?q=shawarma"),
+            .init(id: "generic-chicken-sandwich", name: "A chicken sandwich", kcal: 700, proteinG: 42, carbsG: 65, fatG: 28, kind: "WRAP", woltUrl: "https://wolt.com/en/isr/eilat/search?q=sandwich"),
+        ]
+    )
+
     /// A few dishes from the live Tel Aviv list, without links.
-    static let sample = NearbyResponse(
+    static let liveSample = NearbyResponse(
         gapKcal: 700,
         sample: false,
         venues: [

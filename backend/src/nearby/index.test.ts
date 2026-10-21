@@ -44,8 +44,8 @@ describe('rankNearby', () => {
 describe('NEARBY_VENUES', () => {
   const dishes = NEARBY_VENUES.flatMap((v) => v.dishes.map((d) => ({ venue: v, dish: d })));
 
-  it('has around a hundred dishes, each opening Wolt on itself', () => {
-    expect(dishes.length).toBeGreaterThanOrEqual(100);
+  it('has hundreds of dishes, each opening Wolt on itself', () => {
+    expect(dishes.length).toBeGreaterThanOrEqual(350);
     for (const { venue, dish } of dishes) {
       expect(dish.woltUrl).toBe(`${venue.woltUrl}/itemid-${dish.id}`);
     }
@@ -62,7 +62,23 @@ describe('NEARBY_VENUES', () => {
     }
   });
 
-  it('sits in central Tel Aviv', () => {
-    for (const v of NEARBY_VENUES) expect(distanceKm(32.08, 34.78, v.lat, v.lng)).toBeLessThan(5);
+  it('sits in Israel', () => {
+    for (const v of NEARBY_VENUES) {
+      expect(v.lat).toBeGreaterThan(29.4);
+      expect(v.lat).toBeLessThan(33.4);
+      expect(v.lng).toBeGreaterThan(34.2);
+      expect(v.lng).toBeLessThan(35.9);
+    }
+  });
+
+  it('has places in each city we cover', () => {
+    const cities: [string, number, number][] = [
+      ['Tel Aviv', 32.08, 34.78], ['Jerusalem', 31.78, 35.21], ['Haifa', 32.81, 34.99], ["Be'er Sheva", 31.25, 34.79],
+      ['Petah Tikva', 32.09, 34.88], ["Modi'in", 31.9, 35.0], ['Ashdod', 31.8, 34.65], ['Rishon LeZion', 31.97, 34.79],
+      ['Rehovot', 31.9, 34.8], ['Netanya', 32.28, 34.86], ["Ra'anana", 32.19, 34.88], ['Herzliya', 32.16, 34.81],
+    ];
+    for (const [, lat, lng] of cities) {
+      expect(NEARBY_VENUES.filter((v) => distanceKm(lat, lng, v.lat, v.lng) <= 3).length).toBeGreaterThanOrEqual(3);
+    }
   });
 });

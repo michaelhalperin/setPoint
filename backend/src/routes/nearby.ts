@@ -5,6 +5,7 @@ import { NEARBY_VENUES, sampleVenues } from '../data/nearbyVenues.js';
 import { getPrisma } from '../db/client.js';
 import { env } from '../env.js';
 import { isFlagOnForUser } from '../flags/index.js';
+import { fallbackSuggestions } from '../nearby/fallback.js';
 import { rankNearby } from '../nearby/index.js';
 import { track } from '../analytics/events.js';
 
@@ -30,10 +31,14 @@ export async function nearbyRoutes(app: FastifyInstance): Promise<void> {
     });
     await track(getPrisma(), (req as AuthedRequest).userId, 'order_nearby_opened');
     const venues = env.NEARBY_SAMPLE_VENUES === 'true' ? [...NEARBY_VENUES, ...sampleVenues(lat, lng)] : NEARBY_VENUES;
+    const avoid = new Set(restrictions.map((r) => r.token));
+    const ranked = rankNearby(venues, { lat, lng, gapKcal: kcal, avoid });
     return {
       gapKcal: kcal,
       sample: env.NEARBY_SAMPLE_VENUES === 'true',
-      venues: rankNearby(venues, { lat, lng, gapKcal: kcal, avoid: new Set(restrictions.map((r) => r.token)) }),
+      venues: ranked,
+      /** Nothing on our list in reach: kinds of dish to search Wolt for instead. */
+      suggestions: ranked.length ? [] : fallbackSuggestions({ lat, lng, gapKcal: kcal, avoid }),
     };
   });
 }
