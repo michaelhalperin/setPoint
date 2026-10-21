@@ -193,6 +193,76 @@ enum TrainMath {
         return out.sorted()
     }
 
+    /// Logged snacks first, then a usual plate, then a light staple. Saved meals
+    /// are only one signal — what they actually ate wins. A name from the server
+    /// is ignored so a deployed API cannot hide a better logged snack.
+    static func snackBefore(
+        server: TrainingWeekResponse.SnackBefore?,
+        saved: [SavedMeal],
+        meals: [MealSummary],
+        disliked: [String] = [],
+        pantry: [String] = []
+    ) -> TrainingWeekResponse.SnackBefore {
+        let blocked = disliked.map { $0.lowercased() }.filter { $0.count >= 2 }
+        let pantryHits = pantry.map { $0.lowercased().replacingOccurrences(of: "_", with: " ") }.filter { $0.count >= 2 }
+
+        var scored: [(snack: TrainingWeekResponse.SnackBefore, score: Double)] = []
+        var repeats: [String: Int] = [:]
+        for meal in meals {
+            let name = snackName(items: meal.items?.map { ($0.name, $0.quantity, $0.kcal, $0.proteinG) }, fallback: meal.title)
+            repeats[name.lowercased(), default: 0] += 1
+        }
+
+        for meal in meals {
+            guard (snackMinKcal...400).contains(meal.kcal) else { continue }
+            let items = (meal.items ?? []).map {
+                TrainingWeekResponse.SnackBefore.Item(name: $0.name, quantity: $0.quantity, kcal: $0.kcal, proteinG: $0.proteinG)
+            }
+            let name = snackName(items: items.map { ($0.name, $0.quantity, $0.kcal, $0.proteinG) }, fallback: meal.title)
+            guard allowed(name, blocked: blocked), name != L10n("Logged meal") else { continue }
+            let hour = MealFormat.parse(meal.loggedAt).map { Calendar.current.component(.hour, from: $0) } ?? 12
+            var score = 10.0 + min(8, Double(repeats[name.lowercased(), default: 1]) * 4)
+            if !items.isEmpty { score += 8 }
+            if (meal.proteinG) >= 12 { score += 6 }
+            if (14...18).contains(hour) { score += 14 }
+            if pantryHits.contains(where: { name.lowercased().contains($0) }) { score += 5 }
+            scored.append((.init(name: name, kcal: meal.kcal, source: "history", proteinG: meal.proteinG, items: items.isEmpty ? nil : items), score))
+        }
+
+        for meal in saved {
+            guard (snackMinKcal...400).contains(meal.kcal), allowed(meal.name, blocked: blocked) else { continue }
+            let items = meal.items.map {
+                TrainingWeekResponse.SnackBefore.Item(name: $0.name, quantity: $0.quantity, kcal: $0.kcal, proteinG: $0.proteinG)
+            }
+            var score = 6.0 + min(6, Double(meal.useCount))
+            if meal.useInCheckIns { score += 3 }
+            if pantryHits.contains(where: { meal.name.lowercased().contains($0) }) { score += 5 }
+            scored.append((.init(name: meal.name, kcal: meal.kcal, source: "usual", proteinG: meal.proteinG, items: items.isEmpty ? nil : items), score))
+        }
+
+        scored.sort { $0.score > $1.score || ($0.score == $1.score && $0.snack.name < $1.snack.name) }
+        if let best = scored.first?.snack { return best }
+        if let server, let items = server.items, !items.isEmpty { return server }
+        return .init(
+            name: "Greek yogurt",
+            kcal: 220,
+            source: "suggested",
+            proteinG: 20,
+            items: [.init(name: "Greek yogurt", quantity: "1 cup", kcal: 220, proteinG: 20)]
+        )
+    }
+
+    private static func allowed(_ name: String, blocked: [String]) -> Bool {
+        let n = name.lowercased()
+        return !blocked.contains { n.contains($0) }
+    }
+
+    private static func snackName(items: [(String, String?, Int, Double?)]?, fallback: String) -> String {
+        guard let items, !items.isEmpty else { return fallback }
+        if items.count == 1 { return items[0].0 }
+        return items.prefix(2).map(\.0).joined(separator: " + ")
+    }
+
     /// "This and all after": the edited session moved from `old` to `new`; another
     /// one moves by the same number of days and takes the new clock time.
     static func moved(_ other: Date, from old: Date, to new: Date, calendar: Calendar = .current) -> Date {

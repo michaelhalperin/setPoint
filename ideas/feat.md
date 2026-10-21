@@ -12,7 +12,7 @@ also have a check on the user spending - to match it with the buy / make food - 
 
 track on the food if prepared by week and in advanced.
 
-food DB.
+food DB. v
 
 langauges. v
 

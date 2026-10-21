@@ -1,0 +1,49 @@
+<!doctype html><!-- after serve -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1440px; height: 900px; overflow: hidden; background: #F3F4F6; color: #111827; font: 14px/1.45 ui-sans-serif, system-ui, sans-serif; }
+  body { display: grid; grid-template-columns: 232px 1fr; }
+  aside { background: #FFFFFF; border-right: 1px solid #E5E7EB; padding: 24px 16px; }
+  .mark { font-weight: 650; font-size: 16px; }
+  .env { font-size: 12px; color: #6B7280; margin: 6px 0 28px; }
+  aside button { display: block; width: 100%; text-align: left; background: none; border: 0; color: #4B5563; font: 500 14px ui-sans-serif, system-ui, sans-serif; padding: 8px 12px; border-radius: 8px; }
+  aside button.on { background: #EFF6FF; color: #1D4ED8; }
+  .out { margin-top: 300px; color: #6B7280; font-size: 13px; padding: 8px 12px; }
+  main { padding: 28px 32px; }
+  h1 { font-size: 24px; font-weight: 650; }
+  .sub { color: #6B7280; margin: 6px 0 20px; }
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .kpi { background: #fff; border: 1px solid #E5E7EB; border-radius: 12px; padding: 16px; }
+  .l { font-size: 12px; color: #6B7280; }
+  .v { font-size: 28px; font-weight: 650; margin-top: 8px; letter-spacing: -0.03em; }
+  .s { font-size: 12px; color: #6B7280; margin-top: 4px; }
+  .warn { color: #B45309; }
+</style>
+</head>
+<body>
+<aside>
+  <div class="mark">SetPoint</div>
+  <div class="env">Production</div>
+  <button class="on">Overview</button>
+  <button>Users</button>
+  <button>Meals</button>
+  <button>Invites</button>
+  <button>Flags</button>
+  <button>Health</button>
+  <div class="out">Sign out</div>
+</aside>
+<main>
+  <h1>Overview</h1>
+  <p class="sub">Last 14 days · Everyone</p>
+  <div class="kpis">
+    <div class="kpi"><div class="l">People</div><div class="v">48</div><div class="s warn">3 waiting for an invite</div></div>
+    <div class="kpi"><div class="l">Active, last day</div><div class="v">19</div><div class="s">21 Oct</div></div>
+    <div class="kpi"><div class="l">Meals logged</div><div class="v">612</div><div class="s">31 people</div></div>
+    <div class="kpi"><div class="l">Days fully eaten</div><div class="v">71%</div><div class="s">86 of 121 settled days</div></div>
+  </div>
+</main>
+</body>
+</html>

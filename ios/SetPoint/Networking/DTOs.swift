@@ -897,6 +897,39 @@ struct TrainingWeekResponse: Decodable {
         var refuelWindowMin: Int? = nil
         /// What training adds today even while "Add calories" is off.
         var trainingKcal: Int? = nil
+        /// A snack they already eat, or a light staple that fits. Older servers leave it out.
+        var snackBefore: SnackBefore? = nil
+    }
+
+    struct SnackBefore: Decodable, Equatable, Identifiable {
+        var id: String { "\(name)-\(kcal)" }
+        let name: String
+        let kcal: Int
+        /// "history" · "usual" · "suggested"
+        var source: String? = nil
+        var proteinG: Double? = nil
+        var items: [Item]? = nil
+
+        struct Item: Decodable, Equatable, Identifiable {
+            var id: String { "\(name)|\(quantity ?? "")|\(kcal)" }
+            let name: String
+            var quantity: String? = nil
+            let kcal: Int
+            var proteinG: Double? = nil
+        }
+
+        var correctionItems: [MealCorrectionRequest.Item] {
+            (items ?? []).map {
+                .init(
+                    name: $0.name,
+                    quantity: $0.quantity ?? "",
+                    kcal: $0.kcal,
+                    proteinG: $0.proteinG ?? 0,
+                    carbsG: 0,
+                    fatG: 0
+                )
+            }
+        }
     }
 
     struct Steps: Decodable {

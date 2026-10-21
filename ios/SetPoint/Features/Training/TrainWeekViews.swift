@@ -262,8 +262,14 @@ struct TrainTodayCard: View {
     let addCalories: Bool
     let dinnerMin: Int
     let steps: TrainMath.Steps?
+    /// A snack they already eat, or a light staple that fits.
+    var snackBefore: TrainingWeekResponse.SnackBefore? = nil
     let now: Date
     var onLog: () -> Void
+    var onLogSnack: ((TrainingWeekResponse.SnackBefore) -> Void)?
+    var loggingSnack = false
+    var snackLogged = false
+    var onOpenSnack: ((TrainingWeekResponse.SnackBefore) -> Void)?
     /// Set while the session can still be changed.
     var onEdit: (() -> Void)?
 
@@ -372,11 +378,29 @@ struct TrainTodayCard: View {
         let loggable: Bool
     }
 
+    private var snackHint: String {
+        snackBefore.map { "\($0.kcal)" } ?? "~250"
+    }
+
+    private var snackDetail: String {
+        guard let snack = snackBefore else {
+            return L10n("Something light — fuel without feeling full.")
+        }
+        switch snack.source {
+        case "history":
+            return L10n("\(snack.name) — you’ve had this before a session.")
+        case "usual":
+            return L10n("\(snack.name) — one of your plates.")
+        default:
+            return L10n("\(snack.name) — light, and it fits what you eat.")
+        }
+    }
+
     private var stepRows: [Step] {
         let refuelBy = end + window
         let refuelKcal = min(450, max(250, bumpKcal))
         let raw: [(title: String, when: String, hint: String, detail: String, missed: String, done: Bool, over: Bool, loggable: Bool)] = [
-            (L10n("Snack before"), trainClock(max(0, start - 90)), "~250", L10n("Something light — fuel without feeling full."), L10n("Nothing logged before — that’s fine. The refuel matters more."), steps?.before ?? false, nowMin >= start, true),
+            (L10n("Snack before"), trainClock(max(0, start - 90)), snackHint, snackDetail, L10n("Nothing logged before — that’s fine. The refuel matters more."), steps?.before ?? false, nowMin >= start, true),
             (TrainKind.title(session.kind), trainClock(start), L10n("\(session.durationMin) min"), session.isPlanned ? L10n("Apple Health adds it when your watch saves it.") : L10n("From Apple Health."), "", (steps?.workout ?? false) || nowMin >= end, false, false),
             (L10n("Refuel after"), trainClock(refuelBy), "~\(refuelKcal)", L10n("Something with protein within \(window) min of finishing — chocolate milk or a sandwich. I’ll remind you."), L10n("Missed the window — still eat something with protein now."), steps?.refuel ?? false, nowMin > refuelBy, true),
             (bumpKcal > 0 ? L10n("Dinner, a bit bigger") : L10n("Dinner"), trainClock(dinnerMin), "", bumpKcal > 0 ? L10n("Your usual dinner plus a side.") : L10n("Your usual dinner."), "", steps?.dinner ?? false, false, true),
@@ -445,6 +469,15 @@ struct TrainTodayCard: View {
                         .font(Typography.data(13, weight: .regular))
                         .foregroundStyle(Palette.amber)
                         .fixedSize(horizontal: false, vertical: true)
+                } else if step.title == L10n("Snack before"), let snack = snackBefore {
+                    Button {
+                        onOpenSnack?(snack)
+                    } label: {
+                        snackPreview(snack)
+                    }
+                    .buttonStyle(PressableCard())
+                    .padding(.top, 4)
+                    .accessibilityHint(L10n("Opens the snack"))
                 } else if step.state == .next {
                     Text(step.detail)
                         .font(Typography.data(13, weight: .regular))
@@ -453,21 +486,81 @@ struct TrainTodayCard: View {
                         .hintCopy()
                 }
                 if step.state == .next && step.loggable {
-                    Button(action: onLog) {
-                        Text("Log it")
-                            .font(Typography.data(13, weight: .medium))
-                            .foregroundStyle(Palette.onBone)
-                            .padding(.horizontal, 16)
-                            .frame(height: 36)
-                            .background(Palette.ink, in: Capsule())
+                    if step.title == L10n("Snack before"), let snack = snackBefore {
+                        Button {
+                            onLogSnack?(snack)
+                        } label: {
+                            Text(loggingSnack ? "Logging…" : snackLogged ? "Logged" : "Log it")
+                                .font(Typography.data(13, weight: .medium))
+                                .foregroundStyle(Palette.onBone)
+                                .padding(.horizontal, 16)
+                                .frame(height: 36)
+                                .background(Palette.ink, in: Capsule())
+                        }
+                        .buttonStyle(PressableCard())
+                        .disabled(loggingSnack || snackLogged)
+                        .padding(.top, 6)
+                    } else {
+                        Button(action: onLog) {
+                            Text("Log it")
+                                .font(Typography.data(13, weight: .medium))
+                                .foregroundStyle(Palette.onBone)
+                                .padding(.horizontal, 16)
+                                .frame(height: 36)
+                                .background(Palette.ink, in: Capsule())
+                        }
+                        .buttonStyle(PressableCard())
+                        .padding(.top, 6)
                     }
-                    .buttonStyle(PressableCard())
-                    .padding(.top, 6)
                 }
             }
             .padding(.bottom, last ? 0 : 14)
         }
         .accessibilityElement(children: .combine)
+    }
+
+    private func snackPreview(_ snack: TrainingWeekResponse.SnackBefore) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(snack.name)
+                    .font(Typography.data(15, weight: .medium))
+                    .foregroundStyle(Palette.ink)
+                    .multilineTextAlignment(.leading)
+                Spacer(minLength: 8)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Palette.inkFaint)
+            }
+            if let items = snack.items, !items.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(Array(items.prefix(3))) { item in
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            Text(item.name)
+                                .font(Typography.data(13, weight: .regular))
+                                .foregroundStyle(Palette.inkSoft)
+                            if let quantity = item.quantity, !quantity.isEmpty {
+                                Text(quantity)
+                                    .font(Typography.data(12, weight: .regular))
+                                    .foregroundStyle(Palette.inkFaint)
+                            }
+                            Spacer(minLength: 8)
+                            Text("\(item.kcal)")
+                                .font(Typography.mono(11))
+                                .foregroundStyle(Palette.inkFaint)
+                        }
+                    }
+                }
+            } else {
+                Text(snackDetail)
+                    .font(Typography.data(13, weight: .regular))
+                    .foregroundStyle(Palette.inkSoft)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(.vertical, 8)
+        .padding(.horizontal, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 }
 
@@ -569,6 +662,8 @@ struct TrainPlannedCard: View {
     let dayBumpKcal: Int?
     let addCalories: Bool
     let dinnerMin: Int
+    var snackBefore: TrainingWeekResponse.SnackBefore? = nil
+    var onOpenSnack: ((TrainingWeekResponse.SnackBefore) -> Void)?
     let onEdit: () -> Void
 
     var body: some View {
@@ -602,7 +697,7 @@ struct TrainPlannedCard: View {
             }
 
             VStack(alignment: .leading, spacing: 8) {
-                line(trainClock(TrainMath.minute(session.start) - 90), L10n("Snack before"))
+                snackRow
                 line(trainClock(session.start), L10n("\(TrainKind.title(session.kind)), \(session.durationMin) min"))
                 line(L10n("by \(trainClock(TrainMath.minute(session.end) + TrainMath.refuelWindowMin))"), L10n("Refuel with protein"))
                 line(trainClock(dinnerMin), L10n("Dinner, a bit bigger"))
@@ -617,6 +712,63 @@ struct TrainPlannedCard: View {
         .overlay {
             RoundedRectangle(cornerRadius: 28, style: .continuous)
                 .strokeBorder(Palette.hazeSoft.opacity(0.45), style: StrokeStyle(lineWidth: 1, dash: [5, 4]))
+        }
+    }
+
+    private var snackRow: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Text(trainClock(max(0, TrainMath.minute(session.start) - 90)))
+                .font(Typography.mono(11))
+                .foregroundStyle(Palette.hazeSoft)
+                .frame(width: 60, alignment: .leading)
+                .padding(.top, 2)
+            if let snack = snackBefore {
+                Button {
+                    onOpenSnack?(snack)
+                } label: {
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            Text("Snack before")
+                                .font(Typography.data(13, weight: .regular))
+                                .foregroundStyle(Color(hex: 0xD4D4D8))
+                            Spacer(minLength: 8)
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(Palette.inkFaint)
+                        }
+                        Text(L10n("\(snack.name) · \(snack.kcal) kcal"))
+                            .font(Typography.data(16, weight: .medium))
+                            .foregroundStyle(Palette.ink)
+                            .multilineTextAlignment(.leading)
+                        if let items = snack.items, !items.isEmpty {
+                            Text(items.map(\.name).joined(separator: " · "))
+                                .font(Typography.data(13, weight: .regular))
+                                .foregroundStyle(Palette.inkSoft)
+                                .fixedSize(horizontal: false, vertical: true)
+                        } else {
+                            Text(snackReason(snack))
+                                .font(Typography.data(12, weight: .regular))
+                                .foregroundStyle(Palette.inkSoft)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .buttonStyle(PressableCard())
+                .accessibilityHint(L10n("Opens the snack"))
+            } else {
+                Text("Snack before")
+                    .font(Typography.data(13, weight: .regular))
+                    .foregroundStyle(Color(hex: 0xD4D4D8))
+            }
+        }
+    }
+
+    private func snackReason(_ snack: TrainingWeekResponse.SnackBefore) -> String {
+        switch snack.source {
+        case "history": return L10n("You’ve had this before a session.")
+        case "usual": return L10n("One of your plates.")
+        default: return L10n("Light, and it fits what you eat.")
         }
     }
 

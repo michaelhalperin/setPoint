@@ -40,15 +40,22 @@ struct InnerScreen<Content: View>: View {
     var glowOffset: CGFloat = -120
     var spacing: CGFloat = 16
     var scrolls = true
+    /// Pull past the top to reload this screen.
+    var onRefresh: (() async -> Void)? = nil
     @ViewBuilder var content: Content
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var reloading = false
 
     var body: some View {
         Group {
             if scrolls {
                 ScrollView {
                     stack
+                        .opacity(reloading ? 0.38 : 1)
+                        .animation(Motion.adaptive(Motion.gentle, reduceMotion: reduceMotion), value: reloading)
                 }
                 .scrollDismissesKeyboard(.interactively)
+                .pullToReload(onRefresh, covering: $reloading)
             } else {
                 stack
             }

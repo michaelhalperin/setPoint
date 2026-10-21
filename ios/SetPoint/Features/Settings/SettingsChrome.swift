@@ -17,9 +17,15 @@ struct SettingsScreen<Content: View>: View {
     var headline: String? = nil
     /// False on tab roots — the tab bar already names the screen.
     var showsHeadline: Bool = true
+    /// Pull past the top to reload this screen.
+    var onRefresh: (() async -> Void)? = nil
+    /// Fades over the body while a pull reload runs. Nil just dims the content.
+    var reloadSkeleton: AnyView? = nil
     @ViewBuilder var content: Content
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var reloading = false
 
     var body: some View {
         ScrollView {
@@ -51,6 +57,15 @@ struct SettingsScreen<Content: View>: View {
                 }
 
                 content
+                    .opacity(reloading ? (reloadSkeleton == nil ? 0.4 : 0) : 1)
+                    .overlay(alignment: .top) {
+                        if reloading {
+                            (reloadSkeleton ?? AnyView(Color.clear))
+                                .allowsHitTesting(false)
+                                .transition(.opacity)
+                        }
+                    }
+                    .animation(Motion.adaptive(Motion.gentle, reduceMotion: reduceMotion), value: reloading)
             }
             .padding(.horizontal, Space.gutter)
             .padding(.top, Space.sm)
@@ -58,6 +73,7 @@ struct SettingsScreen<Content: View>: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .scrollDismissesKeyboard(.interactively)
+        .pullToReload(onRefresh, covering: $reloading)
         #if DEBUG
         // Screenshots of the lower half of a stub: `-uiStub calendar-week -stubScrollBottom`.
         .defaultScrollAnchor(CommandLine.arguments.contains("-stubScrollBottom") ? .bottom : .top)

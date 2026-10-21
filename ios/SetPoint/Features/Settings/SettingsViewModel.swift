@@ -281,7 +281,8 @@ final class SettingsViewModel {
         error = nil
     }
 
-    func load() async {
+    func load(showSpinner: Bool = true) async {
+        if showSpinner { phase = .loading }
         do {
             let s: SettingsResponse = try await api.get("/api/settings")
             apply(s)

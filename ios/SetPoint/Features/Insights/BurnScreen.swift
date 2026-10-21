@@ -10,7 +10,7 @@ struct BurnScreen: View {
     @State private var selectedWeek: Int?
 
     var body: some View {
-        InnerScreen(spacing: 16) {
+        InnerScreen(spacing: 16, onRefresh: { await load() }) {
             ScreenHeader(label: "Your burn")
 
             if let insight {
@@ -286,6 +286,7 @@ struct BurnScreen: View {
             insight = preview
             return
         }
+        error = nil
         do {
             insight = try await env.api.get("/api/insights/burn")
             error = nil

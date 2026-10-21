@@ -44,6 +44,10 @@ final class TrainingStore {
     var baseKcal: Int { week?.today.baseKcal ?? 0 }
     var dinnerMin: Int { week?.today.dinnerMin ?? 19 * 60 }
     var weightKg: Double { week?.weightKg ?? 80 }
+    /// A snack they already eat, or a light staple that fits, for "Snack before".
+    private(set) var snackBefore: TrainingWeekResponse.SnackBefore?
+    private(set) var loggingSnack = false
+    private(set) var loggedSnackId: String?
 
     /// The end of the last day sessions can be planned on.
     func horizonEnd(now: Date = .now, calendar: Calendar = .current) -> Date {
@@ -81,15 +85,19 @@ final class TrainingStore {
     // MARK: Loading
 
     /// The first load also sends Apple Health's workouts and fetches once more to show them.
-    func load(_ env: AppEnvironment) async {
+    func load(_ env: AppEnvironment, showSpinner: Bool = false) async {
         guard !isPreview else { return }
+        if showSpinner { phase = .loading }
         do {
             let fresh: TrainingWeekResponse = try await env.api.get("/api/workouts")
             if saving == 0 { apply(fresh) }
             phase = .ready
+            await resolveSnack(env)
         } catch {
             if week == nil {
                 phase = .failed(UserFacingError.message(for: error, fallback: L10n( "Couldn’t load your training.")))
+            } else {
+                phase = .ready
             }
             return
         }
@@ -106,6 +114,131 @@ final class TrainingStore {
               saving == 0 else { return }
         apply(fresh)
         phase = .ready
+        await resolveSnack(env)
+    }
+
+    /// Logged snacks first, then a usual plate, then a light staple.
+    func resolveSnack(_ env: AppEnvironment, meals extra: [MealSummary] = []) async {
+        if isPreview {
+            snackBefore = week?.today.snackBefore ?? TrainMath.snackBefore(server: nil, saved: [], meals: extra)
+            return
+        }
+        async let savedCall: SavedMealsResponse? = try? await env.api.get("/api/saved-meals")
+        async let settingsCall: SettingsResponse? = try? await env.api.get("/api/settings")
+        var meals = extra
+        var seen = Set(extra.map(\.id))
+        await withTaskGroup(of: [MealSummary].self) { group in
+            for offset in 0..<8 {
+                group.addTask {
+                    guard let day = Calendar.current.date(byAdding: .day, value: -offset, to: .now) else { return [] }
+                    let list: MealsListResponse? = try? await env.api.get("/api/meals", query: ["date": TrainMath.dayKey(day)])
+                    return list?.meals ?? []
+                }
+            }
+            for await batch in group {
+                for meal in batch where seen.insert(meal.id).inserted {
+                    meals.append(meal)
+                }
+            }
+        }
+        let saved = await savedCall
+        let settings = await settingsCall
+        snackBefore = TrainMath.snackBefore(
+            server: week?.today.snackBefore,
+            saved: saved?.meals ?? [],
+            meals: meals,
+            disliked: (settings?.dislikedFoods ?? []) + (settings?.restrictions.map(\.label) ?? []),
+            pantry: settings?.pantryTokens ?? []
+        )
+    }
+
+    /// Logs the suggested plate as-is — no composer, no parse.
+    func logSnack(_ snack: TrainingWeekResponse.SnackBefore, env: AppEnvironment, home: HomeViewModel?) async {
+        guard !loggingSnack, loggedSnackId != snack.id else { return }
+        if isPreview {
+            loggedSnackId = snack.id
+            Haptics.landed()
+            return
+        }
+        loggingSnack = true
+        let pendingId = "pending-snack-\(UUID().uuidString)"
+        let pending = Self.mealSummary(from: snack, id: pendingId)
+        let slot = Self.currentSlot(in: home)
+        let before = home?.applyNow { $0.inserting(pending, into: slot) }
+        Haptics.landed()
+        do {
+            let res: LogMealResponse = try await env.api.post(
+                "/api/meals",
+                LogMealRequest(
+                    text: snack.name,
+                    macros: .init(kcal: snack.kcal, proteinG: snack.proteinG),
+                    clientId: UUID().uuidString
+                )
+            )
+            if !snack.correctionItems.isEmpty {
+                let _: MealCorrectionResponse? = try? await env.api.patch(
+                    "/api/meals/\(res.meal.id)",
+                    MealCorrectionRequest(summary: snack.name, items: snack.correctionItems)
+                )
+            }
+            loggedSnackId = snack.id
+            let landed = Self.mealSummary(from: snack, id: res.meal.id, kcal: res.meal.kcal, proteinG: res.meal.proteinG)
+            if let before { home?.restore(before) }
+            home?.applyLoggedMeal(landed, slot: slot)
+            env.chrome.noteLogged(mealID: res.meal.id, kcal: res.meal.kcal, title: snack.name)
+            env.changes.mealsChanged()
+            todayChanged?()
+            await HealthKitManager.shared.writeMeal(landed)
+        } catch APIError.unauthorized {
+            if let before { home?.restore(before) }
+        } catch {
+            if let before { home?.restore(before) }
+            env.chrome.reportFailure(retry: { [weak self] in
+                Task { await self?.logSnack(snack, env: env, home: home) }
+            })
+        }
+        loggingSnack = false
+    }
+
+    private static func currentSlot(in home: HomeViewModel?) -> MealSlot {
+        if case let .loaded(response) = home?.phase {
+            let minute = response.day?.nowMin ?? TodayLayout.minuteOfDay(from: .now)
+            return TodayLayout.slot(forMinute: minute, times: response.resolvedMealTimes)
+        }
+        return TodayLayout.slot(forMinute: TodayLayout.minuteOfDay(from: .now), times: .standard)
+    }
+
+    private static func mealSummary(
+        from snack: TrainingWeekResponse.SnackBefore,
+        id: String,
+        kcal: Int? = nil,
+        proteinG: Double? = nil
+    ) -> MealSummary {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return MealSummary(
+            id: id,
+            loggedAt: formatter.string(from: Date()),
+            kcal: kcal ?? snack.kcal,
+            proteinG: proteinG ?? snack.proteinG ?? 0,
+            carbsG: 0,
+            fatG: 0,
+            source: "TEXT",
+            summary: snack.name,
+            photoUrl: nil,
+            notes: nil,
+            items: snack.items?.map {
+                MealSummary.Item(
+                    name: $0.name,
+                    quantity: $0.quantity ?? "",
+                    kcal: $0.kcal,
+                    proteinG: $0.proteinG ?? 0,
+                    carbsG: 0,
+                    fatG: 0
+                )
+            },
+            parseConfidence: nil
+        )
     }
 
     /// Takes the server's view. Only called with nothing saving, so the switches

@@ -1,0 +1,53 @@
+<!doctype html><!-- after serve -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700&family=Red+Hat+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1440px; height: 900px; overflow: hidden; background: #F7F4EE; color: #111; font: 15px/1.4 "Hanken Grotesk", sans-serif; }
+  body { display: grid; grid-template-columns: 228px 1fr; }
+  aside { background: #E36A1E; color: #F7F4EE; padding: 28px 18px; }
+  .mark { font-weight: 700; font-size: 20px; letter-spacing: -0.03em; }
+  .env { font: 500 11px "Red Hat Mono", monospace; opacity: 0.75; margin: 8px 0 32px; }
+  aside button { display: block; width: 100%; text-align: left; background: none; border: 0; color: rgba(247,244,238,0.75); font: 600 15px "Hanken Grotesk", sans-serif; padding: 10px 12px; }
+  aside button.on { background: #F7F4EE; color: #E36A1E; }
+  .out { margin-top: 260px; opacity: 0.7; padding: 10px 12px; font-size: 13px; }
+  main { padding: 28px 40px; }
+  h1 { font-size: 36px; font-weight: 700; letter-spacing: -0.03em; }
+  .sub { color: #5C5348; margin: 6px 0 24px; }
+  .row { display: grid; grid-template-columns: 1.3fr 1fr 1fr 1fr; gap: 2px; background: #E36A1E; }
+  .kpi { background: #F7F4EE; padding: 18px 16px 16px; }
+  .kpi.lead { background: #F5C518; }
+  .l { font-size: 12px; font-weight: 600; }
+  .v { font: 500 36px/1 "Red Hat Mono", monospace; margin-top: 8px; letter-spacing: -0.04em; }
+  .s { font-size: 12px; color: #5C5348; margin-top: 6px; }
+  .note { margin-top: 20px; padding: 14px 16px; border: 1px solid #E36A1E; font-size: 14px; }
+</style>
+</head>
+<body>
+<aside>
+  <div class="mark">SetPoint</div>
+  <div class="env">OVERVIEW BOARD</div>
+  <button class="on">Overview</button>
+  <button>Users</button>
+  <button>Meals</button>
+  <button>Invites</button>
+  <button>Flags</button>
+  <button>Health</button>
+  <div class="out">Sign out</div>
+</aside>
+<main>
+  <h1>Overview</h1>
+  <p class="sub">Last 14 days · everyone. Rail is oxide because this section is open.</p>
+  <div class="row">
+    <div class="kpi lead"><div class="l">Waiting</div><div class="v">3</div><div class="s">Open Users to let them in</div></div>
+    <div class="kpi"><div class="l">People</div><div class="v">48</div><div class="s">none blocked</div></div>
+    <div class="kpi"><div class="l">Meals</div><div class="v">612</div><div class="s">31 people</div></div>
+    <div class="kpi"><div class="l">Fully eaten</div><div class="v">71%</div><div class="s">86 of 121 days</div></div>
+  </div>
+  <div class="note">Scheduler last run 52 min ago — Health is teal when you open it.</div>
+</main>
+</body>
+</html>

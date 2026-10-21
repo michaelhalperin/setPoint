@@ -26,6 +26,7 @@ struct HomeContent: View {
     @State private var logOpen = false
     @State private var showingDay = false
     @State private var showingOrder = false
+    @State private var reloading = false
     @AppStorage("topUpDismissed") private var topUpDismissed = ""
     @FocusState private var composerFocused: Bool
     @Namespace private var photoLogNamespace
@@ -402,9 +403,9 @@ struct HomeContent: View {
             }
             .animation(Motion.adaptive(Motion.morph, reduceMotion: reduceMotion), value: moment.takesOver)
         }
-        .scrollBounceBehavior(.basedOnSize)
         .scrollDismissesKeyboard(.interactively)
-        .refreshable { await model.load(showSpinner: false) }
+        .pullToReload({ await model.load(showSpinner: false) }, covering: $reloading)
+        .reloadCover(reloading) { HomeSkeletonView() }
         .overlay {
             if logOpen {
                 Palette.scrim

@@ -97,5 +97,104 @@ final class TrainPlanTests: XCTestCase {
         let week = try JSONDecoder().decode(TrainingWeekResponse.self, from: Data(json.utf8))
         XCTAssertEqual(week.sessions?.first?.seriesId, "s1")
         XCTAssertNotNil(TrainingStore.parseDate(week.sessions!.first!.start))
+        XCTAssertNil(week.today.snackBefore)
+    }
+
+    func testSnackBeforeUsesAUsualPlateThenAStaple() {
+        let usual = SavedMeal(
+            id: "s1",
+            name: "Overnight oats",
+            items: [],
+            kcal: 310,
+            proteinG: 18,
+            carbsG: 40,
+            fatG: 8,
+            suggestSlot: nil,
+            useInCheckIns: true,
+            lastUsedAt: "2026-10-20T08:00:00Z",
+            useCount: 6,
+            suggested: false
+        )
+        let picked = TrainMath.snackBefore(server: nil, saved: [usual], meals: [])
+        XCTAssertEqual(picked.name, "Overnight oats")
+        XCTAssertEqual(picked.source, "usual")
+        XCTAssertTrue(picked.items?.isEmpty ?? true)
+        let staple = TrainMath.snackBefore(server: nil, saved: [], meals: [])
+        XCTAssertEqual(staple.name, "Greek yogurt")
+        XCTAssertEqual(staple.source, "suggested")
+        XCTAssertEqual(staple.items?.first?.name, "Greek yogurt")
+    }
+
+    func testSnackBeforePrefersALoggedSnackOverASavedPlate() {
+        let usual = SavedMeal(
+            id: "s1",
+            name: "Overnight oats",
+            items: [
+                MealSummary.Item(name: "Oats", quantity: "1 bowl", kcal: 310, proteinG: 18, carbsG: 40, fatG: 8)
+            ],
+            kcal: 310,
+            proteinG: 18,
+            carbsG: 40,
+            fatG: 8,
+            suggestSlot: nil,
+            useInCheckIns: true,
+            lastUsedAt: "2026-10-20T08:00:00Z",
+            useCount: 6,
+            suggested: false
+        )
+        let logged = MealSummary(
+            id: "m1",
+            loggedAt: "2026-10-20T15:20:00Z",
+            kcal: 240,
+            proteinG: 24,
+            carbsG: 8,
+            fatG: 6,
+            source: "TEXT",
+            summary: "Cottage cheese",
+            photoUrl: nil,
+            notes: nil,
+            items: [
+                MealSummary.Item(name: "Cottage cheese", quantity: "1 cup", kcal: 240, proteinG: 24, carbsG: 8, fatG: 6)
+            ],
+            parseConfidence: 1
+        )
+        let picked = TrainMath.snackBefore(server: .init(name: "Overnight oats", kcal: 310, source: "usual"), saved: [usual], meals: [logged])
+        XCTAssertEqual(picked.name, "Cottage cheese")
+        XCTAssertEqual(picked.source, "history")
+        XCTAssertEqual(picked.items?.first?.name, "Cottage cheese")
+        XCTAssertEqual(picked.items?.first?.quantity, "1 cup")
+    }
+
+    func testSnackBeforeSkipsDislikedFoods() {
+        let logged = MealSummary(
+            id: "m2",
+            loggedAt: "2026-10-20T15:20:00Z",
+            kcal: 220,
+            proteinG: 20,
+            carbsG: 12,
+            fatG: 5,
+            source: "TEXT",
+            summary: "Cottage cheese",
+            photoUrl: nil,
+            notes: nil,
+            items: [
+                MealSummary.Item(name: "Cottage cheese", quantity: "1 cup", kcal: 220, proteinG: 24, carbsG: 8, fatG: 6)
+            ],
+            parseConfidence: 1
+        )
+        let picked = TrainMath.snackBefore(server: nil, saved: [], meals: [logged], disliked: ["cottage"])
+        XCTAssertEqual(picked.source, "suggested")
+        XCTAssertEqual(picked.name, "Greek yogurt")
+    }
+
+    func testDecodesSnackBeforeItems() throws {
+        let json = """
+        {"name":"Banana + Peanut butter","kcal":180,"source":"history","proteinG":4,
+         "items":[{"name":"Banana","quantity":"1","kcal":105,"proteinG":1},
+                  {"name":"Peanut butter","quantity":"1 tbsp","kcal":75,"proteinG":3}]}
+        """
+        let snack = try JSONDecoder().decode(TrainingWeekResponse.SnackBefore.self, from: Data(json.utf8))
+        XCTAssertEqual(snack.items?.count, 2)
+        XCTAssertEqual(snack.items?.last?.name, "Peanut butter")
     }
 }

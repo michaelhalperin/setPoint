@@ -35,7 +35,7 @@ struct SavedMealsSettingsView: View {
     }
 
     var body: some View {
-        InnerScreen(spacing: 12) {
+        InnerScreen(spacing: 12, onRefresh: { await load() }) {
             ScreenHeader(label: "My meals") {
                 RoundIconButton("plus", label: "Add a plate") { editor = SavedMealDraft() }
             }

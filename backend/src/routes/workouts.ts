@@ -8,6 +8,8 @@ import { applyTrainingTarget, effectiveWorkouts, REFUEL_WINDOW_MIN, trainingBump
 import { asTrainingWorkout } from '../training/day.js';
 import { replaceWorkouts } from '../training/replaceWorkouts.js';
 import { canEdit, followingStarts, PLAN_HORIZON_DAYS, startProblem } from '../training/schedule.js';
+import { excludedTokensFrom, loadStapleFoods } from '../solver/meals.js';
+import { pickSnackBefore } from '../training/snack.js';
 import { refuelMealFor, refuelStatus, todaySteps } from '../training/status.js';
 
 const kind = z.enum(['STRENGTH', 'CARDIO', 'MIXED']);
@@ -201,7 +203,8 @@ export async function workoutRoutes(app: FastifyInstance): Promise<void> {
     const windowStart = localDayRange(windowStartISO, user.timezone).start;
     const lastISO = shiftDateISO(todayISO, PLAN_HORIZON_DAYS);
     const rangeEnd = localDayRange(lastISO, user.timezone).end;
-    const [workouts, meals] = await Promise.all([
+    const snackLookback = new Date(now.getTime() - 28 * 86_400_000);
+    const [workouts, meals, snackMeals, savedMeals, restrictions] = await Promise.all([
       prisma.workout.findMany({
         where: { userId, start: { gte: windowStart, lt: rangeEnd } },
         orderBy: { start: 'asc' },
@@ -209,6 +212,20 @@ export async function workoutRoutes(app: FastifyInstance): Promise<void> {
       prisma.meal.findMany({
         where: { userId, loggedAt: { gte: windowStart } },
         select: { loggedAt: true, kcal: true },
+      }),
+      prisma.meal.findMany({
+        where: { userId, loggedAt: { gte: snackLookback } },
+        select: { loggedAt: true, kcal: true, rawInput: true, items: true },
+        orderBy: { loggedAt: 'desc' },
+        take: 80,
+      }),
+      prisma.savedMeal.findMany({
+        where: { userId },
+        select: { name: true, kcal: true, items: true, useCount: true, lastUsedAt: true, useInCheckIns: true },
+      }),
+      prisma.dietaryRestriction.findMany({
+        where: { userId, isHardExclusion: true },
+        select: { token: true },
       }),
     ]);
     const weightKg = user.weightEntries[0]?.weightKg ?? p.weightKg ?? 80;
@@ -300,6 +317,29 @@ export async function workoutRoutes(app: FastifyInstance): Promise<void> {
     }
     timeline.push({ kind: 'dinner', atMin: p.dinnerMin, label: 'Dinner' });
     const dinnerAt = new Date(localDayRange(todayISO, user.timezone).start.getTime() + p.dinnerMin * 60_000);
+    const excludedTokens = excludedTokensFrom(restrictions, p.dislikedFoods);
+    let snackBefore = pickSnackBefore({
+      meals: snackMeals,
+      workouts,
+      savedMeals,
+      dislikedFoods: p.dislikedFoods ?? [],
+      excludedTokens,
+      pantryTokens: p.pantryTokens ?? [],
+      drinkableOk: p.drinkableOk ?? true,
+    });
+    if (!snackBefore) {
+      const staples = await loadStapleFoods(prisma);
+      snackBefore = pickSnackBefore({
+        meals: snackMeals,
+        workouts,
+        savedMeals,
+        dislikedFoods: p.dislikedFoods ?? [],
+        excludedTokens,
+        pantryTokens: p.pantryTokens ?? [],
+        drinkableOk: p.drinkableOk ?? true,
+        solverFoods: staples.solverFoods,
+      });
+    }
     return {
       addCalories,
       preWorkoutNudgeMin: p.preWorkoutNudgeMin,
@@ -322,6 +362,8 @@ export async function workoutRoutes(app: FastifyInstance): Promise<void> {
         steps: todaySteps(todayFirst, dinnerAt, meals, now),
         refuelWindowMin: REFUEL_WINDOW_MIN,
         trainingKcal,
+        /** A snack they already eat, or a light staple that fits their foods. */
+        snackBefore,
       },
     };
   });

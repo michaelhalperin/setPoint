@@ -8,6 +8,7 @@ struct SettlementView: View {
     @State private var selectedStation: WeekStation?
     @State private var patternHandled = false
     @State private var patternApplied = false
+    @State private var reloading = false
 
     init(previewModel: SettlementViewModel? = nil) {
         _model = State(initialValue: previewModel)
@@ -144,8 +145,8 @@ struct SettlementView: View {
             .padding(.top, Space.sm)
             .padding(.bottom, Space.xl)
         }
-        .scrollBounceBehavior(.basedOnSize)
-        .refreshable { await model.load() }
+        .pullToReload({ await model.load(showSpinner: false) }, covering: $reloading)
+        .reloadCover(reloading) { SettlementSkeletonView() }
         .background(alignment: .top) { AmbientGlow(tone: .ember, strength: 0.6).offset(y: -140).ignoresSafeArea() }
         .background(Palette.background.ignoresSafeArea())
         .sheet(item: $selectedStation) { station in

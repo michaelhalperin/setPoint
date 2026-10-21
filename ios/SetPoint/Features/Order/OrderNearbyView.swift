@@ -67,7 +67,7 @@ struct OrderNearbyView: View {
 
     @ViewBuilder
     private var screenBody: some View {
-        InnerScreen(glow: .haze, spacing: 16) {
+        InnerScreen(glow: .haze, spacing: 16, onRefresh: { await load() }) {
             ScreenHeader(label: "Order nearby")
 
             VStack(alignment: .leading, spacing: 8) {
@@ -787,7 +787,7 @@ struct OrderNearbyView: View {
             phase = .loaded(preview)
             return
         }
-        phase = .loading
+        if case .loaded = phase {} else { phase = .loading }
         do {
             let coordinate = try await location.coordinate()
             let response: NearbyResponse = try await env.api.get(

@@ -16,7 +16,7 @@ struct AppetiteSettingsView: View {
     @State private var selectedDay: Int?
 
     var body: some View {
-        InnerScreen(spacing: 16) {
+        InnerScreen(spacing: 16, onRefresh: { await load() }) {
             ScreenHeader(label: "Appetite · 4 weeks")
 
             if let history {
@@ -407,6 +407,8 @@ struct AppetiteSettingsView: View {
             loading = false
             return
         }
+        let first = history == nil
+        if first { loading = true }
         defer { loading = false }
         async let hist: AppetiteHistoryResponse? = try? await env.api.get("/api/appetite/history")
         async let settings: SettingsResponse? = try? await env.api.get("/api/settings")

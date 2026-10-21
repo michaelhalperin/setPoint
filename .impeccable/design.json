@@ -1,0 +1,105 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-21T12:00:00.000Z",
+  "title": "Design System: SetPoint Admin",
+  "extensions": {
+    "colorMeta": {
+      "accent": { "role": "primary", "displayName": "Operator Blue", "canonical": "#1D4ED8", "tonalRamp": ["#1E3A8A", "#1D4ED8", "#3B82F6", "#60A5FA", "#93C5FD", "#BFDBFE", "#DBEAFE", "#EFF6FF"] },
+      "canvas": { "role": "neutral", "displayName": "Canvas", "canonical": "#F3F4F6", "tonalRamp": ["#111827", "#4B5563", "#6B7280", "#9CA3AF", "#D1D5DB", "#E5E7EB", "#F3F4F6", "#FFFFFF"] },
+      "ink": { "role": "neutral", "displayName": "Ink", "canonical": "#111827", "tonalRamp": ["#111827", "#1F2937", "#374151", "#4B5563", "#6B7280", "#9CA3AF", "#E5E7EB", "#F9FAFB"] }
+    },
+    "typographyMeta": {
+      "title": { "displayName": "Title", "purpose": "Page names in the stage." },
+      "body": { "displayName": "Body", "purpose": "Copy and table cells." },
+      "label": { "displayName": "Label", "purpose": "Field labels and secondary lines." },
+      "figure": { "displayName": "Figure", "purpose": "KPI values, percents, ids, codes." }
+    },
+    "shadows": [
+      { "name": "toast", "value": "0 8px 24px rgba(17, 24, 39, 0.12)", "purpose": "The only lifted surface — save confirmation." }
+    ],
+    "motion": [
+      { "name": "toast-in", "value": "180ms ease-out", "purpose": "Save confirmation; the signature interaction." }
+    ],
+    "breakpoints": [
+      { "name": "kpis", "value": "960px" },
+      { "name": "rail", "value": "720px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one solid action: Sign in, Create code, Save, Let in.",
+      "html": "<button class=\"ds-btn-primary\">Create code</button>",
+      "css": ".ds-btn-primary { height: 36px; padding: 0 14px; border: 1px solid #1D4ED8; border-radius: 8px; background: #1D4ED8; color: #fff; font: 600 15px/1 \"Source Sans 3\", sans-serif; cursor: pointer; } .ds-btn-primary:hover { filter: brightness(1.05); } .ds-btn-primary:focus-visible { outline: 2px solid #1D4ED8; outline-offset: 2px; }"
+    },
+    {
+      "name": "Default Button",
+      "kind": "button",
+      "refersTo": "button-default",
+      "description": "Secondary actions on white.",
+      "html": "<button class=\"ds-btn\">Load more</button>",
+      "css": ".ds-btn { height: 36px; padding: 0 14px; border: 1px solid #D1D5DB; border-radius: 8px; background: #fff; color: #111827; font: 500 15px/1 \"Source Sans 3\", sans-serif; cursor: pointer; } .ds-btn:hover { background: #F3F4F6; }"
+    },
+    {
+      "name": "Text field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Search, codes, cohorts.",
+      "html": "<input class=\"ds-input\" placeholder=\"Find someone\" />",
+      "css": ".ds-input { height: 36px; padding: 0 12px; border: 1px solid #E5E7EB; border-radius: 8px; background: #fff; color: #111827; font: 15px/1.45 \"Source Sans 3\", sans-serif; } .ds-input::placeholder { color: #4B5563; } .ds-input:focus { border-color: #1D4ED8; outline: none; }"
+    },
+    {
+      "name": "Rail current",
+      "kind": "nav",
+      "refersTo": "nav-current",
+      "description": "The only accent in the shell.",
+      "html": "<button class=\"ds-nav ds-nav-current\">Overview</button>",
+      "css": ".ds-nav { display: flex; width: 100%; text-align: left; background: none; border: 0; color: #4B5563; font: 500 15px/1 \"Source Sans 3\", sans-serif; padding: 8px 12px; border-radius: 8px; min-height: 36px; cursor: pointer; } .ds-nav:hover { background: #F3F4F6; color: #111827; } .ds-nav-current { background: #EFF6FF; color: #1D4ED8; font-weight: 600; }"
+    },
+    {
+      "name": "Panel",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "White operator surface.",
+      "html": "<div class=\"ds-panel\"><div class=\"ds-kpi-label\">People</div><div class=\"ds-kpi-value\">48</div></div>",
+      "css": ".ds-panel { background: #fff; border: 1px solid #E5E7EB; border-radius: 12px; padding: 18px; } .ds-kpi-label { color: #4B5563; font: 15px/1.45 \"Source Sans 3\", sans-serif; } .ds-kpi-value { font: 500 40px/1 \"Red Hat Mono\", monospace; letter-spacing: -0.03em; color: #111827; margin-top: 8px; font-variant-numeric: tabular-nums; }"
+    },
+    {
+      "name": "Status chip",
+      "kind": "chip",
+      "refersTo": "badge-warn",
+      "description": "Waiting or stale only — never a default Done.",
+      "html": "<span class=\"ds-badge ds-badge-warn\">Waiting</span>",
+      "css": ".ds-badge { font: 600 12px/1 \"Source Sans 3\", sans-serif; padding: 3px 8px; border-radius: 999px; border: 1px solid #E5E7EB; color: #4B5563; background: #fff; } .ds-badge-warn { color: #B45309; background: #FFFBEB; border-color: #F5D0A6; } .ds-badge-good { color: #047857; background: #ECFDF5; border-color: #A7F3D0; } .ds-badge-bad { color: #B91C1C; background: #FEF2F2; border-color: #FECACA; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Working Admin",
+    "overview": "`/admin` is a category-standard light operator page, executed at Linear / Stripe Dashboard / Vercel craft. The owner jumps all day between access, health, and people; the rail is always there so that jumping never slows. The iOS member app (dark, ember, haze) is a different identity and does not apply here.\n\nPersonality is precise, compact, and unadorned. Color does jobs: blue for the current section and primary actions, green/red/amber only for status. Figures are mono. Surfaces are white on cool gray, separated by a 1px rule.",
+    "keyCharacteristics": [
+      "Persistent 232px white rail, blue-wash current item as the only accent",
+      "Off-white canvas #F3F4F6, white panels, 12px corners",
+      "Source Sans 3 for UI, Red Hat Mono for IDs and figures",
+      "Compact density; status color only when something is wrong or waiting"
+    ],
+    "rules": [
+      { "name": "The One Accent Rule", "body": "Blue is current selection and primary action only. It is not decoration.", "section": "colors" },
+      { "name": "The Status-as-Exception Rule", "body": "Green, red, and amber appear only when the state is not the default. A table of completed rows stays ink.", "section": "colors" },
+      { "name": "The Mono Figures Rule", "body": "KPI values, percents, ids, env, event names, and invite codes are Red Hat Mono. Labels stay Source Sans 3.", "section": "typography" },
+      { "name": "The Flat-By-Default Rule", "body": "No glow, glass, or gradient. Shadows only on the toast.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do keep a persistent rail so jumping Overview / Users / Meals / Invites / Flags / Health is one click.",
+      "Do put figures in Red Hat Mono and the current section in the blue wash.",
+      "Do use warn color for people waiting and for a stale scheduler."
+    ],
+    "donts": [
+      "Don't inherit the iOS ember/haze/dark world on this page.",
+      "Don't use glow, glass, gradient text, or pill nav.",
+      "Don't color every “Done” or “On” if that is the default — status is the exception.",
+      "Don't put chart labels inside an SVG with preserveAspectRatio: none."
+    ]
+  }
+}

@@ -35,7 +35,9 @@ struct TrainingScreen: View {
             accessory: AnyView(TrainPlanPill { sheet = .plan(defaultStart(on: .now)) }),
             showsBack: !isTabRoot,
             glow: .haze,
-            showsHeadline: false
+            showsHeadline: false,
+            onRefresh: { await store.load(env) },
+            reloadSkeleton: AnyView(TrainSkeletonView())
         ) {
             switch store.phase {
             case .ready:
@@ -46,13 +48,15 @@ struct TrainingScreen: View {
                 SettingsErrorBanner(message: message)
                 ActionButton(title: "Try again", kind: .secondary) { Task { await store.load(env) } }
             case .loading:
-                BusyDots(tint: Palette.hazeSoft)
-                    .frame(maxWidth: .infinity, minHeight: 120)
+                TrainSkeletonView()
             }
         }
         .task {
             store.todayChanged = { [home] in Task { await home?.load(showSpinner: false) } }
             await store.load(env)
+            if case let .loaded(home) = home?.phase {
+                await store.resolveSnack(env, meals: home.meals)
+            }
         }
         // Today's steps tick from Today's meals at once; this brings past days' results.
         .onChange(of: env.changes.mealRevision) { _, _ in Task { await store.refresh(env) } }
@@ -138,8 +142,13 @@ struct TrainingScreen: View {
                 addCalories: store.addCalories,
                 dinnerMin: store.dinnerMin,
                 steps: todaySteps(first: first, now: now),
+                snackBefore: store.snackBefore,
                 now: now,
                 onLog: { env.chrome.logPanelOpen = true },
+                onLogSnack: { snack in Task { await store.logSnack(snack, env: env, home: home) } },
+                loggingSnack: store.loggingSnack,
+                snackLogged: store.loggedSnackId != nil && store.loggedSnackId == store.snackBefore?.id,
+                onOpenSnack: { sheet = .snack($0) },
                 onEdit: first.canEdit(now: now) ? { sheet = .edit(first) } : nil
             )
             .animation(Motion.settle, value: bump)
@@ -153,6 +162,8 @@ struct TrainingScreen: View {
                         dayBumpKcal: index == 0 ? TrainMath.bump(day.sessions, weightKg: store.weightKg) : nil,
                         addCalories: store.addCalories,
                         dinnerMin: store.dinnerMin,
+                        snackBefore: store.snackBefore,
+                        onOpenSnack: { sheet = .snack($0) },
                         onEdit: { sheet = s.canEdit(now: .now) ? .edit(s) : nil }
                     )
                 }
@@ -343,6 +354,199 @@ struct TrainingScreen: View {
                 onAddCalories: { store.setAddCalories($0, env: env) },
                 onNudge: { store.setNudge($0, env: env) }
             )
+        case let .snack(snack):
+            TrainSnackSheet(
+                snack: snack,
+                logging: store.loggingSnack,
+                logged: store.loggedSnackId == snack.id
+            ) {
+                Task { await store.logSnack(snack, env: env, home: home) }
+            }
         }
     }
 }
+
+/// Mirrors the week strip, today's card, coming-up and settings — haze, not ember.
+struct TrainSkeletonView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private var days: [Date] {
+        let start = TrainMath.weekStart(.now)
+        return (0..<7).compactMap { Calendar.current.date(byAdding: .day, value: $0, to: start) }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 6) {
+                Circle().fill(Palette.hazeSoft).frame(width: 6, height: 6)
+                Text("PULLING IN THIS WEEK")
+                    .font(Typography.mono(10))
+                    .tracking(1.1)
+                    .foregroundStyle(Palette.inkFaint)
+            }
+            .padding(.horizontal, 4)
+
+            weekStrip
+            dayLabel
+            dayCard
+            comingUp
+            settingsRow
+        }
+        .accessibilityElement()
+        .accessibilityLabel("Loading train")
+    }
+
+    private var weekStrip: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 6) {
+                VStack(alignment: .leading, spacing: 2) {
+                    SkeletonBlock(width: 88, height: 15)
+                    SkeletonBlock(width: 72, height: 10)
+                }
+                Spacer(minLength: 4)
+                Circle().fill(Color.white.opacity(0.07)).frame(width: 44, height: 44)
+                Circle().fill(Color.white.opacity(0.07)).frame(width: 44, height: 44)
+            }
+            .padding(.horizontal, 4)
+
+            TimelineView(.animation(paused: reduceMotion)) { ctx in
+                let t = ctx.date.timeIntervalSinceReferenceDate
+                HStack(spacing: 4) {
+                    ForEach(Array(days.enumerated()), id: \.offset) { i, date in
+                        let today = Calendar.current.isDateInToday(date)
+                        let wave = reduceMotion ? 0.45 : 0.22 + 0.55 * (1 + sin(t * 2 * .pi / 1.8 - Double(i) * 0.55)) / 2
+                        VStack(spacing: 5) {
+                            Text(date.formatted(.dateTime.weekday(.narrow).locale(AppLanguage.current.locale)))
+                                .font(Typography.mono(10))
+                                .foregroundStyle(Palette.inkFaint)
+                            Text(date.formatted(.dateTime.day()))
+                                .font(Typography.data(17, weight: .medium))
+                                .foregroundStyle(Palette.ink.opacity(0.55))
+                            Circle()
+                                .fill(Palette.hazeSoft.opacity(today ? 0.85 : wave))
+                                .frame(width: 6, height: 6)
+                        }
+                        .frame(maxWidth: .infinity, minHeight: 64)
+                        .background {
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .fill(today ? Palette.haze.opacity(0.16) : Color.white.opacity(0.03))
+                        }
+                        .overlay {
+                            if today {
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .strokeBorder(Palette.hazeSoft.opacity(0.45))
+                            }
+                        }
+                    }
+                }
+            }
+
+            SkeletonBlock(width: 210, height: 12)
+                .padding(.horizontal, 4)
+        }
+        .padding(.horizontal, 12)
+        .padding(.top, 14)
+        .padding(.bottom, 12)
+        .glass(radius: 24, fill: Color.white.opacity(0.035), stroke: Color.white.opacity(0.08))
+        .shimmering()
+    }
+
+    private var dayLabel: some View {
+        SkeletonBlock(width: 148, height: 10)
+            .padding(.horizontal, 4)
+            .padding(.top, 4)
+    }
+
+    private var dayCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 12) {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(Palette.haze.opacity(0.18))
+                    .frame(width: 44, height: 44)
+                VStack(alignment: .leading, spacing: 6) {
+                    SkeletonBlock(width: 168, height: 16)
+                    SkeletonBlock(width: 120, height: 12)
+                }
+                Spacer(minLength: 8)
+            }
+            SkeletonBlock(width: 196, height: 28, radius: 8)
+            SkeletonBlock(height: 10, radius: 5)
+            VStack(alignment: .leading, spacing: 12) {
+                ForEach(0..<3, id: \.self) { i in
+                    HStack(spacing: 10) {
+                        Circle().fill(Palette.hazeSoft.opacity(i == 0 ? 0.55 : 0.22)).frame(width: 8, height: 8)
+                        SkeletonBlock(width: i == 1 ? 180 : 140, height: 13)
+                    }
+                }
+            }
+        }
+        .padding(18)
+        .background {
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(LinearGradient(
+                    colors: [Palette.haze.opacity(0.17), Color.white.opacity(0.03)],
+                    startPoint: .topLeading,
+                    endPoint: UnitPoint(x: 0.6, y: 0.9)
+                ))
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .strokeBorder(Palette.hazeSoft.opacity(0.40))
+        }
+        .shimmering()
+    }
+
+    private var comingUp: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                SkeletonBlock(width: 88, height: 10)
+                Spacer()
+                SkeletonBlock(width: 120, height: 10)
+            }
+            .padding(.horizontal, 4)
+
+            VStack(spacing: 0) {
+                ForEach(0..<2, id: \.self) { i in
+                    HStack(spacing: 12) {
+                        SkeletonBlock(width: 44, height: 44, radius: 12)
+                        VStack(alignment: .leading, spacing: 6) {
+                            SkeletonBlock(width: i == 0 ? 132 : 118, height: 14)
+                            SkeletonBlock(width: 96, height: 11)
+                        }
+                        Spacer()
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    if i == 0 {
+                        Rectangle().fill(Color.white.opacity(0.06)).frame(height: 1)
+                    }
+                }
+            }
+            .glass(radius: 22, fill: Color.white.opacity(0.035), stroke: Color.white.opacity(0.08))
+            .shimmering()
+        }
+        .padding(.top, 6)
+    }
+
+    private var settingsRow: some View {
+        HStack(spacing: 12) {
+            SkeletonBlock(width: 36, height: 36, radius: 11)
+            VStack(alignment: .leading, spacing: 6) {
+                SkeletonBlock(width: 132, height: 14)
+                SkeletonBlock(width: 168, height: 11)
+            }
+            Spacer()
+        }
+        .padding(16)
+        .glass(radius: 22, fill: Color.white.opacity(0.035), stroke: Color.white.opacity(0.08))
+        .shimmering()
+    }
+}
+
+#if DEBUG
+#Preview("Skeleton") {
+    SettingsScreen(title: "Train", accessory: AnyView(TrainPlanPill { }), showsBack: true, glow: .haze, showsHeadline: false) {
+        TrainSkeletonView()
+    }
+}
+#endif

@@ -10,7 +10,7 @@ struct CalendarWeekView: View {
 
     var body: some View {
         let calendar = env.calendar
-        InnerScreen(glow: .mixed, spacing: 14) {
+        InnerScreen(glow: .mixed, spacing: 14, onRefresh: { await env.calendar.sync() }) {
             ScreenHeader(label: "") {
                 CalendarConnectedPill()
             }

@@ -293,6 +293,85 @@ extension View {
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Loading")
     }
+
+    /// Pull past the top to reload. Always bounces so a short screen can still pull.
+    func pullToReload(_ action: (() async -> Void)?) -> some View {
+        modifier(PullReloadModifier(action: action, covering: nil))
+    }
+
+    /// Same pull, and `covering` fades a reload cover in and out — the scroll
+    /// view stays mounted so the refresh isn't cancelled mid-flight.
+    func pullToReload(_ action: (() async -> Void)?, covering: Binding<Bool>) -> some View {
+        modifier(PullReloadModifier(action: action, covering: covering))
+    }
+
+    /// Crossfade a skeleton over live content. The content stays in the tree.
+    func reloadCover<Skeleton: View>(_ active: Bool, @ViewBuilder skeleton: () -> Skeleton) -> some View {
+        modifier(ReloadCoverModifier(active: active, skeleton: skeleton()))
+    }
+}
+
+/// Pull-to-reload that outlives the refresh control: a gentle fade, a short
+/// linger, then a fade back. Instant skeleton swaps feel like a snap.
+enum PullReload {
+    static let linger: UInt64 = 620_000_000
+
+    @MainActor
+    static func run(show: Binding<Bool>?, reduceMotion: Bool, work: @escaping () async -> Void) async {
+        if let show, show.wrappedValue { return }
+        let task = Task.detached { @MainActor in
+            if let show {
+                withAnimation(Motion.adaptive(Motion.gentle, reduceMotion: reduceMotion)) {
+                    show.wrappedValue = true
+                }
+            }
+            await work()
+            try? await Task.sleep(nanoseconds: linger)
+            if let show {
+                withAnimation(Motion.adaptive(Motion.gentle, reduceMotion: reduceMotion)) {
+                    show.wrappedValue = false
+                }
+            }
+        }
+        await task.value
+    }
+}
+
+private struct PullReloadModifier: ViewModifier {
+    let action: (() async -> Void)?
+    var covering: Binding<Bool>?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
+        if let action {
+            content
+                .scrollBounceBehavior(.always)
+                .refreshable {
+                    await PullReload.run(show: covering, reduceMotion: reduceMotion, work: action)
+                }
+        } else {
+            content
+        }
+    }
+}
+
+private struct ReloadCoverModifier<Skeleton: View>: ViewModifier {
+    let active: Bool
+    let skeleton: Skeleton
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(active ? 0 : 1)
+            .overlay {
+                if active {
+                    skeleton
+                        .allowsHitTesting(false)
+                        .transition(.opacity)
+                }
+            }
+            .animation(Motion.adaptive(Motion.gentle, reduceMotion: reduceMotion), value: active)
+    }
 }
 
 /// A refresh failed but the screen still shows the last good data: say how old

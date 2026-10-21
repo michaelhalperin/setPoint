@@ -1,0 +1,60 @@
+<!doctype html><!-- after serve -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;700;800&family=Red+Hat+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1440px; height: 900px; overflow: hidden; background: #F4F1E8; color: #111; font: 500 16px/1.2 "Barlow Condensed", sans-serif; }
+  body { display: grid; grid-template-columns: 200px 1fr; }
+  aside { background: #111; color: #F4F1E8; padding: 24px 16px; }
+  .mark { font-weight: 800; font-size: 28px; letter-spacing: -0.02em; }
+  .env { font: 500 12px "Red Hat Mono", monospace; color: #888; margin: 6px 0 32px; }
+  aside button { display: block; width: 100%; text-align: left; background: none; border: 0; color: #A3A3A3; font: 700 18px "Barlow Condensed", sans-serif; padding: 8px 10px; }
+  aside button.on { color: #111; background: #F5E000; }
+  .out { margin-top: 280px; color: #666; font-size: 15px; padding: 8px 10px; }
+  main { padding: 24px 32px; }
+  .head { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 3px solid #111; padding-bottom: 8px; }
+  h1 { font-size: 48px; font-weight: 800; letter-spacing: -0.03em; }
+  .meta { font: 500 13px "Red Hat Mono", monospace; }
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  th { text-align: left; font-size: 13px; font-weight: 700; letter-spacing: 0.04em; padding: 8px 10px; border-bottom: 2px solid #111; }
+  td { padding: 9px 10px; border-bottom: 1px solid #D9D4C6; font-size: 18px; }
+  td.n { font: 500 16px/1 "Red Hat Mono", monospace; text-align: right; }
+  tr.hot td { background: #F5E000; }
+  .lane { color: #C41E3A; font-weight: 800; }
+</style>
+</head>
+<body>
+<aside>
+  <div class="mark">SETPOINT</div>
+  <div class="env">HEAT · 14D</div>
+  <button class="on">OVERVIEW</button>
+  <button>USERS</button>
+  <button>MEALS</button>
+  <button>INVITES</button>
+  <button>FLAGS</button>
+  <button>HEALTH</button>
+  <div class="out">SIGN OUT</div>
+</aside>
+<main>
+  <div class="head">
+    <h1>Heat 14 · Everyone</h1>
+    <div class="meta">48 IN · 3 WAITING · 21 OCT</div>
+  </div>
+  <table>
+    <thead><tr><th>Lane</th><th>Name</th><th>Status</th><th>Meals</th><th>Eaten</th><th>Joined</th></tr></thead>
+    <tbody>
+      <tr class="hot"><td class="lane">W</td><td>maya@studio.local</td><td>Waiting — let in</td><td class="n">0</td><td class="n">—</td><td class="n">19 Oct</td></tr>
+      <tr class="hot"><td class="lane">W</td><td>jon@dvir.local</td><td>Waiting — let in</td><td class="n">0</td><td class="n">—</td><td class="n">20 Oct</td></tr>
+      <tr class="hot"><td class="lane">W</td><td>noa@pilot.local</td><td>Waiting — let in</td><td class="n">2</td><td class="n">40%</td><td class="n">20 Oct</td></tr>
+      <tr><td class="lane">A</td><td>lior@setpoint.app</td><td>On track</td><td class="n">41</td><td class="n">96%</td><td class="n">2 Sep</td></tr>
+      <tr><td class="lane">A</td><td>dana@setpoint.app</td><td>Under</td><td class="n">28</td><td class="n">81%</td><td class="n">8 Sep</td></tr>
+      <tr><td class="lane">B</td><td>avi@dvir-pilot</td><td>On track</td><td class="n">33</td><td class="n">94%</td><td class="n">14 Sep</td></tr>
+      <tr><td class="lane">B</td><td>tal@dvir-pilot</td><td>Missed yesterday</td><td class="n">19</td><td class="n">62%</td><td class="n">18 Sep</td></tr>
+    </tbody>
+  </table>
+</main>
+</body>
+</html>

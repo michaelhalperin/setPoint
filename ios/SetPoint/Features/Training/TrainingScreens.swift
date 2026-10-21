@@ -154,7 +154,14 @@ extension TrainingWeekResponse {
                 dinnerMin: 1170,
                 timeline: [],
                 steps: .init(before: false, workout: false, refuel: false, dinner: false),
-                refuelWindowMin: 45
+                refuelWindowMin: 45,
+                snackBefore: .init(
+                    name: "Greek yogurt",
+                    kcal: 220,
+                    source: "history",
+                    proteinG: 20,
+                    items: [.init(name: "Greek yogurt", quantity: "1 cup", kcal: 220, proteinG: 20)]
+                )
             )
         )
     }

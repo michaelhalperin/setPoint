@@ -7,12 +7,14 @@ enum TrainSheet: Identifiable {
     /// Change a session that hasn't started.
     case edit(TrainSession)
     case settings
+    case snack(TrainingWeekResponse.SnackBefore)
 
     var id: String {
         switch self {
         case let .plan(date): return "plan-\(date.timeIntervalSince1970)"
         case let .edit(s): return "edit-\(s.id)"
         case .settings: return "settings"
+        case let .snack(s): return "snack-\(s.id)"
         }
     }
 }
@@ -721,6 +723,109 @@ struct TrainSettingsSheet: View {
     private var todayNote: String {
         guard todayTrainingKcal > 0 else { return L10n( "rest day today") }
         return addCalories ? L10n( "+\(todayTrainingKcal) for training") : L10n( "same as a rest day")
+    }
+}
+
+/// The suggested pre-session plate — items, not just a name.
+struct TrainSnackSheet: View {
+    let snack: TrainingWeekResponse.SnackBefore
+    var logging = false
+    var logged = false
+    var onLog: (() -> Void)? = nil
+
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Snack before").sectionLabelStyle()
+            Text(snack.name)
+                .font(Typography.display(28))
+                .tracking(-0.6)
+                .foregroundStyle(Palette.ink)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(reason)
+                .font(Typography.data(14, weight: .regular))
+                .foregroundStyle(Palette.inkSoft)
+                .fixedSize(horizontal: false, vertical: true)
+
+            HStack(spacing: 8) {
+                metric("\(snack.kcal)", L10n("kcal"))
+                if let protein = snack.proteinG, protein > 0 {
+                    metric("\(Int(protein.rounded()))g", L10n("protein"))
+                }
+            }
+
+            if let items = snack.items, !items.isEmpty {
+                GlassList {
+                    ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+                        if index > 0 { ListDivider() }
+                        HStack(alignment: .firstTextBaseline) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(item.name)
+                                    .font(Typography.data(15, weight: .regular))
+                                    .foregroundStyle(Palette.ink)
+                                if let quantity = item.quantity, !quantity.isEmpty {
+                                    Text(quantity)
+                                        .font(Typography.data(12, weight: .regular))
+                                        .foregroundStyle(Palette.inkFaint)
+                                }
+                            }
+                            Spacer(minLength: 8)
+                            Text("\(item.kcal)")
+                                .font(Typography.mono(13))
+                                .foregroundStyle(Palette.inkSoft)
+                        }
+                        .padding(.vertical, 12)
+                    }
+                }
+            }
+
+            Spacer(minLength: 8)
+
+            if let onLog {
+                ActionButton(
+                    title: "Log it",
+                    busy: logging,
+                    busyTitle: "Logging…",
+                    done: logged,
+                    doneTitle: "Logged",
+                    symbol: "plus"
+                ) {
+                    dismiss()
+                    onLog()
+                }
+                .disabled(logging || logged)
+            }
+        }
+        .padding(Space.gutter)
+        .padding(.top, Space.sm)
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+        .presentationBackground(Palette.sheet)
+        .presentationCornerRadius(32)
+    }
+
+    private var reason: String {
+        switch snack.source {
+        case "history": return L10n("You’ve had this before a session.")
+        case "usual": return L10n("One of your plates.")
+        default: return L10n("Light, and it fits what you eat.")
+        }
+    }
+
+    private func metric(_ value: String, _ caption: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(value)
+                .font(Typography.mono(18))
+                .foregroundStyle(Palette.ink)
+            Text(caption)
+                .font(Typography.data(12, weight: .regular))
+                .foregroundStyle(Palette.inkFaint)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 }
 

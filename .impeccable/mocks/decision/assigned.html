@@ -1,0 +1,69 @@
+<!doctype html><!-- after serve -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75,500;75,700;100,400&family=Red+Hat+Mono:wght@500&family=Schibsted+Grotesk:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1440px; height: 900px; overflow: hidden; background: #F3E6D4; color: #1B2A4A; font: 14px/1.4 "Schibsted Grotesk", sans-serif; }
+  body { display: grid; grid-template-columns: 220px 1fr; }
+  aside { background: #1B2A4A; color: #F3E6D4; padding: 28px 18px; display: flex; flex-direction: column; gap: 6px; }
+  .mark { font: 700 22px/1 "Archivo", sans-serif; font-stretch: 75%; letter-spacing: -0.03em; }
+  .env { font: 500 11px/1 "Red Hat Mono", monospace; color: #C9B79A; margin: 8px 0 28px; }
+  aside button { display: block; width: 100%; text-align: left; background: none; border: 0; color: #C9B79A; font: 500 15px/1 "Archivo", sans-serif; font-stretch: 75%; padding: 10px 12px; border-radius: 6px; }
+  aside button.on { background: #F3E6D4; color: #1B2A4A; }
+  .out { margin-top: auto; color: #C9B79A; font-size: 13px; padding: 10px 12px; }
+  main { padding: 28px 36px 24px; }
+  h1 { font: 700 42px/0.95 "Archivo", sans-serif; font-stretch: 75%; letter-spacing: -0.03em; }
+  .sub { color: #3A5A82; margin: 8px 0 22px; }
+  .pass { display: grid; grid-template-columns: 1.4fr 1fr; gap: 12px; margin-bottom: 22px; }
+  .ticket { background: #FFFBF5; border: 1px solid #D7C4A8; padding: 16px 18px; display: grid; grid-template-columns: 8px 1fr auto; gap: 14px; align-items: center; }
+  .stub { width: 8px; height: 44px; background: #C23B22; }
+  .stub.dash { background: repeating-linear-gradient(#C23B22 0 6px, transparent 6px 10px); }
+  .ticket b { font: 700 18px/1.1 "Archivo", sans-serif; font-stretch: 75%; display: block; }
+  .ticket span { color: #3A5A82; font-size: 13px; }
+  .go { height: 36px; padding: 0 14px; background: #1B2A4A; color: #FFFBF5; border: 0; font: 600 13px "Schibsted Grotesk", sans-serif; }
+  .kpis { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 12px; }
+  .kpi { background: #FFFBF5; border: 1px solid #D7C4A8; padding: 16px 18px; }
+  .kpi .l { font-size: 13px; color: #3A5A82; }
+  .kpi .v { font: 500 40px/1 "Red Hat Mono", monospace; letter-spacing: -0.04em; margin-top: 6px; }
+  .kpi .s { font-size: 12px; color: #3A5A82; margin-top: 4px; }
+  .big { grid-row: span 1; }
+</style>
+</head>
+<body>
+<aside>
+  <div class="mark">SetPoint</div>
+  <div class="env">production</div>
+  <button class="on">Overview</button>
+  <button>Users</button>
+  <button>Meals</button>
+  <button>Invites</button>
+  <button>Flags</button>
+  <button>Health</button>
+  <div class="out">Sign out</div>
+</aside>
+<main>
+  <h1>The board.</h1>
+  <p class="sub">Last 14 days · everyone. Three people are waiting at the pass.</p>
+  <div class="pass">
+    <div class="ticket">
+      <i class="stub"></i>
+      <div><b>3 waiting for an invite</b><span>Let them in, or mint a code for the cohort.</span></div>
+      <button class="go">Open users</button>
+    </div>
+    <div class="ticket">
+      <i class="stub dash"></i>
+      <div><b>Scheduler stale</b><span>Last run 52 min ago.</span></div>
+      <button class="go">Health</button>
+    </div>
+  </div>
+  <div class="kpis">
+    <div class="kpi big"><div class="l">People in the app</div><div class="v">48</div><div class="s">3 waiting · none blocked</div></div>
+    <div class="kpi"><div class="l">Meals logged</div><div class="v">612</div><div class="s">31 people</div></div>
+    <div class="kpi"><div class="l">Days fully eaten</div><div class="v">71%</div><div class="s">86 of 121 settled days</div></div>
+  </div>
+</main>
+</body>
+</html>

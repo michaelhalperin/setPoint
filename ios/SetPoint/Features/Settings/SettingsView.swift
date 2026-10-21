@@ -7,6 +7,7 @@ struct SettingsView: View {
     @AppStorage(MassUnit.storageKey) private var massUnit = MassUnit.localeDefault
     @AppStorage("you.seen.calendar") private var seenCalendar = false
     @AppStorage("you.seen.appetite") private var seenAppetite = false
+    @State private var reloading = false
     #if DEBUG
     @State private var showingDevOnboarding = false
     @State private var showingDevMealConfirm = false
@@ -38,7 +39,7 @@ struct SettingsView: View {
                 await vm.load()
             }
             // For the Calendar row's "3 moved".
-            if !env.calendar.isPreview, env.subscription.entitled {
+            if !env.calendar.isPreview {
                 env.calendar.refreshAuthorization()
                 await env.calendar.refreshStatus()
                 if env.calendar.connected { await env.calendar.refreshWeek() }
@@ -116,6 +117,8 @@ struct SettingsView: View {
             .padding(Space.gutter)
             .padding(.bottom, 90)
         }
+        .pullToReload({ await model.load(showSpinner: false) }, covering: $reloading)
+        .reloadCover(reloading) { SettingsSkeletonView() }
         .background(alignment: .top) { AmbientGlow(tone: .mixed, strength: 0.6).offset(y: -140).ignoresSafeArea() }
         .background(Palette.background.ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
@@ -329,7 +332,6 @@ struct SettingsView: View {
                 NavigationLink { RhythmSettingsView(model: model) } label: {
                     SetupTile(
                         title: "Meal times",
-                        value: mealTimesSubtitle(model),
                         badge: model.hasWeekendMealOverrides ? "Weekends" : nil
                     ) {
                         HStack(alignment: .center, spacing: 6) {
@@ -353,7 +355,7 @@ struct SettingsView: View {
                     }
                 }
                 NavigationLink { FoodsSettingsView(model: model) } label: {
-                    SetupTile(title: "Foods I avoid", value: restrictionsSubtitle(model)) {
+                    SetupTile(title: "Foods I avoid") {
                         HStack(spacing: 5) {
                             FuelOrb(size: 18, breathing: false, glow: 0.3)
                             Image(systemName: "nosign")
@@ -363,7 +365,7 @@ struct SettingsView: View {
                     }
                 }
                 NavigationLink { SavedMealsSettingsView() } label: {
-                    SetupTile(title: "My meals", value: "One-tap plates") {
+                    SetupTile(title: "My meals") {
                         HStack(spacing: 5) {
                             Circle().fill(Palette.amber).frame(width: 8, height: 8)
                                 .shadow(color: Palette.amber.opacity(0.6), radius: 3)
@@ -374,16 +376,20 @@ struct SettingsView: View {
                     }
                 }
                 NavigationLink {
-                    if env.subscription.entitled {
-                        CalendarSettingsView().onAppear { seenCalendar = true }
-                    } else {
-                        PaywallView()
+                    TrainingScreen(isTabRoot: false)
+                } label: {
+                    SetupTile(title: "Train", value: L10n("Sessions and refuel")) {
+                        Image(systemName: "figure.strengthtraining.traditional")
+                            .font(.system(size: 16, weight: .regular))
+                            .foregroundStyle(Palette.hazeSoft)
                     }
+                }
+                NavigationLink {
+                    CalendarSettingsView().onAppear { seenCalendar = true }
                 } label: {
                     SetupTile(
                         title: "Calendar",
-                        value: env.subscription.entitled ? env.calendar.youRowValue : "Pro",
-                        valueColor: env.subscription.entitled ? Palette.inkSoft : Palette.hazeSoft,
+                        value: env.calendar.youRowValue,
                         isNew: !seenCalendar
                     ) {
                         HStack(spacing: 5) {
@@ -453,10 +459,10 @@ struct SettingsView: View {
             HStack(spacing: 14) {
                 FuelOrb(size: 38, breathing: false, glow: 0.5, haze: true)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("SetPoint Pro")
+                    Text("SetPoint")
                         .font(Typography.data(15, weight: .medium))
                         .foregroundStyle(Palette.ink)
-                    Text(LocalizedStringKey(env.subscription.entitled ? "Active · training and calendar on" : "Training refuels and calendar planning"))
+                    Text(LocalizedStringKey(env.subscription.entitled ? "Active" : "The whole product — one deal"))
                         .font(Typography.data(12, weight: .regular))
                         .foregroundStyle(Palette.hazeSoft)
                 }
@@ -486,18 +492,6 @@ struct SettingsView: View {
         model.goal.hasWeightTarget ? "\(model.goal.title) · \(model.pace.title.lowercased())" : L10n( "Hold steady")
     }
 
-    private func mealTimesSubtitle(_ model: SettingsViewModel) -> String {
-        let times = [model.mealTimes.breakfastMin, model.mealTimes.lunchMin, model.mealTimes.dinnerMin]
-            .map(formatMinutes)
-            .joined(separator: " · ")
-        guard model.hasWeekendMealOverrides else { return times }
-        return L10n( "\(times) · \(WeekendDays.summary(model.weekendDays))")
-    }
-
-    private func restrictionsSubtitle(_ model: SettingsViewModel) -> String {
-        model.restrictions.isEmpty ? L10n( "None") : model.restrictions.map(L10nKey).joined(separator: ", ")
-    }
-
     private func planTitle(_ model: SettingsViewModel) -> String {
         guard model.goal.hasWeightTarget, let target = model.targetWeightKg else {
             return L10n( "Hold steady")
@@ -518,7 +512,7 @@ struct SettingsView: View {
 /// A tile on You: a small picture of the setting, its name and current value.
 private struct SetupTile<Mark: View>: View {
     let title: String
-    let value: String
+    var value: String? = nil
     var valueColor: Color = Palette.inkSoft
     var isNew = false
     /// Quiet status chip (e.g. "Weekends") — muted vs the amber NEW badge.
@@ -551,10 +545,12 @@ private struct SetupTile<Mark: View>: View {
                 Text(LocalizedStringKey(title))
                     .font(Typography.data(15, weight: .regular))
                     .foregroundStyle(Palette.ink)
-                Text(LocalizedStringKey(value))
-                    .font(Typography.data(12, weight: .regular))
-                    .foregroundStyle(valueColor)
-                    .lineLimit(1)
+                if let value {
+                    Text(LocalizedStringKey(value))
+                        .font(Typography.data(12, weight: .regular))
+                        .foregroundStyle(valueColor)
+                        .lineLimit(1)
+                }
             }
         }
         .padding(14)

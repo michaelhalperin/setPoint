@@ -33,8 +33,9 @@ final class SettlementViewModel {
         self.onUnauthorized = onUnauthorized
     }
 
-    func load() async {
+    func load(showSpinner: Bool = false) async {
         if isPreview { return }
+        if showSpinner { phase = .loading }
         do {
             async let history: WeightHistoryResponse? = try? api.get("/api/weight", query: ["limit": "30"])
             let s: SettlementResponse = try await api.get("/api/settlement")
