@@ -35,4 +35,9 @@ describe('feature flags', () => {
   it('resolves every declared flag', () => {
     expect(Object.keys(resolveFlags(user, []))).toEqual(Object.keys(FLAGS));
   });
+
+  it('keeps in-app language off until an override turns it on', () => {
+    expect(flagOn('app_language', user, undefined)).toBe(false);
+    expect(flagOn('app_language', user, { ...row({ enabled: true }), key: 'app_language' })).toBe(true);
+  });
 });

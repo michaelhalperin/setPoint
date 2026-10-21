@@ -8,6 +8,7 @@ import type { FeatureFlag, PrismaClient, UserRole } from '@prisma/client';
  */
 export const FLAGS = {
   order_nearby: { default: true, description: 'Order nearby: dishes near you with Wolt links.' },
+  app_language: { default: false, description: 'In-app language picker (English / Hebrew) on Settings.' },
 } as const satisfies Record<string, { default: boolean; description: string }>;
 
 export type FlagKey = keyof typeof FLAGS;

@@ -9,10 +9,12 @@ import Observation
 final class FeatureFlags {
     enum Flag: String, CaseIterable {
         case orderNearby = "order_nearby"
+        case appLanguage = "app_language"
 
         var defaultValue: Bool {
             switch self {
             case .orderNearby: return true
+            case .appLanguage: return false
             }
         }
     }
@@ -39,5 +41,11 @@ final class FeatureFlags {
     /// Signing out forgets the last user's flags; the next account loads its own.
     nonisolated static func clearStored() {
         UserDefaults.standard.removeObject(forKey: storeKey)
+    }
+
+    /// For static copy (`L10n`) and root modifiers that can't see `AppEnvironment`.
+    nonisolated static func storedIsOn(_ flag: Flag) -> Bool {
+        let values = UserDefaults.standard.dictionary(forKey: storeKey) as? [String: Bool]
+        return values?[flag.rawValue] ?? flag.defaultValue
     }
 }

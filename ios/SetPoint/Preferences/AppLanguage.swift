@@ -47,7 +47,8 @@ enum AppLanguage: String, CaseIterable, Identifiable {
     /// What the settings control last wrote. `String(localized:)` ignores the
     /// SwiftUI locale environment — use `L10n` so copy follows this, not the phone.
     static var current: AppLanguage {
-        UserDefaults.standard.string(forKey: storageKey).flatMap(AppLanguage.init(rawValue:)) ?? localeDefault
+        guard FeatureFlags.storedIsOn(.appLanguage) else { return localeDefault }
+        return UserDefaults.standard.string(forKey: storageKey).flatMap(AppLanguage.init(rawValue:)) ?? localeDefault
     }
 }
 
@@ -61,11 +62,13 @@ func L10nKey(_ key: String) -> String {
     String(localized: String.LocalizationValue(stringLiteral: key), bundle: AppLanguage.current.stringsBundle, locale: AppLanguage.current.locale)
 }
 
-/// Pins locale and reading direction to the chosen language.
+/// Pins locale to the chosen language. Reads the flag from UserDefaults so
+/// this can wrap the app root — where `AppEnvironment` is not in the tree yet.
 struct AppLanguageReader: ViewModifier {
     @AppStorage(AppLanguage.storageKey) private var language = AppLanguage.localeDefault
 
     func body(content: Content) -> some View {
-        content.environment(\.locale, language.locale)
+        let chosen = FeatureFlags.storedIsOn(.appLanguage) ? language : AppLanguage.localeDefault
+        content.environment(\.locale, chosen.locale)
     }
 }

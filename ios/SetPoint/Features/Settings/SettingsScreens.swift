@@ -1347,8 +1347,10 @@ struct AccountSettingsView: View {
                 .appearIn(0, rise: 16)
 
             VStack(alignment: .leading, spacing: 14) {
-                prefSwitch("Language") {
-                    SegmentedPills(options: AppLanguage.allCases, selection: $language, title: { $0.title })
+                if env.flags.isOn(.appLanguage) {
+                    prefSwitch("Language") {
+                        SegmentedPills(options: AppLanguage.allCases, selection: $language, title: { $0.title })
+                    }
                 }
                 prefSwitch("Units") {
                     SegmentedPills(options: MassUnit.allCases, selection: $massUnit, title: { $0.abbreviation })
