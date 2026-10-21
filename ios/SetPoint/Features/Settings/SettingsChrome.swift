@@ -26,11 +26,11 @@ struct SettingsScreen<Content: View>: View {
             VStack(alignment: .leading, spacing: 18) {
                 if showsBack {
                     ZStack {
-                        Text(title).sectionLabelStyle()
+                        Text(LocalizedStringKey(title)).sectionLabelStyle()
                             .lineLimit(1)
                             .padding(.horizontal, 56)
                         HStack {
-                            RoundIconButton("chevron.left", label: "Back") { dismiss() }
+                            RoundIconButton("chevron.backward", label: "Back") { dismiss() }
                             Spacer(minLength: 0)
                         }
                     }
@@ -98,18 +98,18 @@ struct SettingsRow: View {
                 .foregroundStyle(Palette.ink)
                 .frame(width: 36, height: 36)
                 .background(Color.white.opacity(0.06), in: Circle())
-            Text(title)
+            Text(LocalizedStringKey(title))
                 .font(Typography.data(16, weight: .regular))
                 .foregroundStyle(Palette.ink)
             Spacer(minLength: 8)
             if let value {
-                Text(value)
+                Text(LocalizedStringKey(value))
                     .font(Typography.data(14))
                     .foregroundStyle(Palette.inkFaint)
                     .lineLimit(1)
             }
             if showsChevron {
-                Image(systemName: "chevron.right")
+                Image(systemName: "chevron.forward")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(Palette.inkFaint)
             }
@@ -129,7 +129,7 @@ struct SettingsSaveBar: View {
     var body: some View {
         VStack(spacing: 8) {
             if let note {
-                Text(note)
+                Text(LocalizedStringKey(note))
                     .font(Typography.data(13, weight: .semibold))
                     .foregroundStyle(Palette.inkSoft)
                     .multilineTextAlignment(.center)

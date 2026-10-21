@@ -126,6 +126,8 @@ struct MainTabView: View {
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 if !(tab == .today && env.chrome.navHidden) {
                     FloatingNav(selection: selection, onSelect: select, onLog: openLog)
+                        .environment(\.layoutDirection, .leftToRight)
+                        .flipsForRightToLeftLayoutDirection(false)
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
@@ -248,7 +250,7 @@ struct FloatingNav: View {
                 Image(systemName: symbol)
                     .font(.system(size: 19, weight: .regular))
                     .frame(height: 24)
-                Text(title)
+                Text(LocalizedStringKey(title))
                     .font(Typography.data(10, weight: .regular))
             }
             .foregroundStyle(current ? Palette.ink : Color(hex: 0x71717A))
@@ -256,7 +258,7 @@ struct FloatingNav: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(title)
+        .accessibilityLabel(LocalizedStringKey(title))
         .accessibilityAddTraits(current ? [.isSelected, .isButton] : .isButton)
     }
 }

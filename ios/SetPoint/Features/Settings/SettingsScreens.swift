@@ -93,7 +93,7 @@ struct GoalSettingsView: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(model.goal.hasWeightTarget ? "Target" : "Holding at").sectionLabelStyle()
+                    Text(LocalizedStringKey(model.goal.hasWeightTarget ? "Target" : "Holding at")).sectionLabelStyle()
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         Text(massUnit.number(model.goal.hasWeightTarget ? targetKg : currentKg, digits: 1 ... 1))
                             .font(Typography.data(40, weight: .light))
@@ -125,9 +125,9 @@ struct GoalSettingsView: View {
             .frame(height: 150)
 
             HStack {
-                Text("Now · \(massUnit.number(currentKg, digits: 1 ... 1))")
+                Text(L10n("Now · \(massUnit.number(currentKg, digits: 1 ... 1))"))
                 Spacer()
-                Text(model.goal.hasWeightTarget ? "\(max(weeks, otherPaceWeeks ?? weeks)) weeks" : "6 months")
+                Text(model.goal.hasWeightTarget ? L10n("\(max(weeks, otherPaceWeeks ?? weeks)) weeks") : L10n("6 months"))
             }
             .font(Typography.mono(10))
             .textCase(.uppercase)
@@ -137,18 +137,18 @@ struct GoalSettingsView: View {
         .glass(radius: 26)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(model.goal.hasWeightTarget
-            ? "From \(massUnit.formatKg(currentKg)) to \(massUnit.formatKg(targetKg)) in about \(weeks) weeks"
-            : "Holding at \(massUnit.formatKg(currentKg))")
+            ? L10n("From \(massUnit.formatKg(currentKg)) to \(massUnit.formatKg(targetKg)) in about \(weeks) weeks")
+            : L10n("Holding at \(massUnit.formatKg(currentKg))"))
     }
 
     private var endLabel: String {
-        guard model.goal.hasWeightTarget else { return "±1 \(massUnit.abbreviation) band" }
-        return "\(massUnit.formatKg(targetKg, digits: 0)) · \(Self.monthYear(weeksFromNow: weeks))"
+        guard model.goal.hasWeightTarget else { return L10n( "±1 \(massUnit.abbreviation) band") }
+        return L10n( "\(massUnit.formatKg(targetKg, digits: 0)) · \(Self.monthYear(weeksFromNow: weeks))")
     }
 
     private static func monthYear(weeksFromNow weeks: Int) -> String {
         let date = Calendar.current.date(byAdding: .day, value: weeks * 7, to: .now) ?? .now
-        return date.formatted(.dateTime.month(.abbreviated).year())
+        return date.formatted(.dateTime.month(.abbreviated).year().locale(AppLanguage.current.locale))
     }
 
     // MARK: Pace
@@ -212,7 +212,7 @@ struct GoalSettingsView: View {
     private func paceNote(_ pace: GoalPace) -> String {
         let feel = pace == .gentle ? "easier to eat" : "faster, a bit more food"
         guard let w = paceWeeks(pace) else { return feel.capitalized }
-        return "\(w) weeks · \(Self.monthYear(weeksFromNow: w)) · \(feel)"
+        return L10n( "\(w) weeks · \(Self.monthYear(weeksFromNow: w)) · \(feel)")
     }
 
     private var weeks: Int { model.preferredDurationWeeks ?? model.honestDurationWeeks ?? 12 }
@@ -243,34 +243,35 @@ struct GoalSettingsView: View {
                         }
                     }
                     .buttonStyle(PressableCard())
-                    .accessibilityLabel("\(model.kcalTarget) calories a day. Set it yourself.")
+                    .accessibilityLabel(L10n("\(model.kcalTarget) calories a day. Set it yourself."))
                 }
                 Spacer(minLength: 8)
                 if let protein = model.proteinTarget {
                     Button { editingTarget = .protein } label: {
-                        Text("\(protein) g protein")
+                        Text(L10n("\(protein) g protein"))
                             .font(Typography.mono(12))
                             .foregroundStyle(Palette.amber)
                             .padding(.bottom, 6)
                     }
                     .buttonStyle(PressableCard())
-                    .accessibilityLabel("\(protein) grams of protein. Set it yourself.")
+                    .accessibilityLabel(L10n("\(protein) grams of protein. Set it yourself."))
                 }
             }
             HStack(spacing: 6) {
                 dayChip(model.dailyTargetsEdited ? "Set by you" : "From your goal", tint: nil)
                 if model.goal.hasWeightTarget, let eta = model.honestDurationWeeks {
-                    dayChip("~\(eta) weeks to target", tint: Palette.amber)
+                    dayChip(L10n("~\(eta) weeks to target"), tint: Palette.amber)
                 }
             }
             Text("Tap a number to set it yourself.")
                 .font(Typography.data(12, weight: .regular))
                 .foregroundStyle(Palette.inkFaint)
+                .hintCopy()
         }
     }
 
     private func dayChip(_ text: String, tint: Color?) -> some View {
-        Text(text)
+        Text(LocalizedStringKey(text))
             .font(Typography.mono(11))
             .foregroundStyle(tint ?? Color(hex: 0xD4D4D8))
             .padding(.horizontal, 10)
@@ -401,7 +402,7 @@ private struct DailyTargetSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Space.md) {
-            Text(field == .kcal ? "Daily calories" : "Daily protein")
+            Text(LocalizedStringKey(field == .kcal ? "Daily calories" : "Daily protein"))
                 .sectionLabelStyle()
             if field == .kcal {
                 RulerPicker(value: $value, range: 1200 ... 6000, step: 50, unit: "kcal", majorStep: 500)
@@ -441,8 +442,8 @@ struct RhythmSettingsView: View {
         var id: String { rawValue }
         var title: String {
             switch self {
-            case .weekdays: return "Weekdays"
-            case .weekends: return "Weekends"
+            case .weekdays: return L10n( "Weekdays")
+            case .weekends: return L10n( "Weekends")
             }
         }
     }
@@ -455,8 +456,8 @@ struct RhythmSettingsView: View {
         var title: String {
             switch self {
             case let .meal(slot): return slot.title
-            case .quietStart: return "Quiet from"
-            case .quietEnd: return "Quiet until"
+            case .quietStart: return L10n( "Quiet from")
+            case .quietEnd: return L10n( "Quiet until")
             }
         }
 
@@ -475,14 +476,14 @@ struct RhythmSettingsView: View {
         InnerScreen(spacing: 14) {
             ZStack {
                 HStack {
-                    RoundIconButton("chevron.left", label: "Back") { dismiss() }
+                    RoundIconButton("chevron.backward", label: "Back") { dismiss() }
                     Spacer()
                     SegmentedPills(options: RhythmSet.allCases, selection: $rhythmSet, title: { $0.title })
                         .frame(width: 196)
                 }
             }
 
-            Headline(editingWeekends ? "Weekends run later." : "Three plates a day.", tail: tail, size: 34)
+            Headline(editingWeekends ? "Weekends run later." : "Three plates a day.", tail: tail, size: 34, persistTail: true)
                 .appearIn(0, rise: 16)
 
             if let suggestion = model.weekendSuggestion, editingWeekends {
@@ -534,8 +535,11 @@ struct RhythmSettingsView: View {
     @Environment(\.dismiss) private var dismiss
 
     private var tail: String {
-        let span = "\(formatMinutes(activeTimes.breakfastMin)) to \(formatMinutes(activeTimes.dinnerMin))"
-        return editingWeekends ? "Lit days, \(span)." : "\(span), quiet overnight."
+        let start = formatMinutes(activeTimes.breakfastMin)
+        let end = formatMinutes(activeTimes.dinnerMin)
+        return editingWeekends
+            ? L10n("Lit days, \(start) to \(end).")
+            : L10n("\(start) to \(end), quiet overnight.")
     }
 
     private func minute(of item: DialItem) -> Int {
@@ -551,12 +555,16 @@ struct RhythmSettingsView: View {
         case let .meal(slot):
             let t = activeTimes[slot]
             let weekday = model.mealTimes[slot]
-            let checkIn = "check-in \(formatMinutes(CheckInSchedule.minute(afterMeal: t)))"
-            return editingWeekends && t != weekday ? "weekdays \(formatMinutes(weekday)) · \(checkIn)" : checkIn
+            let checkIn = L10n( "check-in \(formatMinutes(CheckInSchedule.minute(afterMeal: t)))")
+            return editingWeekends && t != weekday
+                ? L10n( "weekdays \(formatMinutes(weekday)) · \(checkIn)")
+                : checkIn
         case .quietStart, .quietEnd:
             let span = (model.quietHours.endMin - model.quietHours.startMin + 1440) % 1440
             let h = span / 60, m = span % 60
-            return "no check-ins for \(h) h" + (m > 0 ? " \(m) min" : "")
+            return m > 0
+                ? L10n( "no check-ins for \(h) h \(m) min")
+                : L10n( "no check-ins for \(h) h")
         }
     }
 
@@ -567,7 +575,7 @@ struct RhythmSettingsView: View {
                 let i = DialItem.order.firstIndex(of: selected) ?? 0
                 selected = DialItem.order[(i + 1) % DialItem.order.count]
             } label: {
-                (Text("Next: \(DialItem.order[((DialItem.order.firstIndex(of: selected) ?? 0) + 1) % DialItem.order.count].title.lowercased()) ")
+                (Text(L10n("Next: \(DialItem.order[((DialItem.order.firstIndex(of: selected) ?? 0) + 1) % DialItem.order.count].title.lowercased()) "))
                     + Text("›").foregroundColor(Palette.inkFaint))
                     .font(Typography.data(13, weight: .regular))
                     .foregroundStyle(Palette.inkSoft)
@@ -622,10 +630,10 @@ struct RhythmSettingsView: View {
                     .font(.system(size: 16, weight: .regular))
                     .foregroundStyle(Palette.amber)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Weekends are running \(suggestion.lateByMin) min later")
+                    Text(L10n("Weekends are running \(suggestion.lateByMin) min later"))
                         .font(Typography.data(14, weight: .medium))
                         .foregroundStyle(Palette.ink)
-                    Text("Set weekend breakfast to \(formatMinutes(suggestion.breakfastMin)).")
+                    Text(L10n("Set weekend breakfast to \(formatMinutes(suggestion.breakfastMin))."))
                         .font(Typography.data(13))
                         .foregroundStyle(Palette.inkSoft)
                 }
@@ -635,20 +643,20 @@ struct RhythmSettingsView: View {
             .glass(radius: 20, fill: Palette.ember.opacity(0.08), stroke: Palette.amber.opacity(0.3))
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Use suggested weekend breakfast \(formatMinutes(suggestion.breakfastMin))")
+        .accessibilityLabel(L10n("Use suggested weekend breakfast \(formatMinutes(suggestion.breakfastMin))"))
     }
 
     /// Lit days follow the weekend times.
     private var weekendDays: some View {
         HStack(spacing: 8) {
-            ForEach(Array(WeekendDays.bitsInDisplayOrder.enumerated()), id: \.offset) { index, bit in
+            ForEach(WeekendDays.orderedBits, id: \.self) { bit in
                 let on = WeekendDays.contains(model.weekendDays, weekday: bit)
                 Button {
                     withAnimation(Motion.settle) {
                         model.weekendDays = WeekendDays.toggling(model.weekendDays, weekday: bit)
                     }
                 } label: {
-                    Text(WeekendDays.labels[index])
+                    Text(WeekendDays.shortLabel(bit))
                         .font(Typography.mono(12))
                         .foregroundStyle(on ? Color(hex: 0xE0E7FF) : Palette.inkFaint)
                         .frame(width: 36, height: 36)
@@ -657,7 +665,7 @@ struct RhythmSettingsView: View {
                         .shadow(color: Palette.haze.opacity(on ? 0.35 : 0), radius: 7)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel(WeekendDays.names[index] + (on ? ", weekend times" : ""))
+                .accessibilityLabel(WeekendDays.name(bit) + (on ? L10n( ", weekend times") : ""))
                 .accessibilityAddTraits(on ? .isSelected : [])
             }
         }
@@ -731,7 +739,7 @@ private struct MealClock: View {
                         .position(point(minute(item), r: radius, c: c))
                         .gesture(drag(item, center: c))
                         .accessibilityLabel("\(item.title) \(formatMinutes(minute(item)))")
-                        .accessibilityHint("Drag around the clock to change the time")
+                        .accessibilityHint(L10n("Drag around the clock to change the time"))
                         .accessibilityAddTraits(on ? .isSelected : [])
                         .accessibilityAdjustableAction { direction in
                             let delta = direction == .increment ? 15 : -15
@@ -866,7 +874,7 @@ struct FoodsSettingsView: View {
     var body: some View {
         InnerScreen(spacing: 14) {
             ScreenHeader(label: "Foods") {
-                Text("\(neverCount) never")
+                Text(L10n("\(neverCount) never"))
                     .font(Typography.mono(11))
                     .foregroundStyle(Color(hex: 0xFCA5A5))
             }
@@ -953,7 +961,7 @@ struct FoodsSettingsView: View {
                     .buttonStyle(PressableCard())
                     .floating(index)
                     .position(x: slot.x * w, y: slot.y * h)
-                    .accessibilityLabel("Remove \(item)")
+                    .accessibilityLabel(L10n("Remove \(item)"))
                 }
                 if items.isEmpty {
                     Text("Add what you keep at home —\nmilk, oats, peanut butter…")
@@ -970,7 +978,7 @@ struct FoodsSettingsView: View {
     // MARK: Tray
 
     private var ruledOut: [(label: String, kind: String, dislike: Bool)] {
-        model.restrictions.map { ($0, kind(of: $0), false) } + model.dislikedFoods.map { ($0, "DISLIKE", true) }
+        model.restrictions.map { ($0, kind(of: $0), false) } + model.dislikedFoods.map { ($0, L10n( "Dislike"), true) }
     }
 
     private var suggestions: [String] {
@@ -978,10 +986,10 @@ struct FoodsSettingsView: View {
     }
 
     private func kind(of item: String) -> String {
-        if Self.allergies.contains(item) { return "ALLERGY" }
-        if Self.intolerances.contains(item) { return "INTOLERANT" }
-        if Self.dontEat.contains(item) { return "CHOICE" }
-        return "YOURS"
+        if Self.allergies.contains(item) { return L10n( "Allergy") }
+        if Self.intolerances.contains(item) { return L10n( "Intolerant") }
+        if Self.dontEat.contains(item) { return L10n( "Choice") }
+        return L10n( "Yours")
     }
 
     private var tray: some View {
@@ -1006,7 +1014,7 @@ struct FoodsSettingsView: View {
                         }
                     } label: {
                         HStack(spacing: 8) {
-                            Text(item.label)
+                            Text(LocalizedStringKey(item.label))
                                 .strikethrough(true, color: Palette.danger.opacity(0.75))
                                 .font(Typography.data(14, weight: .regular))
                                 .foregroundStyle(Color(hex: 0xFECACA))
@@ -1021,13 +1029,14 @@ struct FoodsSettingsView: View {
                         .overlay(Capsule().strokeBorder(Palette.danger.opacity(0.42)))
                     }
                     .buttonStyle(PressableCard())
-                    .accessibilityLabel("Allow \(item.label) again")
+                    .accessibilityLabel(L10n("Allow \(L10nKey(item.label)) again"))
                 }
             }
             if ruledOut.isEmpty {
                 Text("Nothing yet. Tap one below.")
                     .font(Typography.data(13, weight: .regular))
                     .foregroundStyle(Palette.inkFaint)
+                    .hintCopy()
             }
 
             Rectangle().fill(Color.white.opacity(0.06)).frame(height: 1)
@@ -1035,10 +1044,11 @@ struct FoodsSettingsView: View {
             Text("Common · tap to rule out")
                 .font(Typography.data(12, weight: .regular))
                 .foregroundStyle(Palette.inkFaint)
+                .hintCopy()
             FlexWrap(spacing: 6, lineSpacing: 6) {
                 ForEach(suggestions, id: \.self) { item in
                     Button { model.restrictions.append(item) } label: {
-                        Text("+ \(item)")
+                        Text("+ \(L10nKey(item))")
                             .font(Typography.data(13, weight: .regular))
                             .foregroundStyle(Palette.inkSoft)
                             .padding(.horizontal, 12)
@@ -1071,7 +1081,7 @@ struct FoodsSettingsView: View {
 
     private func addField(_ prompt: String, text: Binding<String>, onAdd: @escaping () -> Void) -> some View {
         HStack(spacing: 8) {
-            TextField(prompt, text: text)
+            TextField(LocalizedStringKey(prompt), text: text)
                 .font(Typography.data(15, weight: .regular))
                 .foregroundStyle(Palette.ink)
                 .submitLabel(.done)
@@ -1177,7 +1187,7 @@ struct HealthSettingsView: View {
                 ActionButton(title: "Manage in the Health app", kind: .secondary, action: openHealth)
                     .appearIn(3)
             } else {
-                ActionButton(title: env.health.connecting ? "Connecting" : "Connect Apple Health", busy: env.health.connecting) {
+                ActionButton(title: env.health.connecting ? L10n("Connecting") : L10n("Connect Apple Health"), busy: env.health.connecting) {
                     Task { await env.health.connect() }
                 }
                 .appearIn(3)
@@ -1190,15 +1200,17 @@ struct HealthSettingsView: View {
         }
     }
 
-    private var reads: [String] { ["Weight", "Height · age · sex", "HRV", "Resting heart rate"] }
+    private var reads: [String] {
+        [L10n("Weight"), L10n("Height · age · sex"), L10n("HRV"), L10n("Resting heart rate")]
+    }
 
     private var writes: [(title: String, value: String?, key: WritableKeyPath<HealthWritePreferences, Bool>)] {
         [
-            ("Calories", env.health.todayWrittenKcal > 0 ? env.health.todayWrittenKcal.formatted() : nil, \.energy),
-            ("Protein", nil, \.protein),
-            ("Carbs", nil, \.carbs),
-            ("Fat", nil, \.fat),
-            ("Weight", nil, \.bodyMass),
+            (L10n("Calories"), env.health.todayWrittenKcal > 0 ? env.health.todayWrittenKcal.formatted() : nil, \.energy),
+            (L10n("Protein"), nil, \.protein),
+            (L10n("Carbs"), nil, \.carbs),
+            (L10n("Fat"), nil, \.fat),
+            (L10n("Weight"), nil, \.bodyMass),
         ]
     }
 
@@ -1246,7 +1258,7 @@ struct HealthSettingsView: View {
                 .frame(width: mid - 39, alignment: .trailing)
                 .position(x: (mid - 39) / 2, y: 80 + 102)
                 .accessibilityElement(children: .combine)
-                .accessibilityLabel("Reads " + reads.joined(separator: ", "))
+                .accessibilityLabel(L10n("Reads \(reads.joined(separator: ", "))"))
 
                 VStack(alignment: .leading, spacing: 10) {
                     ForEach(writes, id: \.title) { item in
@@ -1273,8 +1285,8 @@ struct HealthSettingsView: View {
                             .fixedSize()
                         }
                         .buttonStyle(PressableCard())
-                        .accessibilityLabel("Write \(item.title) to Health")
-                        .accessibilityValue(lit ? "On" : "Off")
+                        .accessibilityLabel(L10n("Write \(item.title) to Health"))
+                        .accessibilityValue(lit ? L10n("On") : L10n("Off"))
                     }
                 }
                 .frame(width: mid - 38, alignment: .leading)
@@ -1316,7 +1328,11 @@ struct HealthSettingsView: View {
 struct AccountSettingsView: View {
     @Environment(AppEnvironment.self) private var env
     @Bindable var model: SettingsViewModel
+    @AppStorage(AppLanguage.storageKey) private var language = AppLanguage.localeDefault
+    @AppStorage(MassUnit.storageKey) private var massUnit = MassUnit.localeDefault
+    @AppStorage(HintCopy.storageKey) private var showHints = true
     @State private var confirmingDelete: Bool
+    @FocusState private var nameFocused: Bool
 
     init(model: SettingsViewModel, startDeleting: Bool = false) {
         self.model = model
@@ -1324,61 +1340,83 @@ struct AccountSettingsView: View {
     }
 
     var body: some View {
-        SettingsScreen(title: "Account", subtitle: "Yours to take or delete.", headline: "Your data.") {
-            VStack(alignment: .leading, spacing: 20) {
-                if !model.enforcementEnabled {
-                    ManagerNote(text: enforcementNote(model.enforcementDisabledReason))
-                        .appearIn(2)
-                }
+        InnerScreen(spacing: 16) {
+            ScreenHeader(label: "Settings")
 
-                GlassList {
-                    accountRow("Signed in with", value: "Apple")
-                    ListDivider()
-                    Button(action: openNotificationSettings) {
-                        accountRow("Notifications", value: notificationsValue, chevron: true)
-                    }
-                    .buttonStyle(.plain)
-                    ListDivider()
-                    accountRow("Time zone", value: timezoneValue)
-                }
-                .appearIn(3, rise: 14)
+            identityCard
+                .appearIn(0, rise: 16)
 
-                GlassList {
-                    legalRow("Privacy policy", url: privacyURL)
-                    ListDivider()
-                    legalRow("Terms", url: termsURL)
-                    ListDivider()
-                    legalRow("Contact support", url: supportURL)
+            VStack(alignment: .leading, spacing: 14) {
+                prefSwitch("Language") {
+                    SegmentedPills(options: AppLanguage.allCases, selection: $language, title: { $0.title })
                 }
-                .appearIn(4, rise: 14)
-
-                GlassList {
-                    Button(action: env.auth.signOut) {
-                        accountRow("Sign out", value: nil)
-                    }
-                    .buttonStyle(.plain)
-                    ListDivider()
-                    Button { confirmingDelete = true } label: {
-                        Text("Delete account")
-                            .font(Typography.data(15, weight: .regular))
-                            .foregroundStyle(Palette.danger)
-                            .frame(maxWidth: .infinity, minHeight: 50, alignment: .leading)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(model.deleting)
+                prefSwitch("Units") {
+                    SegmentedPills(options: MassUnit.allCases, selection: $massUnit, title: { $0.abbreviation })
                 }
-                .appearIn(5, rise: 14)
-
-                Text("Deleting removes your meals, weigh-ins, check-ins and plan from our servers right away, and revokes Sign in with Apple. SetPoint \(shortVersion).")
-                    .font(Typography.data(12, weight: .regular))
-                    .foregroundStyle(Palette.inkFaint)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .appearIn(6)
-
-                if let error = model.error {
-                    SettingsErrorBanner(message: error)
+                prefSwitch("Hints") {
+                    SegmentedPills(options: [true, false], selection: $showHints, title: { $0 ? L10n("On") : L10n("Off") })
                 }
+            }
+            .appearIn(1, rise: 14)
+
+            GlassList {
+                Button(action: openNotificationSettings) {
+                    accountRow("Notifications", value: notificationsValue, chevron: true)
+                }
+                .buttonStyle(.plain)
+                ListDivider()
+                accountRow("Time zone", value: timezoneValue)
+            }
+            .appearIn(2, rise: 14)
+
+            GlassList {
+                legalRow("Privacy policy", url: privacyURL)
+                ListDivider()
+                legalRow("Terms", url: termsURL)
+                ListDivider()
+                legalRow("Contact support", url: supportURL)
+            }
+            .appearIn(3, rise: 14)
+
+            GlassList {
+                Button(action: env.auth.signOut) {
+                    accountRow("Sign out", value: nil)
+                }
+                .buttonStyle(.plain)
+                ListDivider()
+                Button { confirmingDelete = true } label: {
+                    Text("Delete account")
+                        .font(Typography.data(15, weight: .regular))
+                        .foregroundStyle(Palette.danger)
+                        .frame(maxWidth: .infinity, minHeight: 50, alignment: .leading)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .disabled(model.deleting)
+            }
+            .appearIn(4, rise: 14)
+
+            Text(L10n("SetPoint \(shortVersion)"))
+                .font(Typography.mono(11))
+                .foregroundStyle(Palette.inkFaint)
+                .frame(maxWidth: .infinity)
+                .hintCopy()
+                .appearIn(5)
+
+            if let error = model.error {
+                SettingsErrorBanner(message: error)
+            }
+        }
+        .settingsSaveBar(
+            visible: model.displayNameDirty,
+            note: nil,
+            saving: model.saving,
+            disabled: model.saving
+        ) {
+            nameFocused = false
+            Task {
+                await model.saveDisplayName()
+                if model.error == nil { Haptics.landed() }
             }
         }
         .sheet(isPresented: $confirmingDelete) {
@@ -1392,20 +1430,72 @@ struct AccountSettingsView: View {
         .task { await env.push.syncAuthorizationStatus() }
     }
 
+    private var identityCard: some View {
+        HStack(alignment: .center, spacing: 16) {
+            Text(identityInitial)
+                .font(Typography.data(22, weight: .medium))
+                .foregroundStyle(Palette.onBone)
+                .frame(width: 64, height: 64)
+                .background(
+                    RadialGradient(
+                        colors: [Color(hex: 0xFFD9A8), Palette.ember],
+                        center: UnitPoint(x: 0.35, y: 0.3),
+                        startRadius: 0,
+                        endRadius: 40
+                    ),
+                    in: Circle()
+                )
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 4) {
+                TextField("Your name", text: $model.displayName)
+                    .font(Typography.data(22, weight: .regular))
+                    .foregroundStyle(Palette.ink)
+                    .focused($nameFocused)
+                    .textContentType(.name)
+                    .submitLabel(.done)
+                    .onSubmit { nameFocused = false }
+                    .accessibilityLabel("Name")
+                Text(model.email ?? L10n( "Signed in with Apple"))
+                    .font(Typography.data(14, weight: .regular))
+                    .foregroundStyle(Palette.inkSoft)
+                    .textSelection(.enabled)
+                    .lineLimit(1)
+            }
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glass(radius: 24)
+    }
+
+    private var identityInitial: String {
+        let name = model.displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let first = name.first { return String(first).uppercased() }
+        if let first = model.email?.first { return String(first).uppercased() }
+        return "Y"
+    }
+
+    private func prefSwitch<Content: View>(_ title: String, @ViewBuilder control: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(LocalizedStringKey(title)).sectionLabelStyle().padding(.horizontal, 4)
+            control()
+        }
+    }
+
     private func accountRow(_ title: String, value: String?, chevron: Bool = false) -> some View {
         HStack(spacing: 12) {
-            Text(title)
+            Text(LocalizedStringKey(title))
                 .font(Typography.data(15, weight: .regular))
                 .foregroundStyle(Palette.ink)
             Spacer(minLength: 8)
             if let value {
-                Text(value)
+                Text(LocalizedStringKey(value))
                     .font(Typography.data(13, weight: .regular))
                     .foregroundStyle(Palette.inkSoft)
                     .lineLimit(1)
             }
             if chevron {
-                Image(systemName: "chevron.right")
+                Image(systemName: "chevron.forward")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(Color(hex: 0x52525B))
             }
@@ -1416,14 +1506,14 @@ struct AccountSettingsView: View {
 
     private var notificationsValue: String {
         switch env.push.authorizationStatus {
-        case .authorized, .provisional: return "On"
-        case .denied: return "Off"
-        default: return "Not set"
+        case .authorized, .provisional: return L10n( "On")
+        case .denied: return L10n( "Off")
+        default: return L10n( "Not set")
         }
     }
 
     private var timezoneValue: String {
-        TimeZone(identifier: model.timezone)?.localizedName(for: .generic, locale: .current) ?? model.timezone
+        TimeZone(identifier: model.timezone)?.localizedName(for: .generic, locale: AppLanguage.current.locale) ?? model.timezone
     }
 
     private var shortVersion: String {

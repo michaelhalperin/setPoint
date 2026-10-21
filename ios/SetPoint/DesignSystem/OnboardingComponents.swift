@@ -319,11 +319,11 @@ struct SegmentedPills<Option: Hashable>: View {
                     withAnimation(Motion.adaptive(Motion.settle, reduceMotion: reduceMotion)) { selection = option }
                 } label: {
                     VStack(spacing: 2) {
-                        Text(title(option))
+                        Text(LocalizedStringKey(title(option)))
                             .font(Typography.data(14, weight: on ? .medium : .regular))
                             .foregroundStyle(on ? Palette.onBone : Palette.inkSoft)
                         if let detail {
-                            Text(detail(option))
+                            Text(LocalizedStringKey(detail(option)))
                                 .font(Typography.data(11, weight: .regular))
                                 .foregroundStyle(on ? Palette.onBone.opacity(0.6) : Palette.inkFaint)
                         }
@@ -422,7 +422,7 @@ struct FlowChips: View {
                             Image(systemName: "xmark")
                                 .font(.system(size: 11, weight: .bold))
                         }
-                        Text(option)
+                        Text(LocalizedStringKey(option))
                     }
                     .font(Typography.data(14, weight: .regular))
                     .foregroundStyle(isOn ? Palette.onBone : Palette.ink)

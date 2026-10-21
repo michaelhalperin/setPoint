@@ -79,16 +79,16 @@ struct LogSavedMealIntent: AppIntent {
             chosen = saved.first { $0.suggestSlot == slot.rawValue }
                 .map { SavedMealEntity(id: $0.id, name: $0.name, kcal: $0.kcal) }
             if chosen == nil {
-                throw IntentError.message("No usual \(slot.rawValue) saved yet. Tag one in SetPoint.")
+                throw IntentError.message(String(localized: "No usual \(slot.rawValue) saved yet. Tag one in SetPoint."))
             }
         } else {
             chosen = saved.first.map { SavedMealEntity(id: $0.id, name: $0.name, kcal: $0.kcal) }
         }
         guard let chosen else {
-            throw IntentError.message("Save a usual meal in SetPoint first.")
+            throw IntentError.message(String(localized: "Save a usual meal in SetPoint first."))
         }
         guard let token = SharedKeychain.readToken() else {
-            throw IntentError.message("Open SetPoint to sign in first.")
+            throw IntentError.message(String(localized: "Open SetPoint to sign in first."))
         }
         var request = URLRequest(url: WidgetAPI.baseURL.appendingPathComponent("api/meals"))
         request.httpMethod = "POST"
@@ -100,7 +100,7 @@ struct LogSavedMealIntent: AppIntent {
         ])
         let (_, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse, (200 ..< 300).contains(http.statusCode) else {
-            throw IntentError.message("Couldn't log that meal.")
+            throw IntentError.message(String(localized: "Couldn't log that meal."))
         }
         var snap = TodaySnapshot.load()
         snap.remainingKcal = max(0, snap.remainingKcal - chosen.kcal)

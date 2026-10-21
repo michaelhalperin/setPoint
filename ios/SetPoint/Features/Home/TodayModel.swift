@@ -11,9 +11,9 @@ enum MealSlot: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .breakfast: return "Breakfast"
-        case .lunch: return "Lunch"
-        case .dinner: return "Dinner"
+        case .breakfast: return L10n( "Breakfast")
+        case .lunch: return L10n( "Lunch")
+        case .dinner: return L10n( "Dinner")
         }
     }
 
@@ -113,28 +113,67 @@ enum TodayMoment: Equatable {
 enum TodayCopy {
     static func slotTitle(_ slot: String) -> String {
         if let meal = MealSlot(rawValue: slot) { return meal.title }
-        if slot.hasPrefix("snack") { return "Snack" }
-        return "Meal"
+        if slot.hasPrefix("snack") { return L10n( "Snack") }
+        return L10n( "Meal")
     }
 
     static func headline(_ moment: TodayMoment) -> String {
         switch moment {
         case let .checkIn(slot, flavor):
             switch flavor {
-            case .meal: return slot.map { "\($0.title) slipped." } ?? "Time to eat."
-            case .light: return slot.map { "\($0.title) was light." } ?? "That was light."
-            case .close: return "Close the day."
+            case .meal: return slot.map(slipped) ?? L10n( "Time to eat.")
+            case .light: return slot.map(wasLight) ?? L10n( "That was light.")
+            case .close: return L10n( "Close the day.")
             }
-        case .conversation: return "Rough few days."
-        case .snoozed: return "Snoozed."
+        case .conversation: return L10n( "Rough few days.")
+        case .snoozed: return L10n( "Snoozed.")
         case let .watching(slot, _, overdue, light):
-            let title = slotTitle(slot)
-            if light { return "\(title) was light." }
-            return overdue ? "\(title) slipped." : "\(title) is next."
-        case let .toGo(kcal): return "\(kcal.formatted()) kcal to go."
-        case .covered: return "Day covered."
-        case .quiet: return "Here’s today."
+            if light { return wasLight(slot) }
+            return overdue ? slipped(slot) : isNext(slot)
+        case let .toGo(kcal): return L10n( "\(kcal.formatted()) kcal to go.")
+        case .covered: return L10n( "Day covered.")
+        case .quiet: return L10n( "Here’s today.")
         }
+    }
+
+    private static func slipped(_ slot: MealSlot) -> String {
+        switch slot {
+        case .breakfast: return L10n( "Breakfast slipped.")
+        case .lunch: return L10n( "Lunch slipped.")
+        case .dinner: return L10n( "Dinner slipped.")
+        }
+    }
+
+    private static func slipped(_ slot: String) -> String {
+        if let meal = MealSlot(rawValue: slot) { return slipped(meal) }
+        if slot.hasPrefix("snack") { return L10n( "Snack slipped.") }
+        return L10n( "Meal slipped.")
+    }
+
+    private static func wasLight(_ slot: MealSlot) -> String {
+        switch slot {
+        case .breakfast: return L10n( "Breakfast was light.")
+        case .lunch: return L10n( "Lunch was light.")
+        case .dinner: return L10n( "Dinner was light.")
+        }
+    }
+
+    private static func wasLight(_ slot: String) -> String {
+        if let meal = MealSlot(rawValue: slot) { return wasLight(meal) }
+        if slot.hasPrefix("snack") { return L10n( "Snack was light.") }
+        return L10n( "That was light.")
+    }
+
+    private static func isNext(_ slot: String) -> String {
+        if let meal = MealSlot(rawValue: slot) {
+            switch meal {
+            case .breakfast: return L10n( "Breakfast is next.")
+            case .lunch: return L10n( "Lunch is next.")
+            case .dinner: return L10n( "Dinner is next.")
+            }
+        }
+        if slot.hasPrefix("snack") { return L10n( "Snack is next.") }
+        return L10n( "A meal is next.")
     }
 
     static func detail(_ moment: TodayMoment, home: HomeResponse, now: Date = .now) -> String? {
@@ -145,22 +184,22 @@ enum TodayCopy {
             case .light, .close: return soFar(home)
             }
         case .conversation:
-            return "Let’s change something."
+            return L10n( "Let’s change something.")
         case let .snoozed(until):
-            return until.map { "I’ll check again at \($0.formatted(date: .omitted, time: .shortened))." }
+            return until.map { L10n( "I’ll check again at \($0.formatted(date: .omitted, time: .shortened)).") }
         case let .watching(_, dueMin, overdue, light):
-            if overdue { return "Checking in now." }
-            if light { return "A little more now keeps the day on pace. I’ll check back at \(formatMinutes(dueMin))." }
+            if overdue { return L10n( "Checking in now.") }
+            if light { return L10n( "A little more now keeps the day on pace. I’ll check back at \(formatMinutes(dueMin)).") }
             return smallAppetiteDetail(home)
         case .toGo:
             if let close = home.closeCheckIn {
-                return "Still short at \(formatMinutes(close.dueMin))? I’ll check in then."
+                return L10n( "Still short at \(formatMinutes(close.dueMin))? I’ll check in then.")
             }
-            return "A snack or a late meal covers it."
+            return L10n( "A snack or a late meal covers it.")
         case .covered:
-            return "Nothing else needed today."
+            return L10n( "Nothing else needed today.")
         case .quiet:
-            return "Log when you like. No check-ins."
+            return L10n( "Log when you like. No check-ins.")
         }
     }
 
@@ -175,9 +214,9 @@ enum TodayCopy {
             .sorted()
             .first
         if let snackAt = nextSnack {
-            return "Something small now, about \(plate.kcal) kcal. A snack follows at \(formatMinutes(snackAt))."
+            return L10n( "Something small now, about \(plate.kcal) kcal. A snack follows at \(formatMinutes(snackAt)).")
         }
-        return "Something small now, about \(plate.kcal) kcal."
+        return L10n( "Something small now, about \(plate.kcal) kcal.")
     }
 
     /// "Today: 8:00 · 10:30 · …" when the empty meal log should show the five-slot day.
@@ -189,30 +228,30 @@ enum TodayCopy {
         var minutes = [times.breakfastMin, times.lunchMin, times.dinnerMin]
         minutes.append(contentsOf: appetite.extraSlots.map(\.atMin))
         let line = minutes.sorted().map(formatMinutes).joined(separator: " · ")
-        return "Today: \(line)"
+        return L10n( "Today: \(line)")
     }
 
     /// "1,700 of 3,100 kcal so far."
     static func soFar(_ home: HomeResponse) -> String {
-        "\(home.ledger.consumedKcal.formatted()) of \(home.ledger.targetKcal.formatted()) kcal so far."
+        L10n( "\(home.ledger.consumedKcal.formatted()) of \(home.ledger.targetKcal.formatted()) kcal so far.")
     }
 
     /// "Nothing since 8:05." — when the last meal was today.
     static func sinceLastMeal(_ home: HomeResponse, now: Date = .now, calendar: Calendar = .current) -> String {
         guard let iso = home.ledger.lastMealAt, let last = MealFormat.parse(iso),
               calendar.isDate(last, inSameDayAs: now) else {
-            return "Nothing logged yet today."
+            return L10n( "Nothing logged yet today.")
         }
-        return "Nothing since \(last.formatted(date: .omitted, time: .shortened))."
+        return L10n( "Nothing since \(last.formatted(date: .omitted, time: .shortened)).")
     }
 
     /// "Usually 13:00 · nothing since 8:05" — why the check-in came now.
     static func whyNow(_ home: HomeResponse, now: Date = .now) -> String? {
         switch CheckInFlavor(kind: home.activeCheckIn?.kind ?? "MEAL") {
         case .close:
-            return "\(max(0, home.ledger.remainingKcal).formatted()) kcal short · day ends soon"
+            return L10n( "\(max(0, home.ledger.remainingKcal).formatted()) kcal short · day ends soon")
         case .light:
-            return "\(home.ledger.consumedKcal.formatted()) of \(home.ledger.targetKcal.formatted()) kcal · behind pace"
+            return L10n( "\(home.ledger.consumedKcal.formatted()) of \(home.ledger.targetKcal.formatted()) kcal · behind pace")
         case .meal:
             break
         }
@@ -220,7 +259,7 @@ enum TodayCopy {
         let times = home.resolvedMealTimes
         let at = slot == .breakfast ? times.breakfastMin : slot == .lunch ? times.lunchMin : times.dinnerMin
         let since = sinceLastMeal(home, now: now).dropLast().lowercased()
-        return "Usually \(formatMinutes(at)) · \(since)"
+        return L10n( "Usually \(formatMinutes(at)) · \(since)")
     }
 
     /// Each meal's state, for the dial's knobs.

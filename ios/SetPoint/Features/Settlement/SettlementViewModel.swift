@@ -48,7 +48,7 @@ final class SettlementViewModel {
             if case .loaded = phase {
                 staleSince = loadedAt ?? Date()
             } else {
-                phase = .failed(UserFacingError.message(for: error, fallback: "Couldn’t load your week."))
+                phase = .failed(UserFacingError.message(for: error, fallback: L10n( "Couldn’t load your week.")))
             }
         }
     }
@@ -114,7 +114,7 @@ final class SettlementViewModel {
             onUnauthorized()
             return false
         } catch {
-            weighInError = UserFacingError.message(for: error, fallback: "Couldn't save. Try again.")
+            weighInError = UserFacingError.message(for: error, fallback: L10n( "Couldn't save. Try again."))
             return false
         }
     }
@@ -143,7 +143,7 @@ final class SettlementViewModel {
             // The suggestion moved or no longer applies — show what's true now.
             await load()
         } catch {
-            weighInError = UserFacingError.message(for: error, fallback: "Couldn't update the target.")
+            weighInError = UserFacingError.message(for: error, fallback: L10n( "Couldn't update the target."))
         }
     }
 

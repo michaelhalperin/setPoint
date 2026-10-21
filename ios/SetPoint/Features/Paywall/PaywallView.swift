@@ -140,22 +140,22 @@ struct PaywallView: View {
     }
 
     private var purchaseTitle: String {
-        if let days = trialDays { return "Start \(days)-day free trial" }
-        guard let product = store.selectedProduct else { return "Subscribe" }
-        return "Subscribe for \(product.displayPrice)"
+        if let days = trialDays { return L10n( "Start \(days)-day free trial") }
+        guard let product = store.selectedProduct else { return L10n( "Subscribe") }
+        return L10n( "Subscribe for \(product.displayPrice)")
     }
 
     private var renewalDisclosure: String {
         guard let product = store.selectedProduct else {
-            return "Plans load from the App Store. Check your connection and try again."
+            return L10n( "Plans load from the App Store. Check your connection and try again.")
         }
         let unit = store.selectedYearly ? "year" : "month"
         let start = trialDays.map { "After the \($0)-day free trial, " } ?? ""
-        return "\(start)\(product.displayPrice) per \(unit), charged to your Apple ID. Renews automatically unless cancelled at least 24 hours before the period ends. Manage or cancel in Apple ID settings."
+        return L10n( "\(start)\(product.displayPrice) per \(unit), charged to your Apple ID. Renews automatically unless cancelled at least 24 hours before the period ends. Manage or cancel in Apple ID settings.")
     }
 
     private func priceLine(_ product: Product?, unit: String) -> String {
-        guard let product else { return "…" }
+        guard let product else { return L10n( "…") }
         return "\(product.displayPrice)/\(unit)"
     }
 

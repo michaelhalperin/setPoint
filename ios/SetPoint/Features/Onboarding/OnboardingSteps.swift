@@ -99,7 +99,7 @@ struct AboutStep: View {
                         Text("\(model.draft.age) yrs")
                             .font(Typography.mono(16))
                             .foregroundStyle(Palette.ink)
-                        Image(systemName: "chevron.right")
+                        Image(systemName: "chevron.forward")
                             .font(.system(size: 11, weight: .semibold))
                             .foregroundStyle(Color(hex: 0x52525B))
                     }
@@ -195,9 +195,9 @@ struct AboutStep: View {
 
     private var healthDetail: String {
         switch health {
-        case .idle, .reading: return "Height, weight and age in one tap"
-        case .filled: return "Check the numbers below"
-        case .empty: return "Nothing there yet — set them below"
+        case .idle, .reading: return L10n( "Height, weight and age in one tap")
+        case .filled: return L10n( "Check the numbers below")
+        case .empty: return L10n( "Nothing there yet — set them below")
         }
     }
 
@@ -339,7 +339,7 @@ private struct TargetCard: View {
         if let message = model.targetWeightMessage { return message }
         if let message = model.durationMessage { return message }
         guard let eta = model.etaWeeks else { return " " }
-        return "About \(eta) weeks at this pace."
+        return L10n( "About \(eta) weeks at this pace.")
     }
 
     private func nudge(_ delta: Double) {

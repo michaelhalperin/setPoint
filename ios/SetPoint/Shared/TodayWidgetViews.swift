@@ -243,7 +243,7 @@ extension TodaySnapshot {
     var nextLine: String? {
         guard let nextSlotTitle else { return nil }
         if let nextCheckIn {
-            return "\(nextSlotTitle) · \(nextCheckIn)"
+            return String(localized: "\(nextSlotTitle) · \(nextCheckIn)")
         }
         return nextSlotTitle
     }

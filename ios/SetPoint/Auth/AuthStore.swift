@@ -83,7 +83,7 @@ final class AuthStore {
         switch result {
         case let .failure(error):
             if (error as? ASAuthorizationError)?.code == .canceled { return }
-            lastError = UserFacingError.message(for: error, fallback: "Sign-in failed.")
+            lastError = UserFacingError.message(for: error, fallback: L10n( "Sign-in failed."))
         case let .success(auth):
             guard
                 let credential = auth.credential as? ASAuthorizationAppleIDCredential,
@@ -93,10 +93,14 @@ final class AuthStore {
                 lastError = "Sign-in failed."
                 return
             }
-            await exchange(path: "/api/auth/apple", body: [
+            var body = [
                 "identityToken": identityToken,
                 "authorizationCode": String(data: credential.authorizationCode ?? Data(), encoding: .utf8) ?? "",
-            ].filter { !$0.value.isEmpty })
+            ]
+            if let name = Self.displayName(from: credential.fullName) {
+                body["displayName"] = name
+            }
+            await exchange(path: "/api/auth/apple", body: body.filter { !$0.value.isEmpty })
         }
     }
 
@@ -122,17 +126,17 @@ final class AuthStore {
                 self.status = .signedIn(userId: auth.userId)
                 return nil
             case 400:
-                return "That code didn’t work. Check it and try again."
+                return L10n( "That code didn’t work. Check it and try again.")
             case 401:
                 signOut()
                 return nil
             case 429:
-                return "Too many tries. Wait a minute, then try again."
+                return L10n( "Too many tries. Wait a minute, then try again.")
             default:
-                return "Couldn’t check the code. Try again in a moment."
+                return L10n( "Couldn’t check the code. Try again in a moment.")
             }
         } catch {
-            return UserFacingError.message(for: error, fallback: "Couldn’t check the code. Try again in a moment.")
+            return UserFacingError.message(for: error, fallback: L10n( "Couldn’t check the code. Try again in a moment."))
         }
     }
 
@@ -146,6 +150,13 @@ final class AuthStore {
             UserDefaults.standard.removeObject(forKey: Self.devUserKey)
             _ = await exchange(path: "/api/auth/dev", body: [:])
         }
+    }
+
+    private static func displayName(from name: PersonNameComponents?) -> String? {
+        guard let name else { return nil }
+        let formatted = PersonNameComponentsFormatter.localizedString(from: name, style: .default)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return formatted.isEmpty ? nil : formatted
     }
 
     @discardableResult
@@ -173,7 +184,7 @@ final class AuthStore {
             status = auth.needsInvite == true ? .needsInvite : .signedIn(userId: auth.userId)
             return true
         } catch {
-            lastError = UserFacingError.message(for: error, fallback: "Sign-in failed.")
+            lastError = UserFacingError.message(for: error, fallback: L10n( "Sign-in failed."))
             return false
         }
     }

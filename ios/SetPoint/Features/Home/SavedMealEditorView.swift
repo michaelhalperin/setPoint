@@ -87,6 +87,15 @@ struct SavedMealDraft: Identifiable, Equatable {
         return .init(name: trimmed, items: encoded, suggestSlot: suggestSlot, useInCheckIns: useInCheckIns)
     }
 
+    init() {
+        id = UUID().uuidString
+        existingId = nil
+        name = ""
+        items = [Item()]
+        suggestSlot = nil
+        useInCheckIns = false
+    }
+
     init(from meal: MealSummary) {
         id = UUID().uuidString
         existingId = nil
@@ -137,6 +146,25 @@ struct SavedMealDraft: Identifiable, Equatable {
         suggestSlot = nil
         useInCheckIns = false
     }
+
+    init(from pick: LogMealViewModel.CatalogPick) {
+        let portion = pick.food.portion(grams: pick.grams)
+        id = UUID().uuidString
+        existingId = nil
+        name = pick.food.name
+        items = [
+            Item(
+                name: pick.food.name,
+                quantity: "\(Int(portion.grams.rounded())) g",
+                kcal: String(portion.kcal),
+                proteinG: String(format: "%.1f", portion.proteinG),
+                carbsG: String(format: "%.1f", portion.carbsG),
+                fatG: String(format: "%.1f", portion.fatG)
+            )
+        ]
+        suggestSlot = nil
+        useInCheckIns = false
+    }
 }
 
 extension SavedMealDraft.Item {
@@ -148,22 +176,27 @@ extension SavedMealDraft.Item {
 struct SavedMealEditorView: View {
     @State private var draft: SavedMealDraft
     @State private var editingItem: UUID?
+    @State private var confirmingDelete = false
     var saving = false
     var error: String?
     let onSave: (SavedMealDraft) async -> Bool
+    var onDelete: (() async -> Bool)? = nil
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.showHints) private var showHints
 
     init(
         draft: SavedMealDraft,
         saving: Bool = false,
         error: String? = nil,
-        onSave: @escaping (SavedMealDraft) async -> Bool
+        onSave: @escaping (SavedMealDraft) async -> Bool,
+        onDelete: (() async -> Bool)? = nil
     ) {
         _draft = State(initialValue: draft)
         self.saving = saving
         self.error = error
         self.onSave = onSave
+        self.onDelete = onDelete
     }
 
     private var canSave: Bool { draft.write != nil }
@@ -180,7 +213,14 @@ struct SavedMealEditorView: View {
     @ViewBuilder
     private var screenBody: some View {
         InnerScreen(spacing: 16) {
-            ScreenHeader(label: draft.existingId == nil ? "My meal" : "Edit meal")
+            ScreenHeader(label: draft.existingId == nil ? "My meal" : "Edit meal") {
+                if draft.existingId != nil, onDelete != nil {
+                    Button("Remove") { confirmingDelete = true }
+                        .font(Typography.data(13, weight: .regular))
+                        .foregroundStyle(Palette.danger)
+                        .disabled(saving)
+                }
+            }
 
             VStack(alignment: .leading, spacing: 4) {
                 TextField("Usual oats", text: $draft.name)
@@ -197,6 +237,7 @@ struct SavedMealEditorView: View {
                 Text("Tap the name to rename · one tap to log next time")
                     .font(Typography.data(13, weight: .regular))
                     .foregroundStyle(Palette.inkFaint)
+                    .hintCopy()
             }
             .appearIn(0, rise: 16)
 
@@ -234,9 +275,17 @@ struct SavedMealEditorView: View {
         }
         .animation(Motion.settle, value: editingItem)
         .animation(Motion.settle, value: draft.suggestSlot)
+        .confirmationDialog("Remove this plate? It won’t show in Your usuals.", isPresented: $confirmingDelete, titleVisibility: .visible) {
+            Button("Remove", role: .destructive) {
+                Task {
+                    if await onDelete?() == true { dismiss() }
+                }
+            }
+            Button("Keep it", role: .cancel) {}
+        }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             SettingsSaveBar(
-                note: draft.useInCheckIns ? "Check-ins will offer this plate." : nil,
+                note: showHints && draft.useInCheckIns ? "Check-ins will offer this plate." : nil,
                 saving: saving,
                 disabled: !canSave
             ) {
@@ -274,7 +323,7 @@ struct SavedMealEditorView: View {
                         .tracking(-1.2)
                         .foregroundStyle(Palette.ink)
                         .contentTransition(.numericText(value: Double(totals.kcal)))
-                    Text("KCAL")
+                    Text("kcal")
                         .font(Typography.mono(10))
                         .foregroundStyle(Color(hex: 0xFDE6CF))
                 }
@@ -284,15 +333,15 @@ struct SavedMealEditorView: View {
             .shadow(color: Palette.ember.opacity(0.3), radius: 22)
             .animation(Motion.settle, value: kcals)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("\(totals.kcal) calories")
+            .accessibilityLabel(L10n("\(totals.kcal) calories"))
 
             VStack(spacing: 10) {
                 ForEach(Array(zip(["Protein", "Carbs", "Fat"], [Palette.amber, Color(hex: 0xFDE6CF), Palette.ember]).enumerated()), id: \.offset) { index, macro in
                     VStack(alignment: .leading, spacing: 5) {
                         HStack {
-                            Text(macro.0).font(Typography.data(12, weight: .regular)).foregroundStyle(Palette.inkSoft)
+                            Text(LocalizedStringKey(macro.0)).font(Typography.data(12, weight: .regular)).foregroundStyle(Palette.inkSoft)
                             Spacer()
-                            Text("\(Int(grams[index].rounded())) g").font(Typography.mono(13)).foregroundStyle(macro.1)
+                            Text(L10n("\(Int(grams[index].rounded())) g")).font(Typography.mono(13)).foregroundStyle(macro.1)
                         }
                         GeometryReader { geo in
                             Capsule().fill(Color.white.opacity(0.07))
@@ -320,10 +369,10 @@ struct SavedMealEditorView: View {
                 } label: {
                     HStack {
                         VStack(alignment: .leading, spacing: 1) {
-                            Text(item.wrappedValue.name.isEmpty ? "New food" : item.wrappedValue.name)
+                            Text(item.wrappedValue.name.isEmpty ? L10n("New food") : item.wrappedValue.name)
                                 .font(Typography.data(15, weight: .regular))
                                 .foregroundStyle(item.wrappedValue.name.isEmpty ? Palette.inkFaint : Palette.ink)
-                            Text(item.wrappedValue.quantity.isEmpty ? "Tap to fill in" : item.wrappedValue.quantity)
+                            Text(item.wrappedValue.quantity.isEmpty ? L10n("Tap to fill in") : item.wrappedValue.quantity)
                                 .font(Typography.data(12, weight: .regular))
                                 .foregroundStyle(Palette.inkFaint)
                         }
@@ -346,7 +395,7 @@ struct SavedMealEditorView: View {
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel("Remove \(item.wrappedValue.name)")
+                    .accessibilityLabel(L10n("Remove \(item.wrappedValue.name)"))
                 }
             }
             if open {
@@ -381,7 +430,7 @@ struct SavedMealEditorView: View {
 
     private func field(_ label: String, text: Binding<String>) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(label).sectionLabelStyle()
+            Text(LocalizedStringKey(label)).sectionLabelStyle()
             TextField("0", text: text)
                 .keyboardType(.decimalPad)
                 .font(Typography.mono(14))
@@ -425,7 +474,7 @@ struct SavedMealEditorView: View {
                                     if on { EmberDot(size: 26) } else { Circle().fill(Color.white.opacity(0.35)).frame(width: 10, height: 10) }
                                 }
                                 .frame(height: 40)
-                                Text(s.title)
+                                Text(LocalizedStringKey(s.title))
                                     .font(Typography.data(13, weight: .regular))
                                     .foregroundStyle(on ? Palette.amber : Palette.inkSoft)
                                 Text(formatMinutes(s.minute))
@@ -437,7 +486,7 @@ struct SavedMealEditorView: View {
                         }
                         .buttonStyle(.plain)
                         .position(x: s.x * w, y: 38)
-                        .accessibilityLabel("Offer at \(s.title)")
+                        .accessibilityLabel(L10n("Offer at \(L10nKey(s.title))"))
                         .accessibilityAddTraits(on ? .isSelected : [])
                     }
                 }
@@ -465,15 +514,17 @@ struct SavedMealEditorView: View {
                     .frame(width: 38, height: 38)
                 VStack(alignment: .leading, spacing: 2) {
                     HStack {
-                        Text(draft.useInCheckIns ? "\(slotTitle?.title ?? "A meal") slipped." : "Off · I’ll suggest something new")
+                        Text(draft.useInCheckIns
+                             ? L10n("\(slotTitle.map { L10nKey($0.title) } ?? L10n("A meal")) slipped.")
+                             : L10n("Off · I’ll suggest something new"))
                             .font(Typography.data(13, weight: .medium))
                             .foregroundStyle(Palette.ink)
                         Spacer()
-                        Text(slotTitle.map { formatMinutes(CheckInSchedule.minute(afterMeal: $0.minute)) } ?? "any time")
+                        Text(slotTitle.map { formatMinutes(CheckInSchedule.minute(afterMeal: $0.minute)) } ?? L10n("any time"))
                             .font(Typography.data(11, weight: .regular))
                             .foregroundStyle(Palette.inkFaint)
                     }
-                    Text("\(draft.name.isEmpty ? "Your usual" : draft.name) · \(draft.totals.kcal.formatted()) kcal · Eating it?")
+                    Text(L10n("\(draft.name.isEmpty ? L10n("Your usual") : draft.name) · \(draft.totals.kcal.formatted()) kcal · Eating it?"))
                         .font(Typography.data(13, weight: .regular))
                         .foregroundStyle(Palette.inkSoft)
                         .lineLimit(1)
@@ -487,11 +538,12 @@ struct SavedMealEditorView: View {
             .opacity(draft.useInCheckIns ? 1 : 0.35)
             .animation(Motion.settle, value: draft.useInCheckIns)
             .accessibilityHidden(true)
-            Text("“Log my usual \(draft.suggestSlot ?? "meal")”")
+            Text(L10n("“Log my usual \(draft.suggestSlot.flatMap(MealSlot.init(rawValue:))?.title ?? L10n("meal"))”"))
                 .font(Typography.mono(11))
                 .foregroundStyle(Palette.inkFaint)
                 .frame(maxWidth: .infinity)
-                .accessibilityLabel("Siri phrase, Log my usual \(draft.suggestSlot ?? "meal")")
+                .accessibilityLabel(L10n("Siri phrase, Log my usual \(draft.suggestSlot.flatMap(MealSlot.init(rawValue:))?.title ?? L10n("meal"))"))
+                .hintCopy()
         }
     }
 }
@@ -509,7 +561,7 @@ extension SavedMeal {
             fatG: 10,
             suggestSlot: "breakfast",
             useInCheckIns: true,
-            lastUsedAt: nil,
+            lastUsedAt: "2026-10-21T08:10:00Z",
             useCount: 11,
             suggested: true
         ),
@@ -523,11 +575,41 @@ extension SavedMeal {
             fatG: 18,
             suggestSlot: "lunch",
             useInCheckIns: true,
-            lastUsedAt: nil,
+            lastUsedAt: "2026-10-20T13:05:00Z",
             useCount: 6,
             suggested: false
         ),
+        .init(
+            id: "sm_shake",
+            name: "Evening shake",
+            items: [.init(name: "Protein shake", quantity: "1 bottle", kcal: 280, proteinG: 32, carbsG: 12, fatG: 6)],
+            kcal: 280,
+            proteinG: 32,
+            carbsG: 12,
+            fatG: 6,
+            suggestSlot: "dinner",
+            useInCheckIns: false,
+            lastUsedAt: "2026-09-12T19:00:00Z",
+            useCount: 2,
+            suggested: false
+        ),
     ]
+}
+
+extension CatalogFood {
+    static let sampleChicken = CatalogFood(
+        id: "cf_chicken",
+        fdcId: 171077,
+        name: "Chicken, broilers or fryers, breast, meat only, cooked, roasted",
+        category: "Poultry Products",
+        servingG: 85,
+        servingDesc: "3 oz",
+        kcal100g: 165,
+        proteinG100g: 31,
+        carbsG100g: 0,
+        fatG100g: 3.6,
+        dataType: "sr_legacy"
+    )
 }
 
 extension BarcodeFood {

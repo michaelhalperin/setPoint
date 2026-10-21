@@ -207,7 +207,7 @@ struct MealDetailSheet: View {
     private var screenBody: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                Text("Logged \(MealFormat.time(meal.loggedAt)) · \(meal.sourceLabel.lowercased())")
+                Text(L10n("Logged \(MealFormat.time(meal.loggedAt)) · \(meal.sourceLabel)"))
                     .sectionLabelStyle()
                     .frame(maxWidth: .infinity)
                     .padding(.top, 8)
@@ -360,9 +360,9 @@ struct MealDetailSheet: View {
     }
 
     private func confidenceLine(_ value: Double) -> String {
-        if value < 0.45 { return "Rough estimate" }
-        if value < 0.7 { return "Typical estimate" }
-        return "High confidence"
+        if value < 0.45 { return L10n( "Rough estimate") }
+        if value < 0.7 { return L10n( "Typical estimate") }
+        return L10n( "High confidence")
     }
 
     private func beginRemoval() {
@@ -377,7 +377,7 @@ struct MealDetailSheet: View {
             } catch {
                 self.error = UserFacingError.message(
                     for: error,
-                    fallback: "Couldn't remove. Try again."
+                    fallback: L10n( "Couldn't remove. Try again.")
                 )
                 removing = false
             }
@@ -437,7 +437,7 @@ enum MealFormat {
         guard let date = parse(iso) else { return time(iso) }
         let day = DateFormatter()
         day.dateFormat = "EEE d MMM"
-        return "\(day.string(from: date)) · \(time(iso))"
+        return L10n( "\(day.string(from: date)) · \(time(iso))")
     }
 
     static func parse(_ iso: String) -> Date? {

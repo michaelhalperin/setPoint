@@ -15,7 +15,7 @@ struct TopUpCard: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Top it up").sectionLabelStyle(Palette.amber)
                 Headline(title, tail: "No second plate.", size: 28)
-                Text("You’re \(topUp.behindKcal.formatted()) kcal behind where \(mealName) should leave you.")
+                Text(L10n("You’re \(topUp.behindKcal.formatted()) kcal behind where \(mealName) should leave you."))
                     .font(Typography.data(14, weight: .regular))
                     .foregroundStyle(Palette.inkSoft)
                     .fixedSize(horizontal: false, vertical: true)

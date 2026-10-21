@@ -16,7 +16,7 @@ struct CalendarWeekView: View {
             }
 
             if let week = calendar.week {
-                Headline(title(week), tail: week.movedCount == 0 ? "No busy stretch hits a meal this week." : "Around this week’s busy hours.", size: 38)
+                Headline(title(week), tail: week.movedCount == 0 ? "No busy stretch hits a meal this week." : "Around this week’s busy hours.", size: 38, persistTail: true)
                     .appearIn(0, rise: 16)
                     .opacity(calendar.refreshing ? 0.5 : 1)
 
@@ -26,7 +26,7 @@ struct CalendarWeekView: View {
 
                 CalendarLegend().appearIn(2)
             } else if let error = calendar.weekError {
-                Headline("Calendar.", tail: "Couldn’t read your week.", size: 38)
+                Headline("Calendar.", tail: "Couldn’t read your week.", size: 38, persistTail: true)
                     .appearIn(0, rise: 16)
                 VStack(alignment: .leading, spacing: 14) {
                     Text(error)
@@ -39,13 +39,13 @@ struct CalendarWeekView: View {
                 }
                 .frame(maxWidth: .infinity, minHeight: 200, alignment: .center)
             } else {
-                Headline("Calendar.", tail: "Reading your week…", size: 38)
+                Headline("Calendar.", tail: "Reading your week…", size: 38, persistTail: true)
                 BusyDots(tint: Palette.amber).frame(maxWidth: .infinity, minHeight: 200)
             }
 
             HStack(spacing: 10) {
                 NavigationLink { CalendarsView() } label: {
-                    linkTile(title: "Calendars", value: "\(calendar.selectedChoices.count) of \(calendar.choices.count) on") {
+                    linkTile(title: "Calendars", value: L10n("\(calendar.selectedChoices.count) of \(calendar.choices.count) on")) {
                         HStack(spacing: 5) {
                             ForEach(calendar.ownChoices.prefix(4)) { choice in
                                 RoundedRectangle(cornerRadius: 4)
@@ -57,7 +57,7 @@ struct CalendarWeekView: View {
                     }
                 }
                 NavigationLink { BusyRulesView() } label: {
-                    linkTile(title: "Busy rules", value: "\(CalendarClock.duration(calendar.minBlockMin))+ · \(calendar.leadMin) min ahead") {
+                    linkTile(title: "Busy rules", value: L10n("\(CalendarClock.duration(calendar.minBlockMin))+ · \(calendar.leadMin) min ahead")) {
                         HStack(spacing: 5) {
                             BusyBlock(radius: 4).frame(width: 26, height: 12)
                             EmberDot(size: 8)
@@ -80,9 +80,9 @@ struct CalendarWeekView: View {
 
     private func title(_ week: CalendarWeekResponse) -> String {
         switch week.movedCount {
-        case 0: return "Nothing moves."
-        case 1: return "1 meal moved."
-        default: return "\(week.movedCount) meals moved."
+        case 0: return L10n( "Nothing moves.")
+        case 1: return L10n( "1 meal moved.")
+        default: return L10n( "\(week.movedCount) meals moved.")
         }
     }
 
@@ -90,7 +90,7 @@ struct CalendarWeekView: View {
         VStack(alignment: .leading, spacing: 14) {
             mark().frame(height: 14)
             VStack(alignment: .leading, spacing: 2) {
-                Text(title)
+                Text(LocalizedStringKey(title))
                     .font(Typography.data(15, weight: .regular))
                     .foregroundStyle(Palette.ink)
                 Text(value)
@@ -213,9 +213,9 @@ struct CalendarWeekColumns: View {
         let moved = day.meals.filter(\.moved)
         var parts = [CalendarDates.longWeekday(day.weekday)]
         if moved.isEmpty {
-            parts.append(day.blocks.contains(where: \.counts) ? "busy, nothing moves" : "free")
+            parts.append(day.blocks.contains(where: \.counts) ? L10n("busy, nothing moves") : L10n("free"))
         } else {
-            parts += moved.map { "\(CalendarCopy.slotName($0.slot)) moves to \(CalendarClock.hm($0.atMin))" }
+            parts += moved.map { L10n("\(CalendarCopy.slotName($0.slot)) moves to \(CalendarClock.hm($0.atMin))") }
         }
         return parts.joined(separator: ", ")
     }
@@ -249,14 +249,14 @@ struct CalendarMovedStrip: View {
         let count = week?.movedCount ?? moved.count
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text(title)
+                Text(LocalizedStringKey(title))
                     .font(Typography.data(15, weight: .regular))
                     .foregroundStyle(Palette.ink)
                 Spacer()
                 if refreshing {
                     BusyDots(tint: Palette.amber)
                 } else {
-                    Text("\(count) moved")
+                    Text(L10n("\(count) moved"))
                         .font(Typography.mono(12))
                         .foregroundStyle(Palette.amber)
                         .contentTransition(.numericText())
@@ -281,7 +281,7 @@ struct CalendarMovedStrip: View {
             }
             Text(moved.isEmpty
                  ? "Every meal stays at its usual time."
-                 : moved.map { "\(CalendarDates.shortWeekday($0.weekday))\u{00A0}\($0.slot)\u{00A0}\(CalendarClock.hm($0.atMin))" }.joined(separator: " · "))
+                 : moved.map { "\(CalendarDates.shortWeekday($0.weekday))\u{00A0}\(CalendarCopy.slotName($0.slot))\u{00A0}\(CalendarClock.hm($0.atMin))" }.joined(separator: " · "))
                 .font(Typography.mono(11))
                 .foregroundStyle(Palette.inkSoft)
                 .fixedSize(horizontal: false, vertical: true)
@@ -353,7 +353,7 @@ struct CalendarTiles: View {
                 }
                 .buttonStyle(PressableCard())
                 .accessibilityLabel(choice.title)
-                .accessibilityValue(on ? "On" : "Off")
+                .accessibilityValue(on ? L10n("On") : L10n("Off"))
                 .accessibilityAddTraits(.isToggle)
             }
         }
@@ -398,7 +398,7 @@ struct CalendarLinkRow: View {
                     .lineLimit(1)
             }
             Spacer(minLength: 8)
-            Image(systemName: "chevron.right")
+            Image(systemName: "chevron.forward")
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(Color(hex: 0x52525B))
         }

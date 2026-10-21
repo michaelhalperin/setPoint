@@ -200,7 +200,7 @@ struct CalendarMoveScene: View {
             withAnimation(.spring(response: 1.1, dampingFraction: 0.85).delay(0.7)) { lifted = true }
         }
         .accessibilityElement()
-        .accessibilityLabel("Lunch moves from 13:00 to 11:15 because you're busy from 12:00")
+        .accessibilityLabel(L10n("Lunch moves from 13:00 to 11:15 because you're busy from 12:00"))
     }
 }
 
@@ -281,13 +281,13 @@ struct CalendarPickView: View {
                     .font(Typography.data(15, weight: .regular))
                     .foregroundStyle(Palette.ink)
                 Spacer()
-                Text("\(preview.movedCount) \(preview.movedCount == 1 ? "meal" : "meals")")
+                Text(preview.movedCount == 1 ? L10n("1 meal") : L10n("\(preview.movedCount) meals"))
                     .font(Typography.mono(12))
                     .foregroundStyle(Palette.amber)
             }
             Text(preview.movedCount == 0
                  ? "Your meals already fit around these calendars."
-                 : preview.moved.map { "\(CalendarDates.shortWeekday($0.weekday))\u{00A0}\($0.slot)\u{00A0}\(CalendarClock.hm($0.atMin))" }.joined(separator: " · "))
+                 : preview.moved.map { "\(CalendarDates.shortWeekday($0.weekday))\u{00A0}\(CalendarCopy.slotName($0.slot))\u{00A0}\(CalendarClock.hm($0.atMin))" }.joined(separator: " · "))
                 .font(Typography.mono(11))
                 .foregroundStyle(Palette.inkSoft)
                 .fixedSize(horizontal: false, vertical: true)

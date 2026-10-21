@@ -69,15 +69,36 @@ enum Typography {
 
 extension View {
     /// Mono, uppercase, tracked, faint — a label above a section.
+    /// Hebrew drops the mono face, tracking and forced caps; those only work in Latin.
     func sectionLabelStyle(_ color: Color = Palette.inkFaint) -> some View {
-        self.font(Typography.sectionLabel)
-            .tracking(1.3)
-            .textCase(.uppercase)
-            .foregroundStyle(color)
+        modifier(SectionLabelStyle(color: color))
     }
 
     /// Tight tracking for a light display line (-3.5% of the size).
     func displayTracking(_ size: CGFloat) -> some View {
-        tracking(-0.035 * size)
+        modifier(DisplayTracking(size: size))
+    }
+}
+
+private struct SectionLabelStyle: ViewModifier {
+    let color: Color
+    @Environment(\.locale) private var locale
+
+    func body(content: Content) -> some View {
+        let hebrew = locale.language.languageCode?.identifier == "he"
+        content
+            .font(hebrew ? Typography.data(11, weight: .regular) : Typography.sectionLabel)
+            .tracking(hebrew ? 0 : 1.3)
+            .textCase(hebrew ? nil : .uppercase)
+            .foregroundStyle(color)
+    }
+}
+
+private struct DisplayTracking: ViewModifier {
+    let size: CGFloat
+    @Environment(\.locale) private var locale
+
+    func body(content: Content) -> some View {
+        content.tracking(locale.language.languageCode?.identifier == "he" ? 0 : -0.035 * size)
     }
 }

@@ -31,6 +31,16 @@ final class SettingsViewModel {
     var pantryTokens: [String] = []
     var dislikedFoods: [String] = []
 
+    // Identity
+    private(set) var email: String?
+    var displayName = ""
+    private var savedDisplayName = ""
+    private static let displayNameKey = "com.setpoint.app.displayName"
+
+    var displayNameDirty: Bool {
+        displayName.trimmingCharacters(in: .whitespacesAndNewlines) != savedDisplayName
+    }
+
     // Read-only
     private(set) var timezone = ""
     private(set) var mode = "BASIC"
@@ -76,9 +86,9 @@ final class SettingsViewModel {
               let honest = honestDurationWeeks,
               preferred != honest else { return nil }
         if preferred < honest {
-            return "That's faster than a safe pace — about \(honest) weeks."
+            return L10n( "That's faster than a safe pace — about \(honest) weeks.")
         }
-        return "That's slower than I'll go — about \(honest) weeks."
+        return L10n( "That's slower than I'll go — about \(honest) weeks.")
     }
 
     var honestDurationWeeks: Int? {
@@ -207,30 +217,30 @@ final class SettingsViewModel {
         guard let o = original, mealTimesDirty else { return nil }
         var parts: [String] = []
         if mealTimes.breakfastMin != o.mealTimes.breakfastMin {
-            parts.append("Breakfast \(formatMinutes(o.mealTimes.breakfastMin)) → \(formatMinutes(mealTimes.breakfastMin))")
+            parts.append(L10n("Breakfast \(formatMinutes(o.mealTimes.breakfastMin)) → \(formatMinutes(mealTimes.breakfastMin))"))
         }
         if mealTimes.lunchMin != o.mealTimes.lunchMin {
-            parts.append("Lunch \(formatMinutes(o.mealTimes.lunchMin)) → \(formatMinutes(mealTimes.lunchMin))")
+            parts.append(L10n("Lunch \(formatMinutes(o.mealTimes.lunchMin)) → \(formatMinutes(mealTimes.lunchMin))"))
         }
         if mealTimes.dinnerMin != o.mealTimes.dinnerMin {
-            parts.append("Dinner \(formatMinutes(o.mealTimes.dinnerMin)) → \(formatMinutes(mealTimes.dinnerMin))")
+            parts.append(L10n("Dinner \(formatMinutes(o.mealTimes.dinnerMin)) → \(formatMinutes(mealTimes.dinnerMin))"))
         }
         let oldWeekend = o.weekendMealTimes ?? .empty
         if weekendMealTimes.breakfastMin != oldWeekend.breakfastMin {
-            parts.append("Weekends breakfast \(formatMinutes(oldWeekend.breakfastMin ?? o.mealTimes.breakfastMin)) → \(formatMinutes(weekendMealTimes.breakfastMin ?? mealTimes.breakfastMin))")
+            parts.append(L10n("Weekends breakfast \(formatMinutes(oldWeekend.breakfastMin ?? o.mealTimes.breakfastMin)) → \(formatMinutes(weekendMealTimes.breakfastMin ?? mealTimes.breakfastMin))"))
         }
         if weekendMealTimes.lunchMin != oldWeekend.lunchMin {
-            parts.append("Weekends lunch \(formatMinutes(oldWeekend.lunchMin ?? o.mealTimes.lunchMin)) → \(formatMinutes(weekendMealTimes.lunchMin ?? mealTimes.lunchMin))")
+            parts.append(L10n("Weekends lunch \(formatMinutes(oldWeekend.lunchMin ?? o.mealTimes.lunchMin)) → \(formatMinutes(weekendMealTimes.lunchMin ?? mealTimes.lunchMin))"))
         }
         if weekendMealTimes.dinnerMin != oldWeekend.dinnerMin {
-            parts.append("Weekends dinner \(formatMinutes(oldWeekend.dinnerMin ?? o.mealTimes.dinnerMin)) → \(formatMinutes(weekendMealTimes.dinnerMin ?? mealTimes.dinnerMin))")
+            parts.append(L10n("Weekends dinner \(formatMinutes(oldWeekend.dinnerMin ?? o.mealTimes.dinnerMin)) → \(formatMinutes(weekendMealTimes.dinnerMin ?? mealTimes.dinnerMin))"))
         }
         if weekendDays != (o.weekendDays ?? WeekendDays.default) {
             parts.append(WeekendDays.summary(weekendDays))
         }
         if quietHours != o.quietHours {
             parts.append(
-                "Quiet \(formatMinutes(o.quietHours.startMin))–\(formatMinutes(o.quietHours.endMin)) → \(formatMinutes(quietHours.startMin))–\(formatMinutes(quietHours.endMin))"
+                L10n("Quiet \(formatMinutes(o.quietHours.startMin))–\(formatMinutes(o.quietHours.endMin)) → \(formatMinutes(quietHours.startMin))–\(formatMinutes(quietHours.endMin))")
             )
         }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
@@ -238,9 +248,9 @@ final class SettingsViewModel {
 
     var restrictionsSaveNote: String {
         switch restrictions.count {
-        case 0: return "Nothing avoided"
-        case 1: return "1 food · applies to your next check-in"
-        default: return "\(restrictions.count) foods · applies to your next check-in"
+        case 0: return L10n( "Nothing avoided")
+        case 1: return L10n( "1 food · applies to your next check-in")
+        default: return L10n( "\(restrictions.count) foods · applies to your next check-in")
         }
     }
 
@@ -279,7 +289,7 @@ final class SettingsViewModel {
         } catch APIError.unauthorized {
             onUnauthorized()
         } catch {
-            phase = .failed(UserFacingError.message(for: error, fallback: "Couldn't load profile."))
+            phase = .failed(UserFacingError.message(for: error, fallback: L10n( "Couldn't load profile.")))
         }
     }
 
@@ -323,7 +333,27 @@ final class SettingsViewModel {
         } catch APIError.unauthorized {
             onUnauthorized()
         } catch {
-            self.error = UserFacingError.message(for: error, fallback: "Couldn't save.")
+            self.error = UserFacingError.message(for: error, fallback: L10n( "Couldn't save."))
+        }
+    }
+
+    func saveDisplayName() async {
+        guard displayNameDirty, !saving else { return }
+        let next = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let value = next.isEmpty ? nil : String(next.prefix(80))
+        displayName = value ?? ""
+        UserDefaults.standard.set(displayName, forKey: Self.displayNameKey)
+        savedDisplayName = displayName
+        saving = true
+        error = nil
+        defer { saving = false }
+        do {
+            let updated: SettingsResponse = try await api.patch("/api/settings", DisplayNamePatch(displayName: value))
+            apply(updated)
+        } catch APIError.unauthorized {
+            onUnauthorized()
+        } catch {
+            // Name is already on this phone. An older API rejects the field.
         }
     }
 
@@ -338,7 +368,7 @@ final class SettingsViewModel {
         } catch APIError.unauthorized {
             onUnauthorized()
         } catch {
-            self.error = UserFacingError.message(for: error, fallback: "Couldn't delete account.")
+            self.error = UserFacingError.message(for: error, fallback: L10n( "Couldn't delete account."))
         }
     }
 
@@ -375,6 +405,15 @@ final class SettingsViewModel {
         dislikedFoods = s.dislikedFoods ?? []
         mode = s.mode
         timezone = s.timezone
+        email = s.email
+        let remoteName = s.displayName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let localName = UserDefaults.standard.string(forKey: Self.displayNameKey)?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        displayName = remoteName.isEmpty ? localName : remoteName
+        savedDisplayName = displayName
+        if !displayName.isEmpty {
+            UserDefaults.standard.set(displayName, forKey: Self.displayNameKey)
+        }
         enforcementEnabled = s.enforcementEnabled
         enforcementDisabledReason = s.enforcementDisabledReason
     }
@@ -416,6 +455,7 @@ final class SettingsViewModel {
     static func previewed() -> SettingsViewModel {
         let vm = SettingsViewModel(api: AppEnvironment.preview().api, onUnauthorized: {}, onDeleted: {})
         vm.apply(SettingsResponse(
+            email: "alex@example.com", displayName: "Alex",
             goal: "BULK", mode: "SMART", timezone: "America/New_York",
             dailyKcalTarget: 3100, dailyProteinTargetG: 165,
             targetWeightKg: 84, paceKgPerWeek: 0.25, startWeightKg: 78, currentWeightKg: 79.6,

@@ -9,7 +9,7 @@ import { requireAdmin } from './admin.js';
 const mealsQuery = z.object({
   userId: z.string().optional(),
   cohort: z.string().optional(),
-  source: z.enum(['TEXT', 'PHOTO', 'SAVED', 'BARCODE', 'PRESCRIPTION']).optional(),
+  source: z.enum(['TEXT', 'PHOTO', 'SAVED', 'BARCODE', 'CATALOG', 'PRESCRIPTION']).optional(),
   /** Older than this — for "load more". */
   before: z.string().datetime().optional(),
   limit: z.coerce.number().int().min(1).max(200).default(60),

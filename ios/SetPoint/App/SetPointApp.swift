@@ -14,6 +14,8 @@ struct SetPointApp: App {
         WindowGroup {
             RootView()
                 .environment(env)
+                .modifier(HintCopyReader())
+                .modifier(AppLanguageReader())
                 .tint(Palette.accent)
                 .onOpenURL { url in
                     switch DeepLink(url: url) {

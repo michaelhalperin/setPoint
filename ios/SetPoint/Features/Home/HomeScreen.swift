@@ -76,7 +76,7 @@ struct HomeContent: View {
                     if checkIn.tier >= 3 {
                         ConversationView(
                             checkInID: checkIn.id,
-                            onDismiss: closeCheckIn,
+                            onDismiss: laterTalk,
                             onResolved: {
                                 closeCheckIn()
                                 Task { await model.load(showSpinner: false) }
@@ -205,6 +205,24 @@ struct HomeContent: View {
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
         }
+        .sheet(item: catalogBinding) { pick in
+            CatalogFoodSheet(
+                pick: Binding(
+                    get: { logger?.catalogPick ?? pick },
+                    set: { logger?.catalogPick = $0 }
+                ),
+                slotTitle: logSlotTitle,
+                logging: {
+                    if case .parsing = logger?.phase { return true }
+                    return false
+                }(),
+                onLog: { Task { await logger?.logCatalog() } },
+                onSave: { logger?.openEditorToSaveCatalog() },
+                onClose: { logger?.catalogPick = nil }
+            )
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+        }
         .sheet(item: editorBinding) { draft in
             SavedMealEditorView(
                 draft: draft,
@@ -319,6 +337,7 @@ struct HomeContent: View {
                         onAteThis: ateThis,
                         onAlreadyAte: alreadyAte,
                         onSnooze: { choosingSnooze = true },
+                        onLater: laterTalk,
                         onOrder: orderAction
                     )
                     .transition(.opacity)
@@ -562,6 +581,17 @@ struct HomeContent: View {
         offerQuickLog(for: checkIn)
     }
 
+    /// Close the tier-3 talk without changing the plan. Today comes back.
+    private func laterTalk() {
+        guard let checkIn = activeCheckIn else {
+            closeCheckIn()
+            return
+        }
+        model.ignoreCheckIn(checkIn.id)
+        closeCheckIn()
+        Task { try? await CheckInActions.alreadyAte(checkInID: checkIn.id, api: env.api) }
+    }
+
     private func addTopUp(_ topUp: HomeResponse.TopUp) {
         guard let logger, !topUpBusy else { return }
         topUpBusy = true
@@ -711,6 +741,10 @@ struct HomeContent: View {
 
     private var productBinding: Binding<LogMealViewModel.BarcodeProduct?> {
         Binding(get: { logger?.product }, set: { logger?.product = $0 })
+    }
+
+    private var catalogBinding: Binding<LogMealViewModel.CatalogPick?> {
+        Binding(get: { logger?.catalogPick }, set: { logger?.catalogPick = $0 })
     }
 
     private var editorBinding: Binding<SavedMealDraft?> {

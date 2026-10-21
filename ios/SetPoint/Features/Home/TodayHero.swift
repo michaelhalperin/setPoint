@@ -60,7 +60,7 @@ struct TodayHero: View {
                     Text(mealsLine)
                         .font(Typography.data(13, weight: .regular))
                         .foregroundStyle(Palette.inkSoft)
-                    Image(systemName: "chevron.right")
+                    Image(systemName: "chevron.forward")
                         .font(.system(size: 10, weight: .semibold))
                         .foregroundStyle(Palette.inkFaint)
                 }
@@ -150,8 +150,8 @@ struct TodayHero: View {
 
     private var subline: String {
         let day = date.formatted(.dateTime.day().month(.abbreviated))
-        if moment == .quiet { return "\(day) · quiet mode" }
-        if let training = home.training, !training.workouts.isEmpty { return "\(day) · training day" }
+        if moment == .quiet { return L10n( "\(day) · quiet mode") }
+        if let training = home.training, !training.workouts.isEmpty { return L10n( "\(day) · training day") }
         return day
     }
 
@@ -173,20 +173,20 @@ struct TodayHero: View {
 
     private var orbAccessibility: String {
         if overTarget {
-            return "\(home.ledger.consumedKcal) of \(home.ledger.targetKcal) kilocalories, \(overBy) over"
+            return L10n( "\(home.ledger.consumedKcal) of \(home.ledger.targetKcal) kilocalories, \(overBy) over")
         }
-        return "\(home.ledger.consumedKcal) of \(home.ledger.targetKcal) kilocalories"
+        return L10n( "\(home.ledger.consumedKcal) of \(home.ledger.targetKcal) kilocalories")
     }
 
     private var behind: Bool { home.day?.pace?.status == "behind" }
 
     private var statusText: String {
         switch moment {
-        case .quiet: return "Quiet mode"
-        case .covered: return "Day closed"
-        case .checkIn, .conversation: return "Checking in"
-        case .snoozed: return "Snoozed"
-        default: return behind ? "A bit behind" : "On pace"
+        case .quiet: return L10n( "Quiet mode")
+        case .covered: return L10n( "Day closed")
+        case .checkIn, .conversation: return L10n( "Checking in")
+        case .snoozed: return L10n( "Snoozed")
+        default: return behind ? L10n( "A bit behind") : L10n( "On pace")
         }
     }
 
@@ -201,9 +201,9 @@ struct TodayHero: View {
 
     private var mealsLine: String {
         switch home.ledger.mealsToday {
-        case 0: return "nothing yet"
-        case 1: return "1 meal"
-        case let n: return "\(n) meals"
+        case 0: return L10n( "nothing yet")
+        case 1: return L10n( "1 meal")
+        case let n: return L10n( "\(n) meals")
         }
     }
 
@@ -246,7 +246,7 @@ struct TodayHero: View {
                 orLinks("Something else")
             }
         case .watching:
-            Headline(TodayCopy.headline(moment), tail: tail, size: 24)
+            Headline(TodayCopy.headline(moment), tail: tail, size: 24, persistTail: true)
                 .contentTransition(.opacity)
             orLinks("Log it")
         case .snoozed:
@@ -258,7 +258,7 @@ struct TodayHero: View {
                 ActionButton(title: "I ate", kind: .secondary, action: onLog)
             }
         default:
-            Headline(TodayCopy.headline(moment), tail: tail, size: 26)
+            Headline(TodayCopy.headline(moment), tail: tail, size: 26, persistTail: true)
                 .contentTransition(.opacity)
             ActionButton(title: "Log something extra", kind: .secondary, action: onLog)
                 .padding(.top, 4)
@@ -352,7 +352,7 @@ struct TodayHero: View {
     private var tail: String? {
         if let detail = TodayCopy.detail(moment, home: home, now: date) { return detail }
         if case let .watching(_, dueMin, _, _) = moment {
-            return "Check-in at \(clock24(dueMin)) if it’s not logged."
+            return L10n( "Check-in at \(clock24(dueMin)) if it’s not logged.")
         }
         return nil
     }
@@ -361,18 +361,20 @@ struct TodayHero: View {
         switch moment {
         case let .watching(slot, dueMin, overdue, light):
             let title = TodayCopy.slotTitle(slot)
-            if overdue { return "Checking in · \(title)" }
-            if light { return "Top-up · back \(clock24(dueMin))" }
+            if overdue { return L10n( "Checking in · \(title)") }
+            if light { return L10n( "Top-up · back \(clock24(dueMin))") }
             let at = home.nextCheckIn?.mealMin ?? dueMin
             let moved = !(home.movedSlots ?? []).isEmpty
-            return "Next · \(title) · \(clock24(at))" + (moved ? " · moved" : "")
+            return moved
+                ? L10n( "Next · \(title) · \(clock24(at)) · moved")
+                : L10n( "Next · \(title) · \(clock24(at))")
         case let .snoozed(until):
-            let back = until.map { clock24(TodayLayout.minuteOfDay(from: $0)) } ?? "later"
-            return "Snoozed · back \(back)"
-        case .covered: return "Today"
-        case .quiet: return "Today"
-        case .toGo: return "Still to go"
-        case .checkIn, .conversation: return "Check-in"
+            let back = until.map { clock24(TodayLayout.minuteOfDay(from: $0)) } ?? L10n( "later")
+            return L10n( "Snoozed · back \(back)")
+        case .covered: return L10n( "Today")
+        case .quiet: return L10n( "Today")
+        case .toGo: return L10n( "Still to go")
+        case .checkIn, .conversation: return L10n( "Check-in")
         }
     }
 
@@ -415,9 +417,9 @@ private struct AppetiteChip: View {
 
     private var label: String {
         switch level {
-        case "LOW": return "Appetite low"
-        case "HUNGRY": return "Hungry"
-        default: return "Normal appetite"
+        case "LOW": return L10n( "Appetite low")
+        case "HUNGRY": return L10n( "Hungry")
+        default: return L10n( "Normal appetite")
         }
     }
 
@@ -442,8 +444,8 @@ private struct AppetiteChip: View {
             )
         }
         .buttonStyle(PressableCard())
-        .accessibilityLabel("Appetite: \(label)")
-        .accessibilityHint(open ? "Closes the menu" : "Opens appetite options")
+        .accessibilityLabel(L10n("Appetite: \(label)"))
+        .accessibilityHint(open ? L10n("Closes the menu") : L10n("Opens appetite options"))
         .accessibilityAddTraits(open ? .isSelected : [])
     }
 }
@@ -479,10 +481,10 @@ private struct AppetiteDropdown: View {
                         AppetiteBars(level: option.id)
                             .frame(width: 14)
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(option.title)
+                            Text(LocalizedStringKey(option.title))
                                 .font(Typography.data(15, weight: selected ? .medium : .regular))
                                 .foregroundStyle(Palette.ink)
-                            Text(option.note)
+                            Text(LocalizedStringKey(option.note))
                                 .font(Typography.data(12, weight: .regular))
                                 .foregroundStyle(Palette.inkSoft)
                         }
@@ -699,7 +701,7 @@ struct PlateStrip: View {
         stops.map { stop in
             switch stop.kind {
             case .training:
-                return "Training \(clock24(stop.atMin))"
+                return L10n( "Training \(clock24(stop.atMin))")
             case let .meal(state), let .snack(state):
                 let name = TodayCopy.slotTitle(stop.id)
                 let word: String
@@ -709,7 +711,7 @@ struct PlateStrip: View {
                 case .missed: word = "missed"
                 case .upcoming: word = "later"
                 }
-                return "\(name) \(clock24(stop.atMin)), \(word)"
+                return L10n( "\(name) \(clock24(stop.atMin)), \(word)")
             }
         }
         .joined(separator: "; ")
@@ -746,6 +748,8 @@ struct CheckInTakeover: View {
     let onAteThis: () -> Void
     let onAlreadyAte: () -> Void
     let onSnooze: () -> Void
+    /// Put the tier-3 talk away without changing the plan.
+    var onLater: (() -> Void)? = nil
     /// Order nearby, for when there's nothing to eat where you are. Nil hides it.
     var onOrder: (() -> Void)? = nil
 
@@ -799,24 +803,29 @@ struct CheckInTakeover: View {
     private var label: String {
         let time = Date().formatted(date: .omitted, time: .shortened)
         switch CheckInFlavor(kind: checkIn.kind ?? "MEAL") {
-        case .close: return "Closing the day · \(time)"
-        case .light: return "Top-up · \(time)"
-        case .meal: return checkIn.tier >= 3 ? "Let’s talk" : "Check-in · \(time)"
+        case .close: return L10n( "Closing the day · \(time)")
+        case .light: return L10n( "Top-up · \(time)")
+        case .meal: return checkIn.tier >= 3 ? L10n( "Let’s talk") : L10n( "Check-in · \(time)")
         }
     }
 
     private var orderDetail: String {
         let kcal = checkIn.prescription?.totalKcal ?? max(0, home.ledger.remainingKcal)
         switch CheckInFlavor(kind: checkIn.kind ?? "MEAL") {
-        case .close: return "A dinner near you that fits \(kcal.formatted()) kcal"
-        default: return "Places near you that fit \(kcal.formatted()) kcal"
+        case .close: return L10n( "A dinner near you that fits \(kcal.formatted()) kcal")
+        default: return L10n( "Places near you that fit \(kcal.formatted()) kcal")
         }
     }
 
     @ViewBuilder
     private var actions: some View {
         if checkIn.tier >= 3 {
-            ActionButton(title: "Talk it through", action: onOpen)
+            VStack(spacing: 10) {
+                ActionButton(title: "Talk it through", action: onOpen)
+                if let onLater {
+                    ActionButton(title: "Later", kind: .secondary, action: onLater)
+                }
+            }
         } else {
             VStack(spacing: 10) {
                 if let rx = checkIn.prescription {
@@ -848,7 +857,7 @@ struct CheckInTakeover: View {
                                     .foregroundStyle(Palette.inkSoft)
                             }
                             Spacer(minLength: 8)
-                            Image(systemName: "chevron.right")
+                            Image(systemName: "chevron.forward")
                                 .font(.system(size: 11, weight: .semibold))
                                 .foregroundStyle(Palette.inkFaint)
                         }

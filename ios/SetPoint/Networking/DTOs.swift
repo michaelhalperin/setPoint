@@ -221,7 +221,7 @@ struct HomeResponse: Decodable {
                 items
                     .map { item in
                         let qty = item.quantity
-                        if qty > 1 { return "\(Int(qty)) × \(item.name)" }
+                        if qty > 1 { return L10n( "\(Int(qty)) × \(item.name)") }
                         return item.name
                     }
                     .joined(separator: " + ")
@@ -259,21 +259,23 @@ struct MealSummary: Decodable, Identifiable, Hashable {
 
     var title: String {
         let trimmed = summary?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        return trimmed.isEmpty ? "Logged meal" : trimmed
+        return trimmed.isEmpty ? L10n( "Logged meal") : trimmed
     }
 
     var sourceLabel: String {
         switch source {
-        case "PHOTO": return "Photo"
-        case "TEXT": return "Text"
-        case "PRESCRIPTION": return "Check-in"
-        case "SAVED": return "My meal"
-        case "BARCODE": return "Scanned"
-        default: return "Logged"
+        case "PHOTO": return L10n( "Photo")
+        case "TEXT": return L10n( "Text")
+        case "PRESCRIPTION": return L10n( "Check-in")
+        case "SAVED": return L10n( "My meal")
+        case "BARCODE": return L10n( "Scanned")
+        case "CATALOG": return L10n( "Foods")
+        default: return L10n( "Logged")
         }
     }
 
     var isScanned: Bool { source == "BARCODE" }
+    var isCatalog: Bool { source == "CATALOG" }
 
     /// A stored photo's signed URL — load it through `MealPhotoCache`.
     var remotePhotoURL: URL? {
@@ -459,6 +461,9 @@ struct LogMealRequest: Encodable {
     /// Cached / Open Food Facts barcode. Pair with `servings`.
     var barcode: String? = nil
     var servings: Double? = nil
+    /// USDA catalog food. Pair with `grams`.
+    var catalogId: String? = nil
+    var grams: Double? = nil
     /// ISO timestamp for a meal eaten earlier (a missed meal time). Omitted = now.
     var loggedAt: String?
     /// Idempotency key for this log attempt (the offline queue retries with it).
@@ -698,8 +703,21 @@ struct WeekendSuggestion: Decodable, Equatable {
 enum WeekendDays {
     static let `default` = 0b1000001
     static let bitsInDisplayOrder = [1, 2, 3, 4, 5, 6, 0]
+    /// Weekdays in the region's order (Sunday first in Israel).
+    static var orderedBits: [Int] {
+        let first = AppLanguage.current.calendar.firstWeekday
+        return (0..<7).map { (first - 1 + $0) % 7 }
+    }
     static let labels = ["M", "T", "W", "T", "F", "S", "S"]
     static let names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+
+    static func shortLabel(_ weekday: Int) -> String {
+        AppLanguage.current.calendar.veryShortStandaloneWeekdaySymbols[weekday]
+    }
+
+    static func name(_ weekday: Int) -> String {
+        AppLanguage.current.calendar.shortStandaloneWeekdaySymbols[weekday]
+    }
 
     static func contains(_ mask: Int, weekday: Int) -> Bool {
         ((mask >> (weekday % 7)) & 1) == 1
@@ -711,8 +729,8 @@ enum WeekendDays {
     }
 
     static func summary(_ mask: Int) -> String {
-        let picked = zip(bitsInDisplayOrder, names).compactMap { contains(mask, weekday: $0.0) ? $0.1 : nil }
-        if picked.isEmpty { return "No days" }
+        let picked = orderedBits.compactMap { contains(mask, weekday: $0) ? name($0) : nil }
+        if picked.isEmpty { return L10n( "No days") }
         return picked.joined(separator: ", ")
     }
 }
@@ -747,10 +765,41 @@ struct AppetiteHistoryResponse: Decodable, Equatable {
         var title: String
         var body: String
         var action: Action?
+        var count: Int?
+        var total: Int?
 
         struct Action: Decodable, Equatable {
             var label: String
             var dinnerMin: Int?
+        }
+
+        var localizedTitle: String {
+            switch id {
+            case "late_dinner": return L10n("Late dinners → low mornings")
+            case "after_training": return L10n("Hungrier after training")
+            default: return L10nKey(title)
+            }
+        }
+
+        var localizedBody: String {
+            switch id {
+            case "late_dinner":
+                if let count, let total {
+                    return L10n("\(count) of your \(total) low days came after dinner past 21:00.")
+                }
+            case "after_training":
+                if let count, let total {
+                    return L10n("\(count) of \(total) hungry days were the day after a workout. I already add the calories.")
+                }
+            default: break
+            }
+            return L10nKey(body)
+        }
+
+        var localizedActionLabel: String? {
+            guard action != nil else { return nil }
+            if id == "late_dinner" { return L10n("Move dinner to 20:00") }
+            return action.map { L10nKey($0.label) }
         }
     }
 
@@ -897,6 +946,8 @@ struct QuietHoursPayload: Codable, Equatable {
 }
 
 struct SettingsResponse: Decodable {
+    var email: String? = nil
+    var displayName: String? = nil
     let goal: String
     let mode: String
     let timezone: String
@@ -963,6 +1014,10 @@ struct SettingsPatch: Encodable {
     }
 }
 
+struct DisplayNamePatch: Encodable {
+    let displayName: String?
+}
+
 struct SavedMealsResponse: Decodable {
     let meals: [SavedMeal]
     var slot: String? = nil
@@ -1022,6 +1077,40 @@ struct BarcodeFood: Decodable, Identifiable, Hashable {
 
 struct BarcodeFoodResponse: Decodable {
     let food: BarcodeFood
+}
+
+struct CatalogFood: Decodable, Identifiable, Hashable {
+    let id: String
+    let fdcId: Int
+    let name: String
+    let category: String?
+    let servingG: Double?
+    let servingDesc: String?
+    let kcal100g: Double
+    let proteinG100g: Double
+    let carbsG100g: Double
+    let fatG100g: Double
+    let dataType: String
+
+    func portion(grams: Double) -> (grams: Double, kcal: Int, proteinG: Double, carbsG: Double, fatG: Double) {
+        let g = grams > 0 ? grams : 100
+        let factor = g / 100
+        return (
+            g,
+            Int((kcal100g * factor).rounded()),
+            (proteinG100g * factor * 10).rounded() / 10,
+            (carbsG100g * factor * 10).rounded() / 10,
+            (fatG100g * factor * 10).rounded() / 10
+        )
+    }
+
+    var defaultGrams: Double {
+        (servingG ?? 0) > 0 ? (servingG ?? 100) : 100
+    }
+}
+
+struct CatalogSearchResponse: Decodable {
+    let foods: [CatalogFood]
 }
 
 struct DeleteAccountRequest: Encodable {

@@ -279,8 +279,8 @@ struct PrescriptionView: View {
 
     /// Logs the whole plate, so the button names the plate, not its first item.
     private var primaryTitle: String {
-        guard let plate = notHungry ? smallerPlate : fullPlate else { return "I’ll have this" }
-        return "I’ll have this · \(plate.totalKcal) kcal"
+        guard let plate = notHungry ? smallerPlate : fullPlate else { return L10n( "I’ll have this") }
+        return L10n( "I’ll have this · \(plate.totalKcal) kcal")
     }
 
     private var activePrescription: HomeResponse.ActiveCheckIn.Prescription? {
@@ -317,7 +317,7 @@ struct PrescriptionView: View {
                 try await work()
                 (done ?? onResolved)()
             } catch {
-                self.error = UserFacingError.message(for: error, fallback: "Couldn't do that. Try again.")
+                self.error = UserFacingError.message(for: error, fallback: L10n( "Couldn't do that. Try again."))
             }
             busy = false
         }
@@ -343,7 +343,7 @@ struct PrescriptionView: View {
             }
         } catch {
             loaded = true
-            self.error = UserFacingError.message(for: error, fallback: "Couldn’t load the other plate. The one above still works.")
+            self.error = UserFacingError.message(for: error, fallback: L10n( "Couldn’t load the other plate. The one above still works."))
         }
     }
 
@@ -362,7 +362,7 @@ struct PrescriptionView: View {
                 fullPlate = reply.prescription
             }
         } catch {
-            self.error = UserFacingError.message(for: error, fallback: "Couldn’t switch plates. Try again.")
+            self.error = UserFacingError.message(for: error, fallback: L10n( "Couldn’t switch plates. Try again."))
         }
     }
 

@@ -282,19 +282,29 @@ struct Headline: View {
     var tail: String? = nil
     var size: CGFloat = 30
     var alignment: TextAlignment = .leading
+    /// Status, times, and errors stay even when Hints is off.
+    var persistTail = false
 
-    init(_ text: String, tail: String? = nil, size: CGFloat = 30, alignment: TextAlignment = .leading) {
+    @Environment(\.showHints) private var showHints
+
+    init(_ text: String, tail: String? = nil, size: CGFloat = 30, alignment: TextAlignment = .leading, persistTail: Bool = false) {
         self.text = text
         self.tail = tail
         self.size = size
         self.alignment = alignment
+        self.persistTail = persistTail
     }
 
+    private var shownTail: String? { (showHints || persistTail) ? tail : nil }
+
+    @Environment(\.locale) private var locale
+
     var body: some View {
-        (Text(text).foregroundColor(Palette.ink)
-            + Text(tail.map { " " + $0 } ?? "").foregroundColor(Palette.inkFaint))
+        (Text(LocalizedStringKey(text)).foregroundColor(Palette.ink)
+            + Text(shownTail == nil ? "" : " ").foregroundColor(Palette.inkFaint)
+            + Text(LocalizedStringKey(shownTail ?? "")).foregroundColor(Palette.inkFaint))
             .font(Typography.display(size))
-            .tracking(-0.03 * size)
+            .tracking(locale.language.languageCode?.identifier == "he" ? 0 : -0.03 * size)
             .lineSpacing(-size * 0.04)
             .multilineTextAlignment(alignment)
             .fixedSize(horizontal: false, vertical: true)
@@ -328,7 +338,7 @@ struct RoundIconButton: View {
                 .overlay(Circle().strokeBorder(Color.white.opacity(0.10)))
         }
         .buttonStyle(PressableCard())
-        .accessibilityLabel(label)
+        .accessibilityLabel(LocalizedStringKey(label))
     }
 }
 
@@ -379,7 +389,7 @@ struct StatusPill<Trailing: View>: View {
     var body: some View {
         HStack(spacing: 8) {
             StatusTick(color: dot)
-            Text(text)
+            Text(LocalizedStringKey(text))
                 .font(Typography.data(13, weight: .regular))
                 .foregroundStyle(Palette.ink)
             trailing

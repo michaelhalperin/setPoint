@@ -9,6 +9,8 @@ import { deriveTargets } from './recompute.js';
 import { assertHealthyTarget, minHealthyWeightKg, remainingKg, resolveGoalPace } from './targets.js';
 
 export type SettingsView = {
+  email: string | null;
+  displayName: string | null;
   goal: Goal;
   mode: string;
   timezone: string;
@@ -103,6 +105,7 @@ export type SettingsPatch = {
     drinkableOk?: boolean;
     askDaily?: boolean;
   };
+  displayName?: string | null;
 };
 
 export async function getSettings(
@@ -263,8 +266,14 @@ export async function updateSettings(
       await tx.onboardingProfile.update({ where: { userId }, data: profileData });
     }
 
-    if (patch.timezone) {
-      await tx.user.update({ where: { id: userId }, data: { timezone: patch.timezone } });
+    const userData: Record<string, unknown> = {};
+    if (patch.timezone) userData.timezone = patch.timezone;
+    if (patch.displayName !== undefined) {
+      const name = patch.displayName?.trim() || null;
+      userData.displayName = name;
+    }
+    if (Object.keys(userData).length > 0) {
+      await tx.user.update({ where: { id: userId }, data: userData });
     }
 
     if (patch.checkInsPaused !== undefined) {
@@ -328,6 +337,8 @@ async function loadWeekendSuggestion(
 function toView(user: UserWithSettings, weekendSuggestion: WeekendBreakfastSuggestion | null): SettingsView {
   const p = user.onboarding!;
   return {
+    email: user.email ?? null,
+    displayName: user.displayName ?? null,
     goal: p.goal as Goal,
     mode: p.mode,
     timezone: user.timezone,

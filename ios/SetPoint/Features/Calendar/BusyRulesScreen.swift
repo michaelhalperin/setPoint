@@ -60,7 +60,7 @@ struct BusyRulesView: View {
                         .fill(Palette.amber.opacity(0.6))
                         .frame(width: max(0, meetingX - orbX - 15), height: 1.5)
                         .offset(x: orbX + 13, y: 42)
-                    Text("\(calendar.leadMin) min")
+                                Text(L10n("\(calendar.leadMin) min"))
                         .font(Typography.mono(10))
                         .foregroundStyle(Palette.amber)
                         .fixedSize()
@@ -80,7 +80,7 @@ struct BusyRulesView: View {
             }
             .frame(height: 98)
             .accessibilityElement()
-            .accessibilityLabel("Reminder at \(CalendarClock.hm(meeting - calendar.leadMin)), \(calendar.leadMin) minutes before a meeting at \(CalendarClock.hm(meeting))")
+            .accessibilityLabel(L10n("Reminder at \(CalendarClock.hm(meeting - calendar.leadMin)), \(calendar.leadMin) minutes before a meeting at \(CalendarClock.hm(meeting))"))
 
             SegmentedPills(
                 options: [30, 45, 60],
@@ -92,7 +92,7 @@ struct BusyRulesView: View {
                         calendar.rulesChanged()
                     }
                 ),
-                title: { "\($0) min" }
+                title: { L10n("\($0) min") }
             )
         }
         .padding(16)
@@ -124,7 +124,7 @@ struct BusyRulesView: View {
                         calendar.rulesChanged()
                     } label: {
                         HStack(spacing: 12) {
-                            Text(length < 60 ? "\(length) min" : "\(length / 60) h")
+                            Text(length < 60 ? L10n("\(length) min") : L10n("\(length / 60) h"))
                                 .font(Typography.mono(12))
                                 .foregroundStyle(selected ? Palette.amber : Palette.inkSoft)
                                 .frame(width: 46, alignment: .leading)
@@ -142,7 +142,7 @@ struct BusyRulesView: View {
                                     .frame(maxHeight: .infinity)
                             }
                             .frame(height: 22)
-                            Text(counts ? "counts" : "ignored")
+                            Text(LocalizedStringKey(counts ? "counts" : "ignored"))
                                 .font(Typography.data(12, weight: .regular))
                                 .foregroundStyle(counts ? Palette.ink : Color(hex: 0x52525B))
                                 .frame(width: 52, alignment: .trailing)
@@ -169,9 +169,9 @@ struct BusyRulesView: View {
     private var alsoRules: some View {
         let calendar = env.calendar
         let line = [
-            calendar.workdaysOnly ? "Weekend meals never move." : "Weekends can move too.",
-            calendar.includeAllDay ? "Trips and days off count as busy." : "All-day events are ignored.",
-            calendar.countFree ? "Free events count." : "Free, tentative and declined events never count.",
+            calendar.workdaysOnly ? L10n("Weekend meals never move.") : L10n("Weekends can move too."),
+            calendar.includeAllDay ? L10n("Trips and days off count as busy.") : L10n("All-day events are ignored."),
+            calendar.countFree ? L10n("Free events count.") : L10n("Free, tentative and declined events never count."),
         ].joined(separator: " ")
         return VStack(alignment: .leading, spacing: 10) {
             Text("Also").sectionLabelStyle()

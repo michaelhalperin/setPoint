@@ -89,7 +89,7 @@ final class TrainingStore {
             phase = .ready
         } catch {
             if week == nil {
-                phase = .failed(UserFacingError.message(for: error, fallback: "Couldn’t load your training."))
+                phase = .failed(UserFacingError.message(for: error, fallback: L10n( "Couldn’t load your training.")))
             }
             return
         }

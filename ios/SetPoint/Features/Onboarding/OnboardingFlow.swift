@@ -84,7 +84,7 @@ struct OnboardingFlow: View {
         HStack {
             Group {
                 if model.canGoBack {
-                    RoundIconButton("chevron.left", label: "Back") { model.goBack() }
+                    RoundIconButton("chevron.backward", label: "Back") { model.goBack() }
                         .transition(.opacity)
                 } else {
                     Color.clear

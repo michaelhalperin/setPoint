@@ -19,26 +19,28 @@ struct WeekStation: Identifiable, Hashable {
 
     var kindLabel: String {
         switch kind {
-        case "ON_TRACK": return "On track"
-        case "UNDER": return "Under"
-        case "OVER": return "Over"
-        default: return "Missed"
+        case "ON_TRACK": return L10n( "On track")
+        case "UNDER": return L10n("Under")
+        case "OVER": return L10n("Over")
+        default: return L10n("Missed")
         }
     }
 
     /// Short weekday for the rail, or "Today".
     var title: String {
-        if isToday { return "Today" }
+        if isToday { return L10n( "Today") }
         guard let parsed = Self.parse(date) else { return date }
         let f = DateFormatter()
+        f.locale = AppLanguage.current.locale
         f.dateFormat = "EEE d MMM"
         return f.string(from: parsed)
     }
 
     var accessibilityTitle: String {
-        if isToday { return "Today" }
+        if isToday { return L10n( "Today") }
         guard let parsed = Self.parse(date) else { return date }
         let f = DateFormatter()
+        f.locale = AppLanguage.current.locale
         f.dateStyle = .full
         f.timeStyle = .none
         return f.string(from: parsed)

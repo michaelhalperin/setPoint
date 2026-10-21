@@ -26,6 +26,9 @@ ios/screenshot.png
 **/xcuserdata/
 *.xcuserstate
 
+# USDA dump cache (foods:import)
+backend/.cache/
+
 # misc
 *.log
 .DS_Store

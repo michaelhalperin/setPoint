@@ -18,7 +18,8 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
     "db:push": "prisma db push",
-    "db:seed": "prisma db seed"
+    "db:seed": "prisma db seed",
+    "foods:import": "tsx src/foods/importUsda.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.124.0",

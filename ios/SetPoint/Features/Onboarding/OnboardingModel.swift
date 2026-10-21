@@ -27,7 +27,7 @@ enum HealthyWeight {
 
     static func floorMessage(_ floor: Double) -> String {
         let unit = MassUnit.current
-        return "The lowest target I'll set for your height is \(unit.number(floor)) \(unit.abbreviation)."
+        return L10n( "The lowest target I'll set for your height is \(unit.number(floor)) \(unit.abbreviation).")
     }
 }
 
@@ -148,15 +148,15 @@ enum SafetyQuestion: Int, CaseIterable {
 
     var text: String {
         switch self {
-        case .medical: return "Do you have a medical condition that affects how you should eat — including eating under a doctor’s or dietitian’s care?"
-        case .makeSelfSick: return "Do you make yourself sick because you feel uncomfortably full?"
-        case .lostControl: return "Do you worry you have lost control over how much you eat?"
+        case .medical: return L10n( "Do you have a medical condition that affects how you should eat — including eating under a doctor’s or dietitian’s care?")
+        case .makeSelfSick: return L10n( "Do you make yourself sick because you feel uncomfortably full?")
+        case .lostControl: return L10n( "Do you worry you have lost control over how much you eat?")
         case .lostOneStone:
             // SCOFF's "one stone": 6.35 kg / 14 lb.
             let amount = MassUnit.current == .lb ? "14 lb" : "6 kg"
-            return "Have you recently lost more than \(amount) in a three-month period?"
-        case .believesFat: return "Do you believe yourself to be fat when others say you are too thin?"
-        case .foodDominates: return "Would you say that food dominates your life?"
+            return L10n( "Have you recently lost more than \(amount) in a three-month period?")
+        case .believesFat: return L10n( "Do you believe yourself to be fat when others say you are too thin?")
+        case .foodDominates: return L10n( "Would you say that food dominates your life?")
         }
     }
 }
@@ -234,13 +234,13 @@ final class OnboardingViewModel {
               let current = draft.weightKg, let target = draft.targetWeightKg else { return nil }
         switch goal {
         case .bulk:
-            return target > current ? nil : "Above current weight."
+            return target > current ? nil : L10n( "Above current weight.")
         case .diet:
             let floor = draft.heightCm.map { HealthyWeight.minKg(heightCm: $0) }
             if let floor, current <= floor {
-                return "At your height, I won't set a lower target. Maintain is the better fit."
+                return L10n( "At your height, I won't set a lower target. Maintain is the better fit.")
             }
-            if target >= current { return "Below current weight." }
+            if target >= current { return L10n( "Below current weight.") }
             if let floor, target < floor { return HealthyWeight.floorMessage(floor) }
             return nil
         case .maintain:
@@ -260,9 +260,9 @@ final class OnboardingViewModel {
               let honest = etaWeeks,
               preferred != honest else { return nil }
         if preferred < honest {
-            return "That's faster than a safe pace — about \(honest) weeks."
+            return L10n( "That's faster than a safe pace — about \(honest) weeks.")
         }
-        return "That's slower than I'll go — about \(honest) weeks."
+        return L10n( "That's slower than I'll go — about \(honest) weeks.")
     }
 
     private var remainingKg: Double? {
@@ -421,7 +421,7 @@ final class OnboardingViewModel {
             step = stepAfterSubmit(response)
             progressStore.map(Self.clearProgress)
         } catch {
-            self.error = UserFacingError.message(for: error, fallback: "Couldn't save. Try again.")
+            self.error = UserFacingError.message(for: error, fallback: L10n( "Couldn't save. Try again."))
             saveProgress()
         }
     }

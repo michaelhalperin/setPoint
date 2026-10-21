@@ -238,6 +238,7 @@ struct CoveredStep: View {
                 .font(Typography.data(12, weight: .regular))
                 .foregroundStyle(Palette.inkSoft)
                 .fixedSize(horizontal: false, vertical: true)
+                .hintCopy()
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -250,12 +251,12 @@ struct CoveredStep: View {
 
     private func totalLine(_ total: Int) -> String {
         let protein = model.result?.dailyProteinTargetG.map { " · \($0) g protein" } ?? ""
-        return "\(total.formatted()) kcal a day\(protein). Short in the evening? I’ll help close it."
+        return L10n( "\(total.formatted()) kcal a day\(protein). Short in the evening? I’ll help close it.")
     }
 
     private func planAccessibilityLabel(_ meals: [(String, Int)]) -> String {
         let list = meals.map { "\($0.0) at \(formatMinutes($0.1))" }.joined(separator: ", ")
-        return "\(list). A check-in comes 45 minutes after each if it doesn’t show."
+        return L10n( "\(list). A check-in comes 45 minutes after each if it doesn’t show.")
     }
 
     private var quiet: some View {
@@ -301,9 +302,9 @@ struct CoveredStep: View {
     private var quietCopy: String {
         switch model.result?.enforcementDisabledReason {
         case "EATING_DISORDER_SCREEN":
-            return "From your answers, I won’t push you to eat. If eating feels hard right now, a doctor or an eating-disorder service can help in a way an app can’t."
+            return L10n( "From your answers, I won’t push you to eat. If eating feels hard right now, a doctor or an eating-disorder service can help in a way an app can’t.")
         default:
-            return "I won’t push you to eat — that’s your care team’s call, not an app’s. This isn’t a substitute for their plan."
+            return L10n( "I won’t push you to eat — that’s your care team’s call, not an app’s. This isn’t a substitute for their plan.")
         }
     }
 

@@ -2,6 +2,7 @@ import type { PrismaClient } from '@prisma/client';
 import type { MealImage, MealParser, ParsedMeal } from '../ai/parseMeal.js';
 import type { AiUsageKind } from '../ai/quota.js';
 import { lookupBarcode, macrosForServings, type BarcodeLookupDeps } from '../foods/barcode.js';
+import { defaultGrams, getCatalogFood, macrosForGrams } from '../foods/catalog.js';
 import { mealItemsSchema, type MealItemInput } from './items.js';
 import { captureError } from '../observability/sentry.js';
 import { queuePhotoDeletion } from '../photos/cleanup.js';
@@ -23,6 +24,10 @@ export type LogMealInput = {
   barcode?: string;
   /** Multiplier of the product's serving size. Defaults to 1. */
   servings?: number;
+  /** USDA catalog food. Pair with `grams`. Never AI-parsed. */
+  catalogId?: string;
+  /** Portion in grams. Defaults to the food's serving, or 100 g. */
+  grams?: number;
   /** The app's id for this log attempt. A repeat returns the stored meal, unchanged. */
   clientId?: string;
 };
@@ -117,6 +122,25 @@ export async function logMeal(
     source = 'BARCODE';
     rawInput = food.name;
     notes = food.brand ? `${food.brand} · ${food.code}` : food.code;
+  } else if (input.catalogId) {
+    const food = await getCatalogFood({ prisma: deps.prisma }, input.catalogId);
+    if (!food) throw new EmptyMealError('unknown catalog food');
+    const grams = input.grams && input.grams > 0 ? input.grams : defaultGrams(food);
+    const portion = macrosForGrams(food, grams);
+    macros = { kcal: portion.kcal, proteinG: portion.proteinG, carbsG: portion.carbsG, fatG: portion.fatG };
+    items = [
+      {
+        name: food.name,
+        quantity: `${Math.round(portion.grams)} g`,
+        kcal: portion.kcal,
+        proteinG: portion.proteinG,
+        carbsG: portion.carbsG,
+        fatG: portion.fatG,
+      },
+    ];
+    source = 'CATALOG';
+    rawInput = food.name;
+    notes = food.servingDesc ? `${food.servingDesc} · USDA` : 'USDA';
   } else if (input.macros) {
     macros = {
       kcal: Math.round(input.macros.kcal),
@@ -149,7 +173,7 @@ export async function logMeal(
     items = parsed.items ?? [];
     notes = parsed.notes ?? null;
   } else {
-    throw new EmptyMealError('provide text, an image, macros, a saved meal, or a barcode');
+    throw new EmptyMealError('provide text, an image, macros, a saved meal, a barcode, or a catalog food');
   }
 
   // The photo goes to object storage — never inline in Postgres.

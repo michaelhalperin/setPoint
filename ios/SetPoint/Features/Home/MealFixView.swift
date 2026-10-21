@@ -51,7 +51,7 @@ struct MealFixView: View {
             onClose()
             return true
         } catch {
-            self.error = UserFacingError.message(for: error, fallback: "Couldn’t save. Try again.")
+            self.error = UserFacingError.message(for: error, fallback: L10n( "Couldn’t save. Try again."))
             return false
         }
     }
@@ -68,7 +68,7 @@ struct JustLoggedToast: View {
             Image(systemName: "checkmark")
                 .font(.system(size: 11, weight: .bold))
                 .foregroundStyle(Palette.amber)
-            Text("Logged · \(logged.kcal.formatted()) kcal")
+            Text(L10n("Logged · \(logged.kcal.formatted()) kcal"))
                 .font(Typography.data(13, weight: .regular))
                 .foregroundStyle(Palette.ink)
                 .lineLimit(1)

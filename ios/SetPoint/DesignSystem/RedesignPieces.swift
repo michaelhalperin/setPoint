@@ -14,12 +14,12 @@ struct ScreenHeader<Trailing: View>: View {
     var body: some View {
         ZStack {
             if !label.isEmpty {
-                Text(label).sectionLabelStyle()
+                Text(LocalizedStringKey(label)).sectionLabelStyle()
                     .lineLimit(1)
                     .padding(.horizontal, 56)
             }
             HStack {
-                RoundIconButton("chevron.left", label: "Back") { (onBack ?? { dismiss() })() }
+                RoundIconButton("chevron.backward", label: "Back") { (onBack ?? { dismiss() })() }
                 Spacer(minLength: 0)
                 trailing
             }
@@ -193,7 +193,7 @@ struct ToggleChip: View {
 
     var body: some View {
         Button(action: action) {
-            Text(title)
+            Text(LocalizedStringKey(title))
                 .font(Typography.data(14, weight: .regular))
                 .foregroundStyle(Palette.ink)
                 .padding(.horizontal, 14)
@@ -272,7 +272,7 @@ struct BonePill: View {
 
     var body: some View {
         Button(action: action) {
-            Text(title)
+            Text(LocalizedStringKey(title))
                 .font(Typography.data(13, weight: .medium))
                 .foregroundStyle(done ? Palette.positive : Palette.onBone)
                 .padding(.horizontal, 14)

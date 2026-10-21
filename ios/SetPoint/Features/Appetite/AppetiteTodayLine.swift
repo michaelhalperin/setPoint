@@ -85,10 +85,10 @@ struct AppetiteTodayLine: View {
                         VStack(spacing: 6) {
                             FuelOrb(size: option.orb, breathing: false, glow: 0.25)
                                 .frame(height: 30)
-                            Text(option.title)
+                            Text(LocalizedStringKey(option.title))
                                 .font(Typography.data(15, weight: .medium))
                                 .foregroundStyle(Palette.ink)
-                            Text(option.note)
+                            Text(LocalizedStringKey(option.note))
                                 .font(Typography.data(11, weight: .regular))
                                 .foregroundStyle(Palette.inkSoft)
                                 .lineLimit(1)
@@ -101,7 +101,7 @@ struct AppetiteTodayLine: View {
                     }
                     .buttonStyle(PressableCard())
                     .disabled(busy)
-                    .accessibilityLabel("\(option.title), \(option.note)")
+                    .accessibilityLabel(L10n("\(option.title), \(option.note)"))
                 }
             }
         }
@@ -135,9 +135,9 @@ struct AppetiteTodayLine: View {
 
     private func answeredCopy(_ level: String) -> String {
         switch level {
-        case "LOW": return "Low appetite · 5 smaller meals"
-        case "HUNGRY": return "Hungry · bigger plates"
-        default: return "Normal appetite"
+        case "LOW": return L10n( "Low appetite · 5 smaller meals")
+        case "HUNGRY": return L10n( "Hungry · bigger plates")
+        default: return L10n( "Normal appetite")
         }
     }
 

@@ -166,22 +166,30 @@ export async function checkInRoutes(app: FastifyInstance): Promise<void> {
     return { ok: true, feedbackPositive: positive };
   });
 
-  // "I already ate" — close the check-in without logging a meal. It isn't a miss,
-  // and it's recorded as a check-in that came too late (thumbs-down, §8).
+  // Close a check-in without logging: "I already ate" on a meal, or "Later" on
+  // the tier-3 talk. Neither counts as a miss.
   app.post('/:id/dismiss', async (req) => {
     const { id } = params.parse(req.params);
+    const userId = (req as AuthedRequest).userId;
     const now = new Date();
-    const result = await getPrisma().checkIn.updateMany({
-      where: {
-        id,
-        userId: (req as AuthedRequest).userId,
-        status: { in: ['PENDING', 'DEFERRED'] },
-        tier: { lt: 3 },
-      },
+    const prisma = getPrisma();
+    const ci = await prisma.checkIn.findFirst({
+      where: { id, userId, status: { in: ['PENDING', 'DEFERRED'] } },
+      select: { id: true, tier: true },
+    });
+    if (!ci) throw app.httpErrors.notFound('no active check-in with that id');
+    await prisma.checkIn.update({
+      where: { id: ci.id },
       data: { status: 'EXPIRED', resolvedAt: now, feedbackPositive: false, feedbackAt: now },
     });
-    if (result.count === 0) throw app.httpErrors.notFound('no active check-in with that id');
-    await track(getPrisma(), (req as AuthedRequest).userId, 'check_in_answered', { answer: 'already_ate' }, { dedupeKey: `check_in:${id}:already_ate` });
+    if (ci.tier >= 3) {
+      await prisma.escalationConversation.updateMany({
+        where: { checkInId: ci.id, resolvedAt: null },
+        data: { resolvedAt: now, outcome: 'NONE' },
+      });
+    }
+    const answer = ci.tier >= 3 ? 'later' : 'already_ate';
+    await track(prisma, userId, 'check_in_answered', { answer }, { dedupeKey: `check_in:${id}:${answer}` });
     return { dismissed: true };
   });
 

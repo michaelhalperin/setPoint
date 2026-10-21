@@ -66,7 +66,7 @@ struct BusyLabel: View {
                 BusyDots(tint: tint)
                     .transition(.opacity.combined(with: .scale(scale: 0.7)))
             }
-            Text(title)
+            Text(LocalizedStringKey(title))
                 .contentTransition(.interpolate)
         }
     }
@@ -84,7 +84,7 @@ struct ActionButton: View {
     var done: Bool = false
     var doneTitle: String? = nil
     /// The icon inside the ember ball on a primary button.
-    var symbol: String = "arrow.right"
+    var symbol: String = "arrow.forward"
     let action: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion

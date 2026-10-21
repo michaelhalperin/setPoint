@@ -2,9 +2,9 @@ import Foundation
 
 /// Copy a person can see. Server, framework, and system strings never pass through.
 enum UserFacingError {
-    static let generic = "That didn’t work. Try again."
-    static let unreachable = "No connection. Check your signal and try again."
-    static let session = "Session expired. Sign in."
+    static var generic: String { L10n( "That didn’t work. Try again.") }
+    static var unreachable: String { L10n( "No connection. Check your signal and try again.") }
+    static var session: String { L10n( "Session expired. Sign in.") }
 
     static func message(for error: Error, fallback: String = generic) -> String {
         if let api = error as? APIError {
@@ -26,9 +26,9 @@ enum UserFacingError {
     static func http(_ status: Int, fallback: String = generic) -> String {
         switch status {
         case 429:
-            return "Too many tries. Wait."
+            return L10n( "Too many tries. Wait.")
         case 500 ... 599:
-            return "The server had a problem. Try again in a bit."
+            return L10n( "The server had a problem. Try again in a bit.")
         default:
             return fallback
         }

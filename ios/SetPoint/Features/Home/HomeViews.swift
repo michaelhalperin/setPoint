@@ -112,7 +112,7 @@ struct SnoozeSheet: View {
                     dismiss()
                 } label: {
                     HStack {
-                        Text("Snooze until \(clock(choice?.minutes ?? 60))")
+                        Text(L10n("Snooze until \(clock(choice?.minutes ?? 60))"))
                             .font(Typography.data(16, weight: .medium))
                         Spacer()
                         Image(systemName: "zzz")
@@ -166,7 +166,7 @@ struct SnoozeSheet: View {
                     .position(x: 6, y: 24)
                 EmberDot(size: 22, haze: true)
                     .position(x: x(choice?.minutes ?? 60), y: 24)
-                Text("NOW \(now.formatted(date: .omitted, time: .shortened))")
+                Text(L10n("NOW \(now.formatted(date: .omitted, time: .shortened))"))
                     .font(Typography.mono(10))
                     .foregroundStyle(Palette.amber)
                     .position(x: 40, y: 50)

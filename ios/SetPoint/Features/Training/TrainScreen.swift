@@ -169,8 +169,8 @@ struct TrainingScreen: View {
     }
 
     private func dayLabel(_ day: TrainDay) -> String {
-        let name = day.date.formatted(.dateTime.weekday(.wide).day().month(.abbreviated)).uppercased()
-        return day.isToday ? "TODAY · \(name)" : name
+        let name = day.date.formatted(.dateTime.weekday(.wide).day().month(.abbreviated).locale(AppLanguage.current.locale)).uppercased()
+        return day.isToday ? L10n("TODAY · \(name)") : name
     }
 
     // MARK: Today
@@ -274,27 +274,27 @@ struct TrainingScreen: View {
 
     private var weekTitle: String {
         switch weekOffset {
-        case 0: return "This week"
-        case 1: return "Next week"
-        case -1: return "Last week"
-        default: return "In \(weekOffset) weeks"
+        case 0: return L10n( "This week")
+        case 1: return L10n( "Next week")
+        case -1: return L10n( "Last week")
+        default: return L10n( "In \(weekOffset) weeks")
         }
     }
 
     private func weekRange(_ days: [TrainDay]) -> String {
         guard let first = days.first?.date, let last = days.last?.date else { return "" }
-        return "\(first.formatted(.dateTime.day())) – \(last.formatted(.dateTime.day().month(.abbreviated)))"
+        return L10n( "\(first.formatted(.dateTime.day())) – \(last.formatted(.dateTime.day().month(.abbreviated)))")
     }
 
     private func weekSummary(_ days: [TrainDay]) -> String {
         let sessions = days.reduce(0) { $0 + $1.sessions.count }
-        guard sessions > 0 else { return "No sessions — tap a day to plan one" }
+        guard sessions > 0 else { return L10n( "No sessions — tap a day to plan one") }
         let finished = days.filter { $0.refuel == .done || $0.refuel == .missed }.count
         let refueled = days.filter { $0.refuel == .done }.count
         let planned = days.filter { $0.refuel == .planned }.reduce(0) { $0 + $1.sessions.count }
-        var parts = [sessions == 1 ? "1 session" : "\(sessions) sessions"]
-        if finished > 0 { parts.append("refueled after \(refueled) of \(finished)") }
-        if planned > 0 && finished > 0 { parts.append("\(planned) planned") }
+        var parts = [sessions == 1 ? L10n( "1 session") : L10n( "\(sessions) sessions")]
+        if finished > 0 { parts.append(L10n( "refueled after \(refueled) of \(finished)")) }
+        if planned > 0 && finished > 0 { parts.append(L10n( "\(planned) planned")) }
         return parts.joined(separator: " · ")
     }
 

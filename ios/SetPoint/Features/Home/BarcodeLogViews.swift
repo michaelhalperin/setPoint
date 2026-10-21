@@ -128,9 +128,9 @@ struct BarcodeProductSheet: View {
 
             HStack(spacing: 8) {
                 macroTile("kcal", value: "\(portion.kcal)")
-                macroTile("Protein", value: "\(Int(portion.proteinG.rounded())) g")
-                macroTile("Carbs", value: "\(Int(portion.carbsG.rounded())) g")
-                macroTile("Fat", value: "\(Int(portion.fatG.rounded())) g")
+                macroTile("Protein", value: L10n("\(Int(portion.proteinG.rounded())) g"))
+                macroTile("Carbs", value: L10n("\(Int(portion.carbsG.rounded())) g"))
+                macroTile("Fat", value: L10n("\(Int(portion.fatG.rounded())) g"))
             }
 
             GlassList {
@@ -148,7 +148,7 @@ struct BarcodeProductSheet: View {
 
             VStack(spacing: 4) {
                 ActionButton(
-                    title: "Log \(portion.kcal) kcal · \(slotTitle.lowercased())",
+                    title: L10n("Log \(portion.kcal) kcal · \(slotTitle.lowercased())"),
                     busy: logging,
                     busyTitle: "Logging",
                     symbol: "plus",
@@ -173,13 +173,115 @@ struct BarcodeProductSheet: View {
     private var detailLine: String {
         var parts: [String] = []
         if let brand = product.food.brand, !brand.isEmpty { parts.append(brand) }
-        parts.append("\(Int(portion.grams.rounded())) g")
+        parts.append(L10n("\(Int(portion.grams.rounded())) g"))
         return parts.joined(separator: " · ")
     }
 
     private func macroTile(_ label: String, value: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(label)
+            Text(LocalizedStringKey(label))
+                .font(Typography.mono(9))
+                .tracking(1.1)
+                .textCase(.uppercase)
+                .foregroundStyle(Palette.inkFaint)
+            Text(value)
+                .font(Typography.data(18, weight: .regular))
+                .foregroundStyle(Palette.ink)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glass(radius: 14)
+    }
+}
+
+/// USDA catalog pick: amount in grams, then log or save.
+struct CatalogFoodSheet: View {
+    @Binding var pick: LogMealViewModel.CatalogPick
+    var slotTitle: String
+    var logging = false
+    var onLog: () -> Void
+    var onSave: () -> Void
+    var onClose: () -> Void
+
+    private var portion: (grams: Double, kcal: Int, proteinG: Double, carbsG: Double, fatG: Double) {
+        pick.food.portion(grams: pick.grams)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Capsule()
+                .fill(Color.white.opacity(0.18))
+                .frame(width: 40, height: 5)
+                .frame(maxWidth: .infinity)
+
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Foods").sectionLabelStyle(Palette.positive)
+                    Headline(pick.food.name, size: 26)
+                    Text(detailLine)
+                        .font(Typography.data(13, weight: .regular))
+                        .foregroundStyle(Palette.inkSoft)
+                }
+                Spacer(minLength: 8)
+                RoundIconButton("star", label: "Save as my meal", action: onSave)
+            }
+
+            HStack(spacing: 8) {
+                macroTile("kcal", value: "\(portion.kcal)")
+                macroTile("Protein", value: L10n("\(Int(portion.proteinG.rounded())) g"))
+                macroTile("Carbs", value: L10n("\(Int(portion.carbsG.rounded())) g"))
+                macroTile("Fat", value: L10n("\(Int(portion.fatG.rounded())) g"))
+            }
+
+            GlassList {
+                StepperRow(
+                    name: "Amount",
+                    note: pick.food.servingDesc,
+                    value: "\(Int(pick.grams.rounded())) g",
+                    valueWidth: 80,
+                    canDown: pick.grams > 25,
+                    canUp: pick.grams < 2000,
+                    onDown: { pick.grams = max(25, pick.grams - 25) },
+                    onUp: { pick.grams = min(2000, pick.grams + 25) }
+                )
+            }
+
+            VStack(spacing: 4) {
+                ActionButton(
+                    title: L10n("Log \(portion.kcal) kcal · \(slotTitle.lowercased())"),
+                    busy: logging,
+                    busyTitle: "Logging",
+                    symbol: "plus",
+                    action: onLog
+                )
+                Button("Not this", action: onClose)
+                    .font(Typography.data(14, weight: .regular))
+                    .foregroundStyle(Palette.inkSoft)
+                    .frame(maxWidth: .infinity, minHeight: 40)
+            }
+        }
+        .padding(.horizontal, Space.gutter)
+        .padding(.top, Space.sm)
+        .padding(.bottom, Space.md)
+        .background {
+            UnevenRoundedRectangle(topLeadingRadius: 32, topTrailingRadius: 32, style: .continuous)
+                .fill(Palette.sheet)
+                .ignoresSafeArea(edges: .bottom)
+        }
+    }
+
+    private var detailLine: String {
+        var parts: [String] = []
+        if let category = pick.food.category, !category.isEmpty { parts.append(category) }
+        parts.append(L10n("\(Int(portion.grams.rounded())) g"))
+        return parts.joined(separator: " · ")
+    }
+
+    private func macroTile(_ label: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(LocalizedStringKey(label))
                 .font(Typography.mono(9))
                 .tracking(1.1)
                 .textCase(.uppercase)

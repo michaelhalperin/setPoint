@@ -90,13 +90,13 @@ final class HealthKitManager {
     var statusLine: String {
         switch state {
         case .unavailable, .notConnected:
-            return "Not connected"
+            return L10n( "Not connected")
         case .connected:
-            if !hasHeartData { return "Connected · no heart data yet" }
+            if !hasHeartData { return L10n( "Connected · no heart data yet") }
             if let lastSyncAt {
-                return "Connected · last sync \(Self.timeOnly(lastSyncAt))"
+                return L10n( "Connected · last sync \(Self.timeOnly(lastSyncAt))")
             }
-            return "Connected"
+            return L10n( "Connected")
         }
     }
 
@@ -163,7 +163,7 @@ final class HealthKitManager {
             rememberWritten(meal, at: date)
         } catch {
             if reportErrors {
-                lastError = UserFacingError.message(for: error, fallback: "Couldn't write this meal to Health.")
+                lastError = UserFacingError.message(for: error, fallback: L10n( "Couldn't write this meal to Health."))
             }
         }
     }
@@ -513,8 +513,8 @@ final class HealthKitManager {
         let ns = error as NSError
         let text = ns.localizedDescription.lowercased()
         if ns.domain == HKErrorDomain, text.contains("entitlement") {
-            return "This simulator build isn’t signed for Health. Quit SetPoint and launch with SIGNED=1 ./ios/scripts/run.sh"
+            return L10n( "This simulator build isn’t signed for Health. Quit SetPoint and launch with SIGNED=1 ./ios/scripts/run.sh")
         }
-        return "Couldn't open the Health permission sheet."
+        return L10n( "Couldn't open the Health permission sheet.")
     }
 }

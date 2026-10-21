@@ -8,25 +8,25 @@ enum Goal: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var title: String {
         switch self {
-        case .bulk: return "Gain"
-        case .diet: return "Cut"
-        case .maintain: return "Maintain"
+        case .bulk: return L10n( "Gain")
+        case .diet: return L10n( "Cut")
+        case .maintain: return L10n( "Maintain")
         }
     }
     var blurb: String {
         switch self {
-        case .bulk: return "Gain size consistently."
-        case .diet: return "Lose fat safely."
-        case .maintain: return "Keep weight steady."
+        case .bulk: return L10n( "Gain size consistently.")
+        case .diet: return L10n( "Lose fat safely.")
+        case .maintain: return L10n( "Keep weight steady.")
         }
     }
 
     /// The two-to-four-word line on the onboarding goal tile.
     var tagline: String {
         switch self {
-        case .bulk: return "Build size"
-        case .diet: return "Lose fat, keep energy"
-        case .maintain: return "Hold steady"
+        case .bulk: return L10n( "Build size")
+        case .diet: return L10n( "Lose fat, keep energy")
+        case .maintain: return L10n( "Hold steady")
         }
     }
 
@@ -35,9 +35,9 @@ enum Goal: String, CaseIterable, Identifiable {
 
     var directionVerb: String {
         switch self {
-        case .bulk: return "Gain to"
-        case .diet: return "Cut to"
-        case .maintain: return "Hold at"
+        case .bulk: return L10n( "Gain to")
+        case .diet: return L10n( "Cut to")
+        case .maintain: return L10n( "Hold at")
         }
     }
 }
@@ -49,7 +49,7 @@ enum GoalPace: String, CaseIterable, Identifiable {
     case steady = "STEADY"
 
     var id: String { rawValue }
-    var title: String { self == .gentle ? "Gentle" : "Steady" }
+    var title: String { self == .gentle ? L10n( "Gentle") : L10n( "Steady") }
 
     func kgPerWeek(for goal: Goal) -> Double {
         switch (goal, self) {
@@ -64,7 +64,7 @@ enum GoalPace: String, CaseIterable, Identifiable {
     func blurb(for goal: Goal) -> String {
         let unit = MassUnit.current
         let rate = unit.fromKg(kgPerWeek(for: goal))
-        return "\(rate.formatted(.number.precision(.fractionLength(unit == .lb ? 1 : 2)))) \(unit.abbreviation)/wk"
+        return L10n( "\(rate.formatted(.number.precision(.fractionLength(unit == .lb ? 1 : 2)))) \(unit.abbreviation)/wk")
     }
 
     /// The pace whose rate is nearest a stored kg/week value.
@@ -141,9 +141,9 @@ enum Sex: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var title: String {
         switch self {
-        case .male: return "Male"
-        case .female: return "Female"
-        case .unspecified: return "Prefer not to say"
+        case .male: return L10n( "Male")
+        case .female: return L10n( "Female")
+        case .unspecified: return L10n( "Prefer not to say")
         }
     }
 }
@@ -158,29 +158,29 @@ enum MealRhythmPreset: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .standard: return "Standard"
-        case .early: return "Early bird"
-        case .night: return "Night owl"
-        case .custom: return "Custom"
+        case .standard: return L10n( "Standard")
+        case .early: return L10n( "Early bird")
+        case .night: return L10n( "Night owl")
+        case .custom: return L10n( "Custom")
         }
     }
 
     /// The segmented-control label on the rhythm dial.
     var shortTitle: String {
         switch self {
-        case .standard: return "Standard"
-        case .early: return "Early"
-        case .night: return "Late"
-        case .custom: return "Custom"
+        case .standard: return L10n( "Standard")
+        case .early: return L10n( "Early")
+        case .night: return L10n( "Late")
+        case .custom: return L10n( "Custom")
         }
     }
 
     var subtitle: String {
         switch self {
-        case .standard: return "8:00 · 13:00 · 19:00"
-        case .early: return "6:00 · 11:00 · 17:00"
-        case .night: return "10:00 · 15:00 · 21:00"
-        case .custom: return "Set your own times"
+        case .standard: return L10n( "8:00 · 13:00 · 19:00")
+        case .early: return L10n( "6:00 · 11:00 · 17:00")
+        case .night: return L10n( "10:00 · 15:00 · 21:00")
+        case .custom: return L10n( "Set your own times")
         }
     }
 
@@ -233,21 +233,21 @@ enum ActivityLevel: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var title: String {
         switch self {
-        case .sedentary: return "Sitting"
-        case .light: return "Light"
-        case .moderate: return "Moderate"
-        case .active: return "Active"
-        case .veryActive: return "Very active"
+        case .sedentary: return L10n( "Sitting")
+        case .light: return L10n( "Light")
+        case .moderate: return L10n( "Moderate")
+        case .active: return L10n( "Active")
+        case .veryActive: return L10n( "Very active")
         }
     }
 
     var blurb: String {
         switch self {
-        case .sedentary: return "Mostly sitting, little exercise."
-        case .light: return "Light exercise 1–3 days a week."
-        case .moderate: return "Moderate exercise 3–5 days a week."
-        case .active: return "Hard exercise 6–7 days a week."
-        case .veryActive: return "Very hard exercise, or a physical job."
+        case .sedentary: return L10n( "Mostly sitting, little exercise.")
+        case .light: return L10n( "Light exercise 1–3 days a week.")
+        case .moderate: return L10n( "Moderate exercise 3–5 days a week.")
+        case .active: return L10n( "Hard exercise 6–7 days a week.")
+        case .veryActive: return L10n( "Very hard exercise, or a physical job.")
         }
     }
 }

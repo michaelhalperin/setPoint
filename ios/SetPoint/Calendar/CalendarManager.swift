@@ -64,10 +64,10 @@ final class CalendarManager {
 
     /// "3 moved" / "On" / "Off" for the You row.
     var youRowValue: String {
-        if needsReconnect { return "Reconnect" }
-        guard connected else { return "Off" }
-        if let moved = week?.movedCount, moved > 0 { return "\(moved) moved" }
-        return "On"
+        if needsReconnect { return L10n( "Reconnect") }
+        guard connected else { return L10n( "Off") }
+        if let moved = week?.movedCount, moved > 0 { return L10n( "\(moved) moved") }
+        return L10n( "On")
     }
 
     func start() {
@@ -98,7 +98,7 @@ final class CalendarManager {
         do {
             accessGranted = try await store.requestFullAccessToEvents()
         } catch {
-            lastError = UserFacingError.message(for: error, fallback: "Couldn't open Calendar access.")
+            lastError = UserFacingError.message(for: error, fallback: L10n( "Couldn't open Calendar access."))
             accessGranted = false
         }
         refreshAuthorization()
@@ -286,7 +286,7 @@ final class CalendarManager {
         } catch {
             // Keep a week already on screen; only an empty screen needs the error.
             if week == nil {
-                weekError = UserFacingError.message(for: error, fallback: "Your calendar settings are safe. Try again in a moment.")
+                weekError = UserFacingError.message(for: error, fallback: L10n( "Your calendar settings are safe. Try again in a moment."))
             }
         }
     }
@@ -314,7 +314,7 @@ final class CalendarManager {
         do {
             try await api?.post("/api/calendar/keep", CalendarKeepRequest(date: date, slot: slot, keep: keep))
         } catch {
-            lastError = UserFacingError.message(for: error, fallback: "Couldn't change that meal. Try again.")
+            lastError = UserFacingError.message(for: error, fallback: L10n( "Couldn't change that meal. Try again."))
             return false
         }
         if let response: CalendarWeekResponse = try? await api?.get("/api/calendar/week") {
@@ -344,7 +344,7 @@ final class CalendarManager {
         do {
             try await api.put("/api/calendar/busy", CalendarBusyUpload(from: iso(from), to: iso(to), blocks: blocks))
         } catch {
-            lastError = UserFacingError.message(for: error, fallback: "Couldn't update busy times.")
+            lastError = UserFacingError.message(for: error, fallback: L10n( "Couldn't update busy times."))
         }
     }
 
@@ -403,9 +403,9 @@ final class CalendarManager {
 
     private static func sourceLabel(_ calendar: EKCalendar) -> String {
         switch calendar.type {
-        case .birthday: return "Contacts"
-        case .subscription: return "Subscribed"
-        default: return calendar.source?.title ?? "Calendar"
+        case .birthday: return L10n( "Contacts")
+        case .subscription: return L10n( "Subscribed")
+        default: return calendar.source?.title ?? L10n( "Calendar")
         }
     }
 
@@ -472,7 +472,7 @@ struct CalendarChoice: Identifiable, Hashable {
     var subtitle: String {
         if subscribed { return source }
         let events = eventsThisWeek == 1 ? "1 event" : "\(eventsThisWeek) events"
-        return "\(source) · \(events) this week"
+        return L10n( "\(source) · \(events) this week")
     }
 }
 
@@ -627,11 +627,11 @@ enum CalendarDates {
     static func iso(_ date: Date) -> String { formatter.string(from: date) }
 
     static func shortWeekday(_ weekday: Int) -> String {
-        ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][((weekday % 7) + 7) % 7]
+        AppLanguage.current.calendar.shortStandaloneWeekdaySymbols[((weekday % 7) + 7) % 7]
     }
 
     static func longWeekday(_ weekday: Int) -> String {
-        ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][((weekday % 7) + 7) % 7]
+        AppLanguage.current.calendar.standaloneWeekdaySymbols[((weekday % 7) + 7) % 7]
     }
 
     static func dayOfMonth(_ iso: String) -> String {
@@ -641,9 +641,9 @@ enum CalendarDates {
 
     /// "Today" / "Tomorrow" / "Thursday".
     static func relativeLabel(_ iso: String, today: String, weekday: Int) -> String {
-        if iso == today { return "Today" }
+        if iso == today { return L10n( "Today") }
         if let t = date(today), let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: t), self.iso(tomorrow) == iso {
-            return "Tomorrow"
+            return L10n( "Tomorrow")
         }
         return longWeekday(weekday)
     }

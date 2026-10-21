@@ -9,9 +9,9 @@ enum TrainKind {
 
     static func title(_ kind: String) -> String {
         switch kind {
-        case "CARDIO": return "Cardio"
-        case "MIXED": return "Mixed"
-        default: return "Strength"
+        case "CARDIO": return L10n( "Cardio")
+        case "MIXED": return L10n( "Mixed")
+        default: return L10n( "Strength")
         }
     }
 
@@ -96,7 +96,7 @@ struct TrainPlanPill: View {
 
     var body: some View {
         Button(action: action) {
-            Label(title, systemImage: "plus")
+            Label(LocalizedStringKey(title), systemImage: "plus")
                 .font(Typography.data(14, weight: .medium))
                 .foregroundStyle(Color(hex: 0xE0E7FF))
                 .padding(.horizontal, 16)
@@ -114,7 +114,7 @@ private func sessionTitle(_ s: TrainSession) -> String {
 }
 
 private func repeatText(_ s: TrainSession) -> String {
-    s.repeats ? "Every \(s.start.formatted(.dateTime.weekday(.wide)))" : "Once"
+    s.repeats ? L10n( "Every \(s.start.formatted(.dateTime.weekday(.wide)))") : L10n( "Once")
 }
 
 // MARK: - The week strip
@@ -153,8 +153,8 @@ struct TrainWeekStrip: View {
                         .frame(minHeight: 44)
                         .padding(.horizontal, 4)
                 }
-                arrow("chevron.left", label: "Earlier week", enabled: canGoBack, action: onBack)
-                arrow("chevron.right", label: "Later week", enabled: canGoForward, action: onForward)
+                arrow("chevron.backward", label: "Earlier week", enabled: canGoBack, action: onBack)
+                arrow("chevron.forward", label: "Later week", enabled: canGoForward, action: onForward)
             }
             .padding(.horizontal, 4)
 
@@ -192,7 +192,7 @@ struct TrainWeekStrip: View {
         let selected = day.key == selectedKey
         return Button { onPick(day) } label: {
             VStack(spacing: 5) {
-                Text(day.date.formatted(.dateTime.weekday(.narrow)))
+                Text(day.date.formatted(.dateTime.weekday(.narrow).locale(AppLanguage.current.locale)))
                     .font(Typography.mono(10))
                     .opacity(0.8)
                 Text(day.date.formatted(.dateTime.day()))
@@ -238,17 +238,17 @@ struct TrainWeekStrip: View {
     }
 
     private func accessibility(_ day: TrainDay) -> String {
-        let name = day.date.formatted(.dateTime.weekday(.wide).day())
-        guard let first = day.sessions.first else { return "\(name), rest day" }
+        let name = day.date.formatted(.dateTime.weekday(.wide).day().locale(AppLanguage.current.locale))
+        guard let first = day.sessions.first else { return L10n( "\(name), rest day") }
         let status: String
         switch day.refuel {
-        case .done: status = "refueled"
-        case .missed: status = "missed the refuel"
-        case .due: status = "refuel now"
-        case .planned: status = "planned"
+        case .done: status = L10n("refueled")
+        case .missed: status = L10n("missed the refuel")
+        case .due: status = L10n("refuel now")
+        case .planned: status = L10n("planned")
         case nil: status = ""
         }
-        return "\(name), \(TrainKind.title(first.kind)) \(status)"
+        return L10n( "\(name), \(TrainKind.title(first.kind)) \(status)")
     }
 }
 
@@ -285,19 +285,19 @@ struct TrainTodayCard: View {
                         .foregroundStyle(Palette.inkSoft)
                 }
                 Spacer(minLength: 8)
-                if let onEdit { EditPill(action: onEdit).accessibilityLabel("Edit today’s session") }
+                if let onEdit { EditPill(action: onEdit).accessibilityLabel(L10n("Edit today’s session")) }
             }
 
             VStack(alignment: .leading, spacing: 10) {
                 if bumpKcal > 0 {
-                    (Text("Eat ") + Text("\(bumpKcal) more").foregroundColor(Palette.hazeSoft) + Text(" today."))
+                    Text(L10n("Eat \(bumpKcal) more today."))
                         .font(Typography.display(28))
                         .tracking(-0.8)
                         .foregroundStyle(Palette.ink)
                         .contentTransition(.numericText())
                     targetBar
                 } else {
-                    Headline("Eat around it.", tail: addCalories ? "Here’s when." : "“Add calories” is off — today stays at \(baseKcal.formatted()).", size: 26)
+                    Headline("Eat around it.", tail: addCalories ? "Here’s when." : L10n("“Add calories” is off — today stays at \(baseKcal.formatted())."), size: 26, persistTail: !addCalories)
                 }
             }
 
@@ -319,9 +319,10 @@ struct TrainTodayCard: View {
     }
 
     private var status: String {
-        if nowMin >= end { return "Done · \(session.isPlanned ? "added by you" : "from Apple Health")" }
-        if nowMin >= start { return "Under way · until \(trainClock(end))" }
-        return "\(repeatText(session)) · \(session.isPlanned ? "added by you" : "from Apple Health")"
+        let origin = session.isPlanned ? L10n( "added by you") : L10n( "from Apple Health")
+        if nowMin >= end { return L10n( "Done · \(origin)") }
+        if nowMin >= start { return L10n( "Under way · until \(trainClock(end))") }
+        return L10n( "\(repeatText(session)) · \(origin)")
     }
 
     /// Today's target as one bar: a normal day, then what training adds.
@@ -342,19 +343,19 @@ struct TrainTodayCard: View {
             .frame(height: 10)
             .animation(Motion.settle, value: bumpKcal)
             HStack {
-                barLabel(baseKcal.formatted(), "normal day", tint: Palette.ink)
+                barLabel(baseKcal.formatted(), L10n("normal day"), tint: Palette.ink)
                 Spacer(minLength: 4)
-                barLabel("+\(bumpKcal.formatted())", "training", tint: Palette.hazeSoft)
+                barLabel("+\(bumpKcal.formatted())", L10n("training"), tint: Palette.hazeSoft)
                 Spacer(minLength: 4)
-                barLabel(targetKcal.formatted(), "today", tint: Palette.amber)
+                barLabel(targetKcal.formatted(), L10n("today"), tint: Palette.amber)
             }
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(baseKcal) on a normal day, plus \(bumpKcal) for training, makes \(targetKcal) today")
+        .accessibilityLabel(L10n("\(baseKcal) on a normal day, plus \(bumpKcal) for training, makes \(targetKcal) today"))
     }
 
     private func barLabel(_ value: String, _ caption: String, tint: Color) -> some View {
-        (Text(value).font(Typography.mono(12)).foregroundColor(tint) + Text(" \(caption)").font(Typography.data(12, weight: .regular)).foregroundColor(Palette.inkSoft))
+        (Text(value).font(Typography.mono(12)).foregroundColor(tint) + Text(verbatim: " \(caption)").font(Typography.data(12, weight: .regular)).foregroundColor(Palette.inkSoft))
             .contentTransition(.numericText())
     }
 
@@ -375,10 +376,10 @@ struct TrainTodayCard: View {
         let refuelBy = end + window
         let refuelKcal = min(450, max(250, bumpKcal))
         let raw: [(title: String, when: String, hint: String, detail: String, missed: String, done: Bool, over: Bool, loggable: Bool)] = [
-            ("Snack before", trainClock(max(0, start - 90)), "~250", "Something light — fuel without feeling full.", "Nothing logged before — that’s fine. The refuel matters more.", steps?.before ?? false, nowMin >= start, true),
-            (TrainKind.title(session.kind), trainClock(start), "\(session.durationMin) min", session.isPlanned ? "Apple Health adds it when your watch saves it." : "From Apple Health.", "", (steps?.workout ?? false) || nowMin >= end, false, false),
-            ("Refuel after", trainClock(refuelBy), "~\(refuelKcal)", "Something with protein within \(window) min of finishing — chocolate milk or a sandwich. I’ll remind you.", "Missed the window — still eat something with protein now.", steps?.refuel ?? false, nowMin > refuelBy, true),
-            (bumpKcal > 0 ? "Dinner, a bit bigger" : "Dinner", trainClock(dinnerMin), "", bumpKcal > 0 ? "Your usual dinner plus a side." : "Your usual dinner.", "", steps?.dinner ?? false, false, true),
+            (L10n("Snack before"), trainClock(max(0, start - 90)), "~250", L10n("Something light — fuel without feeling full."), L10n("Nothing logged before — that’s fine. The refuel matters more."), steps?.before ?? false, nowMin >= start, true),
+            (TrainKind.title(session.kind), trainClock(start), L10n("\(session.durationMin) min"), session.isPlanned ? L10n("Apple Health adds it when your watch saves it.") : L10n("From Apple Health."), "", (steps?.workout ?? false) || nowMin >= end, false, false),
+            (L10n("Refuel after"), trainClock(refuelBy), "~\(refuelKcal)", L10n("Something with protein within \(window) min of finishing — chocolate milk or a sandwich. I’ll remind you."), L10n("Missed the window — still eat something with protein now."), steps?.refuel ?? false, nowMin > refuelBy, true),
+            (bumpKcal > 0 ? L10n("Dinner, a bit bigger") : L10n("Dinner"), trainClock(dinnerMin), "", bumpKcal > 0 ? L10n("Your usual dinner plus a side.") : L10n("Your usual dinner."), "", steps?.dinner ?? false, false, true),
         ]
         var foundNext = false
         return raw.map { r in
@@ -439,11 +440,17 @@ struct TrainTodayCard: View {
                         .font(Typography.mono(11))
                         .foregroundStyle(Palette.inkFaint)
                 }
-                if step.state == .next || step.state == .missed {
+                if step.state == .missed {
                     Text(step.detail)
                         .font(Typography.data(13, weight: .regular))
-                        .foregroundStyle(step.state == .missed ? Palette.amber : Palette.inkSoft)
+                        .foregroundStyle(Palette.amber)
                         .fixedSize(horizontal: false, vertical: true)
+                } else if step.state == .next {
+                    Text(step.detail)
+                        .font(Typography.data(13, weight: .regular))
+                        .foregroundStyle(Palette.inkSoft)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .hintCopy()
                 }
                 if step.state == .next && step.loggable {
                     Button(action: onLog) {
@@ -478,7 +485,7 @@ struct TrainPastCard: View {
                     Text(title)
                         .font(Typography.data(17, weight: .regular))
                         .foregroundStyle(Palette.ink)
-                    Text("\(trainClock(first.start)) · \(first.isPlanned ? "added by you" : "from Apple Health")")
+                    Text(L10n("\(trainClock(first.start)) · \(first.isPlanned ? L10n("added by you") : L10n("from Apple Health"))"))
                         .font(Typography.data(13, weight: .regular))
                         .foregroundStyle(Palette.inkSoft)
                 }
@@ -503,7 +510,7 @@ struct TrainPastCard: View {
 
             HStack(spacing: 8) {
                 stat(burned, burnedCaption)
-                stat(day.eatenKcal.map { "\($0.formatted()) kcal" } ?? "—", "eaten that day")
+                stat(day.eatenKcal.map { L10n("\($0.formatted()) kcal") } ?? "—", L10n("eaten that day"))
             }
         }
         .padding(18)
@@ -513,17 +520,17 @@ struct TrainPastCard: View {
     private var first: TrainSession { day.sessions[0] }
 
     private var title: String {
-        let base = "\(TrainKind.title(first.kind)) · \(first.durationMin) min"
-        return day.sessions.count > 1 ? "\(base) + \(day.sessions.count - 1) more" : base
+        let base = L10n("\(TrainKind.title(first.kind)) · \(first.durationMin) min")
+        return day.sessions.count > 1 ? L10n("\(base) + \(day.sessions.count - 1) more") : base
     }
 
     private var result: (title: String, detail: String, tint: Color)? {
         switch day.refuel {
         case .done:
-            let detail = day.refuelMeal.map { "\($0.kcal) kcal at \(trainClock($0.at)) — within the window." } ?? "You ate within the window."
-            return ("Refueled", detail, Palette.positive)
+            let detail = day.refuelMeal.map { L10n("\($0.kcal) kcal at \(trainClock($0.at)) — within the window.") } ?? L10n("You ate within the window.")
+            return (L10n("Refueled"), detail, Palette.positive)
         case .missed:
-            return ("Missed the refuel", "Nothing logged within \(TrainMath.refuelWindowMin) min of finishing. Next time, a drink counts.", Palette.amber)
+            return (L10n("Missed the refuel"), L10n("Nothing logged within \(TrainMath.refuelWindowMin) min of finishing. Next time, a drink counts."), Palette.amber)
         default:
             return nil
         }
@@ -535,12 +542,12 @@ struct TrainPastCard: View {
     }
 
     private var burned: String {
-        if let recorded { return "\(recorded.formatted()) kcal" }
+        if let recorded { return L10n( "\(recorded.formatted()) kcal") }
         let estimate = day.sessions.reduce(0) { $0 + TrainMath.sessionKcal($1, weightKg: weightKg) }
-        return "~\(Int(estimate.rounded()).formatted()) kcal"
+        return L10n( "~\(Int(estimate.rounded()).formatted()) kcal")
     }
 
-    private var burnedCaption: String { recorded == nil ? "burned · estimate" : "burned · Apple Health" }
+    private var burnedCaption: String { recorded == nil ? L10n("burned · estimate") : L10n("burned · Apple Health") }
 
     private func stat(_ value: String, _ caption: String) -> some View {
         VStack(alignment: .leading, spacing: 2) {
@@ -572,18 +579,18 @@ struct TrainPlannedCard: View {
                     Text(sessionTitle(session))
                         .font(Typography.data(17, weight: .regular))
                         .foregroundStyle(Palette.ink)
-                    Text(session.repeats ? repeatText(session) : "Just once")
+                    Text(session.repeats ? repeatText(session) : L10n("Just once"))
                         .font(Typography.data(13, weight: .regular))
                         .foregroundStyle(Palette.inkSoft)
                 }
                 Spacer(minLength: 8)
-                EditPill(action: onEdit).accessibilityLabel("Edit this session")
+                EditPill(action: onEdit).accessibilityLabel(L10n("Edit this session"))
             }
 
             if let bump = dayBumpKcal {
                 Group {
                     if addCalories && bump > 0 {
-                        Text("I’ll add ") + Text("\(bump.formatted())").foregroundColor(Palette.hazeSoft) + Text(" to that day.")
+                        Text(L10n("I’ll add \(bump.formatted()) to that day."))
                     } else {
                         Text("“Add calories” is off, so that day’s target stays the same.")
                     }
@@ -595,10 +602,10 @@ struct TrainPlannedCard: View {
             }
 
             VStack(alignment: .leading, spacing: 8) {
-                line(trainClock(TrainMath.minute(session.start) - 90), "Snack before")
-                line(trainClock(session.start), "\(TrainKind.title(session.kind)), \(session.durationMin) min")
-                line("by \(trainClock(TrainMath.minute(session.end) + TrainMath.refuelWindowMin))", "Refuel with protein")
-                line(trainClock(dinnerMin), "Dinner, a bit bigger")
+                line(trainClock(TrainMath.minute(session.start) - 90), L10n("Snack before"))
+                line(trainClock(session.start), L10n("\(TrainKind.title(session.kind)), \(session.durationMin) min"))
+                line(L10n("by \(trainClock(TrainMath.minute(session.end) + TrainMath.refuelWindowMin))"), L10n("Refuel with protein"))
+                line(trainClock(dinnerMin), L10n("Dinner, a bit bigger"))
             }
 
             Text("You can change it until it starts.")
@@ -634,15 +641,11 @@ struct TrainRestCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            (Text("Rest day. ") + Text("Normal food — rest is when you build back up.").foregroundColor(Palette.inkFaint))
-                .font(Typography.display(22))
-                .tracking(-0.4)
-                .foregroundStyle(Palette.ink)
-                .fixedSize(horizontal: false, vertical: true)
+            Headline("Rest day.", tail: "Normal food — rest is when you build back up.", size: 22)
             if !day.isPast {
-                TrainPlanPill(title: day.isToday ? "Plan a session today" : "Plan a session on \(day.date.formatted(.dateTime.weekday(.wide)))", action: onPlan)
+                TrainPlanPill(title: day.isToday ? L10n("Plan a session today") : L10n("Plan a session on \(day.date.formatted(.dateTime.weekday(.wide).locale(AppLanguage.current.locale)))"), action: onPlan)
             } else if day.canAdd {
-                Button("Trained without your watch? Add it.", action: onPlan)
+                Button(L10n("Trained without your watch? Add it."), action: onPlan)
                     .font(Typography.data(13, weight: .medium))
                     .foregroundStyle(Palette.hazeSoft)
                     .frame(minHeight: 44)
@@ -670,7 +673,7 @@ struct TrainComingUp: View {
             HStack(alignment: .firstTextBaseline) {
                 Text("Coming up").sectionLabelStyle()
                 Spacer()
-                Text(through.map { "Planned through \($0.formatted(.dateTime.day().month(.abbreviated)))" } ?? "Nothing planned yet")
+                Text(through.map { L10n("Planned through \($0.formatted(.dateTime.day().month(.abbreviated).locale(AppLanguage.current.locale)))") } ?? L10n("Nothing planned yet"))
                     .font(Typography.data(12, weight: .regular))
                     .foregroundStyle(Palette.inkSoft)
             }
@@ -680,7 +683,7 @@ struct TrainComingUp: View {
                 ForEach(sessions) { s in
                     Button { onOpen(s) } label: { row(s) }
                         .buttonStyle(.plain)
-                        .accessibilityHint("Edits the session")
+                        .accessibilityHint(L10n("Edits the session"))
                     Rectangle().fill(Color.white.opacity(0.06)).frame(height: 1)
                 }
                 Button(action: onPlan) {
@@ -713,7 +716,7 @@ struct TrainComingUp: View {
     private func row(_ s: TrainSession) -> some View {
         HStack(spacing: 12) {
             VStack(spacing: 1) {
-                Text(s.start.formatted(.dateTime.weekday(.abbreviated)).uppercased())
+                Text(s.start.formatted(.dateTime.weekday(.abbreviated).locale(AppLanguage.current.locale)).uppercased())
                     .font(Typography.mono(10))
                     .foregroundStyle(Palette.hazeSoft)
                 Text(s.start.formatted(.dateTime.day()))
@@ -725,7 +728,7 @@ struct TrainComingUp: View {
             .background(Palette.haze.opacity(0.10), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
-                    Text("\(TrainKind.title(s.kind)) · \(s.durationMin) min")
+                    Text(L10n("\(TrainKind.title(s.kind)) · \(s.durationMin) min"))
                         .font(Typography.data(14, weight: .regular))
                         .foregroundStyle(Palette.ink)
                     if s.repeats {
@@ -735,7 +738,9 @@ struct TrainComingUp: View {
                             .accessibilityLabel("weekly")
                     }
                 }
-                Text("\(trainClock(s.start)) · \(s.repeats ? "every \(s.start.formatted(.dateTime.weekday(.wide)))" : "once")")
+                Text(s.repeats
+                     ? L10n("\(trainClock(s.start)) · every \(s.start.formatted(.dateTime.weekday(.wide).locale(AppLanguage.current.locale)))")
+                     : L10n("\(trainClock(s.start)) · once"))
                     .font(Typography.data(12, weight: .regular))
                     .foregroundStyle(Palette.inkFaint)
             }
@@ -745,7 +750,7 @@ struct TrainComingUp: View {
                     .font(Typography.mono(12))
                     .foregroundStyle(Palette.hazeSoft)
             }
-            Image(systemName: "chevron.right")
+            Image(systemName: "chevron.forward")
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(Palette.inkFaint)
         }
@@ -781,7 +786,7 @@ struct TrainSettingsRow: View {
                         .foregroundStyle(Palette.inkFaint)
                 }
                 Spacer(minLength: 8)
-                Image(systemName: "chevron.right")
+                Image(systemName: "chevron.forward")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(Palette.inkFaint)
             }
@@ -793,8 +798,16 @@ struct TrainSettingsRow: View {
     }
 
     private var summary: String {
-        let calories = addCalories ? "Adds calories" : "Calories stay the same"
-        let nudge = nudgeMin == 0 ? "no nudge" : nudgeMin == 120 ? "nudge 2 h before" : "nudge \(nudgeMin) min before"
-        return "\(calories) · \(nudge) · Apple Health \(healthOn ? "on" : "off")"
+        let calories = addCalories ? L10n( "Adds calories") : L10n( "Calories stay the same")
+        let nudge: String
+        if nudgeMin == 0 {
+            nudge = L10n( "no nudge")
+        } else if nudgeMin == 120 {
+            nudge = L10n( "nudge 2 h before")
+        } else {
+            nudge = L10n( "nudge \(nudgeMin) min before")
+        }
+        let health = healthOn ? L10n( "on") : L10n( "off")
+        return L10n( "\(calories) · \(nudge) · Apple Health \(health)")
     }
 }

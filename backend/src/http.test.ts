@@ -50,6 +50,8 @@ describe('HTTP contracts', () => {
     expect(saved.statusCode).toBe(401);
     const barcode = await app.inject({ method: 'GET', url: '/api/foods/barcode/3017620422003' });
     expect(barcode.statusCode).toBe(401);
+    const search = await app.inject({ method: 'GET', url: '/api/foods/search?q=chicken' });
+    expect(search.statusCode).toBe(401);
   });
 
   it('rejects unauthenticated start-talk', async () => {

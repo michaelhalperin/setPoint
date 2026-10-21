@@ -70,6 +70,24 @@ struct LogAnywhere: ViewModifier {
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
             }
+            .sheet(item: catalogBinding) { pick in
+                CatalogFoodSheet(
+                    pick: Binding(
+                        get: { logger?.catalogPick ?? pick },
+                        set: { logger?.catalogPick = $0 }
+                    ),
+                    slotTitle: slotTitle,
+                    logging: {
+                        if case .parsing = logger?.phase { return true }
+                        return false
+                    }(),
+                    onLog: { Task { await logger?.logCatalog() } },
+                    onSave: { logger?.openEditorToSaveCatalog() },
+                    onClose: { logger?.catalogPick = nil }
+                )
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+            }
             .fullScreenCover(isPresented: $showingOrder) {
                 if let home = loadedHome {
                     NavigationStack {
@@ -258,6 +276,10 @@ struct LogAnywhere: ViewModifier {
 
     private var productBinding: Binding<LogMealViewModel.BarcodeProduct?> {
         Binding(get: { logger?.product }, set: { logger?.product = $0 })
+    }
+
+    private var catalogBinding: Binding<LogMealViewModel.CatalogPick?> {
+        Binding(get: { logger?.catalogPick }, set: { logger?.catalogPick = $0 })
     }
 
     private var editorBinding: Binding<SavedMealDraft?> {

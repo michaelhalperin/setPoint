@@ -34,7 +34,7 @@ struct BurnScreen: View {
 
     @ViewBuilder
     private func ready(_ insight: BurnInsightResponse, burn: Int) -> some View {
-        Headline("You burn \(burn.formatted()).", tail: "Learned from you, not guessed.", size: 34)
+        Headline(L10n("You burn \(burn.formatted())."), tail: "Learned from you, not guessed.", size: 34)
             .appearIn(0, rise: 16)
 
         ZStack {
@@ -55,10 +55,10 @@ struct BurnScreen: View {
         .frame(maxWidth: .infinity)
         .appearIn(1)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("You burn about \(burn.formatted()) calories a day")
+        .accessibilityLabel(L10n("You burn about \(burn.formatted()) calories a day"))
 
         if let low = insight.rangeLow, let high = insight.rangeHigh {
-            Text("likely \(low.formatted())–\(high.formatted()) · from \(Int((coverage(insight) * 100).rounded()))% of days logged")
+            Text(L10n("likely \(low.formatted())–\(high.formatted()) · from \(Int((coverage(insight) * 100).rounded()))% of days logged"))
                 .font(Typography.mono(11))
                 .foregroundStyle(Palette.inkSoft)
                 .frame(maxWidth: .infinity)
@@ -88,7 +88,7 @@ struct BurnScreen: View {
             HStack {
                 Text("Eaten vs burn").sectionLabelStyle()
                 Spacer()
-                Text("\(delta >= 0 ? "+" : "−")\(abs(delta).formatted()) kcal")
+                Text(L10n("\(delta >= 0 ? "+" : "−")\(abs(delta).formatted()) kcal"))
                     .font(Typography.mono(11))
                     .foregroundStyle(delta >= 0 ? Palette.amber : Palette.inkSoft)
             }
@@ -98,7 +98,7 @@ struct BurnScreen: View {
                     .frame(height: 1.5)
                     .shadow(color: Palette.amber.opacity(0.5), radius: 6)
                 HStack {
-                    Text("UNDER").font(Typography.mono(9)).foregroundStyle(Palette.inkFaint)
+                        Text("UNDER").font(Typography.mono(9)).foregroundStyle(Palette.inkFaint)
                     Spacer()
                     Text("BURN").font(Typography.mono(9)).foregroundStyle(Palette.amber)
                 }
@@ -125,17 +125,17 @@ struct BurnScreen: View {
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
-                        .accessibilityLabel("Week \(index + 1): \(abs(d)) \(d >= 0 ? "over" : "under") your burn")
+                        .accessibilityLabel(L10n("Week \(index + 1): \(abs(d)) \(d >= 0 ? L10n("over") : L10n("under")) your burn"))
                     }
                 }
                 .padding(.horizontal, 44)
             }
             .frame(height: 124)
             VStack(alignment: .leading, spacing: 2) {
-                Text("Week \(selected + 1) · ate \(week.intakeKcal.formatted()) a day")
+                Text(L10n("Week \(selected + 1) · ate \(week.intakeKcal.formatted()) a day"))
                     .font(Typography.data(15, weight: .regular))
                     .foregroundStyle(Palette.ink)
-                Text(delta >= 0 ? "Over your burn — the scale should creep up." : "Under your burn, so the scale held still or dropped.")
+                Text(LocalizedStringKey(delta >= 0 ? "Over your burn — the scale should creep up." : "Under your burn, so the scale held still or dropped."))
                     .font(Typography.data(12, weight: .regular))
                     .foregroundStyle(Palette.inkSoft)
             }
@@ -162,11 +162,11 @@ struct BurnScreen: View {
         return VStack(alignment: .leading, spacing: 10) {
             Text("So your day is").sectionLabelStyle()
             HStack(spacing: 8) {
-                term(burn.formatted(), "burn", highlight: false)
+                term(burn.formatted(), L10n("burn"), highlight: false)
                 Text(delta >= 0 ? "+" : "−").foregroundStyle(Palette.inkFaint)
-                term(abs(delta).formatted(), delta >= 0 ? "for your goal" : "to lose", highlight: false)
+                term(abs(delta).formatted(), delta >= 0 ? L10n("for your goal") : L10n("to lose"), highlight: false)
                 Text("=").foregroundStyle(Palette.inkFaint)
-                term(plan.formatted(), "your day", highlight: true)
+                term(plan.formatted(), L10n("your day"), highlight: true)
             }
             .font(Typography.data(18, weight: .light))
             .fixedSize(horizontal: false, vertical: true)
@@ -211,7 +211,7 @@ struct BurnScreen: View {
             }
             .frame(width: 13 * 6)
             .accessibilityHidden(true)
-            Text("\(insight.loggedDays) logged days and \(insight.weighIns) weigh-ins over \(insight.windowDays) days. Updates every Sunday.")
+            Text(L10n("\(insight.loggedDays) logged days and \(insight.weighIns) weigh-ins over \(insight.windowDays) days. Updates every Sunday."))
                 .font(Typography.data(12, weight: .regular))
                 .foregroundStyle(Palette.inkSoft)
                 .fixedSize(horizontal: false, vertical: true)
@@ -239,6 +239,7 @@ struct BurnScreen: View {
                 .font(Typography.data(13, weight: .regular))
                 .foregroundStyle(Palette.inkSoft)
                 .fixedSize(horizontal: false, vertical: true)
+                .hintCopy()
         }
         .padding(16)
         .glass(radius: 22)
@@ -248,11 +249,11 @@ struct BurnScreen: View {
     private func requirement(_ title: String, value: Int, goal: Int) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text(title)
+                Text(LocalizedStringKey(title))
                     .font(Typography.data(14, weight: .regular))
                     .foregroundStyle(Palette.ink)
                 Spacer()
-                Text("\(value) of \(goal)")
+                Text(L10n("\(value) of \(goal)"))
                     .font(Typography.mono(11))
                     .foregroundStyle(value >= goal ? Palette.positive : Palette.inkSoft)
             }
@@ -272,11 +273,11 @@ struct BurnScreen: View {
     private func emptyCopy(_ insight: BurnInsightResponse) -> String {
         switch insight.reason {
         case "not_enough_weighins":
-            return "Log at least 6 weigh-ins in 8 weeks."
+            return L10n( "Log at least 6 weigh-ins in 8 weeks.")
         case "not_enough_logs":
-            return "Log meals on at least 80% of days."
+            return L10n( "Log meals on at least 80% of days.")
         default:
-            return "Need 28 logged days, 80% coverage, and 6 weigh-ins."
+            return L10n( "Need 28 logged days, 80% coverage, and 6 weigh-ins.")
         }
     }
 
@@ -289,7 +290,7 @@ struct BurnScreen: View {
             insight = try await env.api.get("/api/insights/burn")
             error = nil
         } catch {
-            self.error = UserFacingError.message(for: error, fallback: "Couldn't load your burn.")
+            self.error = UserFacingError.message(for: error, fallback: L10n( "Couldn't load your burn."))
         }
     }
 }

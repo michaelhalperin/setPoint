@@ -61,10 +61,10 @@ struct AppetiteSettingsView: View {
                 .foregroundStyle(Palette.ink)
                 .frame(height: 76, alignment: .bottom)
             VStack(alignment: .leading, spacing: 4) {
-                Text(lowCount == 1 ? "low day" : "low days")
+                Text(lowCount == 1 ? L10n("low day") : L10n("low days"))
                     .font(Typography.data(22, weight: .light))
                     .foregroundStyle(Palette.ink)
-                (Text("You still ate ") + Text("\(history.percentEatenLow)%").foregroundColor(Palette.amber) + Text(" on them" + (history.percentEatenLowBefore.map { " · was \($0)%" } ?? "")))
+                Text(history.percentEatenLowBefore.map { L10n("You still ate \(history.percentEatenLow)% on them · was \($0)%") } ?? L10n("You still ate \(history.percentEatenLow)% on them"))
                     .font(Typography.data(13, weight: .regular))
                     .foregroundStyle(Palette.inkSoft)
             }
@@ -87,6 +87,19 @@ struct AppetiteSettingsView: View {
         days.lastIndex { $0.level == "LOW" } ?? max(0, days.count - 1)
     }
 
+    private func pickDay(at x: CGFloat, width: CGFloat, count: Int) {
+        guard count > 0 else { return }
+        let n = max(1, count - 1)
+        let t = (x - 6) / max(1, width - 12)
+        pickDay(min(max(0, Int((t * CGFloat(n)).rounded())), count - 1))
+    }
+
+    private func pickDay(_ i: Int) {
+        guard selectedDay != i else { return }
+        selectedDay = i
+        Haptics.select()
+    }
+
     /// Appetite over four weeks as one curve: lows dip below the line and get a ring.
     private func tide(_ history: AppetiteHistoryResponse) -> some View {
         let days = history.days
@@ -105,7 +118,7 @@ struct AppetiteSettingsView: View {
                         p.move(to: CGPoint(x: 0, y: 72)); p.addLine(to: CGPoint(x: w, y: 72))
                     }
                     .stroke(Color.white.opacity(0.16), style: StrokeStyle(lineWidth: 1, dash: [3, 5]))
-                    Text("LOW")
+                    Text("Low")
                         .font(Typography.mono(9))
                         .foregroundStyle(Palette.inkFaint)
                         .position(x: w - 12, y: 62)
@@ -134,17 +147,29 @@ struct AppetiteSettingsView: View {
                             .shadow(color: Palette.amber.opacity(0.85), radius: 7)
                             .position(pts[selected])
                     }
-                    HStack(spacing: 0) {
-                        ForEach(days.indices, id: \.self) { i in
-                            Color.clear
-                                .contentShape(Rectangle())
-                                .onTapGesture { withAnimation(Motion.settle) { selectedDay = i } }
-                                .accessibilityElement()
-                                .accessibilityLabel("\(Self.dayTitle(days[i].date)), \(Self.word(days[i].level))")
-                                .accessibilityAddTraits(.isButton)
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .gesture(
+                            DragGesture(minimumDistance: 0)
+                                .onChanged { value in
+                                    pickDay(at: value.location.x, width: w, count: days.count)
+                                }
+                        )
+                        .accessibilityElement()
+                        .accessibilityLabel(L10n("Appetite over four weeks"))
+                        .accessibilityValue(
+                            days.indices.contains(selected)
+                                ? L10n("\(Self.dayTitle(days[selected].date)), \(Self.word(days[selected].level))")
+                                : ""
+                        )
+                        .accessibilityAdjustableAction { direction in
+                            let i = selected
+                            switch direction {
+                            case .increment: pickDay(min(days.count - 1, i + 1))
+                            case .decrement: pickDay(max(0, i - 1))
+                            default: break
+                            }
                         }
-                    }
-                    .frame(height: h)
                 }
             }
             .frame(height: 150)
@@ -187,19 +212,19 @@ struct AppetiteSettingsView: View {
     }
 
     private static func dayTitle(_ iso: String) -> String {
-        date(iso)?.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated)) ?? iso
+        date(iso)?.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated).locale(AppLanguage.current.locale)) ?? iso
     }
 
     private static func weekTicks(_ days: [AppetiteHistoryResponse.Day]) -> [String] {
-        stride(from: 0, to: days.count, by: 7).compactMap { date(days[$0].date)?.formatted(.dateTime.day().month(.abbreviated)).uppercased() }
+        stride(from: 0, to: days.count, by: 7).compactMap { date(days[$0].date)?.formatted(.dateTime.day().month(.abbreviated).locale(AppLanguage.current.locale)).uppercased() }
     }
 
     private static func word(_ level: String?) -> String {
         switch level {
-        case "HUNGRY": return "Hungry"
-        case "LOW": return "Low"
-        case nil: return "No check-in"
-        default: return "Normal"
+        case "HUNGRY": return L10n("Hungry")
+        case "LOW": return L10n("Low")
+        case nil: return L10n( "No check-in")
+        default: return L10n("Normal")
         }
     }
 
@@ -210,16 +235,16 @@ struct AppetiteSettingsView: View {
         return HStack(spacing: 12) {
             dot(level).frame(width: 24)
             VStack(alignment: .leading, spacing: 2) {
-                Text(days.isEmpty ? "—" : "\(Self.dayTitle(days[i].date)) · \(Self.word(level))")
+                Text(days.isEmpty ? "—" : L10n("\(Self.dayTitle(days[i].date)) · \(Self.word(level))"))
                     .font(Typography.data(15, weight: .regular))
                     .foregroundStyle(Palette.ink)
-                Text(level == "LOW" ? "Smaller plates that day" : level == nil ? "Nothing logged" : "Usual plates")
+                Text(LocalizedStringKey(level == "LOW" ? "Smaller plates that day" : level == nil ? "Nothing logged" : "Usual plates"))
                     .font(Typography.data(12, weight: .regular))
                     .foregroundStyle(Palette.inkSoft)
             }
             Spacer(minLength: 8)
-            StepCircle(symbol: "chevron.left", label: "Previous day") { withAnimation(Motion.settle) { selectedDay = max(0, i - 1) } }
-            StepCircle(symbol: "chevron.right", label: "Next day") { withAnimation(Motion.settle) { selectedDay = min(days.count - 1, i + 1) } }
+            StepCircle(symbol: "chevron.backward", label: "Previous day") { withAnimation(Motion.settle) { selectedDay = max(0, i - 1) } }
+            StepCircle(symbol: "chevron.forward", label: "Next day") { withAnimation(Motion.settle) { selectedDay = min(days.count - 1, i + 1) } }
         }
         .padding(.leading, 16)
         .padding(.trailing, 10)
@@ -250,9 +275,9 @@ struct AppetiteSettingsView: View {
                 Circle().fill(Palette.haze).frame(width: 7, height: 7).shadow(color: Palette.haze, radius: 4)
                 Text("What I noticed").sectionLabelStyle(Palette.hazeSoft)
             }
-            Headline(pattern.title.replacingOccurrences(of: " → ", with: ", ") + ".", tail: pattern.body, size: 22)
-            if let action = pattern.action {
-                BonePill(title: action.label) {
+            Headline(pattern.localizedTitle.replacingOccurrences(of: " → ", with: ", ") + ".", tail: pattern.localizedBody, size: 22)
+            if let action = pattern.action, let label = pattern.localizedActionLabel {
+                BonePill(title: label) {
                     Task { await moveDinner(action.dinnerMin ?? 1200) }
                 }
             }
@@ -267,10 +292,10 @@ struct AppetiteSettingsView: View {
                 .frame(width: 34, height: 34)
                 .background(Palette.haze.opacity(0.14), in: Circle())
             VStack(alignment: .leading, spacing: 3) {
-                Text(pattern.title)
+                Text(pattern.localizedTitle)
                     .font(Typography.data(15, weight: .medium))
                     .foregroundStyle(Palette.ink)
-                Text(pattern.body)
+                Text(pattern.localizedBody)
                     .font(Typography.data(13, weight: .regular))
                     .foregroundStyle(Palette.inkSoft)
                     .fixedSize(horizontal: false, vertical: true)
@@ -291,7 +316,7 @@ struct AppetiteSettingsView: View {
                             Text(food.name)
                                 .font(Typography.data(14, weight: .regular))
                                 .foregroundStyle(Palette.ink)
-                            Text(food.tag)
+                            Text(L10nKey(food.tag))
                                 .font(Typography.data(11))
                                 .foregroundStyle(Palette.inkFaint)
                         }
@@ -354,10 +379,10 @@ struct AppetiteSettingsView: View {
                     }
                 }
                 .frame(height: 34)
-                Text(title)
+                Text(LocalizedStringKey(title))
                     .font(Typography.data(15, weight: .medium))
                     .foregroundStyle(Palette.ink)
-                Text(note)
+                Text(LocalizedStringKey(note))
                     .font(Typography.mono(11))
                     .foregroundStyle(Palette.inkSoft)
             }
@@ -436,13 +461,17 @@ extension AppetiteHistoryResponse {
                     id: "late_dinner",
                     title: "Late dinners → low mornings",
                     body: "4 of your 8 low days came after dinner past 21:00.",
-                    action: .init(label: "Move dinner to 20:00", dinnerMin: 1200)
+                    action: .init(label: "Move dinner to 20:00", dinnerMin: 1200),
+                    count: 4,
+                    total: 8
                 ),
                 .init(
                     id: "after_training",
                     title: "Hungrier after training",
                     body: "3 of 4 hungry days were the day after a workout. I already add the calories.",
-                    action: nil
+                    action: nil,
+                    count: 3,
+                    total: 4
                 ),
             ],
             lowDayFoods: [

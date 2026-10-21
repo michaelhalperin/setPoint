@@ -129,7 +129,7 @@ struct SettlementView: View {
                                 .foregroundStyle(Palette.inkSoft)
                         }
                         Spacer(minLength: 0)
-                        Image(systemName: "chevron.right")
+                        Image(systemName: "chevron.forward")
                             .font(.system(size: 11, weight: .semibold))
                             .foregroundStyle(Color(hex: 0x52525B))
                     }
@@ -159,7 +159,7 @@ struct SettlementView: View {
         .alert("Target reached", isPresented: reachedBinding(model)) {
             Button("OK") { model.reachedGoalTarget = nil }
         } message: {
-            Text("\(MassUnit.current.formatKg(model.reachedGoalTarget ?? 0)) reached. Maintenance is now active.")
+            Text(L10n("\(MassUnit.current.formatKg(model.reachedGoalTarget ?? 0)) reached. Maintenance is now active."))
         }
     }
 
@@ -247,7 +247,7 @@ private struct WeekOneCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Headline("Day \(settledDays + 1) of 7.", tail: "Patterns need a week.", size: 32)
+            Headline(L10n("Day \(settledDays + 1) of 7."), tail: "Patterns need a week.", size: 32)
             HStack(spacing: 0) {
                 ForEach(0..<7, id: \.self) { i in
                     VStack(spacing: 6) {
@@ -267,7 +267,7 @@ private struct WeekOneCard: View {
                                 .frame(width: 32, height: 32)
                                 .frame(width: 42, height: 42)
                         }
-                        Text(i == settledDays ? "TODAY" : label(i))
+                        Text(i == settledDays ? L10n("TODAY") : label(i))
                             .font(Typography.mono(10))
                             .foregroundStyle(i == settledDays ? Palette.amber : Color(hex: 0x52525B))
                     }
@@ -275,12 +275,12 @@ private struct WeekOneCard: View {
                 }
             }
             .accessibilityElement()
-            .accessibilityLabel("Day \(settledDays + 1) of 7")
+            .accessibilityLabel(L10n("Day \(settledDays + 1) of 7"))
 
             VStack(alignment: .leading, spacing: 0) {
-                step(when: "Tonight", title: "Today closes", note: "You’ll see how close you got. \(today.kcalConsumed.formatted()) of \(today.kcalTarget.formatted()) so far.", lit: true, last: false)
-                step(when: needsWeighIn ? "This week" : "Sunday", title: needsWeighIn ? "First weigh-in" : "Next weigh-in", note: "Starts your weight line. One a week is enough.", lit: false, last: false)
-                step(when: "After 7 days", title: "One thing to fix", note: "Late meals, light breakfasts, what works on low days.", lit: false, last: true)
+                step(when: L10n("Tonight"), title: L10n("Today closes"), note: L10n("You’ll see how close you got. \(today.kcalConsumed.formatted()) of \(today.kcalTarget.formatted()) so far."), lit: true, last: false)
+                step(when: needsWeighIn ? L10n("This week") : L10n("Sunday"), title: needsWeighIn ? L10n("First weigh-in") : L10n("Next weigh-in"), note: L10n("Starts your weight line. One a week is enough."), lit: false, last: false)
+                step(when: L10n("After 7 days"), title: L10n("One thing to fix"), note: L10n("Late meals, light breakfasts, what works on low days."), lit: false, last: true)
             }
             .padding(.horizontal, 18)
             .padding(.vertical, 16)
@@ -291,7 +291,7 @@ private struct WeekOneCard: View {
 
     private func label(_ i: Int) -> String {
         let date = Calendar.current.date(byAdding: .day, value: i - settledDays, to: .now) ?? .now
-        return String(date.formatted(.dateTime.weekday(.narrow)))
+        return String(date.formatted(.dateTime.weekday(.narrow).locale(AppLanguage.current.locale)))
     }
 
     private func step(when: String, title: String, note: String, lit: Bool, last: Bool) -> some View {
@@ -346,9 +346,10 @@ private struct DayMealsSheet: View {
                 VStack(alignment: .leading, spacing: 10) {
                     Text(station.title).sectionLabelStyle()
                     Headline(
-                        "\(station.kcalConsumed.formatted()) of \(station.kcalTarget.formatted()).",
-                        tail: station.isToday ? "So far today." : station.kindLabel + ".",
-                        size: 34
+                        L10n("\(station.kcalConsumed.formatted()) of \(station.kcalTarget.formatted())."),
+                        tail: station.isToday ? L10n("So far today.") : L10n("\(station.kindLabel)."),
+                        size: 34,
+                        persistTail: true
                     )
                     GeometryReader { geo in
                         Capsule().fill(Color.white.opacity(0.08))

@@ -37,6 +37,7 @@ Then:
 pnpm --filter @setpoint/backend prisma:generate
 pnpm --filter @setpoint/backend prisma:deploy   # apply migrations to the database in DATABASE_URL
 pnpm --filter @setpoint/backend db:seed         # loads the curated staple-food list
+pnpm --filter @setpoint/backend foods:import    # USDA Foundation + SR Legacy → CatalogFood (~8k foods)
 pnpm dev
 ```
 
@@ -70,6 +71,7 @@ applied, so it only runs on fresh databases.
 - **Safety screening** (§3) — `SafetyScreening` (medical flag, SCOFF answers +
   `enforcementEnabled` gate), `DietaryRestriction` (normalized allergen tokens)
 - **Ledger** (§5.5) — `Meal`
+- **Food catalog** — `CatalogFood` (USDA Foundation + SR Legacy, imported) for typed search; `BarcodeFood` caches Open Food Facts scans. Neither is the solver's `FoodItem` staple list.
 - **Biosignals** (§2, §4) — `BiosignalState` / `BiosignalReading` hold only a
   derived deviation the app pushes; raw HRV/RHR never reach the backend
 - **Confidence** (§2) — `ConfidenceScore` keeps every component input for audit
@@ -93,7 +95,9 @@ Without `DATABASE_URL` the server still boots; `/api/health` just reports
 | GET    | `/api/health`     | Liveness + `SELECT 1` database check                     |
 | POST   | `/api/auth/apple` | Apple identity token → session JWT (501 until `APPLE_CLIENT_ID` is set) |
 | POST   | `/api/auth/dev`   | Non-production only — mint a session JWT for testing      |
-| POST   | `/api/meals`      | Log a meal (bearer auth). `{text}`/`{image}` → AI-parsed; `{macros}` → as-is; `{prescriptionId}` alone → the Rx's totals. Resolves any open check-in. Returns `{ meal, parsed, resolvedCheckInId }` |
+| POST   | `/api/meals`      | Log a meal (bearer auth). `{text}`/`{image}` → AI-parsed; `{macros}` → as-is; `{prescriptionId}` alone → the Rx's totals; `{barcode, servings}` / `{catalogId, grams}` skip the model. Resolves any open check-in. Returns `{ meal, parsed, resolvedCheckInId }` |
+| GET    | `/api/foods/search` | USDA catalog search `?q=` (bearer auth). Empty until `foods:import`. |
+| GET    | `/api/foods/barcode/:code` | Open Food Facts lookup + cache (bearer auth). |
 | DELETE | `/api/meals/:id`  | Undo a just-logged meal (e.g. a wrong photo parse) — `{ deleted: true }` |
 | GET    | `/api/checkins/:id` | Fetch one check-in + prescription (bearer auth)          |
 | POST   | `/api/checkins/:id/defer` | Snooze it — `status DEFERRED`, `deferUntil = now + 2h` (§2) |

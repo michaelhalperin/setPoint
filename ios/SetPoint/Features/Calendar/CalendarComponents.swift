@@ -15,13 +15,13 @@ enum CalendarClock {
 
     /// "45 min", "1 hour", "1½ hours", "3½ hours", "1 h 15 min".
     static func duration(_ minutes: Int) -> String {
-        if minutes < 60 { return "\(minutes) min" }
+        if minutes < 60 { return L10n( "\(minutes) min") }
         let hours = minutes / 60
         let rest = minutes % 60
         switch rest {
-        case 0: return hours == 1 ? "1 hour" : "\(hours) hours"
-        case 30: return "\(hours)½ hours"
-        default: return "\(hours) h \(rest) min"
+        case 0: return hours == 1 ? L10n("1 hour") : L10n("\(hours) hours")
+        case 30: return L10n( "\(hours)½ hours")
+        default: return L10n( "\(hours) h \(rest) min")
         }
     }
 }
@@ -29,15 +29,15 @@ enum CalendarClock {
 enum CalendarCopy {
     static func slotName(_ slot: String) -> String {
         switch slot {
-        case "breakfast": return "Breakfast"
-        case "lunch": return "Lunch"
-        case "dinner": return "Dinner"
+        case "breakfast": return L10n( "Breakfast")
+        case "lunch": return L10n( "Lunch")
+        case "dinner": return L10n( "Dinner")
         default: return slot.capitalized
         }
     }
 
     static func previousMeal(_ slot: String) -> String {
-        slot == "dinner" ? "lunch" : "breakfast"
+        slot == "dinner" ? slotName("lunch") : slotName("breakfast")
     }
 
     /// "Busy 12:00–15:30, so lunch is earlier." / "Busy 12:00–15:30. Lunch stays at 13:00."
@@ -45,16 +45,16 @@ enum CalendarCopy {
         let range = CalendarClock.range(busy.startMin, busy.endMin)
         let meal = slotName(slot)
         return kept
-            ? "Busy \(range). \(meal) stays at \(CalendarClock.hm(usualMin))."
-            : "Busy \(range), so \(meal.lowercased()) is earlier."
+            ? L10n( "Busy \(range). \(meal) stays at \(CalendarClock.hm(usualMin)).")
+            : L10n( "Busy \(range), so \(meal.lowercased()) is earlier.")
     }
 
     static func keepTitle(slot: String, usualMin: Int) -> String {
-        "Keep \(slotName(slot).lowercased()) at \(CalendarClock.hm(usualMin))"
+        L10n( "Keep \(slotName(slot).lowercased()) at \(CalendarClock.hm(usualMin))")
     }
 
     static func moveTitle(slot: String, earlyMin: Int) -> String {
-        "Move \(slotName(slot).lowercased()) to \(CalendarClock.hm(earlyMin))"
+        L10n( "Move \(slotName(slot).lowercased()) to \(CalendarClock.hm(earlyMin))")
     }
 
     /// The day screen's "Why 11:15?" body. The heads-up comes at the moved time.
@@ -68,22 +68,22 @@ enum CalendarCopy {
         kept: Bool,
         leadMin: Int
     ) -> String {
-        let name = eventName ?? "A busy stretch"
+        let name = eventName ?? L10n( "A busy stretch")
         let meal = slotName(slot).lowercased()
         let start = CalendarClock.hm(busy.startMin)
         if kept {
-            return "\(name) runs \(CalendarClock.range(busy.startMin, busy.endMin)). You kept \(meal) at \(CalendarClock.hm(usualMin)), so nothing comes early."
+            return L10n( "\(name) runs \(CalendarClock.range(busy.startMin, busy.endMin)). You kept \(meal) at \(CalendarClock.hm(usualMin)), so nothing comes early.")
         }
         let length = CalendarClock.duration(busy.endMin - busy.startMin)
         if reason == "floor" {
-            return "\(name) starts \(start) and runs \(length). \(CalendarClock.hm(earlyMin)) is as early as it goes — never closer than 90 min after \(previousMeal(slot))."
+            return L10n( "\(name) starts \(start) and runs \(length). \(CalendarClock.hm(earlyMin)) is as early as it goes — never closer than 90 min after \(previousMeal(slot).lowercased()).")
         }
-        return "\(name) starts \(start) and runs \(length). Your heads-up is \(leadMin) min before it starts, so \(meal) moves to \(CalendarClock.hm(earlyMin))."
+        return L10n( "\(name) starts \(start) and runs \(length). Your heads-up is \(leadMin) min before it starts, so \(meal) moves to \(CalendarClock.hm(earlyMin)).")
     }
 
     /// "1 hour or longer"
     static func minBlock(_ minutes: Int) -> String {
-        "\(CalendarClock.duration(minutes)) or longer"
+        L10n( "\(CalendarClock.duration(minutes)) or longer")
     }
 }
 
@@ -106,9 +106,9 @@ enum CalendarRules {
     static func label(_ verdict: Verdict) -> String? {
         switch verdict {
         case .counts: return nil
-        case .tooShort: return "Too short to count"
-        case .allDayOff: return "All-day events are off"
-        case .weekend: return "Weekend — doesn't count"
+        case .tooShort: return L10n( "Too short to count")
+        case .allDayOff: return L10n( "All-day events are off")
+        case .weekend: return L10n( "Weekend — doesn't count")
         }
     }
 }
@@ -122,7 +122,7 @@ struct CalendarLockLine: View {
         HStack(spacing: 8) {
             Image(systemName: "lock")
                 .font(.system(size: 12, weight: .semibold))
-            Text(text)
+            Text(LocalizedStringKey(text))
                 .font(Typography.data(13))
         }
         .foregroundStyle(Palette.inkSoft)
@@ -155,10 +155,14 @@ struct CalendarKeepButton: View {
         case .idle:
             return keep ? CalendarCopy.keepTitle(slot: slot, usualMin: usualMin) : CalendarCopy.moveTitle(slot: slot, earlyMin: earlyMin)
         case .saving:
-            return keep ? "Keeping \(meal) at \(CalendarClock.hm(usualMin))" : "Moving \(meal) to \(CalendarClock.hm(earlyMin))"
+            return keep
+                ? L10n("Keeping \(meal) at \(CalendarClock.hm(usualMin))")
+                : L10n("Moving \(meal) to \(CalendarClock.hm(earlyMin))")
         case let .done(kept):
             let name = CalendarCopy.slotName(slot)
-            return kept ? "\(name) kept at \(CalendarClock.hm(usualMin))" : "\(name) moved to \(CalendarClock.hm(earlyMin))"
+            return kept
+                ? L10n("\(name) kept at \(CalendarClock.hm(usualMin))")
+                : L10n("\(name) moved to \(CalendarClock.hm(earlyMin))")
         }
     }
 

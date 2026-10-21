@@ -70,7 +70,11 @@ struct SettingsView: View {
     private func profile(_ model: SettingsViewModel) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                HStack {
+                HStack(spacing: 12) {
+                    NavigationLink { AccountSettingsView(model: model) } label: {
+                        identityChip(model)
+                    }
+                    .buttonStyle(PressableCard())
                     Spacer(minLength: 0)
                     NavigationLink { GoalSettingsView(model: model) } label: {
                         Text("Edit plan")
@@ -95,24 +99,6 @@ struct SettingsView: View {
 
                 proCard
                     .appearIn(3)
-
-                NavigationLink { AccountSettingsView(model: model) } label: {
-                    HStack {
-                        Text("Account & data")
-                        Spacer()
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(Color(hex: 0x52525B))
-                    }
-                    .font(Typography.data(14, weight: .regular))
-                    .foregroundStyle(Palette.inkSoft)
-                    .padding(.horizontal, 18)
-                    .frame(height: 48)
-                    .overlay(Capsule().strokeBorder(Color.white.opacity(0.08)))
-                    .contentShape(Capsule())
-                }
-                .buttonStyle(PressableCard())
-                .appearIn(4)
 
                 if let error = model.error {
                     Text(error)
@@ -206,9 +192,9 @@ struct SettingsView: View {
     private var healthRowValue: String {
         switch env.health.state {
         case .connected:
-            return env.health.hasHeartData ? "Connected" : "No heart data yet"
+            return env.health.hasHeartData ? L10n( "Connected") : L10n( "No heart data yet")
         case .notConnected, .unavailable:
-            return "Not connected"
+            return L10n( "Not connected")
         }
     }
 
@@ -226,7 +212,7 @@ struct SettingsView: View {
                         Text(model.currentWeightKg.map { massUnit.number($0, digits: 1 ... 1) } ?? "—")
                             .font(Typography.data(22, weight: .light))
                             .tracking(-0.6)
-                        Text("\(massUnit.abbreviation.uppercased()) NOW")
+                        Text(L10n("\(massUnit.abbreviation) NOW"))
                             .font(Typography.mono(9))
                             .foregroundStyle(Color(hex: 0xFDE6CF))
                     }
@@ -265,26 +251,28 @@ struct SettingsView: View {
     }
 
     private func goalLabel(_ model: SettingsViewModel, progress: Double) -> String {
-        guard model.goal.hasWeightTarget else { return "Maintaining" }
-        let verb = model.goal == .bulk ? "Gaining" : "Cutting"
-        return "\(verb) · \(Int((progress * 100).rounded()))% there"
+        guard model.goal.hasWeightTarget else { return L10n( "Maintaining") }
+        let percent = Int((progress * 100).rounded())
+        return model.goal == .bulk
+            ? L10n( "Gaining · \(percent)% there")
+            : L10n( "Cutting · \(percent)% there")
     }
 
     private func goalTitle(_ model: SettingsViewModel) -> String {
         guard model.goal.hasWeightTarget, let target = model.targetWeightKg else {
-            if let current = model.currentWeightKg { return "Holding at \(massUnit.formatKg(current))" }
-            return "Hold steady"
+            if let current = model.currentWeightKg { return L10n( "Holding at \(massUnit.formatKg(current))") }
+            return L10n( "Hold steady")
         }
-        return "To \(massUnit.formatKg(target, digits: 0))"
+        return L10n( "To \(massUnit.formatKg(target, digits: 0))")
     }
 
     private func goalLines(_ model: SettingsViewModel) -> String {
-        let first = "\(model.kcalTarget.formatted()) kcal a day"
+        let first = L10n( "\(model.kcalTarget.formatted()) kcal a day")
         let second: String
         if model.goal.hasWeightTarget {
-            second = model.honestDurationWeeks.map { "\(model.pace.title) · ~\($0) weeks left" } ?? model.pace.title
+            second = model.honestDurationWeeks.map { L10n( "\(model.pace.title) · ~\($0) weeks left") } ?? model.pace.title
         } else {
-            second = "No end date"
+            second = L10n( "No end date")
         }
         return first + "\n" + second
     }
@@ -295,7 +283,7 @@ struct SettingsView: View {
             HStack {
                 Text("How I check in").sectionLabelStyle()
                 Spacer()
-                Text("Quiet \(formatMinutes(model.quietHours.startMin))–\(formatMinutes(model.quietHours.endMin))")
+                Text(L10n("Quiet \(formatMinutes(model.quietHours.startMin))–\(formatMinutes(model.quietHours.endMin))"))
                     .font(Typography.mono(10))
                     .textCase(.uppercase)
                     .foregroundStyle(Palette.inkFaint)
@@ -316,11 +304,20 @@ struct SettingsView: View {
                 }
             }
 
-            Text(checkInsDetail(model))
-                .font(Typography.data(13, weight: .regular))
-                .foregroundStyle(Palette.inkSoft)
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.horizontal, 4)
+            if model.enforcementEnabled && !model.checkInsPaused {
+                Text(checkInsDetail(model))
+                    .font(Typography.data(13, weight: .regular))
+                    .foregroundStyle(Palette.inkSoft)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 4)
+                    .hintCopy()
+            } else {
+                Text(checkInsDetail(model))
+                    .font(Typography.data(13, weight: .regular))
+                    .foregroundStyle(Palette.inkSoft)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 4)
+            }
         }
     }
 
@@ -365,6 +362,17 @@ struct SettingsView: View {
                         }
                     }
                 }
+                NavigationLink { SavedMealsSettingsView() } label: {
+                    SetupTile(title: "My meals", value: "One-tap plates") {
+                        HStack(spacing: 5) {
+                            Circle().fill(Palette.amber).frame(width: 8, height: 8)
+                                .shadow(color: Palette.amber.opacity(0.6), radius: 3)
+                            Circle().fill(Palette.ember).frame(width: 10, height: 10)
+                                .shadow(color: Palette.ember.opacity(0.55), radius: 3)
+                            Circle().strokeBorder(Palette.amber, lineWidth: 1.5).frame(width: 9, height: 9)
+                        }
+                    }
+                }
                 NavigationLink {
                     if env.subscription.entitled {
                         CalendarSettingsView().onAppear { seenCalendar = true }
@@ -403,33 +411,40 @@ struct SettingsView: View {
                         }
                     }
                 }
-                Button {
-                    massUnit = massUnit == .kg ? .lb : .kg
-                } label: {
-                    SetupTile(title: "Units", value: massUnit.title, showsChevron: false) {
-                        HStack(spacing: 4) {
-                            ForEach(MassUnit.allCases, id: \.self) { unit in
-                                Text(unit.abbreviation)
-                                    .font(Typography.mono(10))
-                                    .foregroundStyle(unit == massUnit ? Palette.onBone : Palette.inkFaint)
-                                    .padding(.horizontal, 6)
-                                    .frame(height: 18)
-                                    .background(unit == massUnit ? Palette.ink : Color.white.opacity(0.06), in: Capsule())
-                            }
-                        }
-                    }
-                }
             }
             .buttonStyle(PressableCard())
         }
     }
 
+    private func identityChip(_ model: SettingsViewModel) -> some View {
+        ZStack {
+            FuelOrb(size: 36, breathing: false, glow: 0.45)
+            Text(identityInitial(model))
+                .font(Typography.data(15, weight: .medium))
+                .foregroundStyle(Palette.onBone)
+        }
+        .frame(width: 44, height: 44)
+        .accessibilityLabel("\(identityName(model)), \(model.email ?? L10n( "Account")). Opens your details")
+    }
+
+    private func identityName(_ model: SettingsViewModel) -> String {
+        let name = model.displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return name.isEmpty ? L10n( "You") : name
+    }
+
+    private func identityInitial(_ model: SettingsViewModel) -> String {
+        let name = model.displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let first = name.first { return String(first).uppercased() }
+        if let first = model.email?.first { return String(first).uppercased() }
+        return "Y"
+    }
+
     private func appetiteValue(_ model: SettingsViewModel) -> String {
         switch model.mode {
-        case "SMALL_FREQUENT": return "Smaller plates"
-        case "DRINKABLE": return "Drinkable first"
-        case "ASK_DAILY": return "Ask each morning"
-        default: return "Normal plates"
+        case "SMALL_FREQUENT": return L10n( "Smaller plates")
+        case "DRINKABLE": return L10n( "Drinkable first")
+        case "ASK_DAILY": return L10n( "Ask each morning")
+        default: return L10n( "Normal plates")
         }
     }
 
@@ -441,12 +456,12 @@ struct SettingsView: View {
                     Text("SetPoint Pro")
                         .font(Typography.data(15, weight: .medium))
                         .foregroundStyle(Palette.ink)
-                    Text(env.subscription.entitled ? "Active · training and calendar on" : "Training refuels and calendar planning")
+                    Text(LocalizedStringKey(env.subscription.entitled ? "Active · training and calendar on" : "Training refuels and calendar planning"))
                         .font(Typography.data(12, weight: .regular))
                         .foregroundStyle(Palette.hazeSoft)
                 }
                 Spacer(minLength: 8)
-                Image(systemName: "chevron.right")
+                Image(systemName: "chevron.forward")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(Palette.hazeSoft)
             }
@@ -463,12 +478,12 @@ struct SettingsView: View {
 
     private func checkInsDetail(_ model: SettingsViewModel) -> String {
         if !model.enforcementEnabled { return enforcementNote(model.enforcementDisabledReason) }
-        if model.checkInsPaused { return "Paused. Your plan still updates." }
-        return "\(CheckInSchedule.graceMin) min after a meal time, if nothing’s logged."
+        if model.checkInsPaused { return L10n( "Paused. Your plan still updates.") }
+        return L10n( "\(CheckInSchedule.graceMin) min after a meal time, if nothing’s logged.")
     }
 
     private func goalSubtitle(_ model: SettingsViewModel) -> String {
-        model.goal.hasWeightTarget ? "\(model.goal.title) · \(model.pace.title.lowercased())" : "Hold steady"
+        model.goal.hasWeightTarget ? "\(model.goal.title) · \(model.pace.title.lowercased())" : L10n( "Hold steady")
     }
 
     private func mealTimesSubtitle(_ model: SettingsViewModel) -> String {
@@ -476,18 +491,18 @@ struct SettingsView: View {
             .map(formatMinutes)
             .joined(separator: " · ")
         guard model.hasWeekendMealOverrides else { return times }
-        return "\(times) · \(WeekendDays.summary(model.weekendDays))"
+        return L10n( "\(times) · \(WeekendDays.summary(model.weekendDays))")
     }
 
     private func restrictionsSubtitle(_ model: SettingsViewModel) -> String {
-        model.restrictions.isEmpty ? "None" : model.restrictions.joined(separator: ", ")
+        model.restrictions.isEmpty ? L10n( "None") : model.restrictions.map(L10nKey).joined(separator: ", ")
     }
 
     private func planTitle(_ model: SettingsViewModel) -> String {
         guard model.goal.hasWeightTarget, let target = model.targetWeightKg else {
-            return "Hold steady"
+            return L10n( "Hold steady")
         }
-        return "\(model.goal.directionVerb) \(massUnit.formatKg(target, digits: 0))"
+        return L10n( "\(model.goal.directionVerb) \(massUnit.formatKg(target, digits: 0))")
     }
 
     private func planProgress(_ model: SettingsViewModel) -> Double? {
@@ -524,7 +539,7 @@ private struct SetupTile<Mark: View>: View {
                         .padding(.vertical, 2)
                         .background(Palette.amber, in: Capsule())
                 } else if let badge {
-                    Text(badge)
+                    Text(LocalizedStringKey(badge))
                         .font(Typography.mono(9, weight: .medium))
                         .foregroundStyle(Palette.inkFaint)
                         .padding(.horizontal, 6)
@@ -533,10 +548,10 @@ private struct SetupTile<Mark: View>: View {
                 }
             }
             VStack(alignment: .leading, spacing: 2) {
-                Text(title)
+                Text(LocalizedStringKey(title))
                     .font(Typography.data(15, weight: .regular))
                     .foregroundStyle(Palette.ink)
-                Text(value)
+                Text(LocalizedStringKey(value))
                     .font(Typography.data(12, weight: .regular))
                     .foregroundStyle(valueColor)
                     .lineLimit(1)
@@ -557,17 +572,17 @@ struct DestinationRow: View {
     var body: some View {
         HStack(spacing: Space.sm) {
             VStack(alignment: .leading, spacing: 4) {
-                Text(title)
+                Text(LocalizedStringKey(title))
                     .font(Typography.data(17, weight: .semibold))
                     .foregroundStyle(Palette.ink)
                 if let subtitle {
-                    Text(subtitle)
+                    Text(LocalizedStringKey(subtitle))
                         .font(Typography.data(13))
                         .foregroundStyle(Palette.inkSoft)
                 }
             }
             Spacer(minLength: 0)
-            Image(systemName: "chevron.right")
+            Image(systemName: "chevron.forward")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(Palette.inkFaint)
         }
@@ -598,6 +613,7 @@ func formatMinutes(_ minutes: Int) -> String {
     c.minute = m
     let date = Calendar.current.date(from: c) ?? .now
     let f = DateFormatter()
+    f.locale = AppLanguage.current.locale
     f.timeStyle = .short
     return f.string(from: date)
 }
@@ -605,11 +621,11 @@ func formatMinutes(_ minutes: Int) -> String {
 func enforcementNote(_ reason: String?) -> String {
     switch reason {
     case "EATING_DISORDER_SCREEN":
-        return "Quiet tracking is on. A professional can help if eating feels hard."
+        return L10n( "Quiet tracking is on. A professional can help if eating feels hard.")
     case "MEDICAL_SUPERVISION":
-        return "Quiet tracking is on. Follow your care team’s plan."
+        return L10n( "Quiet tracking is on. Follow your care team’s plan.")
     default:
-        return "Check-ins are off."
+        return L10n( "Check-ins are off.")
     }
 }
 
@@ -644,12 +660,12 @@ private struct CheckInModeSwitch: View {
     private var dayRibbon: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline) {
-                Text(listening ? "Listening" : "Quiet")
+                Text(LocalizedStringKey(listening ? "Listening" : "Quiet"))
                     .font(Typography.data(15, weight: .medium))
                     .foregroundStyle(Palette.ink)
                     .contentTransition(.opacity)
                 Spacer(minLength: 8)
-                Text(listening ? "After each meal" : "Plan still updates")
+                Text(LocalizedStringKey(listening ? "After each meal" : "Plan still updates"))
                     .font(Typography.data(12, weight: .regular))
                     .foregroundStyle(Palette.inkSoft)
                     .contentTransition(.opacity)
@@ -750,7 +766,7 @@ private struct CheckInModeSwitch: View {
 
     private func modeOption(title: String, selected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Text(title)
+            Text(LocalizedStringKey(title))
                 .font(Typography.data(14, weight: selected ? .medium : .regular))
                 .foregroundStyle(selected ? Palette.onBone : Palette.inkSoft)
                 .frame(maxWidth: .infinity)
@@ -777,7 +793,8 @@ private struct SettingsSkeletonView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                HStack {
+                HStack(spacing: 12) {
+                    Circle().fill(washStrong).frame(width: 36, height: 36)
                     Spacer(minLength: 0)
                     Capsule().fill(washStrong).frame(width: 88, height: 36)
                 }
@@ -786,10 +803,6 @@ private struct SettingsSkeletonView: View {
                 checkIns
                 setupGrid
                 proCard
-                Capsule()
-                    .strokeBorder(Color.white.opacity(0.08))
-                    .frame(height: 48)
-                    .overlay(SkeletonBlock(width: 110, height: 14).padding(.leading, 18), alignment: .leading)
             }
             .padding(Space.gutter)
         }
@@ -1043,7 +1056,7 @@ private struct DevCheckInTodayPreview: View {
             await vm.load()
             model = vm
         } catch {
-            self.error = UserFacingError.message(for: error, fallback: "Couldn't start a check-in.")
+            self.error = UserFacingError.message(for: error, fallback: L10n( "Couldn't start a check-in."))
         }
     }
 }
@@ -1108,12 +1121,12 @@ private struct DevCheckInPreview: View {
             let _: StartTalkResponse = try await env.api.post("/api/checkins/start-check-in")
             let loaded: HomeResponse = try await env.api.get("/api/home")
             guard let checkIn = loaded.activeCheckIn, checkIn.tier < 3 else {
-                self.error = "Couldn't open a meal check-in."
+                self.error = L10n( "Couldn't open a meal check-in.")
                 return
             }
             home = loaded
         } catch {
-            self.error = UserFacingError.message(for: error, fallback: "Couldn't start a check-in.")
+            self.error = UserFacingError.message(for: error, fallback: L10n( "Couldn't start a check-in."))
         }
     }
 
@@ -1141,7 +1154,7 @@ private struct DevConversationPreview: View {
             if let checkInID {
                 ConversationView(
                     checkInID: checkInID,
-                    onDismiss: { dismiss() },
+                    onDismiss: { Task { await closeTalk(id: checkInID) } },
                     onResolved: { dismiss() }
                 )
             } else if let error {
@@ -1176,8 +1189,13 @@ private struct DevConversationPreview: View {
             let res: StartTalkResponse = try await env.api.post("/api/checkins/start-talk")
             checkInID = res.checkInId
         } catch {
-            self.error = UserFacingError.message(for: error, fallback: "Couldn't start the conversation.")
+            self.error = UserFacingError.message(for: error, fallback: L10n( "Couldn't start the conversation."))
         }
+    }
+
+    private func closeTalk(id: String) async {
+        try? await CheckInActions.alreadyAte(checkInID: id, api: env.api)
+        dismiss()
     }
 }
 

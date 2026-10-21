@@ -117,7 +117,7 @@ private struct LogMealBody: View {
 
         HStack(spacing: 12) {
             PhotosPicker(selection: $pickerItem, matching: .images, photoLibrary: .shared()) {
-                Label(model.photo == nil ? "Add photo" : "Change photo", systemImage: "camera")
+                Label(model.photo == nil ? L10n("Add photo") : L10n("Change photo"), systemImage: "camera")
                     .font(Typography.data(15, weight: .semibold))
                     .foregroundStyle(Palette.ink)
                     .frame(maxWidth: .infinity)
@@ -178,7 +178,7 @@ private struct LogMealBody: View {
             }
             .appearIn(1)
 
-            Button(model.removing ? "Removing…" : "Remove") {
+            Button(LocalizedStringKey(model.removing ? "Removing…" : "Remove")) {
                 Task { await model.undo() }
             }
             .font(Typography.data(14, weight: .medium))
@@ -198,8 +198,8 @@ private struct LogMealBody: View {
     }
 
     private func headline(_ logged: LogMealViewModel.Logged?) -> String {
-        guard let logged else { return "Estimating…" }
-        return logged.fromPhoto ? "From photo" : "Logged"
+        guard let logged else { return L10n( "Estimating…") }
+        return logged.fromPhoto ? L10n( "From photo") : L10n( "Logged")
     }
 
     /// What the user gave us, kept visible through parsing and the result so the
@@ -216,7 +216,7 @@ private struct LogMealBody: View {
                         .frame(width: 40, height: 40)
                         .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
                 }
-                Text(trimmed.isEmpty ? "Photo" : trimmed)
+                Text(trimmed.isEmpty ? L10n("Photo") : trimmed)
                     .font(Typography.data(13))
                     .foregroundStyle(Palette.inkSoft)
                     .lineLimit(2)
@@ -274,7 +274,7 @@ struct ParsedBreakdown: View {
                         .foregroundStyle(Palette.ink)
                         .contentTransition(.numericText(value: Double(kcal)))
                         .monospacedDigit()
-                    Text("kcal · \(Int(proteinG.rounded())) g protein")
+                    Text(L10n("kcal · \(Int(proteinG.rounded())) g protein"))
                         .font(Typography.data(14))
                         .foregroundStyle(Palette.inkFaint)
                 }
@@ -290,7 +290,7 @@ struct ParsedBreakdown: View {
                                 .font(Typography.data(12))
                                 .foregroundStyle(Palette.inkFaint)
                             Spacer()
-                            Text("\(item.kcal) kcal")
+                            Text(L10n("\(item.kcal) kcal"))
                                 .font(Typography.data(13))
                                 .foregroundStyle(Palette.inkFaint)
                         }
@@ -495,10 +495,10 @@ struct PhotoParseConfirm: View {
             HStack(alignment: .top, spacing: 12) {
                 VStack(alignment: .leading, spacing: 8) {
                     if let countsFor {
-                        Text("Photo · \(countsFor.title.lowercased())").sectionLabelStyle()
+                        Text(L10n("Photo · \(countsFor.title.lowercased())")).sectionLabelStyle()
                     }
 
-                    Headline(logged.summary ?? "Your meal", size: 26)
+                    Headline(logged.summary ?? L10n("Your meal"), size: 26)
                         .lineLimit(2)
                         .minimumScaleFactor(0.8)
                 }
@@ -559,7 +559,7 @@ struct PhotoParseConfirm: View {
             }
 
             HStack(spacing: 10) {
-                ActionButton(title: "Looks right · \(logged.kcal)", symbol: "checkmark", action: onKeep)
+                ActionButton(title: L10n("Looks right · \(logged.kcal)"), symbol: "checkmark", action: onKeep)
                 Button("Fix") { editing = true }
                     .font(Typography.data(15, weight: .regular))
                     .foregroundStyle(Palette.ink)
@@ -572,7 +572,7 @@ struct PhotoParseConfirm: View {
 
     private func macro(_ label: String, value: String, fraction: Double, color: Color) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(label).sectionLabelStyle()
+            Text(LocalizedStringKey(label)).sectionLabelStyle()
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
             Text(value)
@@ -596,10 +596,10 @@ struct PhotoParseConfirm: View {
     }
 
     private func confidenceLabel(_ confidence: Double?) -> String {
-        guard let confidence else { return "Estimate" }
-        if confidence >= 0.75 { return "High confidence" }
-        if confidence >= 0.5 { return "Typical estimate" }
-        return "Rough estimate"
+        guard let confidence else { return L10n( "Estimate") }
+        if confidence >= 0.75 { return L10n( "High confidence") }
+        if confidence >= 0.5 { return L10n( "Typical estimate") }
+        return L10n( "Rough estimate")
     }
 
     private func confidenceColor(_ confidence: Double?) -> Color {
@@ -807,7 +807,7 @@ struct MealCorrectionEditor: View {
                             Text(originalKcal.formatted()).strikethrough().foregroundStyle(Palette.inkFaint)
                             Text("→").foregroundStyle(Palette.inkFaint)
                         }
-                        Text("\(total.formatted()) kcal").foregroundStyle(Palette.amber)
+                        Text(L10n("\(total.formatted()) kcal")).foregroundStyle(Palette.amber)
                         if total == originalKcal {
                             Text("· as I saw it").foregroundStyle(Palette.inkFaint)
                         }
@@ -854,14 +854,14 @@ struct MealCorrectionEditor: View {
         .scrollDismissesKeyboard(.interactively)
         .background(Palette.background.ignoresSafeArea())
         .overlay(alignment: .topLeading) {
-            RoundIconButton("chevron.left", label: "Back", action: onCancel)
+            RoundIconButton("chevron.backward", label: "Back", action: onCancel)
                 .disabled(saving)
                 .padding(.leading, Space.gutter)
                 .padding(.top, 6)
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             VStack(spacing: Space.xs) {
-                ActionButton(title: "Save · \(total.formatted()) kcal", busy: saving, busyTitle: "Saving") {
+                ActionButton(title: L10n("Save · \(total.formatted()) kcal"), busy: saving, busyTitle: "Saving") {
                     guard canSave, let correctedItems else { return }
                     Task { _ = await onSave(summary.trimmingCharacters(in: .whitespacesAndNewlines), correctedItems) }
                 }
@@ -912,7 +912,7 @@ struct MealCorrectionEditor: View {
                                 .frame(width: 14, height: 14)
                                 .shadow(color: Palette.ember.opacity(on ? 0.8 : 0), radius: 8)
                             HStack(spacing: 6) {
-                                Text(item.name.isEmpty ? "New food" : item.name)
+                                Text(item.name.isEmpty ? L10n("New food") : item.name)
                                 Text(item.kcal.isEmpty ? "—" : item.kcal)
                                     .font(Typography.mono(11))
                                     .foregroundStyle(on ? Color(hex: 0x7C2D12) : Palette.amber)
@@ -930,7 +930,7 @@ struct MealCorrectionEditor: View {
                     }
                     .buttonStyle(.plain)
                     .position(x: spot.x * w, y: spot.y * h)
-                    .accessibilityLabel("\(item.name), \(item.kcal) kcal. Edit")
+                    .accessibilityLabel(L10n("\(item.name), \(item.kcal) kcal. Edit"))
                 }
             }
         }
@@ -946,7 +946,7 @@ struct MealCorrectionEditor: View {
         return VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .bottom) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(bases[item.id] == nil || item.request == nil ? "You added" : "I saw").sectionLabelStyle()
+                    Text(LocalizedStringKey(bases[item.id] == nil || item.request == nil ? "You added" : "I saw")).sectionLabelStyle()
                     TextField("Food", text: $items[index].name)
                         .font(Typography.data(18, weight: .regular))
                         .foregroundStyle(Palette.ink)
@@ -976,7 +976,7 @@ struct MealCorrectionEditor: View {
                             .contentShape(Capsule())
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel("\(label) portion")
+                    .accessibilityLabel(L10n("\(label) portion"))
                     .accessibilityAddTraits(on ? .isSelected : [])
                 }
             }
@@ -996,7 +996,7 @@ struct MealCorrectionEditor: View {
             }
 
             HStack {
-                Button(items.count > 1 ? (photo == nil ? "Not in it · remove" : "Not in the photo · remove") : "Clear it") {
+                Button(items.count > 1 ? (photo == nil ? L10n("Not in it · remove") : L10n("Not in the photo · remove")) : L10n("Clear it")) {
                     if items.count > 1 {
                         let id = item.id
                         items.removeAll { $0.id == id }
@@ -1010,7 +1010,7 @@ struct MealCorrectionEditor: View {
                 .foregroundStyle(Palette.danger)
                 Spacer()
                 if bases[item.id] != nil {
-                    Button(showExact ? "Hide numbers" : "Exact numbers") { showExact.toggle() }
+                    Button(showExact ? L10n("Hide numbers") : L10n("Exact numbers")) { showExact.toggle() }
                         .font(Typography.data(13, weight: .regular))
                         .foregroundStyle(Palette.inkSoft)
                 }
@@ -1102,7 +1102,7 @@ struct MealCorrectionEditor: View {
 
     private func numberField(_ label: String, unit: String = "", text: Binding<String>) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(label).sectionLabelStyle()
+            Text(LocalizedStringKey(label)).sectionLabelStyle()
                 .tracking(0.4)
                 .minimumScaleFactor(0.7)
                 .lineLimit(1)

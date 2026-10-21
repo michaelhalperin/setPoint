@@ -87,6 +87,7 @@ enum MealSource {
   MANUAL
   SAVED
   BARCODE
+  CATALOG
 }
 
 enum PrescriptionStatus {
@@ -145,6 +146,8 @@ model User {
   id       String  @id @default(cuid())
   appleSub String? @unique
   email    String? @unique
+  /// What they call themselves. From Sign in with Apple on first grant, or typed later.
+  displayName String?
   timezone String  @default("UTC") // IANA, e.g. "America/New_York"
 
   /// Sign in with Apple refresh token — stored so account deletion can call
@@ -466,6 +469,32 @@ model BarcodeFood {
   fetchedAt DateTime
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+/// USDA FoodData Central generic foods (Foundation + SR Legacy). Searchable
+/// catalog for typed logging — not the prescription solver's staple list.
+model CatalogFood {
+  id    String @id @default(cuid())
+  fdcId Int    @unique
+
+  name        String
+  category    String?
+  servingG    Float?
+  servingDesc String?
+
+  kcal100g     Float
+  proteinG100g Float
+  carbsG100g   Float
+  fatG100g     Float
+
+  /// "foundation" | "sr_legacy"
+  dataType String
+  source   FoodSource @default(USDA)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([name])
 }
 
 // ---------------------------------------------------------------------------

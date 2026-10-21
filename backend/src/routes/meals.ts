@@ -36,11 +36,16 @@ const body = z
     savedMealId: z.string().min(1).optional(),
     barcode: z.string().min(8).max(14).optional(),
     servings: z.number().positive().max(20).optional(),
+    catalogId: z.string().min(1).optional(),
+    grams: z.number().positive().max(5000).optional(),
     clientId: z.string().uuid().optional(),
   })
-  .refine((b) => b.text || b.image || b.macros || b.prescriptionId || b.savedMealId || b.barcode, {
-    message: 'provide text, image, macros, a prescriptionId, a savedMealId, or a barcode',
-  });
+  .refine(
+    (b) => b.text || b.image || b.macros || b.prescriptionId || b.savedMealId || b.barcode || b.catalogId,
+    {
+      message: 'provide text, image, macros, a prescriptionId, a savedMealId, a barcode, or a catalogId',
+    },
+  );
 
 const dateQuery = z.object({
   date: z
@@ -107,6 +112,8 @@ export async function mealRoutes(app: FastifyInstance): Promise<void> {
           savedMealId: input.savedMealId,
           barcode: input.barcode,
           servings: input.servings,
+          catalogId: input.catalogId,
+          grams: input.grams,
           clientId: input.clientId,
         },
       );

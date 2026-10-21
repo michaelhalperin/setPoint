@@ -107,7 +107,7 @@ final class SubscriptionStore {
                 return false
             }
         } catch {
-            self.error = UserFacingError.message(for: error, fallback: "Couldn't complete the purchase.")
+            self.error = UserFacingError.message(for: error, fallback: L10n( "Couldn't complete the purchase."))
             return false
         }
     }
@@ -120,7 +120,7 @@ final class SubscriptionStore {
             await refresh(using: api)
             if !entitled { error = "No active subscription found for this Apple ID." }
         } catch {
-            self.error = UserFacingError.message(for: error, fallback: "Couldn't restore.")
+            self.error = UserFacingError.message(for: error, fallback: L10n( "Couldn't restore."))
         }
     }
 

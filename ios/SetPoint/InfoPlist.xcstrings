@@ -1,0 +1,76 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "NSCalendarsFullAccessUsageDescription" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SetPoint קורא רק כשאתה עסוק. כותרות אירועים, מיקומים ומי מוזמן לא יוצאים מהמכשיר."
+          }
+        }
+      }
+    },
+    "NSCalendarsUsageDescription" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SetPoint קורא רק כשאתה עסוק. כותרות אירועים, מיקומים ומי מוזמן לא יוצאים מהמכשיר."
+          }
+        }
+      }
+    },
+    "NSCameraUsageDescription" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "צלם ארוחה או סרוק ברקוד כדי לתעד אותה."
+          }
+        }
+      }
+    },
+    "NSHealthShareUsageDescription" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SetPoint קורא גובה, משקל, גיל ומין כדי לקבוע יעדים יומיים, ואת משקל הגוף כדי לעקוב אחרי ההתקדמות. שונות דופק ודופק במנוחה הם אופציונליים: הם עשויים לכוונן מעט תזכורת אכילה שכבר מגיעה בגלל ארוחה שפוספסה. הם לא מאבחנים חוסר הזנה לבדם."
+          }
+        }
+      }
+    },
+    "NSHealthUpdateUsageDescription" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SetPoint כותב ארוחות שאתה מתעד (קלוריות, חלבון, פחמימות ושומן) לתוך הבריאות של Apple כדי שהכול יישאר במקום אחד. משקל שאתה מתעד ב-SetPoint יכול להיכתב גם אם תפעיל את זה."
+          }
+        }
+      }
+    },
+    "NSLocationWhenInUseUsageDescription" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מוצא מקומות לידך עם מנה שמתאימה למה שעוד חסר. המיקום משמש רק לחיפוש הזה ולא נשמר."
+          }
+        }
+      }
+    },
+    "NSPhotoLibraryUsageDescription" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "צרף תמונה של ארוחה כדי לתעד אותה."
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

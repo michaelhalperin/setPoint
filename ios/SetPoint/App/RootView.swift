@@ -18,6 +18,8 @@ struct RootView: View {
             authedContent
             #endif
         }
+        .modifier(HintCopyReader())
+        .modifier(AppLanguageReader())
         .animation(Motion.adaptive(Motion.gentle, reduceMotion: reduceMotion), value: env.auth.status)
         .task {
             env.auth.bootstrap()
@@ -80,6 +82,7 @@ enum DebugPreviewStub {
     case settingsMealTimes
     case settingsMealTimesWeekends
     case settingsFoods
+    case settingsSavedMeals
     case settingsHealth
     case settingsHealthWrite
     case calendarSettings
@@ -167,6 +170,8 @@ enum DebugPreviewStub {
             NavigationStack { RhythmSettingsView(model: .previewedWeekends(), startOnWeekends: true) }
         case .settingsFoods:
             NavigationStack { FoodsSettingsView(model: .previewed()) }
+        case .settingsSavedMeals:
+            NavigationStack { SavedMealsSettingsView(previewMeals: SavedMeal.samples) }
         case .settingsHealth, .settingsHealthWrite:
             NavigationStack { HealthSettingsView() }
         case .calendarSettings:
@@ -344,6 +349,7 @@ enum DebugPreviewStub {
         case "settings-meal-times": return .settingsMealTimes
         case "settings-meal-times-weekends": return .settingsMealTimesWeekends
         case "settings-foods": return .settingsFoods
+        case "settings-saved-meals": return .settingsSavedMeals
         case "settings-health", "settings-health-write": return .settingsHealthWrite
         case "settings-account": return .settingsAccount
         case "settings-delete": return .settingsDelete

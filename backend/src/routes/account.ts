@@ -110,6 +110,7 @@ const settingsPatch = z
         askDaily: z.boolean().optional(),
       })
       .optional(),
+    displayName: z.string().trim().max(80).nullable().optional(),
   })
   .refine((p) => Object.keys(p).length > 0, { message: 'no changes provided' });
 

@@ -19,7 +19,7 @@ struct DayOrbsCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Headline(headline, tail: subline, size: 26)
+            Headline(headline, tail: subline, size: 26, persistTail: true)
 
             HStack(alignment: .top, spacing: 0) {
                 ForEach(Array(stations.enumerated()), id: \.element.id) { index, station in
@@ -34,7 +34,7 @@ struct DayOrbsCard: View {
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(PressableCard())
-                    .accessibilityLabel("\(station.accessibilityTitle), \(station.kcalConsumed) of \(station.kcalTarget) kilocalories, \(station.kindLabel)")
+                    .accessibilityLabel(L10n("\(station.accessibilityTitle), \(station.kcalConsumed) of \(station.kcalTarget) kilocalories, \(station.kindLabel)"))
                 }
             }
 
@@ -96,20 +96,21 @@ struct DayOrbsCard: View {
     private func letter(_ station: WeekStation) -> String {
         guard let date = WeekStation.parse(station.date) else { return "" }
         var calendar = Calendar(identifier: .gregorian)
+        calendar.locale = AppLanguage.current.locale
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!
         return calendar.veryShortWeekdaySymbols[calendar.component(.weekday, from: date) - 1]
     }
 
     private var headline: String {
-        guard let gap, gap.totalDays > 0 else { return "Week one." }
-        return "\(gap.closedDays) of \(gap.totalDays) days closed."
+        guard let gap, gap.totalDays > 0 else { return L10n( "Week one.") }
+        return L10n( "\(gap.closedDays) of \(gap.totalDays) days closed.")
     }
 
     private var subline: String {
-        guard let gap, gap.totalDays > 0 else { return "Your first day settles tonight." }
-        if gap.closedDays == gap.totalDays { return "Every day hit its target." }
-        if let short = gap.avgShortfallKcal { return "Short days ran \(short.formatted()) under." }
-        return "Keep closing the gap."
+        guard let gap, gap.totalDays > 0 else { return L10n( "Your first day settles tonight.") }
+        if gap.closedDays == gap.totalDays { return L10n( "Every day hit its target.") }
+        if let short = gap.avgShortfallKcal { return L10n( "Short days ran \(short.formatted()) under.") }
+        return L10n( "Keep closing the gap.")
     }
 }
 
@@ -132,7 +133,7 @@ struct LandedCard: View {
             HStack {
                 Text("How meals landed").sectionLabelStyle()
                 Spacer()
-                Text(record.checkIns == 0 ? "NO CHECK-INS" : "\(record.checkIns) CHECK-IN\(record.checkIns == 1 ? "" : "S")")
+                Text(record.checkIns == 0 ? L10n("NO CHECK-INS") : record.checkIns == 1 ? L10n("1 CHECK-IN") : L10n("\(record.checkIns) CHECK-INS"))
                     .font(Typography.mono(11))
                     .foregroundStyle(Palette.inkFaint)
             }
@@ -142,9 +143,9 @@ struct LandedCard: View {
             }
 
             HStack(alignment: .top, spacing: 8) {
-                stat(record.onTime, "on time", tint: Palette.amber) { Circle().fill(Palette.amber) }
-                stat(record.afterCheckIn, "after a nudge", tint: Palette.ink) { Circle().strokeBorder(Palette.amber, lineWidth: 1.5) }
-                stat(record.missed, "missed", tint: Palette.inkSoft) {
+                stat(record.onTime, L10n("on time"), tint: Palette.amber) { Circle().fill(Palette.amber) }
+                stat(record.afterCheckIn, L10n("after a nudge"), tint: Palette.ink) { Circle().strokeBorder(Palette.amber, lineWidth: 1.5) }
+                stat(record.missed, L10n("missed"), tint: Palette.inkSoft) {
                     Capsule().fill(Color.white.opacity(0.35)).frame(height: 2)
                 }
             }
@@ -163,7 +164,7 @@ struct LandedCard: View {
         VStack(alignment: .leading, spacing: 10) {
             ForEach(Array(Self.slots.enumerated()), id: \.offset) { slotIndex, title in
                 HStack(spacing: 10) {
-                    Text(title)
+                    Text(LocalizedStringKey(title))
                         .font(Typography.data(12, weight: .regular))
                         .foregroundStyle(Palette.inkSoft)
                         .frame(width: 66, alignment: .leading)
@@ -189,7 +190,7 @@ struct LandedCard: View {
             }
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("This week: \(record.onTime) meals on time, \(record.afterCheckIn) after a nudge, \(record.missed) missed")
+        .accessibilityLabel(L10n("This week: \(record.onTime) meals on time, \(record.afterCheckIn) after a nudge, \(record.missed) missed"))
     }
 
     @ViewBuilder
@@ -225,19 +226,19 @@ struct LandedCard: View {
     }
 
     private func patternCallout(_ pattern: SettlementResponse.Record.Pattern) -> some View {
-        let title = MealSlot(rawValue: pattern.slot)?.title ?? "A meal"
+        let title = MealSlot(rawValue: pattern.slot)?.title ?? L10n("A meal")
         return HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 3) {
-                Text("\(title) ran late \(pattern.lateDays) of \(pattern.ofDays) workdays.")
+                Text(L10n("\(title) ran late \(pattern.lateDays) of \(pattern.ofDays) workdays."))
                     .font(Typography.data(14, weight: .regular))
                     .foregroundStyle(Palette.ink)
                     .fixedSize(horizontal: false, vertical: true)
                 if patternApplied {
-                    Text("Expecting it at \(clock24(pattern.suggestedMin)) now.")
+                    Text(L10n("Expecting it at \(clock24(pattern.suggestedMin)) now."))
                         .font(Typography.data(12, weight: .regular))
                         .foregroundStyle(Palette.inkSoft)
                 } else {
-                    Button("Keep \(clock24(pattern.currentMin))", action: onKeep)
+                    Button(L10n("Keep \(clock24(pattern.currentMin))"), action: onKeep)
                         .font(Typography.data(12, weight: .regular))
                         .foregroundStyle(Palette.inkSoft)
                         .buttonStyle(.plain)
@@ -245,7 +246,7 @@ struct LandedCard: View {
             }
             Spacer(minLength: 8)
             Button(action: onApply) {
-                BusyLabel(title: patternApplied ? "Moved" : "Move to \(clock24(pattern.suggestedMin))", busy: patternBusy, tint: Palette.onBone)
+                BusyLabel(title: patternApplied ? L10n("Moved") : L10n("Move to \(clock24(pattern.suggestedMin))"), busy: patternBusy, tint: Palette.onBone)
                     .font(Typography.data(13, weight: .medium))
                     .foregroundStyle(patternApplied ? Palette.positive : Palette.onBone)
                     .padding(.horizontal, 14)
@@ -270,6 +271,7 @@ struct LandedCard: View {
     private func letter(_ iso: String) -> String {
         guard let date = WeekStation.parse(iso) else { return "" }
         var calendar = Calendar(identifier: .gregorian)
+        calendar.locale = AppLanguage.current.locale
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!
         return calendar.veryShortWeekdaySymbols[calendar.component(.weekday, from: date) - 1]
     }
@@ -471,14 +473,14 @@ struct WeightJourneyCard: View {
     // MARK: Copy
 
     private var label: String {
-        let word = goal.status == "reached" ? "Reached" : rising ? "Gaining" : "Losing"
+        let word = goal.status == "reached" ? L10n("Reached") : rising ? L10n("Gaining") : L10n("Losing")
         guard let target = goal.targetWeightKg else { return word }
-        return "\(word) · to \(massUnit.formatKg(target))"
+        return L10n( "\(word) · to \(massUnit.formatKg(target))")
     }
 
     private var toGoLine: String? {
         guard goal.status != "reached", let remaining = goal.remainingKg else { return nil }
-        return "\(massUnit.number(abs(remaining), digits: 1 ... 1)) to go"
+        return L10n( "\(massUnit.number(abs(remaining), digits: 1 ... 1)) to go")
     }
 
     /// Kg a week from the first to the last weigh-in, once they're a week apart.
@@ -489,29 +491,31 @@ struct WeightJourneyCard: View {
         guard weeks >= 1 else { return nil }
         let rate = massUnit.fromKg((last.1 - first.1) / weeks)
         let digits = massUnit == .lb ? 1 : 2
-        return "\(rate >= 0 ? "+" : "−")\(abs(rate).formatted(.number.precision(.fractionLength(digits)))) / WK NOW"
+        let sign = rate >= 0 ? "+" : "−"
+        let value = abs(rate).formatted(.number.precision(.fractionLength(digits)))
+        return L10n( "\(sign)\(value) / WK NOW")
     }
 
     private var statusLine: String? {
         switch goal.status {
-        case "ahead": return "AHEAD OF PLAN"
-        case "on_pace": return "ON PACE"
-        case "behind": return "BEHIND PLAN"
-        case "reached": return "TARGET REACHED"
-        default: return goal.needsWeighIn ? "WEIGH-IN DUE" : nil
+        case "ahead": return L10n( "AHEAD OF PLAN")
+        case "on_pace": return L10n( "ON PACE")
+        case "behind": return L10n( "BEHIND PLAN")
+        case "reached": return L10n( "TARGET REACHED")
+        default: return goal.needsWeighIn ? L10n( "WEIGH-IN DUE") : nil
         }
     }
 
     private var etaCaption: String? {
         guard goal.status != "reached", let weeks = goal.etaWeeks, weeks > 0 else { return nil }
-        return weeks == 1 ? "~1 WEEK TO GO" : "~\(weeks) WEEKS TO GO"
+        return weeks == 1 ? L10n( "~1 WEEK TO GO") : L10n( "~\(weeks) WEEKS TO GO")
     }
 
     private var accessibility: String {
         var parts = ["Weight \(goal.currentWeightKg.map { massUnit.number($0, digits: 1 ... 1) } ?? "unknown") \(massUnit.spokenName)"]
         if let left = toGoLine { parts.append(left) }
         if let status = statusLine { parts.append(status.lowercased()) }
-        parts.append("Log a weigh-in")
+        parts.append(L10n("Log a weigh-in"))
         return parts.joined(separator: ". ")
     }
 }
@@ -531,8 +535,8 @@ struct TargetReviewCard: View {
         let rate = massUnit.fromKg(abs(review.trendKgPerWeek))
         let digits = massUnit == .lb ? 1 : 2
         let amount = "\(rate.formatted(.number.precision(.fractionLength(digits)))) \(massUnit.abbreviation) a week"
-        if rate < 0.005 { return "weight holding steady" }
-        return review.trendKgPerWeek > 0 ? "gaining \(amount)" : "losing \(amount)"
+        if rate < 0.005 { return L10n( "weight holding steady") }
+        return review.trendKgPerWeek > 0 ? L10n("gaining \(amount)") : L10n("losing \(amount)")
     }
 
     var body: some View {
@@ -543,7 +547,7 @@ struct TargetReviewCard: View {
                     .font(Typography.mono(22))
                     .foregroundStyle(Palette.inkFaint)
                     .strikethrough(color: Color.white.opacity(0.3))
-                Image(systemName: "arrow.right")
+                Image(systemName: "arrow.forward")
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(Palette.amber)
                 Text(review.proposedKcal.formatted())
@@ -554,17 +558,17 @@ struct TargetReviewCard: View {
                     .foregroundStyle(Palette.inkSoft)
             }
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("From \(review.previousKcal) to \(review.proposedKcal) kilocalories a day")
+            .accessibilityLabel(L10n("From \(review.previousKcal) to \(review.proposedKcal) kilocalories a day"))
             Text(review.reason)
                 .font(Typography.data(15, weight: .regular))
                 .foregroundStyle(Palette.ink)
                 .fixedSize(horizontal: false, vertical: true)
-            Text("Based on \(review.weighInCount) weigh-ins · \(trendLine)")
+            Text(L10n("Based on \(review.weighInCount) weigh-ins · \(trendLine)"))
                 .font(Typography.mono(11))
                 .foregroundStyle(Palette.inkFaint)
             HStack(spacing: 8) {
                 Button(action: onAccept) {
-                    BusyLabel(title: review.deltaKcal >= 0 ? "Raise it" : "Lower it", busy: busy, tint: Palette.onBone)
+                    BusyLabel(title: review.deltaKcal >= 0 ? L10n("Raise it") : L10n("Lower it"), busy: busy, tint: Palette.onBone)
                         .font(Typography.data(15, weight: .medium))
                         .foregroundStyle(Palette.onBone)
                         .frame(maxWidth: .infinity, minHeight: 46)
@@ -573,7 +577,7 @@ struct TargetReviewCard: View {
                 .buttonStyle(PressableCard())
                 .disabled(busy)
                 Button(action: onLater) {
-                    Text("Keep \(review.previousKcal.formatted())")
+                    Text(L10n("Keep \(review.previousKcal.formatted())"))
                         .font(Typography.data(15, weight: .regular))
                         .foregroundStyle(Palette.ink)
                         .frame(maxWidth: .infinity, minHeight: 46)
@@ -648,7 +652,7 @@ struct WeighInSheet: View {
             if let lastKg {
                 let lastDisplay = MassUnit.current.fromKg(lastKg)
                 let delta = value - lastDisplay
-                Text(abs(delta) < 0.05 ? "Same as last time" : "\(delta > 0 ? "+" : "−")\(oneDecimal(abs(delta))) \(MassUnit.current.abbreviation) since last time")
+                Text(abs(delta) < 0.05 ? L10n("Same as last time") : L10n("\(delta > 0 ? "+" : "−")\(oneDecimal(abs(delta))) \(MassUnit.current.abbreviation) since last time"))
                     .font(Typography.data(13, weight: .regular))
                     .foregroundStyle(Palette.inkSoft)
                     .frame(maxWidth: .infinity)

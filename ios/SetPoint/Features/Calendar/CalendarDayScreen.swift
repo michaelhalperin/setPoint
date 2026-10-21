@@ -22,7 +22,7 @@ struct CalendarDayView: View {
 
             if let week { dayStrip(week).appearIn(0) }
 
-            Headline("\(CalendarDates.longWeekday(weekday)).", tail: tail(day), size: 32)
+            Headline("\(CalendarDates.longWeekday(weekday)).", tail: tail(day), size: 32, persistTail: true)
                 .appearIn(0, rise: 16)
 
             allDayChips(events.filter(\.allDay), weekday: weekday)
@@ -51,15 +51,15 @@ struct CalendarDayView: View {
     }
 
     private func tail(_ day: CalendarWeekResponse.Day?) -> String {
-        guard let day else { return "Nothing planned." }
+        guard let day else { return L10n( "Nothing planned.") }
         let moved = day.meals.filter(\.moved)
         if !moved.isEmpty {
-            return moved.map { "\(CalendarCopy.slotName($0.slot)) moves to \(CalendarClock.hm($0.atMin))" }.joined(separator: ", ") + "."
+            return moved.map { L10n("\(CalendarCopy.slotName($0.slot)) moves to \(CalendarClock.hm($0.atMin))") }.joined(separator: ", ") + "."
         }
         if let kept = day.meals.first(where: \.kept) {
-            return "\(CalendarCopy.slotName(kept.slot)) stays at \(CalendarClock.hm(kept.usualMin))."
+            return L10n( "\(CalendarCopy.slotName(kept.slot)) stays at \(CalendarClock.hm(kept.usualMin)).")
         }
-        return "Nothing moves."
+        return L10n( "Nothing moves.")
     }
 
     private func dayStrip(_ week: CalendarWeekResponse) -> some View {
@@ -86,7 +86,7 @@ struct CalendarDayView: View {
                 }
                 .buttonStyle(PressableCard())
                 .frame(maxWidth: .infinity)
-                .accessibilityLabel(CalendarDates.longWeekday(d.weekday) + (lit ? ", a meal moves" : ""))
+                .accessibilityLabel(CalendarDates.longWeekday(d.weekday) + (lit ? L10n(", a meal moves") : ""))
                 .accessibilityAddTraits(selected ? .isSelected : [])
             }
         }
@@ -99,7 +99,7 @@ struct CalendarDayView: View {
         return (day?.blocks ?? []).enumerated().map { index, block in
             CalendarDayEvent(
                 id: "block-\(index)",
-                title: "Busy",
+                title: L10n("Busy"),
                 calendar: "",
                 startMin: block.startMin,
                 endMin: block.endMin,
@@ -130,7 +130,7 @@ struct CalendarDayView: View {
                         Text(event.title)
                             .font(Typography.data(13, weight: .regular))
                             .foregroundStyle(counts ? Palette.ink : Palette.inkSoft)
-                        Text(CalendarRules.label(verdict(event, weekday: weekday)) ?? "all day")
+                        Text(CalendarRules.label(verdict(event, weekday: weekday)) ?? L10n("all day"))
                             .font(Typography.mono(10))
                             .foregroundStyle(Palette.inkFaint)
                     }
@@ -154,8 +154,8 @@ struct CalendarDayView: View {
         let actionable = day.date >= today && meal.status == "upcoming"
         return VStack(alignment: .leading, spacing: 8) {
             Text(meal.kept
-                ? "\(CalendarCopy.slotName(meal.slot)) kept at \(CalendarClock.hm(meal.usualMin))"
-                : "Why \(CalendarClock.hm(earlyMin))?")
+                ? L10n("\(CalendarCopy.slotName(meal.slot)) kept at \(CalendarClock.hm(meal.usualMin))")
+                : L10n("Why \(CalendarClock.hm(earlyMin))?"))
                 .font(Typography.data(15, weight: .medium))
                 .foregroundStyle(Palette.ink)
             Text(CalendarCopy.why(
@@ -167,7 +167,7 @@ struct CalendarDayView: View {
                 reason: meal.reason,
                 kept: meal.kept,
                 leadMin: env.calendar.leadMin
-            ) + " Titles stay on this phone.")
+            ) + " " + L10n("Titles stay on this phone."))
             .font(Typography.data(13, weight: .regular))
             .foregroundStyle(Palette.inkSoft)
             .fixedSize(horizontal: false, vertical: true)
@@ -193,13 +193,13 @@ struct CalendarDayView: View {
 
     private func nothingCard(events: [CalendarDayEvent], weekday: Int) -> some View {
         let reasons: String = events.isEmpty
-            ? "No busy time on your calendars."
+            ? L10n("No busy time on your calendars.")
             : events.map { event -> String in
                 switch verdict(event, weekday: weekday) {
-                case .counts: return "\(event.title) doesn’t touch a meal."
-                case .tooShort: return "\(event.title) is too short to count."
-                case .allDayOff: return "\(event.title) is all day, and all-day events are off."
-                case .weekend: return "\(event.title) is on a weekend, and weekend meals never move."
+                case .counts: return L10n( "\(event.title) doesn’t touch a meal.")
+                case .tooShort: return L10n( "\(event.title) is too short to count.")
+                case .allDayOff: return L10n( "\(event.title) is all day, and all-day events are off.")
+                case .weekend: return L10n( "\(event.title) is on a weekend, and weekend meals never move.")
                 }
             }.joined(separator: " ")
         return VStack(alignment: .leading, spacing: 8) {

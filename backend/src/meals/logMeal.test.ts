@@ -13,6 +13,7 @@ function fakePrisma() {
   const prescriptions: AnyRow[] = [];
   const savedMeals: AnyRow[] = [];
   const barcodeFoods: AnyRow[] = [];
+  const catalogFoods: AnyRow[] = [];
   let seq = 0;
 
   const match = (row: AnyRow, where: AnyRow = {}): boolean =>
@@ -60,13 +61,14 @@ function fakePrisma() {
   });
 
   return {
-    __tables: { meals, checkIns, escalationStates, prescriptions, savedMeals, barcodeFoods },
+    __tables: { meals, checkIns, escalationStates, prescriptions, savedMeals, barcodeFoods, catalogFoods },
     meal: coll(meals, 'm'),
     checkIn: coll(checkIns, 'ci'),
     escalationState: coll(escalationStates, 'es'),
     prescription: coll(prescriptions, 'rx'),
     savedMeal: coll(savedMeals, 'sm'),
     barcodeFood: coll(barcodeFoods, 'bf'),
+    catalogFood: coll(catalogFoods, 'cf'),
   };
 }
 
@@ -254,6 +256,46 @@ describe('logMeal', () => {
     expect(spy).not.toHaveBeenCalled();
     expect(fetchProduct).not.toHaveBeenCalled();
     expect(prisma.__tables.meals[0]?.items).toMatchObject([{ name: 'Greek yogurt', quantity: '2 servings', kcal: 340 }]);
+  });
+
+  it('logs a catalog food without calling the parser', async () => {
+    const prisma = fakePrisma();
+    prisma.__tables.catalogFoods.push({
+      id: 'cf_chicken',
+      fdcId: 171077,
+      name: 'Chicken breast, roasted',
+      category: 'Poultry',
+      servingG: 85,
+      servingDesc: '3 oz',
+      kcal100g: 165,
+      proteinG100g: 31,
+      carbsG100g: 0,
+      fatG100g: 3.6,
+      dataType: 'sr_legacy',
+    });
+    const spy = vi.fn(parser);
+    const res = await logMeal({ prisma: prisma as unknown as PrismaClient, parseMeal: spy }, 'u1', {
+      catalogId: 'cf_chicken',
+      grams: 85,
+    });
+    expect(res.meal.source).toBe('CATALOG');
+    expect(res.meal.kcal).toBe(140);
+    expect(spy).not.toHaveBeenCalled();
+    expect(prisma.__tables.meals[0]?.items).toMatchObject([
+      { name: 'Chicken breast, roasted', quantity: '85 g', kcal: 140 },
+    ]);
+  });
+
+  it('rejects an unknown catalog food without parsing', async () => {
+    const prisma = fakePrisma();
+    const spy = vi.fn(parser);
+    await expect(
+      logMeal({ prisma: prisma as unknown as PrismaClient, parseMeal: spy }, 'u1', {
+        catalogId: 'missing',
+      }),
+    ).rejects.toBeInstanceOf(EmptyMealError);
+    expect(spy).not.toHaveBeenCalled();
+    expect(prisma.__tables.meals).toHaveLength(0);
   });
 
   it('rejects an unknown barcode without parsing', async () => {

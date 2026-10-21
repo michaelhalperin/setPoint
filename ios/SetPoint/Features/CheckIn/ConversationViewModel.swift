@@ -41,7 +41,7 @@ final class ConversationViewModel {
             apply(res)
             phase = .ready
         } catch {
-            phase = .failed(UserFacingError.message(for: error, fallback: "Couldn't load. Try again."))
+            phase = .failed(UserFacingError.message(for: error, fallback: L10n( "Couldn't load. Try again.")))
         }
     }
 
@@ -80,7 +80,7 @@ final class ConversationViewModel {
         } catch {
             messages.removeAll { $0.role == "user" && $0.content == text && $0.at == nil }
             draft = text
-            sendError = UserFacingError.message(for: error, fallback: "Couldn't send. Try again.")
+            sendError = UserFacingError.message(for: error, fallback: L10n( "Couldn't send. Try again."))
         }
     }
 
@@ -107,27 +107,27 @@ final class ConversationViewModel {
             resolved = res.resolved
             pendingProposal = nil
         } catch {
-            sendError = UserFacingError.message(for: error, fallback: "Couldn't apply that change.")
+            sendError = UserFacingError.message(for: error, fallback: L10n( "Couldn't apply that change."))
         }
     }
 
     /// A short line describing where the conversation landed (shown once resolved).
     var outcomeSummary: String? {
         switch outcome {
-        case "ADJUST_PLAN", "EASE_TARGET": return "Target lowered. Undo anytime in Goal settings."
-        case "DELAY_CHECKINS": return "Meal times shifted 30 minutes later."
-        case "PAUSE_CHECKINS": return "Resume anytime in Settings."
-        case "SUGGEST_PROFESSIONAL": return "Check-ins paused. Resume anytime in Settings."
+        case "ADJUST_PLAN", "EASE_TARGET": return L10n( "Target lowered. Undo anytime in Goal settings.")
+        case "DELAY_CHECKINS": return L10n( "Meal times shifted 30 minutes later.")
+        case "PAUSE_CHECKINS": return L10n( "Resume anytime in Settings.")
+        case "SUGGEST_PROFESSIONAL": return L10n( "Check-ins paused. Resume anytime in Settings.")
         default: return resolved ? "Done." : nil
         }
     }
 
     var outcomeTitle: String {
         switch outcome {
-        case "ADJUST_PLAN", "EASE_TARGET": return "Plan eased"
-        case "DELAY_CHECKINS": return "Check-ins moved later"
-        case "PAUSE_CHECKINS": return "Check-ins paused"
-        case "SUGGEST_PROFESSIONAL": return "Extra support"
+        case "ADJUST_PLAN", "EASE_TARGET": return L10n( "Plan eased")
+        case "DELAY_CHECKINS": return L10n( "Check-ins moved later")
+        case "PAUSE_CHECKINS": return L10n( "Check-ins paused")
+        case "SUGGEST_PROFESSIONAL": return L10n( "Extra support")
         default: return "Sorted"
         }
     }

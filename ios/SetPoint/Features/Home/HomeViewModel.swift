@@ -18,6 +18,7 @@ final class HomeViewModel {
     private var loadedAt: Date?
     /// Debug previews show sample data and never touch the network.
     private var isPreview = false
+    private static let ignoredCheckInKey = "com.setpoint.app.ignoredCheckInID"
 
     private let api: APIClient
     private let onUnauthorized: @MainActor () -> Void
@@ -38,7 +39,7 @@ final class HomeViewModel {
         if showSpinner { phase = .loading }
         do {
             await OfflineMealQueue.flush(using: api)
-            let home: HomeResponse = try await api.get("/api/home")
+            let home = withoutIgnoredCheckIn(try await api.get("/api/home"))
             phase = .loaded(home)
             loadedAt = Date()
             staleSince = nil
@@ -87,8 +88,16 @@ final class HomeViewModel {
     }
 
     func restore(_ home: HomeResponse) {
-        phase = .loaded(home)
+        phase = .loaded(withoutIgnoredCheckIn(home))
         TodaySnapshotSync.write(home: home)
+    }
+
+    func ignoreCheckIn(_ id: String) {
+        UserDefaults.standard.set(id, forKey: Self.ignoredCheckInKey)
+        _ = applyNow { home in
+            guard home.activeCheckIn?.id == id else { return home }
+            return home.closingCheckIn
+        }
     }
 
     func applyLoggedMeal(_ meal: MealSummary, slot: MealSlot) {
@@ -98,8 +107,14 @@ final class HomeViewModel {
         TodaySnapshotSync.write(home: updated)
     }
 
+    private func withoutIgnoredCheckIn(_ home: HomeResponse) -> HomeResponse {
+        let ignored = UserDefaults.standard.string(forKey: Self.ignoredCheckInKey)
+        guard let ignored, home.activeCheckIn?.id == ignored else { return home }
+        return home.closingCheckIn
+    }
+
     private func message(for error: Error) -> String {
-        UserFacingError.message(for: error, fallback: "Couldn’t load today.")
+        UserFacingError.message(for: error, fallback: L10n( "Couldn’t load today."))
     }
 
     #if DEBUG

@@ -478,7 +478,7 @@ details summary { cursor: pointer; color: var(--soft); }
   }
 
   // ---------- meals ----------
-  var SOURCES = [['', 'Any way'], ['TEXT', 'Typed'], ['PHOTO', 'Photo'], ['SAVED', 'Usual'], ['BARCODE', 'Barcode'], ['PRESCRIPTION', 'Check-in plate']];
+  var SOURCES = [['', 'Any way'], ['TEXT', 'Typed'], ['PHOTO', 'Photo'], ['SAVED', 'Usual'], ['BARCODE', 'Barcode'], ['CATALOG', 'Foods'], ['PRESCRIPTION', 'Check-in plate']];
   function sourceLabel(src) { for (var i = 0; i < SOURCES.length; i++) if (SOURCES[i][0] === src) return SOURCES[i][1]; return src; }
 
   function openPerson(id) { state.person = id; renderShell(); window.scrollTo(0, 0); }

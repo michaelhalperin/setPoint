@@ -16,7 +16,7 @@ struct StepTitle: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(label).sectionLabelStyle()
+            Text(LocalizedStringKey(label)).sectionLabelStyle()
             Headline(text, tail: tail, size: size)
             if let detail {
                 Text(detail)
@@ -54,11 +54,11 @@ struct OptionRow: View {
                         .background(Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                 }
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(title)
+                    Text(LocalizedStringKey(title))
                         .font(Typography.data(16, weight: .medium))
                         .foregroundStyle(Palette.ink)
                     if let detail {
-                        Text(detail)
+                        Text(LocalizedStringKey(detail))
                             .font(Typography.data(13, weight: .regular))
                             .foregroundStyle(Palette.inkSoft)
                             .fixedSize(horizontal: false, vertical: true)
@@ -115,7 +115,7 @@ struct StepCircle: View {
         }
         .buttonStyle(PressableCard())
         .disabled(!enabled)
-        .accessibilityLabel(label)
+        .accessibilityLabel(LocalizedStringKey(label))
     }
 }
 
@@ -133,11 +133,11 @@ struct StepperRow: View {
     var body: some View {
         HStack(spacing: 10) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(name)
+                Text(LocalizedStringKey(name))
                     .font(Typography.data(15, weight: .regular))
                     .foregroundStyle(Palette.ink)
                 if let note {
-                    Text(note)
+                    Text(LocalizedStringKey(note))
                         .font(Typography.data(12, weight: .regular))
                         .foregroundStyle(Palette.inkFaint)
                 }
@@ -195,11 +195,11 @@ struct ToggleRow: View {
     var body: some View {
         Toggle(isOn: $isOn) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(title)
+                Text(LocalizedStringKey(title))
                     .font(Typography.data(15, weight: .regular))
                     .foregroundStyle(Palette.ink)
                 if let detail {
-                    Text(detail)
+                    Text(LocalizedStringKey(detail))
                         .font(Typography.data(12, weight: .regular))
                         .foregroundStyle(Palette.inkSoft)
                 }

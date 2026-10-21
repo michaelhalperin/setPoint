@@ -25,18 +25,23 @@ enum MassUnit: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .kg: return "Kilograms"
-        case .lb: return "Pounds"
+        case .kg: return L10n( "Kilograms")
+        case .lb: return L10n( "Pounds")
         }
     }
 
-    var abbreviation: String { rawValue }
+    var abbreviation: String {
+        switch self {
+        case .kg: return L10n("kg")
+        case .lb: return L10n("lb")
+        }
+    }
 
     /// For VoiceOver: "72 kilograms".
     var spokenName: String {
         switch self {
-        case .kg: return "kilograms"
-        case .lb: return "pounds"
+        case .kg: return L10n( "kilograms")
+        case .lb: return L10n( "pounds")
         }
     }
 

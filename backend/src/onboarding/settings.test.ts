@@ -66,6 +66,8 @@ function fakePrisma(user: AnyRow | null) {
 
 const onboardedUser = (): AnyRow => ({
   id: 'u1',
+  email: 'alex@example.com',
+  displayName: 'Alex',
   timezone: 'America/New_York',
   onboarding: {
     goal: 'DIET',
@@ -87,6 +89,8 @@ describe('settings', () => {
   it('returns the current settings view', async () => {
     const view = await getSettings({ prisma: fakePrisma(onboardedUser()) }, 'u1');
     expect(view).toMatchObject({
+      email: 'alex@example.com',
+      displayName: 'Alex',
       goal: 'DIET',
       dailyKcalTarget: 2200,
       quietHours: { startMin: 1380, endMin: 420 },
@@ -180,6 +184,14 @@ describe('settings', () => {
       fat: false,
       bodyMass: true,
     });
+  });
+
+  it('stores a display name', async () => {
+    const prisma = fakePrisma(onboardedUser());
+    const view = await updateSettings({ prisma }, 'u1', { displayName: '  Sam  ' });
+    expect(view.displayName).toBe('Sam');
+    const cleared = await updateSettings({ prisma }, 'u1', { displayName: '' });
+    expect(cleared.displayName).toBeNull();
   });
 
   it('stores training toggles', async () => {

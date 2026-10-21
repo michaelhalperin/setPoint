@@ -71,7 +71,7 @@ struct OrderNearbyView: View {
             ScreenHeader(label: "Order nearby")
 
             VStack(alignment: .leading, spacing: 8) {
-                Headline(headline, tail: tail, size: 34)
+                Headline(headline, tail: tail, size: 34, persistTail: (isLogged && leftKcal <= 60) || swapped)
                     .contentTransition(.opacity)
                 Text(metaLine)
                     .font(Typography.mono(10))
@@ -169,13 +169,13 @@ struct OrderNearbyView: View {
     private var leftKcal: Int { max(0, gapKcal - loggedKcal) }
 
     private var headline: String {
-        guard isLogged else { return "\(gapKcal.formatted()) kcal to go." }
+        guard isLogged else { return L10n( "\(gapKcal.formatted()) kcal to go.") }
         return leftKcal > 60 ? "\(leftKcal.formatted()) kcal to go." : "\(slotTitle) covered."
     }
 
     private var tail: String {
         if isLogged { return leftKcal > 60 ? "A snack later covers it." : "That’s the gap closed." }
-        guard currentHero != nil else { return "Let’s see what’s near you." }
+        guard currentHero != nil else { return L10n( "Let’s see what’s near you.") }
         return swapped ? "Good swap." : "This one fills it."
     }
 
@@ -193,12 +193,12 @@ struct OrderNearbyView: View {
     private func fitLabel(_ dish: NearbyResponse.Dish) -> String {
         let diff = dish.kcal - gapKcal
         if abs(diff) <= 60 { return "FILLS IT" }
-        if diff < 0 { return "COVERS \(Int((Double(dish.kcal) / Double(max(gapKcal, 1)) * 100).rounded()))%" }
-        return "FILLS IT · +\(diff.formatted())"
+        if diff < 0 { return L10n( "COVERS \(Int((Double(dish.kcal) / Double(max(gapKcal, 1)) * 100).rounded()))%") }
+        return L10n( "FILLS IT · +\(diff.formatted())")
     }
 
     private func why(_ dish: NearbyResponse.Dish) -> String {
-        if isLogged { return "Logged as \(slotTitle.lowercased()). It’s on Today with its calories and protein." }
+        if isLogged { return L10n( "Logged as \(slotTitle.lowercased()). It’s on Today with its calories and protein.") }
         if swapped {
             return dish.kcal - gapKcal < -60 ? "Your swap. A snack later covers the rest." : "Your swap. Close enough to the gap."
         }
@@ -235,6 +235,7 @@ struct OrderNearbyView: View {
                 Text("Tap one to swap it in")
                     .font(Typography.data(12, weight: .regular))
                     .foregroundStyle(Palette.inkFaint)
+                    .hintCopy()
             }
             .padding(.horizontal, 4)
             .padding(.top, 4)
@@ -319,7 +320,7 @@ struct OrderNearbyView: View {
                         .tracking(-0.4)
                         .foregroundStyle(Palette.ink)
                         .fixedSize(horizontal: false, vertical: true)
-                    Text("About \(idea.kcal.formatted()) kcal · \(Int(idea.proteinG.rounded())) g protein")
+                    Text(L10n("About \(idea.kcal.formatted()) kcal · \(Int(idea.proteinG.rounded())) g protein"))
                         .font(Typography.data(13, weight: .regular))
                         .foregroundStyle(Palette.inkSoft)
                 }
@@ -344,7 +345,7 @@ struct OrderNearbyView: View {
                 Text(idea.name)
                     .font(Typography.data(14, weight: .regular))
                     .foregroundStyle(Palette.ink)
-                Text("About \(idea.kcal.formatted()) kcal · \(Int(idea.proteinG.rounded())) g protein")
+                Text(L10n("About \(idea.kcal.formatted()) kcal · \(Int(idea.proteinG.rounded())) g protein"))
                     .font(Typography.data(12, weight: .regular))
                     .foregroundStyle(Palette.inkFaint)
             }
@@ -475,7 +476,7 @@ struct OrderNearbyView: View {
                     .tracking(-0.8)
                     .foregroundStyle(Palette.ink)
                     .contentTransition(.numericText())
-                Text("OF \(gapKcal.formatted())")
+                Text(L10n("OF \(gapKcal.formatted())"))
                     .font(Typography.mono(9))
                     .tracking(1.2)
                     .foregroundStyle(Palette.inkFaint)
@@ -628,7 +629,7 @@ struct OrderNearbyView: View {
             case .back:
                 VStack(alignment: .leading, spacing: 12) {
                     (Text("Back from Wolt. ").foregroundColor(Palette.ink)
-                        + Text("Did you order the \(hero.dish.name)?").foregroundColor(Palette.inkSoft))
+                        + Text(L10n("Did you order the \(hero.dish.name)?")).foregroundColor(Palette.inkSoft))
                         .font(Typography.data(15, weight: .regular))
                         .fixedSize(horizontal: false, vertical: true)
                     HStack(spacing: 8) {
@@ -663,7 +664,7 @@ struct OrderNearbyView: View {
             case .logged:
                 HStack(spacing: 10) {
                     Image(systemName: "checkmark").font(.system(size: 14, weight: .bold))
-                    Text("Logged · \(hero.dish.kcal.formatted()) kcal")
+                    Text(L10n("Logged · \(hero.dish.kcal.formatted()) kcal"))
                         .font(Typography.data(14, weight: .regular))
                     Spacer(minLength: 8)
                     Button("Undo") { Task { await undo() } }
@@ -754,7 +755,7 @@ struct OrderNearbyView: View {
             env.changes.mealsChanged()
             onLogged()
         } catch {
-            flash(UserFacingError.message(for: error, fallback: "Couldn’t log it. Try again."))
+            flash(UserFacingError.message(for: error, fallback: L10n( "Couldn’t log it. Try again.")))
         }
     }
 
@@ -766,7 +767,7 @@ struct OrderNearbyView: View {
                 env.changes.mealsChanged()
                 onLogged()
             } catch {
-                flash(UserFacingError.message(for: error, fallback: "Couldn’t undo. Try again."))
+                flash(UserFacingError.message(for: error, fallback: L10n( "Couldn’t undo. Try again.")))
                 return
             }
         }
@@ -803,7 +804,7 @@ struct OrderNearbyView: View {
         } catch LocationOnce.Failure.unavailable {
             phase = .failed("Couldn’t get your location. Check that Location Services are on.")
         } catch {
-            phase = .failed(UserFacingError.message(for: error, fallback: "Try again in a moment."))
+            phase = .failed(UserFacingError.message(for: error, fallback: L10n( "Try again in a moment.")))
         }
     }
 }

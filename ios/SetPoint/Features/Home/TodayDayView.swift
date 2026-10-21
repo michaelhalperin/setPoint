@@ -21,7 +21,7 @@ struct TodayDayView: View {
             ScreenHeader(label: "Today · \(date.formatted(.dateTime.day().month(.abbreviated)))")
 
             VStack(alignment: .leading, spacing: 10) {
-                Headline(title, tail: tail, size: 38)
+                Headline(title, tail: tail, size: 38, persistTail: !home.enforcementEnabled || home.framing.state == "under")
                     .appearIn(0, rise: 16)
                 progressBar
                     .appearIn(1)
@@ -49,9 +49,9 @@ struct TodayDayView: View {
     }
 
     private var tail: String {
-        if !home.enforcementEnabled { return "No targets today." }
-        if home.framing.state != "under" { return "That’s the whole job." }
-        return "\(max(0, home.ledger.remainingKcal).formatted()) to go."
+        if !home.enforcementEnabled { return L10n( "No targets today.") }
+        if home.framing.state != "under" { return L10n( "That’s the whole job.") }
+        return L10n( "\(max(0, home.ledger.remainingKcal).formatted()) to go.")
     }
 
     private var progressBar: some View {

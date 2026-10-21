@@ -84,7 +84,7 @@ struct RefuelSheet: View {
             }
 
             ActionButton(title: "I had this", kind: .primary, action: onHadThis)
-            ActionButton(title: "Dinner at \(formatMinutes(dinnerMin)) covers it", kind: .secondary, action: onCoveredByDinner)
+            ActionButton(title: L10n("Dinner at \(formatMinutes(dinnerMin)) covers it"), kind: .secondary, action: onCoveredByDinner)
 
             Button("Not now", action: onDismiss)
                 .font(Typography.data(15, weight: .bold))

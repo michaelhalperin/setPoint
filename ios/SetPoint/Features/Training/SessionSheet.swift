@@ -18,10 +18,7 @@ enum TrainSheet: Identifiable {
 }
 
 private func sheetLabel(_ text: String) -> some View {
-    Text(text.uppercased())
-        .font(Typography.mono(11))
-        .tracking(1.3)
-        .foregroundStyle(Palette.inkFaint)
+    Text(LocalizedStringKey(text)).sectionLabelStyle()
 }
 
 private func chipFill(_ on: Bool) -> some ShapeStyle {
@@ -34,7 +31,9 @@ private func foodKcal(kind: String, durationMin: Int, weightKg: Double) -> Int {
 
 private let lengthOptions = [30, 45, 60, 90, 120]
 
-private func lengthTitle(_ m: Int) -> String { m >= 120 && m % 60 == 0 ? "\(m / 60) h" : "\(m) min" }
+private func lengthTitle(_ m: Int) -> String {
+    m >= 120 && m % 60 == 0 ? L10n("\(m / 60) h") : L10n("\(m) min")
+}
 
 // MARK: - Plan a session
 
@@ -111,8 +110,8 @@ struct PlanSessionSheet: View {
     }
 
     private var saveTitle: String {
-        if inPast { return "Add session" }
-        return starts.count > 1 ? "Plan \(starts.count) sessions" : "Plan session"
+        if inPast { return L10n( "Add session") }
+        return starts.count > 1 ? L10n( "Plan \(starts.count) sessions") : L10n( "Plan session")
     }
 
     // MARK: What
@@ -155,7 +154,7 @@ struct PlanSessionSheet: View {
             HStack {
                 sheetLabel("Day")
                 Spacer()
-                Button(showCalendar ? "Hide calendar" : "Further ahead") {
+                Button(showCalendar ? L10n("Hide calendar") : L10n("Further ahead")) {
                     withAnimation(Motion.settle) { showCalendar.toggle() }
                 }
                 .font(Typography.data(13, weight: .medium))
@@ -187,7 +186,7 @@ struct PlanSessionSheet: View {
         let today = Calendar.current.isDateInToday(day)
         return Button { setDay(day) } label: {
             VStack(spacing: 4) {
-                Text(today ? "TODAY" : day.formatted(.dateTime.weekday(.abbreviated)).uppercased())
+                Text(today ? L10n("TODAY") : day.formatted(.dateTime.weekday(.abbreviated).locale(AppLanguage.current.locale)).uppercased())
                     .font(Typography.mono(10))
                     .opacity(0.8)
                 Text(day.formatted(.dateTime.day()))
@@ -202,7 +201,7 @@ struct PlanSessionSheet: View {
             .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(on ? .clear : Color.white.opacity(0.08)))
         }
         .buttonStyle(PressableCard())
-        .accessibilityLabel("\(today ? "Today, " : "")\(day.formatted(.dateTime.weekday(.wide).day()))\(busy ? ", has a session" : "")")
+        .accessibilityLabel(L10n("\(today ? L10n("Today, ") : "")\(day.formatted(.dateTime.weekday(.wide).day().locale(AppLanguage.current.locale)))\(busy ? L10n(", has a session") : "")"))
         .accessibilityAddTraits(on ? .isSelected : [])
     }
 
@@ -244,7 +243,7 @@ struct PlanSessionSheet: View {
                 Button {
                     withAnimation(Motion.settle) { otherTime = true }
                 } label: {
-                    Text(otherTime ? trainClock(draft.start) : "Other…")
+                    Text(otherTime ? trainClock(draft.start) : L10n("Other…"))
                         .font(otherTime ? Typography.mono(13) : Typography.data(13, weight: .regular))
                         .foregroundStyle(otherTime ? Palette.onBone : Palette.ink)
                         .padding(.horizontal, 14)
@@ -311,14 +310,14 @@ struct PlanSessionSheet: View {
 
     /// Weekdays in the region's order (Sunday first in Israel).
     private var weekdayOrder: [Int] {
-        let first = Calendar.current.firstWeekday
+        let first = AppLanguage.current.calendar.firstWeekday
         return (0..<7).map { (first - 1 + $0) % 7 + 1 }
     }
 
     private func weekdayButton(_ weekday: Int) -> some View {
         let on = draft.repeatDays.contains(weekday)
-        let symbols = Calendar.current.veryShortStandaloneWeekdaySymbols
-        let names = Calendar.current.standaloneWeekdaySymbols
+        let symbols = AppLanguage.current.calendar.veryShortStandaloneWeekdaySymbols
+        let names = AppLanguage.current.calendar.standaloneWeekdaySymbols
         return Button {
             if on {
                 guard draft.repeatDays.count > 1 else { return }
@@ -337,16 +336,21 @@ struct PlanSessionSheet: View {
         }
         .buttonStyle(PressableCard())
         .frame(maxWidth: .infinity)
-        .accessibilityLabel("Every \(names[weekday - 1])")
+        .accessibilityLabel(L10n("Every \(names[weekday - 1])"))
         .accessibilityAddTraits(on ? .isSelected : [])
     }
 
     private var repeatLine: String {
-        guard !draft.repeatDays.isEmpty else { return "Just this once" }
+        guard !draft.repeatDays.isEmpty else { return L10n( "Just this once") }
         let names = Calendar.current.standaloneWeekdaySymbols
-        let which = draft.repeatDays.count == 1 ? "Every \(names[draft.repeatDays.first! - 1])" : "\(draft.repeatDays.count) days a week"
-        let until = starts.last.map { " · until \($0.formatted(.dateTime.day().month(.abbreviated)))" } ?? ""
-        return "\(which) for 8 weeks\(until)"
+        let which = draft.repeatDays.count == 1
+            ? L10n( "Every \(names[draft.repeatDays.first! - 1])")
+            : L10n( "\(draft.repeatDays.count) days a week")
+        if let last = starts.last {
+            let until = last.formatted(.dateTime.day().month(.abbreviated))
+            return L10n( "\(which) for 8 weeks · until \(until)")
+        }
+        return L10n( "\(which) for 8 weeks")
     }
 
     // MARK: Food
@@ -355,12 +359,14 @@ struct PlanSessionSheet: View {
         let kcal = foodKcal(kind: draft.kind, durationMin: draft.durationMin, weightKg: weightKg)
         let start = TrainMath.minute(draft.start)
         let title: String = {
-            guard addCalories, kcal > 0 else { return "“Add calories” is off" }
-            return "+\(kcal) kcal \(starts.count > 1 ? "on each of those days" : "that day")"
+            guard addCalories, kcal > 0 else { return L10n( "“Add calories” is off") }
+            return starts.count > 1
+                ? L10n( "+\(kcal) kcal on each of those days")
+                : L10n( "+\(kcal) kcal that day")
         }()
         let line = addCalories
-            ? "A snack around \(trainClock(start - 90)), a refuel by \(trainClock(start + draft.durationMin + TrainMath.refuelWindowMin)), and a bigger dinner. I’ll nudge you before if you haven’t eaten."
-            : "The target stays the same, but I’ll still plan a snack before and a refuel by \(trainClock(start + draft.durationMin + TrainMath.refuelWindowMin))."
+            ? L10n("A snack around \(trainClock(start - 90)), a refuel by \(trainClock(start + draft.durationMin + TrainMath.refuelWindowMin)), and a bigger dinner. I’ll nudge you before if you haven’t eaten.")
+            : L10n("The target stays the same, but I’ll still plan a snack before and a refuel by \(trainClock(start + draft.durationMin + TrainMath.refuelWindowMin)).")
         return HStack(alignment: .top, spacing: 12) {
             Circle()
                 .fill(RadialGradient(colors: [Color(hex: 0xE0E7FF), Palette.haze], center: UnitPoint(x: 0.35, y: 0.3), startRadius: 0, endRadius: 6))
@@ -376,6 +382,7 @@ struct PlanSessionSheet: View {
                     .font(Typography.data(13, weight: .regular))
                     .foregroundStyle(Palette.inkSoft)
                     .fixedSize(horizontal: false, vertical: true)
+                    .hintCopy()
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -426,7 +433,10 @@ struct EditSessionSheet: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("\(session.start.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated))) · \(session.repeats ? "every \(session.start.formatted(.dateTime.weekday(.wide)))" : "once")".uppercased())
+                    Text(session.repeats
+                         ? L10n("\(session.start.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated).locale(AppLanguage.current.locale))) · every \(session.start.formatted(.dateTime.weekday(.wide).locale(AppLanguage.current.locale)))")
+                         : L10n("\(session.start.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated).locale(AppLanguage.current.locale))) · once"))
+                        .textCase(.uppercase)
                         .font(Typography.mono(11))
                         .tracking(1.3)
                         .foregroundStyle(Palette.hazeSoft)
@@ -446,7 +456,9 @@ struct EditSessionSheet: View {
                                 .font(Typography.data(15, weight: .regular))
                                 .foregroundStyle(Palette.ink)
                             Spacer()
-                            Text(scope == .following ? "\(draft.start.formatted(.dateTime.weekday(.wide)))s, from \(draft.start.formatted(.dateTime.day().month(.abbreviated)))" : draft.start.formatted(.dateTime.weekday(.wide).day().month(.abbreviated)))
+                            Text(scope == .following
+                                 ? L10n("\(draft.start.formatted(.dateTime.weekday(.wide).locale(AppLanguage.current.locale)))s, from \(draft.start.formatted(.dateTime.day().month(.abbreviated).locale(AppLanguage.current.locale)))")
+                                 : draft.start.formatted(.dateTime.weekday(.wide).day().month(.abbreviated).locale(AppLanguage.current.locale)))
                                 .font(Typography.data(15, weight: .regular))
                                 .foregroundStyle(Color(hex: 0xD4D4D8))
                             Image(systemName: showCalendar ? "chevron.up" : "chevron.down")
@@ -493,13 +505,13 @@ struct EditSessionSheet: View {
                 }
 
                 Button { askingDelete = true } label: {
-                    Text(!session.repeats ? "Delete session" : scope == .following ? "Delete \(dayName) and the ones after" : "Delete only \(dayName)")
+                    Text(!session.repeats ? L10n("Delete session") : scope == .following ? L10n("Delete \(dayName) and the ones after") : L10n("Delete only \(dayName)"))
                         .font(Typography.data(15, weight: .medium))
                         .foregroundStyle(Palette.amber)
                         .frame(maxWidth: .infinity, minHeight: 48)
                 }
-                .confirmationDialog(scope == .following ? "Delete \(followingCount) sessions?" : "Delete this session?", isPresented: $askingDelete, titleVisibility: .visible) {
-                    Button("Delete", role: .destructive) {
+                .confirmationDialog(scope == .following ? L10n("Delete \(followingCount) sessions?") : L10n("Delete this session?"), isPresented: $askingDelete, titleVisibility: .visible) {
+                    Button(L10n("Delete"), role: .destructive) {
                         onDelete(scope)
                         dismiss()
                     }
@@ -511,7 +523,7 @@ struct EditSessionSheet: View {
         }
         .scrollBounceBehavior(.basedOnSize)
         .safeAreaInset(edge: .bottom) {
-            ActionButton(title: count > 1 ? "Save · \(count) sessions" : "Save", kind: .primary, symbol: "checkmark") {
+            ActionButton(title: count > 1 ? L10n("Save · \(count) sessions") : L10n("Save"), kind: .primary, symbol: "checkmark") {
                 onSave(draft, scope)
                 dismiss()
             }
@@ -532,8 +544,8 @@ struct EditSessionSheet: View {
         VStack(alignment: .leading, spacing: 8) {
             sheetLabel("Change")
             HStack(spacing: 8) {
-                scopeCard(.one, title: "Only \(dayName)", sub: "The others stay")
-                scopeCard(.following, title: "\(dayName) and after", sub: followingCount == 1 ? "1 session" : "\(followingCount) sessions")
+                scopeCard(.one, title: L10n("Only \(dayName)"), sub: L10n("The others stay"))
+                scopeCard(.following, title: L10n("\(dayName) and after"), sub: followingCount == 1 ? L10n("1 session") : L10n("\(followingCount) sessions"))
             }
         }
     }
@@ -570,7 +582,7 @@ struct EditSessionSheet: View {
                 .background(Color.white.opacity(0.06), in: Circle())
         }
         .buttonStyle(PressableCard())
-        .accessibilityLabel(label)
+        .accessibilityLabel(LocalizedStringKey(label))
     }
 
     private func shift(_ minutes: Int) {
@@ -590,7 +602,7 @@ struct EditSessionSheet: View {
                     Text("+\(before)").font(Typography.mono(15)).foregroundStyle(Palette.inkFaint).strikethrough()
                     Text("before").font(Typography.data(11, weight: .regular)).foregroundStyle(Palette.inkFaint)
                 }
-                Image(systemName: "arrow.right")
+                Image(systemName: "arrow.forward")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(Palette.inkFaint)
                     .accessibilityHidden(true)
@@ -600,7 +612,7 @@ struct EditSessionSheet: View {
                 Text(addCalories ? "kcal a day" : "kcal burned").font(Typography.data(11, weight: .regular)).foregroundStyle(Palette.inkFaint)
             }
             Spacer(minLength: 8)
-            Text("Snack around \(trainClock(start - 90)), refuel by \(trainClock(start + draft.durationMin + TrainMath.refuelWindowMin)).")
+            Text(L10n("Snack around \(trainClock(start - 90)), refuel by \(trainClock(start + draft.durationMin + TrainMath.refuelWindowMin))."))
                 .font(Typography.data(12, weight: .regular))
                 .foregroundStyle(Palette.inkSoft)
                 .multilineTextAlignment(.trailing)
@@ -640,7 +652,7 @@ struct TrainSettingsSheet: View {
                 HStack(spacing: 10) {
                     Text("Today").foregroundStyle(Palette.inkSoft)
                     Text(baseKcal.formatted()).font(Typography.mono(13)).foregroundStyle(Palette.ink)
-                    Image(systemName: "arrow.right").font(.system(size: 11, weight: .semibold)).foregroundStyle(Palette.inkFaint)
+                    Image(systemName: "arrow.forward").font(.system(size: 11, weight: .semibold)).foregroundStyle(Palette.inkFaint)
                     Text(todayTarget.formatted())
                         .font(Typography.mono(13))
                         .foregroundStyle(addCalories && todayTrainingKcal > 0 ? Palette.amber : Palette.ink)
@@ -664,7 +676,7 @@ struct TrainSettingsSheet: View {
                 SegmentedPills(
                     options: [0, 60, 90, 120],
                     selection: Binding(get: { nudgeMin }, set: onNudge),
-                    title: { $0 == 0 ? "Off" : $0 == 120 ? "2 h" : "\($0) min" }
+                    title: { $0 == 0 ? L10n("Off") : $0 == 120 ? L10n("2 h") : L10n("\($0) min") }
                 )
             }
             .padding(16)
@@ -681,12 +693,12 @@ struct TrainSettingsSheet: View {
                     Text("Apple Health workouts")
                         .font(Typography.data(15, weight: .regular))
                         .foregroundStyle(Palette.ink)
-                    Text(healthOn ? "Sessions you record come in by themselves" : "Turn it on in You to bring workouts in")
+                    Text(LocalizedStringKey(healthOn ? "Sessions you record come in by themselves" : "Turn it on in You to bring workouts in"))
                         .font(Typography.data(12, weight: .regular))
                         .foregroundStyle(Palette.inkFaint)
                 }
                 Spacer(minLength: 8)
-                Text(healthOn ? "On" : "Off")
+                Text(LocalizedStringKey(healthOn ? "On" : "Off"))
                     .font(Typography.data(13, weight: .regular))
                     .foregroundStyle(healthOn ? Palette.positive : Palette.inkSoft)
             }
@@ -707,8 +719,8 @@ struct TrainSettingsSheet: View {
     }
 
     private var todayNote: String {
-        guard todayTrainingKcal > 0 else { return "rest day today" }
-        return addCalories ? "+\(todayTrainingKcal) for training" : "same as a rest day"
+        guard todayTrainingKcal > 0 else { return L10n( "rest day today") }
+        return addCalories ? L10n( "+\(todayTrainingKcal) for training") : L10n( "same as a rest day")
     }
 }
 

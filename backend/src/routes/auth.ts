@@ -21,9 +21,14 @@ const devLoginEnabled = !isProd || env.ENABLE_DEV_LOGIN === 'true';
 const appleBody = z.object({
   identityToken: z.string().min(1),
   authorizationCode: z.string().min(1).max(4000).optional(),
+  displayName: z.string().trim().min(1).max(80).optional(),
 });
 const inviteBody = z.object({ code: z.string().min(1).max(64) });
-const devBody = z.object({ userId: z.string().optional(), email: z.string().email().optional() });
+const devBody = z.object({
+  userId: z.string().optional(),
+  email: z.string().email().optional(),
+  displayName: z.string().trim().min(1).max(80).optional(),
+});
 
 /** A new account is let in at once unless sign-up is invite-only. */
 const newAccountAccess = (): Date | null => (inviteOnly() ? null : new Date());
@@ -37,7 +42,7 @@ function sessionFor(user: { id: string; accessGrantedAt: Date | null }) {
 export async function authRoutes(app: FastifyInstance): Promise<void> {
   // Sign in with Apple → SetPoint session token.
   app.post('/apple', async (req) => {
-    const { identityToken, authorizationCode } = appleBody.parse(req.body);
+    const { identityToken, authorizationCode, displayName } = appleBody.parse(req.body);
     if (!env.APPLE_CLIENT_ID) throw app.httpErrors.notImplemented('Sign in with Apple is not configured');
 
     let identity;
@@ -60,9 +65,16 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
 
     const user = await getPrisma().user.upsert({
       where: { appleSub: identity.sub },
-      create: { appleSub: identity.sub, email: identity.email ?? null, appleRefreshToken, accessGrantedAt: newAccountAccess() },
+      create: {
+        appleSub: identity.sub,
+        email: identity.email ?? null,
+        displayName: displayName ?? null,
+        appleRefreshToken,
+        accessGrantedAt: newAccountAccess(),
+      },
       update: {
         ...(identity.email ? { email: identity.email } : {}),
+        ...(displayName ? { displayName } : {}),
         ...(appleRefreshToken ? { appleRefreshToken } : {}),
       },
     });
@@ -90,12 +102,16 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
   // Mint a session token without Apple. Off in production unless ENABLE_DEV_LOGIN=true.
   if (devLoginEnabled) {
     app.post('/dev', async (req) => {
-      const { userId, email } = devBody.parse(req.body ?? {});
+      const { userId, email, displayName } = devBody.parse(req.body ?? {});
       const prisma = getPrisma();
       const user = userId
         ? await prisma.user.findUniqueOrThrow({ where: { id: userId } })
         : await prisma.user.create({
-            data: { email: email ?? `dev+${Date.now()}@setpoint.local`, accessGrantedAt: newAccountAccess() },
+            data: {
+              email: email ?? `dev+${Date.now()}@setpoint.local`,
+              displayName: displayName ?? null,
+              accessGrantedAt: newAccountAccess(),
+            },
           });
       await track(prisma, user.id, 'signed_up', undefined, { dedupeKey: `signed_up:${user.id}` });
       return sessionFor(user);

@@ -20,7 +20,10 @@ struct MealLog: View {
 
     var body: some View {
         content
-            .animation(Motion.adaptive(Motion.enter, reduceMotion: reduceMotion), value: home.meals.map(\.id))
+            .animation(
+                Motion.adaptive(Motion.enter, reduceMotion: reduceMotion),
+                value: home.meals.map(\.id)
+            )
             .animation(Motion.adaptive(Motion.snappy, reduceMotion: reduceMotion), value: pending)
     }
 
@@ -68,10 +71,11 @@ struct MealLog: View {
                     TodayMealRow(meal: meal)
                 }
                 .buttonStyle(PressableCard())
-                .transition(.asymmetric(
-                    insertion: .move(edge: .bottom).combined(with: .opacity),
-                    removal: .opacity
-                ))
+                .transition(
+                    .asymmetric(
+                        insertion: .move(edge: .bottom).combined(with: .opacity),
+                        removal: .opacity
+                    ))
             }
 
             if holdsPending, let pending {
@@ -111,30 +115,37 @@ struct MealLog: View {
     private var emptyHint: some View {
         let slots = home.day?.slots ?? []
         let next = slots.first { $0.slotState == .now || $0.slotState == .upcoming }
-        let tail = next.map { "\($0.meal.title) is next at \(formatMinutes($0.atMin))." }
+        let tail =
+            next.map { "\($0.meal.title) is next at \(formatMinutes($0.atMin))." }
             ?? TodayCopy.dayScheduleLine(home)
             ?? "Meals you log land here, under their meal time."
         return VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 16) {
                 ZStack {
                     Circle()
-                        .fill(RadialGradient(stops: [
-                            .init(color: Color(hex: 0x1C1B19), location: 0.58), .init(color: Color(hex: 0x2A2723), location: 0.6),
-                            .init(color: Color(hex: 0x2A2723), location: 0.66), .init(color: Color(hex: 0x121110), location: 0.68),
-                        ], center: .center, startRadius: 0, endRadius: 32))
+                        .fill(
+                            RadialGradient(
+                                stops: [
+                                    .init(color: Color(hex: 0x1C1B19), location: 0.58),
+                                    .init(color: Color(hex: 0x2A2723), location: 0.6),
+                                    .init(color: Color(hex: 0x2A2723), location: 0.66),
+                                    .init(color: Color(hex: 0x121110), location: 0.68),
+                                ], center: .center, startRadius: 0, endRadius: 32)
+                        )
                         .frame(width: 64, height: 64)
                         .shadow(color: .black.opacity(0.6), radius: 12, y: 8)
                     EmberDot(size: 14, glow: 0.5).opacity(0.6)
                 }
                 .accessibilityHidden(true)
-                Headline("Clean plate so far.", tail: tail, size: 20)
+                Headline("Clean plate so far.", tail: tail, size: 20, persistTail: next != nil || TodayCopy.dayScheduleLine(home) != nil)
             }
             if !slots.isEmpty {
                 GeometryReader { geo in
                     let w = geo.size.width
                     let first = slots.map(\.atMin).min() ?? 480
                     let last = max(first + 60, slots.map(\.atMin).max() ?? 1140)
-                    let x = { (m: Int) in 8 + CGFloat(m - first) / CGFloat(last - first) * (w - 16) }
+                    let x = { (m: Int) in 8 + CGFloat(m - first) / CGFloat(last - first) * (w - 16)
+                    }
                     ZStack(alignment: .topLeading) {
                         Capsule().fill(Color.white.opacity(0.08)).frame(height: 2).offset(y: 8)
                         ForEach(slots) { slot in
@@ -149,9 +160,11 @@ struct MealLog: View {
                                     } else if slot.slotState == .missed {
                                         GhostRing(size: 10)
                                     } else {
-                                        Circle().strokeBorder(Color.white.opacity(0.25), lineWidth: 1.5)
-                                            .background(Circle().fill(Palette.background))
-                                            .frame(width: 10, height: 10)
+                                        Circle().strokeBorder(
+                                            Color.white.opacity(0.25), lineWidth: 1.5
+                                        )
+                                        .background(Circle().fill(Palette.background))
+                                        .frame(width: 10, height: 10)
                                     }
                                 }
                                 .frame(height: 18)
@@ -216,7 +229,8 @@ struct MealLog: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background {
             RoundedRectangle(cornerRadius: Radius.lg, style: .continuous)
-                .strokeBorder(Color.white.opacity(0.12), style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                .strokeBorder(
+                    Color.white.opacity(0.12), style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
         }
     }
 }
@@ -280,7 +294,7 @@ struct TodayMealRow: View {
                 .font(Typography.mono(13))
                 .foregroundStyle(Palette.ink)
                 .contentTransition(.numericText(value: Double(kcal)))
-            Image(systemName: "chevron.right")
+            Image(systemName: "chevron.forward")
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(Palette.inkFaint)
         }
@@ -332,7 +346,8 @@ struct LogDock: View {
                 .frame(maxWidth: .infinity)
 
             HStack(alignment: .top) {
-                Headline(title, tail: typing ? nil : "Tap, snap or scan it.", size: typing ? 22 : 28)
+                Headline(
+                    title, tail: typing ? nil : "Tap, snap or scan it.", size: typing ? 22 : 28)
                 Spacer(minLength: 8)
                 RoundIconButton("xmark", label: "Close", action: onClose)
             }
@@ -350,9 +365,16 @@ struct LogDock: View {
                 prompt: "“Two eggs, toast and a latte”",
                 large: typing && logger.photo == nil
             )
+            .onChange(of: logger.text) { _, _ in
+                logger.onComposerTextChanged()
+            }
 
             if typing {
-                if !tokens.isEmpty { tokenRow }
+                if !logger.catalogHits.isEmpty {
+                    catalogHits
+                } else if !tokens.isEmpty {
+                    tokenRow
+                }
                 if logger.text.isEmpty, !logger.recents.isEmpty { recentsRow }
             } else {
                 modeTiles
@@ -367,21 +389,73 @@ struct LogDock: View {
             UnevenRoundedRectangle(topLeadingRadius: 32, topTrailingRadius: 32, style: .continuous)
                 .fill(Palette.sheet)
                 .overlay(alignment: .top) {
-                    UnevenRoundedRectangle(topLeadingRadius: 32, topTrailingRadius: 32, style: .continuous)
-                        .strokeBorder(Palette.hairline)
-                        .mask(alignment: .top) { Rectangle().frame(height: 40) }
+                    UnevenRoundedRectangle(
+                        topLeadingRadius: 32, topTrailingRadius: 32, style: .continuous
+                    )
+                    .strokeBorder(Palette.hairline)
+                    .mask(alignment: .top) { Rectangle().frame(height: 40) }
                 }
                 .elevation(.lifted)
                 .ignoresSafeArea(edges: .bottom)
         }
         .animation(Motion.adaptive(Motion.snappy, reduceMotion: reduceMotion), value: typing)
-        .animation(Motion.adaptive(Motion.snappy, reduceMotion: reduceMotion), value: logger.backdate)
-        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
+        .animation(
+            Motion.adaptive(Motion.snappy, reduceMotion: reduceMotion), value: logger.backdate
+        )
+        .onReceive(
+            NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)
+        ) { _ in
             keyboardUp = true
         }
-        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+        .onReceive(
+            NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)
+        ) { _ in
             keyboardUp = false
         }
+    }
+
+    private var catalogHits: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Foods").sectionLabelStyle()
+            VStack(spacing: 0) {
+                ForEach(logger.catalogHits.prefix(6)) { food in
+                    let portion = food.portion(grams: food.defaultGrams)
+                    Button {
+                        focused.wrappedValue = false
+                        logger.pickCatalog(food)
+                    } label: {
+                        HStack(alignment: .firstTextBaseline, spacing: 10) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(food.name)
+                                    .font(Typography.data(14, weight: .regular))
+                                    .foregroundStyle(Palette.ink)
+                                    .lineLimit(2)
+                                    .multilineTextAlignment(.leading)
+                                if let serving = food.servingDesc, !serving.isEmpty {
+                                    Text(serving)
+                                        .font(Typography.data(12, weight: .regular))
+                                        .foregroundStyle(Palette.inkFaint)
+                                        .lineLimit(1)
+                                }
+                            }
+                            Spacer(minLength: 8)
+                            Text("\(portion.kcal)")
+                                .font(Typography.mono(12))
+                                .foregroundStyle(Palette.amber)
+                        }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                    }
+                    .buttonStyle(PressableCard())
+                    .accessibilityLabel("\(food.name), \(portion.kcal) calories")
+                    if food.id != logger.catalogHits.prefix(6).last?.id {
+                        Rectangle().fill(Palette.hairline).frame(height: 1)
+                    }
+                }
+            }
+            .glass(radius: 16)
+        }
+        .transition(.opacity)
     }
 
     /// The foods in what's typed so far — "two eggs, toast and a banana" → three chips.
@@ -400,19 +474,27 @@ struct LogDock: View {
             Text("I’ll look up").sectionLabelStyle()
             FlexWrap(spacing: 8, lineSpacing: 8) {
                 ForEach(Array(tokens.enumerated()), id: \.offset) { index, token in
-                    let last = index == tokens.count - 1 && !logger.text.hasSuffix(" ") && !logger.text.hasSuffix(",")
+                    let last =
+                        index == tokens.count - 1 && !logger.text.hasSuffix(" ")
+                        && !logger.text.hasSuffix(",")
                     Text(last ? "\(token)…" : token)
                         .font(Typography.data(13, weight: .regular))
                         .foregroundStyle(last ? Color(hex: 0xD4D4D8) : Palette.ink)
                         .padding(.horizontal, 12)
                         .frame(height: 32)
                         .background(Capsule().fill(last ? .clear : Palette.ember.opacity(0.12)))
-                        .overlay(Capsule().strokeBorder(last ? Palette.amber.opacity(0.5) : Color(hex: 0xFF8A50, opacity: 0.45), style: StrokeStyle(lineWidth: 1, dash: last ? [4, 3] : [])))
+                        .overlay(
+                            Capsule().strokeBorder(
+                                last
+                                    ? Palette.amber.opacity(0.5)
+                                    : Color(hex: 0xFF8A50, opacity: 0.45),
+                                style: StrokeStyle(lineWidth: 1, dash: last ? [4, 3] : [])))
                 }
             }
             Text("Rough is fine — I’ll tidy it up.")
                 .font(Typography.data(12, weight: .regular))
                 .foregroundStyle(Palette.inkFaint)
+                .hintCopy()
         }
         .transition(.opacity)
     }
@@ -424,15 +506,17 @@ struct LogDock: View {
     }
 
     private var title: String {
-        if let backdate = logger.backdate { return "What was \(backdate.slot.title.lowercased())?" }
-        return "What did you eat?"
+        if let backdate = logger.backdate { return L10n( "What was \(backdate.slot.title.lowercased())?") }
+        return L10n( "What did you eat?")
     }
 
     private var slot: MealSlot { logger.backdate?.slot ?? currentSlot }
 
     private func backdateChip(_ backdate: LogMealViewModel.Backdate) -> some View {
         HStack(spacing: 6) {
-            Text("Adding to \(backdate.slot.title.lowercased()) · \(backdate.at.formatted(date: .omitted, time: .shortened))")
+            Text(
+                L10n("Adding to \(backdate.slot.title.lowercased()) · \(backdate.at.formatted(date: .omitted, time: .shortened))")
+            )
             Button {
                 logger.backdate = nil
             } label: {
@@ -468,13 +552,15 @@ struct LogDock: View {
         }
     }
 
-    private func tile(_ title: String, _ symbol: String, lit: Bool = false, action: @escaping () -> Void) -> some View {
+    private func tile(
+        _ title: String, _ symbol: String, lit: Bool = false, action: @escaping () -> Void
+    ) -> some View {
         Button(action: action) {
             HStack(spacing: 8) {
                 Image(systemName: symbol)
                     .font(.system(size: 16, weight: .regular))
                     .foregroundStyle(lit ? Palette.hazeSoft : Palette.ink)
-                Text(title)
+                Text(LocalizedStringKey(title))
                     .font(Typography.data(14, weight: .regular))
                     .lineLimit(1)
                 Spacer(minLength: 0)
@@ -482,16 +568,18 @@ struct LogDock: View {
             .foregroundStyle(Palette.ink)
             .padding(.horizontal, 12)
             .frame(height: 48)
-            .glass(radius: 16, fill: lit ? Palette.haze.opacity(0.10) : Palette.glass, stroke: lit ? Palette.haze.opacity(0.5) : Palette.hairline)
+            .glass(
+                radius: 16, fill: lit ? Palette.haze.opacity(0.10) : Palette.glass,
+                stroke: lit ? Palette.haze.opacity(0.5) : Palette.hairline)
         }
         .buttonStyle(PressableCard())
         .disabled(logger.phase == .parsing)
     }
 
-    /// Saved meals first, then today's-and-yesterday's recents, two columns.
+    /// The two most recently used saved plates, then recents — full list is on You.
     @ViewBuilder
     private var usuals: some View {
-        let saved = Array(logger.savedMeals.prefix(4))
+        let saved = SavedMealShortcuts.logSheet(from: logger.savedMeals)
         // A recent that's just a saved meal again would show twice.
         let savedNames = Set(saved.map { $0.name.lowercased() })
         let recents = Array(
@@ -504,11 +592,12 @@ struct LogDock: View {
                 HStack {
                     Text("Your usuals").sectionLabelStyle()
                     Spacer()
-                    Text("One tap logs it")
-                        .font(Typography.data(12, weight: .regular))
-                        .foregroundStyle(Palette.inkFaint)
                 }
-                LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
+                LazyVGrid(
+                    columns: [
+                        GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8),
+                    ], spacing: 8
+                ) {
                     ForEach(saved) { meal in
                         usual(meal.name, kcal: meal.kcal, suggested: meal.suggested) {
                             focused.wrappedValue = false
@@ -526,7 +615,9 @@ struct LogDock: View {
         }
     }
 
-    private func usual(_ name: String, kcal: Int, suggested: Bool, action: @escaping () -> Void) -> some View {
+    private func usual(_ name: String, kcal: Int, suggested: Bool, action: @escaping () -> Void)
+        -> some View
+    {
         Button(action: action) {
             VStack(alignment: .leading, spacing: 10) {
                 Text(name)
@@ -572,6 +663,10 @@ struct LogDock: View {
                                 Image(systemName: "barcode")
                                     .font(.system(size: 11, weight: .medium))
                                     .foregroundStyle(Palette.inkFaint)
+                            } else if meal.isCatalog {
+                                Image(systemName: "leaf")
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundStyle(Palette.inkFaint)
                             }
                             Text(meal.summary ?? "")
                                 .lineLimit(1)
@@ -586,7 +681,8 @@ struct LogDock: View {
                         .glassCapsule()
                     }
                     .buttonStyle(PressableCard())
-                    .accessibilityLabel("Log \(meal.summary ?? "this") again, \(meal.kcal) calories")
+                    .accessibilityLabel(
+                        "Log \(meal.summary ?? "this") again, \(meal.kcal) calories")
                 }
             }
         }
@@ -608,10 +704,10 @@ struct LogDock: View {
                 Task { await logger.logEstimate(slot: slot, kcal: kcal) }
             } label: {
                 HStack(spacing: 10) {
-                    Text("Log a \(sizes[size].0.lowercased()) \(slot.title.lowercased())")
+                    Text(L10n("Log a \(L10nKey(sizes[size].0)) \(slot.title)"))
                         .font(Typography.data(15, weight: .semibold))
                     Spacer(minLength: 8)
-                    Text("~\(kcal.formatted()) kcal")
+                    Text(L10n("~\(kcal.formatted()) kcal"))
                         .font(Typography.mono(13))
                         .contentTransition(.numericText(value: Double(kcal)))
                     Image(systemName: "plus")
@@ -624,7 +720,10 @@ struct LogDock: View {
                 .padding(.trailing, 10)
                 .frame(height: 52)
                 .background {
-                    Capsule().fill(LinearGradient(colors: [Color(hex: 0xFFC48A), Palette.ember], startPoint: .topLeading, endPoint: .bottomTrailing))
+                    Capsule().fill(
+                        LinearGradient(
+                            colors: [Color(hex: 0xFFC48A), Palette.ember], startPoint: .topLeading,
+                            endPoint: .bottomTrailing))
                 }
                 .overlay(Capsule().strokeBorder(Color.white.opacity(0.25), lineWidth: 1))
                 .shadow(color: Palette.ember.opacity(0.45), radius: 14, y: 4)
@@ -633,7 +732,9 @@ struct LogDock: View {
             .buttonStyle(PressableCard())
             .disabled(logger.phase == .parsing)
             .opacity(logger.phase == .parsing ? 0.6 : 1)
-            .accessibilityLabel("Log a \(sizes[size].0.lowercased()) \(slot.title.lowercased()), about \(kcal) kilocalories")
+            .accessibilityLabel(
+                "Log a \(sizes[size].0.lowercased()) \(slot.title.lowercased()), about \(kcal) kilocalories"
+            )
         }
         .padding(14)
         .glass(radius: 20, fill: Color.white.opacity(0.03))
@@ -676,8 +777,12 @@ struct LogStatusToast: View {
                 card(stroke: Palette.danger.opacity(0.35)) {
                     VStack(alignment: .leading, spacing: 10) {
                         HStack(spacing: 10) {
-                            Circle().fill(Palette.danger).frame(width: 8, height: 8).shadow(color: Palette.danger, radius: 4)
-                            (Text(logger.submittedPrompt.isEmpty ? "" : "“\(logger.submittedPrompt)”? ").foregroundColor(Palette.ink)
+                            Circle().fill(Palette.danger).frame(width: 8, height: 8).shadow(
+                                color: Palette.danger, radius: 4)
+                            (Text(
+                                logger.submittedPrompt.isEmpty
+                                    ? "" : "“\(logger.submittedPrompt)”? "
+                            ).foregroundColor(Palette.ink)
                                 + Text("Didn’t catch that.").foregroundColor(Palette.inkFaint))
                                 .font(Typography.data(14, weight: .regular))
                                 .lineLimit(2)
@@ -700,7 +805,8 @@ struct LogStatusToast: View {
             case let .logged(logged) where !logger.confirmingPhoto:
                 line(
                     symbol: "checkmark",
-                    text: "Logged · \(logged.kcal) kcal" + (logged.resolvedCheckIn ? " · check-in answered" : "")
+                    text: "Logged · \(logged.kcal) kcal"
+                        + (logged.resolvedCheckIn ? " · check-in answered" : "")
                 )
             default:
                 EmptyView()
@@ -752,15 +858,22 @@ struct LogStatusToast: View {
         }
     }
 
-    private func card<Content: View>(stroke: Color, @ViewBuilder content: () -> Content) -> some View {
+    private func card<Content: View>(stroke: Color, @ViewBuilder content: () -> Content)
+        -> some View
+    {
         content()
             .padding(14)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background {
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
                     .fill(.ultraThinMaterial)
-                    .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(Color(hex: 0x141417, opacity: 0.9)))
-                    .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(stroke))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 24, style: .continuous).fill(
+                            Color(hex: 0x141417, opacity: 0.9))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(stroke)
+                    )
                     .shadow(color: .black.opacity(0.55), radius: 20, y: 14)
             }
             .padding(.horizontal, 16)
@@ -800,8 +913,13 @@ struct SpinningOrb: View {
             let t = ctx.date.timeIntervalSinceReferenceDate
             ZStack {
                 Circle()
-                    .strokeBorder(Palette.amber.opacity(0.8), style: StrokeStyle(lineWidth: 1.5, dash: [3, 3]))
-                    .rotationEffect(.degrees(reduceMotion ? 0 : t.truncatingRemainder(dividingBy: 2.4) / 2.4 * 360))
+                    .strokeBorder(
+                        Palette.amber.opacity(0.8),
+                        style: StrokeStyle(lineWidth: 1.5, dash: [3, 3])
+                    )
+                    .rotationEffect(
+                        .degrees(
+                            reduceMotion ? 0 : t.truncatingRemainder(dividingBy: 2.4) / 2.4 * 360))
                 EmberDot(size: 16)
             }
         }

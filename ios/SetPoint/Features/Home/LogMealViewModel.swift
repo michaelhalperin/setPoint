@@ -38,6 +38,7 @@ final class LogMealViewModel {
     private enum KnownLog {
         case macros(summary: String, kcal: Int, proteinG: Double?, carbsG: Double?, fatG: Double?, source: String, backdate: Backdate?)
         case saved(SavedMeal, backdate: Backdate?)
+        case catalog(CatalogPick, backdate: Backdate?)
     }
     @ObservationIgnored private var lastKnown: KnownLog?
     private(set) var removing = false
@@ -74,9 +75,9 @@ final class LogMealViewModel {
         var id: String { rawValue }
         var title: String {
             switch self {
-            case .type: return "Type"
-            case .scan: return "Scan"
-            case .photo: return "Photo"
+            case .type: return L10n( "Type")
+            case .scan: return L10n( "Scan")
+            case .photo: return L10n( "Photo")
             }
         }
     }
@@ -84,6 +85,8 @@ final class LogMealViewModel {
     var showScanner = false
     var showPhotoPicker = false
     var product: BarcodeProduct?
+    var catalogPick: CatalogPick?
+    var catalogHits: [CatalogFood] = []
     var editor: SavedMealDraft?
 
     struct BarcodeProduct: Equatable, Identifiable {
@@ -92,9 +95,16 @@ final class LogMealViewModel {
         var servings: Double
     }
 
+    struct CatalogPick: Equatable, Identifiable {
+        var id: String { food.id }
+        let food: CatalogFood
+        var grams: Double
+    }
+
     private let api: APIClient
     private let onMealChanged: @MainActor () -> Void
     private var heldText = ""
+    @ObservationIgnored private var catalogSearchTask: Task<Void, Never>?
 
     init(api: APIClient, onMealChanged: @escaping @MainActor () -> Void = {}) {
         self.api = api
@@ -120,6 +130,8 @@ final class LogMealViewModel {
 
     func submit() async {
         guard canSubmit else { return }
+        catalogSearchTask?.cancel()
+        catalogHits = []
         let prompt = trimmedText
         let snapshotPhoto = photo
         let snapshotBackdate = backdate
@@ -176,7 +188,7 @@ final class LogMealViewModel {
             backdate = snapshotBackdate
             submittedSlot = nil
             submittedLoggedAt = nil
-            phase = .failed(UserFacingError.message(for: error, fallback: "Couldn't log. Try again."))
+            phase = .failed(UserFacingError.message(for: error, fallback: L10n( "Couldn't log. Try again.")))
         }
     }
 
@@ -268,7 +280,7 @@ final class LogMealViewModel {
             backdate = snapshotBackdate
             submittedSlot = nil
             submittedLoggedAt = nil
-            phase = .failed(UserFacingError.message(for: error, fallback: "Couldn't log. Try again."))
+            phase = .failed(UserFacingError.message(for: error, fallback: L10n( "Couldn't log. Try again.")))
         }
     }
 
@@ -337,7 +349,102 @@ final class LogMealViewModel {
             backdate = snapshotBackdate
             submittedSlot = nil
             submittedLoggedAt = nil
-            phase = .failed(UserFacingError.message(for: error, fallback: "Couldn't log. Try again."))
+            phase = .failed(UserFacingError.message(for: error, fallback: L10n( "Couldn't log. Try again.")))
+        }
+    }
+
+    func onComposerTextChanged() {
+        catalogSearchTask?.cancel()
+        let q = trimmedText
+        guard q.count >= 2 else {
+            catalogHits = []
+            return
+        }
+        catalogSearchTask = Task { await searchCatalog(q) }
+    }
+
+    func pickCatalog(_ food: CatalogFood) {
+        catalogSearchTask?.cancel()
+        catalogHits = []
+        text = ""
+        catalogPick = CatalogPick(food: food, grams: food.defaultGrams)
+    }
+
+    func logCatalog() async {
+        guard let pick = catalogPick, phase != .parsing else { return }
+        let snapshotBackdate = backdate
+        let food = pick.food
+        let grams = pick.grams
+        let portion = food.portion(grams: grams)
+        submittedPrompt = food.name
+        submittedSlot = snapshotBackdate?.slot
+        submittedLoggedAt = snapshotBackdate?.at ?? Date()
+        backdate = nil
+        catalogPick = nil
+        lastKnown = .catalog(CatalogPick(food: food, grams: grams), backdate: snapshotBackdate)
+        pendingKnownMeal = knownMeal(
+            summary: food.name,
+            kcal: portion.kcal,
+            proteinG: portion.proteinG,
+            carbsG: portion.carbsG,
+            fatG: portion.fatG,
+            source: "CATALOG"
+        )
+        phase = .parsing
+        do {
+            let res: LogMealResponse = try await api.post(
+                "/api/meals",
+                LogMealRequest(
+                    catalogId: food.id,
+                    grams: grams,
+                    loggedAt: snapshotBackdate.map { ISO8601DateFormatter().string(from: $0.at) },
+                    clientId: UUID().uuidString
+                )
+            )
+            phase = .logged(
+                Logged(
+                    mealId: res.meal.id,
+                    kcal: res.meal.kcal,
+                    proteinG: res.meal.proteinG,
+                    summary: food.name,
+                    notes: food.servingDesc,
+                    confidence: nil,
+                    items: [
+                        .init(
+                            name: food.name,
+                            quantity: "\(Int(portion.grams.rounded())) g",
+                            kcal: portion.kcal,
+                            proteinG: portion.proteinG,
+                            carbsG: portion.carbsG,
+                            fatG: portion.fatG
+                        )
+                    ],
+                    fromPhoto: false,
+                    resolvedCheckIn: res.resolvedCheckInId != nil,
+                    source: "CATALOG"
+                )
+            )
+            onMealChanged()
+            await writeLoggedMealToHealth()
+        } catch {
+            backdate = snapshotBackdate
+            submittedSlot = nil
+            submittedLoggedAt = nil
+            catalogPick = CatalogPick(food: food, grams: grams)
+            phase = .failed(UserFacingError.message(for: error, fallback: L10n( "Couldn't log. Try again.")))
+        }
+    }
+
+    private func searchCatalog(_ q: String) async {
+        try? await Task.sleep(for: .milliseconds(250))
+        guard !Task.isCancelled else { return }
+        do {
+            let res: CatalogSearchResponse = try await api.get("/api/foods/search", query: ["q": q])
+            guard !Task.isCancelled, trimmedText == q else { return }
+            catalogHits = res.foods
+        } catch {
+            guard !Task.isCancelled, trimmedText == q else { return }
+            catalogHits = []
         }
     }
 
@@ -357,11 +464,11 @@ final class LogMealViewModel {
                 mode = .type
                 actionError = "Not in the database. Type it instead."
             } else {
-                actionError = UserFacingError.message(for: error, fallback: "Couldn't look that up. Type it instead.")
+                actionError = UserFacingError.message(for: error, fallback: L10n( "Couldn't look that up. Type it instead."))
                 mode = .type
             }
         } catch {
-            actionError = UserFacingError.message(for: error, fallback: "Couldn't look that up. Type it instead.")
+            actionError = UserFacingError.message(for: error, fallback: L10n( "Couldn't look that up. Type it instead."))
             mode = .type
         }
     }
@@ -418,7 +525,7 @@ final class LogMealViewModel {
             submittedSlot = nil
             submittedLoggedAt = nil
             self.product = BarcodeProduct(food: food, servings: servings)
-            phase = .failed(UserFacingError.message(for: error, fallback: "Couldn't log. Try again."))
+            phase = .failed(UserFacingError.message(for: error, fallback: L10n( "Couldn't log. Try again.")))
         }
     }
 
@@ -433,6 +540,11 @@ final class LogMealViewModel {
     func openEditorToSaveProduct() {
         guard let product else { return }
         editor = SavedMealDraft(from: product)
+    }
+
+    func openEditorToSaveCatalog() {
+        guard let catalogPick else { return }
+        editor = SavedMealDraft(from: catalogPick)
     }
 
     var editorSaving = false
@@ -452,7 +564,7 @@ final class LogMealViewModel {
             await loadSavedMeals()
             return true
         } catch {
-            editorError = UserFacingError.message(for: error, fallback: "Couldn't save. Try again.")
+            editorError = UserFacingError.message(for: error, fallback: L10n( "Couldn't save. Try again."))
             return false
         }
     }
@@ -475,7 +587,7 @@ final class LogMealViewModel {
             phase = .compose
             onMealChanged()
         } catch {
-            actionError = UserFacingError.message(for: error, fallback: "Couldn't remove. Try again.")
+            actionError = UserFacingError.message(for: error, fallback: L10n( "Couldn't remove. Try again."))
         }
     }
 
@@ -518,7 +630,7 @@ final class LogMealViewModel {
             await writeLoggedMealToHealth()
             return true
         } catch {
-            actionError = UserFacingError.message(for: error, fallback: "Couldn't save. Try again.")
+            actionError = UserFacingError.message(for: error, fallback: L10n( "Couldn't save. Try again."))
             return false
         }
     }
@@ -541,6 +653,8 @@ final class LogMealViewModel {
         submittedSlot = nil
         submittedLoggedAt = nil
         pendingKnownMeal = nil
+        catalogHits = []
+        catalogSearchTask?.cancel()
     }
 
     /// A known meal the server refused: the screen has put Today back and offers
@@ -560,6 +674,10 @@ final class LogMealViewModel {
         case let .saved(meal, snapshot):
             backdate = snapshot
             await logSaved(meal)
+        case let .catalog(pick, snapshot):
+            backdate = snapshot
+            catalogPick = pick
+            await logCatalog()
         case nil:
             break
         }
