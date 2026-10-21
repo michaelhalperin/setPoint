@@ -15,123 +15,207 @@ export const ADMIN_DASHBOARD_HTML = String.raw`<!doctype html>
 <meta name="robots" content="noindex, nofollow">
 <title>SetPoint Admin</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Red+Hat+Mono:wght@500&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg: #09090B; --panel: rgba(255,255,255,0.045); --panel-hi: rgba(255,255,255,0.08);
-  --line: rgba(255,255,255,0.09); --line-hi: rgba(255,255,255,0.16);
-  --ink: #F5F5F4; --soft: #A1A1AA; --faint: #8B8B94;
-  --ember: #FF7A3D; --amber: #FFB86B; --haze: #818CF8; --haze-soft: #C7D2FE;
-  --good: #86EFAC; --bad: #F87171;
-  --mono: 'Geist Mono', ui-monospace, monospace;
+  --bg: #F3F4F6;
+  --rail: #FFFFFF;
+  --panel: #FFFFFF;
+  --line: #E5E7EB;
+  --line-hi: #D1D5DB;
+  --ink: #111827;
+  --soft: #4B5563;
+  --faint: #6B7280;
+  --accent: #1D4ED8;
+  --accent-soft: #EFF6FF;
+  --good: #047857;
+  --good-bg: #ECFDF5;
+  --bad: #B91C1C;
+  --bad-bg: #FEF2F2;
+  --warn: #B45309;
+  --warn-bg: #FFFBEB;
+  --mono: "Red Hat Mono", ui-monospace, monospace;
+  --sans: "Source Sans 3", ui-sans-serif, system-ui, sans-serif;
+  --r: 12px;
+  --r-sm: 8px;
+  --shadow: 0 8px 24px rgba(17, 24, 39, 0.12);
+  --rail-w: 232px;
 }
 * { box-sizing: border-box; }
-html, body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 'Geist', ui-sans-serif, system-ui, sans-serif; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 var(--sans); }
 body { min-height: 100vh; }
-.glow { position: fixed; left: -10%; top: -220px; width: 70%; height: 520px; pointer-events: none;
-  background: radial-gradient(closest-side, rgba(255,122,61,0.18), rgba(255,122,61,0)); filter: blur(30px); }
+::selection { background: #DBEAFE; color: var(--ink); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+input, textarea, select { caret-color: var(--accent); }
 button, input, select, textarea { font: inherit; color: inherit; }
-a { color: var(--amber); }
-.wrap { position: relative; max-width: 1180px; margin: 0 auto; padding: 24px 16px 64px; }
-header { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
-.brand { font-size: 18px; font-weight: 500; letter-spacing: -0.02em; }
-.label { font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--faint); }
-.badge { white-space: nowrap; font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; padding: 4px 9px; border-radius: 999px; border: 1px solid var(--line-hi); color: var(--soft); }
-.badge.good { color: var(--good); border-color: rgba(134,239,172,0.4); }
-.badge.bad { color: var(--bad); border-color: rgba(248,113,113,0.45); }
-.badge.lit { color: var(--amber); border-color: rgba(255,138,80,0.5); }
-.badge.haze { color: var(--haze-soft); border-color: rgba(129,140,248,0.5); }
-.spacer { flex: 1; }
-nav { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 20px; }
-nav button { height: 36px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--soft); cursor: pointer; }
-nav button[aria-current="page"] { background: var(--ink); color: var(--bg); border-color: var(--ink); font-weight: 500; }
-.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 20px; padding: 18px; }
-.grid { display: grid; gap: 12px; }
-.kpis { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
-.kpi .value { font-size: 32px; font-weight: 300; letter-spacing: -0.03em; margin-top: 6px; }
-.kpi .sub { color: var(--faint); font-size: 12px; }
-.row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.section { margin-top: 20px; }
-.section h2 { font-size: 15px; font-weight: 500; margin: 0 0 10px; }
-.btn { height: 36px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--line-hi); background: var(--panel-hi); cursor: pointer; white-space: nowrap; }
-.btn:hover { border-color: rgba(255,255,255,0.3); }
-.btn.primary { background: var(--ink); color: var(--bg); border-color: var(--ink); font-weight: 500; }
-.btn.danger { color: var(--bad); border-color: rgba(248,113,113,0.4); background: transparent; }
-.btn.small { height: 30px; padding: 0 12px; font-size: 13px; }
-.btn:disabled { opacity: 0.45; cursor: default; }
-input[type=text], input[type=password], input[type=number], input[type=date], input[type=search], select, textarea {
-  height: 36px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--line); background: rgba(255,255,255,0.05); outline: none; }
-textarea { height: auto; min-height: 64px; padding: 10px 12px; font-family: var(--mono); font-size: 12px; resize: vertical; }
-input:focus, select:focus, textarea:focus { border-color: var(--line-hi); }
-select option { background: #18181B; }
-table { width: 100%; border-collapse: collapse; }
-th { text-align: left; font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); font-weight: 400; padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
-td { padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); vertical-align: middle; }
-td.mono { white-space: nowrap; }
-input[type=checkbox], input[type=radio] { accent-color: var(--ember); }
-tr:last-child td { border-bottom: none; }
-.table-wrap { overflow-x: auto; }
-.mono { font-family: var(--mono); font-size: 12px; }
+a { color: var(--accent); }
+.mono { font-family: var(--mono); font-size: 13px; font-variant-numeric: tabular-nums; }
 .muted { color: var(--faint); }
 .soft { color: var(--soft); }
-.empty { padding: 28px; text-align: center; color: var(--faint); border: 1px dashed var(--line-hi); border-radius: 16px; }
-.funnel-row { display: grid; grid-template-columns: 160px 1fr 70px; align-items: center; gap: 12px; padding: 6px 0; }
-.bar { height: 10px; border-radius: 5px; background: rgba(255,255,255,0.07); overflow: hidden; }
-.bar > span { display: block; height: 100%; border-radius: 5px; background: linear-gradient(90deg, var(--ember), var(--amber)); }
+.spacer { flex: 1; }
+
+.login { width: min(400px, calc(100% - 32px)); margin: 18vh auto 0; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 32px; display: grid; gap: 14px; }
+.login h1 { font-size: 28px; font-weight: 600; letter-spacing: -0.03em; line-height: 1.15; margin: 0; }
+.login p { margin: 0; color: var(--soft); }
+
+.shell { display: grid; grid-template-columns: var(--rail-w) minmax(0, 1fr); min-height: 100vh; }
+.rail { background: var(--rail); border-right: 1px solid var(--line); padding: 24px 16px; display: flex; flex-direction: column; gap: 4px; position: sticky; top: 0; height: 100vh; }
+.brand { font-size: 16px; font-weight: 650; letter-spacing: -0.03em; padding: 0 12px; }
+.env { font-family: var(--mono); font-size: 11px; color: var(--faint); padding: 4px 12px 16px; }
+.rail nav { display: flex; flex-direction: column; gap: 2px; }
+.rail nav button { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; background: none; border: 0; color: var(--soft); font-weight: 500; padding: 8px 12px; border-radius: var(--r-sm); cursor: pointer; min-height: 36px; }
+.rail nav button:hover { background: var(--bg); color: var(--ink); }
+.rail nav button[aria-current="page"] { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.count { margin-left: auto; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--warn-bg); color: var(--warn); font-size: 12px; font-weight: 650; display: inline-flex; align-items: center; justify-content: center; }
+.find { width: 100%; height: 36px; margin: 8px 0 16px; padding: 0 12px; border-radius: var(--r-sm); border: 1px solid var(--line); background: var(--bg); }
+.rail-foot { margin-top: auto; padding-top: 16px; }
+.rail-foot .textish { background: none; border: 0; color: var(--soft); cursor: pointer; font-size: 13px; padding: 8px 12px; text-align: left; }
+.rail-foot .textish:hover { color: var(--ink); }
+
+.stage { padding: 28px 32px 64px; max-width: 1180px; }
+.page-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin: 0 0 8px; }
+.page-head h1 { font-size: 24px; font-weight: 650; letter-spacing: -0.03em; margin: 0; }
+.lede { color: var(--soft); margin: 0 0 20px; }
+.toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+.section { margin-top: 24px; }
+.section h2 { font-size: 15px; font-weight: 650; margin: 0 0 10px; }
+
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 18px; }
+.grid { display: grid; gap: 12px; }
+.kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.kpis-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.overview-hero { min-height: calc(100vh - 56px); }
+.overview-hero .kpi { padding: 28px 22px 36px; }
+.kpi .value { font-family: var(--mono); font-size: 40px; font-weight: 500; letter-spacing: -0.03em; margin-top: 8px; font-variant-numeric: tabular-nums; }
+.chart-max { font-family: var(--mono); font-size: 12px; color: var(--soft); margin-bottom: 4px; }
+h2 { font-size: 15px; font-weight: 650; margin: 0 0 10px; letter-spacing: -0.02em; }
+::placeholder { color: var(--soft); opacity: 1; }
+.kpi .sub { color: var(--faint); font-size: 13px; margin-top: 4px; }
+.kpi .sub.warn { color: var(--warn); }
+.split { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+
+.callout { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 14px; border: 1px solid #F5D0A6; background: var(--warn-bg); border-radius: var(--r); margin-bottom: 16px; color: var(--ink); }
+.callout b { font-weight: 650; }
+
+.badge { white-space: nowrap; font-size: 12px; font-weight: 600; padding: 3px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--soft); background: var(--panel); }
+.badge.good { color: var(--good); background: var(--good-bg); border-color: #A7F3D0; }
+.badge.bad { color: var(--bad); background: var(--bad-bg); border-color: #FECACA; }
+.badge.lit { color: var(--warn); background: var(--warn-bg); border-color: #F5D0A6; }
+.badge.haze { color: var(--accent); background: var(--accent-soft); border-color: #BFDBFE; }
+
+.btn { height: 36px; padding: 0 14px; border-radius: var(--r-sm); border: 1px solid var(--line-hi); background: var(--panel); cursor: pointer; white-space: nowrap; font-weight: 500; }
+.btn:hover { background: var(--bg); }
+.btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 600; }
+.btn.primary:hover { filter: brightness(1.05); }
+.btn.danger { color: var(--bad); border-color: #FECACA; background: var(--panel); }
+.btn.danger:hover { background: var(--bad-bg); }
+.btn.small { height: 32px; padding: 0 10px; font-size: 13px; }
+.btn:disabled { opacity: 0.45; cursor: default; }
+.btn.busy { cursor: progress; }
+.isolate { margin-left: auto; }
+
+input[type=text], input[type=password], input[type=number], input[type=date], input[type=search], select, textarea {
+  height: 36px; padding: 0 12px; border-radius: var(--r-sm); border: 1px solid var(--line); background: var(--panel); outline: none; }
+textarea { height: auto; min-height: 64px; padding: 10px 12px; font-family: var(--mono); font-size: 13px; resize: vertical; }
+input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+select option { background: #fff; }
+input[type=checkbox], input[type=radio] { accent-color: var(--accent); width: 16px; height: 16px; }
+
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th { text-align: left; font-size: 12px; font-weight: 650; color: var(--faint); padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; position: sticky; top: 0; background: var(--panel); }
+th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--mono); font-size: 13px; }
+td { padding: 10px; border-bottom: 1px solid var(--bg); vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+tbody tr:hover td { background: #F9FAFB; }
+
+.empty { padding: 36px 20px; text-align: center; color: var(--faint); border: 1px dashed var(--line-hi); border-radius: var(--r); background: var(--panel); }
+.skel { height: 88px; border-radius: var(--r); background: linear-gradient(90deg, #E5E7EB 0%, #F3F4F6 50%, #E5E7EB 100%); background-size: 200% 100%; }
+@media (prefers-reduced-motion: no-preference) {
+  .skel { animation: shimmer 1.1s ease-in-out infinite; }
+  .toast { animation: toast-in 180ms ease-out; }
+}
+@keyframes shimmer { to { background-position: -200% 0; } }
+@keyframes toast-in { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+@media (prefers-reduced-motion: reduce) { .skel { animation: none; } }
+
+.funnel-row { display: grid; grid-template-columns: 160px 1fr 88px; align-items: center; gap: 12px; padding: 6px 0; }
+.bar { height: 8px; border-radius: 4px; background: var(--bg); overflow: hidden; }
+.bar > span { display: block; height: 100%; border-radius: 4px; background: var(--accent); }
 .chart svg { width: 100%; height: 180px; display: block; }
-.legend { display: flex; gap: 16px; margin-top: 8px; color: var(--soft); font-size: 12px; }
+.legend { display: flex; gap: 16px; margin-top: 8px; color: var(--soft); font-size: 13px; }
 .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
-.switch-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+
+.switch-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--bg); }
 .switch-row:last-child { border-bottom: none; }
 .flag { display: grid; gap: 14px; }
 .flag-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 .flag-key { font-family: var(--mono); font-size: 14px; }
 .modes { display: flex; gap: 6px; flex-wrap: wrap; }
 .modes label { display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line); cursor: pointer; color: var(--soft); }
-.modes input { accent-color: var(--ember); }
-.modes label.on { border-color: var(--ink); color: var(--ink); }
+.modes label.on { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
 .field { display: grid; gap: 6px; }
-.field > span { font-size: 12px; color: var(--soft); }
+.field > span { font-size: 13px; color: var(--soft); }
 .form-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); align-items: end; }
-.login { max-width: 400px; margin: 12vh auto 0; display: grid; gap: 16px; }
-.login h1 { font-size: 34px; font-weight: 300; letter-spacing: -0.035em; line-height: 1.1; margin: 0; }
-.login h1 span { color: var(--faint); }
-.toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); padding: 12px 18px; border-radius: 16px; background: rgba(28,28,32,0.96); border: 1px solid var(--line-hi); box-shadow: 0 12px 40px rgba(0,0,0,0.5); font-size: 13px; z-index: 10; max-width: calc(100% - 32px); }
-.toast.bad { border-color: rgba(248,113,113,0.5); }
-.created { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 16px; border: 1px solid rgba(255,138,80,0.5); background: rgba(255,122,61,0.08); margin-top: 12px; }
-.created .code { font-family: var(--mono); font-size: 22px; letter-spacing: 0.12em; }
+.form-actions { display: flex; justify-content: flex-end; margin-top: 4px; }
+
+.toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); padding: 12px 18px; border-radius: var(--r); background: var(--ink); color: #fff; box-shadow: var(--shadow); font-size: 14px; z-index: 10; max-width: calc(100% - 32px); }
+.toast.bad { background: var(--bad); }
+.created { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: var(--r); border: 1px solid #BFDBFE; background: var(--accent-soft); margin-top: 12px; }
+.created .code { font-family: var(--mono); font-size: 22px; letter-spacing: 0.08em; }
 pre { margin: 0; font-family: var(--mono); font-size: 12px; white-space: pre-wrap; word-break: break-word; color: var(--soft); }
 details summary { cursor: pointer; color: var(--soft); }
+
 .meals { display: grid; gap: 12px; align-items: start; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
 .meal { display: flex; flex-direction: column; gap: 10px; padding: 14px; }
-.meal img { width: 100%; height: 160px; object-fit: cover; border-radius: 14px; cursor: zoom-in; display: block; background: #111; }
-.meal .title { font-size: 15px; line-height: 1.3; }
-.meal .items { color: var(--soft); font-size: 12px; line-height: 1.5; }
-.macros { display: flex; gap: 12px; font-family: var(--mono); font-size: 12px; color: var(--soft); flex-wrap: wrap; }
+.meal img { width: 100%; height: 160px; object-fit: cover; border-radius: 10px; cursor: zoom-in; display: block; background: var(--bg); }
+.meal .title { font-size: 15px; line-height: 1.3; font-weight: 600; }
+.meal .items { color: var(--soft); font-size: 13px; line-height: 1.5; }
+.macros { display: flex; gap: 12px; font-family: var(--mono); font-size: 12px; color: var(--soft); flex-wrap: wrap; font-variant-numeric: tabular-nums; }
 .macros b { color: var(--ink); font-weight: 500; }
-.linkish { background: none; border: none; padding: 0; color: var(--amber); cursor: pointer; text-align: left; }
+.linkish { background: none; border: none; padding: 0; color: var(--accent); cursor: pointer; text-align: left; font-weight: 500; }
 .linkish:hover { text-decoration: underline; }
-.lightbox { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 20; cursor: zoom-out; padding: 24px; }
-.lightbox img { max-width: 100%; max-height: 100%; border-radius: 16px; }
-.kv { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; font-size: 13px; }
+.lightbox { position: fixed; inset: 0; background: rgba(17, 24, 39, 0.72); display: flex; align-items: center; justify-content: center; z-index: 20; cursor: zoom-out; padding: 24px; }
+.lightbox img { max-width: 100%; max-height: 100%; border-radius: 12px; }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; font-size: 14px; }
 .kv dt { color: var(--faint); }
 .kv dd { margin: 0; }
-@media (max-width: 640px) { .funnel-row { grid-template-columns: 110px 1fr 50px; } .kpi .value { font-size: 26px; } }
+
+@media (max-width: 960px) {
+  .kpis, .kpis-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .split { grid-template-columns: 1fr; }
+}
+@media (max-width: 720px) {
+  .shell { grid-template-columns: 1fr; }
+  .rail { position: sticky; top: 0; z-index: 5; height: auto; display: grid; grid-template-columns: 1fr auto; gap: 8px 12px; padding: 12px; border-right: 0; border-bottom: 1px solid var(--line); }
+  .brand { padding: 0; }
+  .env { padding: 0; margin: 0; grid-column: 1; }
+  .find { width: 100%; margin: 0; grid-column: 1 / -1; }
+  .rail nav { grid-column: 1 / -1; flex-direction: row; flex-wrap: nowrap; overflow-x: auto; }
+  .rail nav button { width: auto; flex: 0 0 auto; }
+  .rail-foot { margin: 0; padding: 0; grid-column: 2; grid-row: 1 / 3; align-self: start; }
+  .overview-hero { min-height: calc(100dvh - 148px); }
+  .stage { padding: 20px 16px 48px; }
+  .funnel-row { grid-template-columns: 110px 1fr 56px; }
+  .kpis, .kpis-3 { grid-template-columns: 1fr 1fr; }
+  .kpi .value { font-size: 28px; }
+}
 </style>
 </head>
 <body>
-<div class="glow" aria-hidden="true"></div>
 <div class="wrap" id="app"></div>
 <script>
 (function () {
   'use strict';
   var KEY = 'setpoint.admin.secret';
+  var TABS = [['overview', 'Overview'], ['users', 'Users'], ['meals', 'Meals'], ['invites', 'Invites'], ['flags', 'Flags'], ['health', 'Health']];
   var state = { secret: null, tab: 'overview', status: null, range: 14, cohort: '', userFilter: { q: '', role: '', cohort: '', pending: false }, person: null, mealFilter: { cohort: '', source: '' } };
   var root = document.getElementById('app');
 
   try { state.secret = sessionStorage.getItem(KEY); } catch (e) { state.secret = null; }
+  readHash();
 
-  // ---------- tiny DOM helper: never sets innerHTML from data ----------
   function h(tag, attrs) {
     var el = document.createElement(tag);
     if (attrs) {
@@ -179,7 +263,6 @@ details summary { cursor: pointer; color: var(--soft); }
   function fmtNum(n) { return n === null || n === undefined ? '—' : Number(n).toLocaleString('en-US'); }
   function pct(n) { return n === null || n === undefined ? '—' : Math.round(n * 100) + '%'; }
 
-  // ---------- API ----------
   function api(path, opts) {
     opts = opts || {};
     var headers = { 'x-admin-secret': state.secret || '' };
@@ -207,9 +290,33 @@ details summary { cursor: pointer; color: var(--soft); }
     renderLogin(message);
   }
 
-  // ---------- login ----------
+  function readHash() {
+    var raw = (location.hash || '').replace(/^#/, '');
+    if (raw.indexOf('user/') === 0) { state.person = raw.slice(5); state.tab = 'users'; return; }
+    var known = { overview: 1, users: 1, meals: 1, invites: 1, flags: 1, health: 1 };
+    if (known[raw]) { state.tab = raw; state.person = null; }
+  }
+  function setHash() {
+    var next = state.person ? 'user/' + state.person : state.tab;
+    if ((location.hash || '').replace(/^#/, '') !== next) {
+      try { history.replaceState(null, '', '#' + next); } catch (e) { location.hash = next; }
+    }
+  }
+  function go(tab, person) {
+    state.tab = tab;
+    state.person = person || null;
+    setHash();
+    renderShell();
+  }
+  window.addEventListener('hashchange', function () {
+    var prevTab = state.tab, prevPerson = state.person;
+    readHash();
+    if (state.secret && (state.tab !== prevTab || state.person !== prevPerson)) renderShell();
+  });
+
   function renderLogin(message) {
     clear(root);
+    root.className = '';
     var input = h('input', { type: 'password', placeholder: 'Admin secret', autocomplete: 'current-password', 'aria-label': 'Admin secret' });
     var btn = h('button', { class: 'btn primary', type: 'submit', text: 'Sign in' });
     var err = h('div', { class: 'soft', style: 'color: var(--bad); min-height: 20px', text: message || '' });
@@ -218,48 +325,72 @@ details summary { cursor: pointer; color: var(--soft); }
       if (!input.value.trim()) return;
       state.secret = input.value.trim();
       btn.disabled = true;
+      btn.classList.add('busy');
+      btn.textContent = 'Signing in…';
       api('/status').then(function (status) {
         try { sessionStorage.setItem(KEY, state.secret); } catch (e2) { /* private mode */ }
         state.status = status;
         renderShell();
-      }).catch(function (e3) { btn.disabled = false; if (e3.message !== 'unauthorized') err.textContent = e3.message; });
+      }).catch(function (e3) { btn.disabled = false; btn.classList.remove('busy'); btn.textContent = 'Sign in'; if (e3.message !== 'unauthorized') err.textContent = e3.message; });
     } },
-      h('div', { class: 'label', text: 'SetPoint · Admin' }),
-      h('h1', null, 'Owner’s dashboard. ', h('span', { text: 'Sign in with the admin secret.' })),
+      h('h1', { text: 'SetPoint Admin' }),
+      h('p', { text: 'Sign in with the admin secret.' }),
       input, btn, err
     );
     root.appendChild(form);
     input.focus();
   }
 
-  // ---------- shell ----------
-  var TABS = [['overview', 'Overview'], ['users', 'Users'], ['meals', 'Meals'], ['invites', 'Invites'], ['flags', 'Flags'], ['health', 'Health']];
   var main;
 
   function renderShell() {
     clear(root);
+    root.className = 'shell';
     var env = state.status ? state.status.environment : '';
-    root.appendChild(h('header', null,
-      h('span', { class: 'brand', text: 'SetPoint Admin' }),
-      env ? h('span', { class: 'badge' + (env === 'production' ? ' lit' : ''), text: env }) : null,
-      h('span', { class: 'spacer' }),
-      h('button', { class: 'btn small', text: 'Sign out', onclick: function () { signOut(); } })
-    ));
+    var pending = state.status && state.status.users ? state.status.users.pending : 0;
+    var find = h('input', { class: 'find', type: 'search', placeholder: 'Find someone', 'aria-label': 'Find someone', value: state.userFilter.q || '' });
+    find.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter') return;
+      state.userFilter.q = find.value.trim();
+      go('users');
+    });
     var nav = h('nav', { 'aria-label': 'Sections' });
     TABS.forEach(function (t) {
-      nav.appendChild(h('button', { 'aria-current': state.tab === t[0] ? 'page' : null, text: t[1], onclick: function () { state.tab = t[0]; state.person = null; renderShell(); } }));
+      nav.appendChild(h('button', {
+        type: 'button',
+        'aria-current': !state.person && state.tab === t[0] ? 'page' : null,
+        onclick: function () { go(t[0]); }
+      }, t[1], t[0] === 'users' && pending ? h('span', { class: 'count', text: String(pending) }) : null));
     });
-    root.appendChild(nav);
-    main = h('main');
+    root.appendChild(h('aside', { class: 'rail' },
+      h('div', { class: 'brand', text: 'SetPoint' }),
+      env ? h('div', { class: 'env', text: env }) : h('div', { class: 'env', text: ' ' }),
+      find,
+      nav,
+      h('div', { class: 'rail-foot' }, h('button', { class: 'textish', type: 'button', text: 'Sign out', onclick: function () { signOut(); } }))
+    ));
+    main = h('div', { class: 'stage', id: 'stage' });
     root.appendChild(main);
+    setHash();
     if (state.person) { renderPerson(state.person); return; }
     ({ overview: renderOverview, users: renderUsers, meals: renderMeals, invites: renderInvites, flags: renderFlags, health: renderHealth })[state.tab]();
   }
 
-  function loading() { clear(main); main.appendChild(h('div', { class: 'empty', text: 'Loading…' })); }
+  function loading() {
+    clear(main);
+    var titles = { overview: 'Overview', users: 'Users', meals: 'Meals', invites: 'Invites', flags: 'Flags', health: 'Health' };
+    if (!state.person) pageHead(titles[state.tab] || '');
+    main.appendChild(h('div', { class: 'grid kpis', 'aria-hidden': 'true' },
+      h('div', { class: 'skel' }), h('div', { class: 'skel' }), h('div', { class: 'skel' }), h('div', { class: 'skel' })));
+    main.appendChild(h('div', { class: 'skel section', 'aria-hidden': 'true', style: 'height: 220px' }));
+  }
   function refreshStatus() { return api('/status').then(function (s) { state.status = s; return s; }); }
 
-  // ---------- overview ----------
+  function pageHead(title, lede) {
+    main.appendChild(h('div', { class: 'page-head' }, h('h1', { text: title })));
+    if (lede) main.appendChild(h('p', { class: 'lede', text: lede }));
+  }
+
   function renderOverview() {
     loading();
     var to = new Date();
@@ -268,24 +399,33 @@ details summary { cursor: pointer; color: var(--soft); }
     Promise.all([api('/analytics' + q), refreshStatus(), api('/nutrition' + q)]).then(function (r) {
       var a = r[0], s = r[1], n = r[2];
       clear(main);
+      var hero = h('div', { class: 'overview-hero' });
+      main.appendChild(hero);
+      hero.appendChild(h('div', { class: 'page-head' }, h('h1', { text: 'Overview' })));
 
       var rangeSel = h('select', { 'aria-label': 'Range', onchange: function (e) { state.range = Number(e.target.value); renderOverview(); } },
         [7, 14, 30, 90].map(function (d) { return h('option', { value: d, selected: state.range === d ? true : null, text: 'Last ' + d + ' days' }); }));
       var cohortSel = h('select', { 'aria-label': 'Cohort', onchange: function (e) { state.cohort = e.target.value; renderOverview(); } },
         h('option', { value: '', text: 'Everyone' }),
         s.cohorts.map(function (c) { return h('option', { value: c.cohort, selected: state.cohort === c.cohort ? true : null, text: c.cohort + ' · ' + c.users }); }));
-      main.appendChild(h('div', { class: 'row', style: 'margin-bottom: 14px' }, rangeSel, cohortSel,
+      hero.appendChild(h('div', { class: 'toolbar' }, rangeSel, cohortSel,
         a.truncated ? h('span', { class: 'badge bad', text: 'Too many events — narrow the range' }) : null));
+
+      if (s.users.pending) {
+        hero.appendChild(h('div', { class: 'callout', role: 'status' },
+          h('div', null, h('b', { text: s.users.pending + (s.users.pending === 1 ? ' person is' : ' people are') + ' waiting for an invite' }), h('div', { class: 'muted', text: 'Let them in from Users, or mint a code.' })),
+          h('span', { class: 'spacer' }),
+          h('button', { class: 'btn small', type: 'button', text: 'Open Users', onclick: function () { go('users'); } })));
+      }
 
       var last = a.daily.length ? a.daily[a.daily.length - 1] : null;
       var totals = a.totals || {};
       function total(name) { return totals[name] ? totals[name].events : 0; }
       function people(name) { return totals[name] ? totals[name].users : 0; }
-      main.appendChild(h('div', { class: 'grid kpis' },
-        kpi('People in the app', fmtNum(s.users.total), s.users.pending ? s.users.pending + ' waiting for an invite' : 'none waiting'),
+      hero.appendChild(h('div', { class: 'grid kpis' },
+        kpi('People', fmtNum(s.users.total), s.users.pending ? s.users.pending + ' waiting for an invite' : 'none waiting', s.users.pending),
         kpi('Active, last day', fmtNum(last ? last.activeUsers : 0), last ? fmtDate(last.date) : 'no activity yet'),
         kpi('Meals logged', fmtNum(total('meal_logged')), people('meal_logged') + ' people'),
-        kpi('Check-ins answered', fmtNum(total('check_in_answered')), people('check_in_answered') + ' people'),
         kpi('Days fully eaten', pct(a.days.fullyEatenRate), a.days.fullyEaten + ' of ' + a.days.settled + ' settled days')
       ));
 
@@ -293,7 +433,7 @@ details summary { cursor: pointer; color: var(--soft); }
         var x = n.weight.byGoal[g];
         return g.charAt(0) + g.slice(1).toLowerCase() + ' ' + signedKg(x.avgKgPerWeek) + ' (' + x.people + ')';
       }).join(' · ');
-      main.appendChild(h('div', { class: 'grid kpis section' },
+      main.appendChild(h('div', { class: 'grid kpis kpis-3 section' },
         kpi('Calories vs target', pct(n.calories.avgShareOfTarget), n.calories.daysWithFood + ' settled days with food · ' + n.calories.missedDays + ' missed'),
         kpi('Protein vs target', pct(n.protein.avgShareOfTarget), n.protein.avgGramsPerDay !== null ? n.protein.avgGramsPerDay + ' g a day on average' : 'no meals yet'),
         kpi('Weight change', n.weight.avgKgPerWeek === null ? '—' : signedKg(n.weight.avgKgPerWeek) + '/wk', n.weight.people ? n.weight.people + ' people · ' + byGoal : 'needs two weigh-ins a person')
@@ -301,67 +441,66 @@ details summary { cursor: pointer; color: var(--soft); }
 
       var f = a.funnel;
       var steps = [['Signed up', f.signedUp], ['Finished setup', f.onboarded], ['Logged a meal', f.loggedAMeal], ['Answered a check-in', f.answeredACheckIn], ['Had a fully eaten day', f.hadAFullDay]];
-      var funnel = h('div', { class: 'panel' }, h('div', { class: 'label', style: 'margin-bottom: 10px', text: 'Funnel · people who signed up in this range' }));
+      var funnel = h('div', { class: 'panel' }, h('h2', { text: 'Funnel' }), h('p', { class: 'muted', style: 'margin: 0 0 10px', text: 'People who signed up in this range' }));
       if (!f.signedUp) funnel.appendChild(h('div', { class: 'muted', text: 'Nobody signed up in this range.' }));
       else steps.forEach(function (st) {
         var share = f.signedUp ? st[1] / f.signedUp : 0;
         funnel.appendChild(h('div', { class: 'funnel-row' },
           h('span', { class: 'soft', text: st[0] }),
           h('div', { class: 'bar' }, h('span', { style: 'width:' + Math.max(2, share * 100).toFixed(1) + '%' })),
-          h('span', { class: 'mono', style: 'text-align: right', text: st[1] + ' · ' + pct(share) })));
+          h('span', { class: 'mono num', style: 'text-align: right', text: st[1] + ' · ' + pct(share) })));
       });
 
-      var chart = h('div', { class: 'panel chart' }, h('div', { class: 'label', style: 'margin-bottom: 10px', text: 'Per day' }), dailyChart(a.daily, from, to),
+      var chart = h('div', { class: 'panel chart' }, h('h2', { text: 'Per day' }), dailyChart(a.daily, from, to),
         h('div', { class: 'legend' },
-          h('span', null, h('span', { class: 'dot', style: 'background: var(--amber)' }), 'Active people'),
-          h('span', null, h('span', { class: 'dot', style: 'background: var(--haze)' }), 'Meals logged')));
+          h('span', null, h('span', { class: 'dot', style: 'background: var(--accent)' }), 'Active people'),
+          h('span', null, h('span', { class: 'dot', style: 'background: #111827' }), 'Meals logged')));
 
-      main.appendChild(h('div', { class: 'grid section', style: 'grid-template-columns: repeat(auto-fit, minmax(340px, 1fr))' }, funnel, chart));
+      main.appendChild(h('div', { class: 'grid split section' }, funnel, chart));
 
-      var calPanel = h('div', { class: 'panel chart' }, h('div', { class: 'label', style: 'margin-bottom: 10px', text: 'Calories eaten vs target · settled days' }),
+      var calPanel = h('div', { class: 'panel chart' }, h('h2', { text: 'Calories eaten vs target' }),
         n.calories.daily.length ? shareChart(n.calories.daily) : h('div', { class: 'muted', text: 'No settled days in this range yet.' }));
       var screens = a.screens || [];
-      var screenPanel = h('div', { class: 'panel' }, h('div', { class: 'label', style: 'margin-bottom: 6px', text: 'Screens' }),
+      var screenPanel = h('div', { class: 'panel' }, h('h2', { text: 'Screens' }),
         screens.length ? h('div', { class: 'table-wrap' }, h('table', null,
-          h('thead', null, h('tr', null, h('th', { text: 'Screen' }), h('th', { text: 'Views' }), h('th', { text: 'People' }))),
-          h('tbody', null, screens.map(function (x) { return h('tr', null, h('td', { class: 'mono', text: x.screen }), h('td', { class: 'mono', text: fmtNum(x.views) }), h('td', { class: 'mono', text: fmtNum(x.users) })); }))))
+          h('thead', null, h('tr', null, h('th', { text: 'Screen' }), h('th', { class: 'num', text: 'Views' }), h('th', { class: 'num', text: 'People' }))),
+          h('tbody', null, screens.map(function (x) { return h('tr', null, h('td', { class: 'mono', text: x.screen }), h('td', { class: 'num', text: fmtNum(x.views) }), h('td', { class: 'num', text: fmtNum(x.users) })); }))))
           : h('div', { class: 'muted', text: 'No screen views yet — they start with the next app build.' }));
-      main.appendChild(h('div', { class: 'grid section', style: 'grid-template-columns: repeat(auto-fit, minmax(340px, 1fr))' }, calPanel, screenPanel));
+      main.appendChild(h('div', { class: 'grid split section' }, calPanel, screenPanel));
 
       var rows = Object.keys(totals).sort().map(function (name) {
-        return h('tr', null, h('td', { class: 'mono', text: name }), h('td', { class: 'mono', text: fmtNum(totals[name].events) }), h('td', { class: 'mono', text: fmtNum(totals[name].users) }));
+        return h('tr', null, h('td', { class: 'mono', text: name }), h('td', { class: 'num', text: fmtNum(totals[name].events) }), h('td', { class: 'num', text: fmtNum(totals[name].users) }));
       });
-      main.appendChild(h('div', { class: 'grid section', style: 'grid-template-columns: repeat(auto-fit, minmax(340px, 1fr))' },
-        h('div', { class: 'panel' }, h('div', { class: 'label', style: 'margin-bottom: 6px', text: 'Events' }),
-          rows.length ? h('div', { class: 'table-wrap' }, h('table', null, h('thead', null, h('tr', null, h('th', { text: 'Event' }), h('th', { text: 'Times' }), h('th', { text: 'People' }))), h('tbody', null, rows)))
+      main.appendChild(h('div', { class: 'grid split section' },
+        h('div', { class: 'panel' }, h('h2', { text: 'Events' }),
+          rows.length ? h('div', { class: 'table-wrap' }, h('table', null, h('thead', null, h('tr', null, h('th', { text: 'Event' }), h('th', { class: 'num', text: 'Times' }), h('th', { class: 'num', text: 'People' }))), h('tbody', null, rows)))
             : h('div', { class: 'muted', text: 'No events in this range yet.' })),
         switchesPanel(s)));
     }).catch(fail);
   }
 
-  function kpi(label, value, sub) {
-    return h('div', { class: 'panel kpi' }, h('div', { class: 'label', text: label }), h('div', { class: 'value', text: value }), h('div', { class: 'sub', text: sub }));
+  function kpi(label, value, sub, warn) {
+    return h('div', { class: 'panel kpi' }, h('div', { class: 'soft', text: label }), h('div', { class: 'value', text: value }), h('div', { class: 'sub' + (warn ? ' warn' : ''), text: sub }));
   }
 
   function signedKg(x) { return x === null || x === undefined ? '—' : (x > 0 ? '+' : '') + x.toFixed(2) + ' kg'; }
 
-  /** Bars of a share of target per day, with the 100% line. */
   function shareChart(rows) {
     var W = 600, H = 180, pad = 22;
     var max = Math.max(1.2, Math.max.apply(null, rows.map(function (r) { return r.avgShareOfTarget || 0; })));
+    var wrap = h('div');
+    wrap.appendChild(h('div', { class: 'chart-max', text: '100% of target' }));
     var s = svg('svg', { viewBox: '0 0 ' + W + ' ' + H, preserveAspectRatio: 'none', role: 'img', 'aria-label': 'Average share of calorie target eaten per day' });
     var step = (W - pad) / rows.length, bw = Math.max(2, step * 0.6);
     var y100 = H - pad - (1 / max) * (H - pad * 2);
     rows.forEach(function (r, i) {
       var v = r.avgShareOfTarget || 0;
       var bh = (v / max) * (H - pad * 2);
-      s.appendChild(svg('rect', { x: pad + i * step + (step - bw) / 2, y: H - pad - bh, width: bw, height: Math.max(0, bh), rx: 2, fill: v >= 0.9 ? '#86EFAC' : '#FF7A3D', opacity: 0.85 }));
+      s.appendChild(svg('rect', { x: pad + i * step + (step - bw) / 2, y: H - pad - bh, width: bw, height: Math.max(0, bh), rx: 2, fill: v >= 0.9 ? '#047857' : '#1D4ED8', opacity: 0.9 }));
     });
-    s.appendChild(svg('line', { x1: pad, y1: y100, x2: W, y2: y100, stroke: 'rgba(255,255,255,0.45)', 'stroke-dasharray': '4 4' }));
-    var t = svg('text', { x: 0, y: y100 + 4, fill: '#8B8B94', 'font-size': 11, 'font-family': 'Geist Mono, monospace' });
-    t.textContent = '100%';
-    s.appendChild(t);
-    return s;
+    s.appendChild(svg('line', { x1: pad, y1: y100, x2: W, y2: y100, stroke: '#6B7280', 'stroke-dasharray': '4 4' }));
+    wrap.appendChild(s);
+    return wrap;
   }
 
   function dailyChart(daily, from, to) {
@@ -374,22 +513,22 @@ details summary { cursor: pointer; color: var(--soft); }
     }
     var W = 600, H = 180, pad = 22;
     var max = Math.max(1, Math.max.apply(null, days.map(function (d) { return Math.max(d.activeUsers, d.mealsLogged); })));
+    var wrap = h('div');
+    wrap.appendChild(h('div', { class: 'chart-max', text: 'Peak ' + max }));
     var s = svg('svg', { viewBox: '0 0 ' + W + ' ' + H, preserveAspectRatio: 'none', role: 'img', 'aria-label': 'Active people and meals logged per day' });
     var step = (W - pad) / days.length;
     var bw = Math.max(2, step * 0.55);
-    s.appendChild(svg('line', { x1: pad, y1: H - pad, x2: W, y2: H - pad, stroke: 'rgba(255,255,255,0.12)' }));
+    s.appendChild(svg('line', { x1: pad, y1: H - pad, x2: W, y2: H - pad, stroke: '#E5E7EB' }));
     var pts = [];
     days.forEach(function (d, i) {
       var x = pad + i * step + (step - bw) / 2;
       var bh = (d.activeUsers / max) * (H - pad * 2);
-      s.appendChild(svg('rect', { x: x, y: H - pad - bh, width: bw, height: Math.max(0, bh), rx: 2, fill: '#FFB86B', opacity: 0.85 }));
+      s.appendChild(svg('rect', { x: x, y: H - pad - bh, width: bw, height: Math.max(0, bh), rx: 2, fill: '#1D4ED8', opacity: 0.9 }));
       pts.push((x + bw / 2).toFixed(1) + ',' + (H - pad - (d.mealsLogged / max) * (H - pad * 2)).toFixed(1));
     });
-    s.appendChild(svg('polyline', { points: pts.join(' '), fill: 'none', stroke: '#818CF8', 'stroke-width': 2, 'vector-effect': 'non-scaling-stroke' }));
-    var top = svg('text', { x: 0, y: pad - 6, fill: '#8B8B94', 'font-size': 11, 'font-family': 'Geist Mono, monospace' });
-    top.textContent = String(max);
-    s.appendChild(top);
-    return s;
+    s.appendChild(svg('polyline', { points: pts.join(' '), fill: 'none', stroke: '#111827', 'stroke-width': 2, 'vector-effect': 'non-scaling-stroke' }));
+    wrap.appendChild(s);
+    return wrap;
   }
 
   function switchesPanel(s) {
@@ -401,7 +540,7 @@ details summary { cursor: pointer; color: var(--soft); }
       wearableModifier: ['Wearable modifier', 'WEARABLE_MODIFIER_ENABLED'],
       aiConfigured: ['AI configured', 'ANTHROPIC_API_KEY'],
     };
-    var p = h('div', { class: 'panel' }, h('div', { class: 'label', style: 'margin-bottom: 6px', text: 'Switches · set in Vercel, then redeploy' }));
+    var p = h('div', { class: 'panel' }, h('h2', { text: 'Switches' }), h('p', { class: 'muted', style: 'margin: 0 0 8px', text: 'Set in Vercel, then redeploy' }));
     Object.keys(labels).forEach(function (k) {
       var on = s.switches[k];
       var warn = (k === 'devLogin' || k === 'nearbySampleVenues') && on && s.environment === 'production';
@@ -412,7 +551,6 @@ details summary { cursor: pointer; color: var(--soft); }
     return p;
   }
 
-  // ---------- users ----------
   function renderUsers() {
     var f = state.userFilter;
     var qs = [];
@@ -424,10 +562,11 @@ details summary { cursor: pointer; color: var(--soft); }
     Promise.all([api('/users' + (qs.length ? '?' + qs.join('&') : '')), state.status ? Promise.resolve(state.status) : refreshStatus()]).then(function (r) {
       var users = r[0].users, s = r[1];
       clear(main);
+      pageHead('Users', users.length + (users.length === 500 ? '+' : '') + ' people');
       var search = h('input', { type: 'search', placeholder: 'Search email', value: f.q, 'aria-label': 'Search email' });
       var timer;
       search.addEventListener('input', function () { clearTimeout(timer); timer = setTimeout(function () { f.q = search.value.trim(); renderUsers(); }, 350); });
-      main.appendChild(h('div', { class: 'row', style: 'margin-bottom: 14px' },
+      main.appendChild(h('div', { class: 'toolbar' },
         search,
         h('select', { 'aria-label': 'Role', onchange: function (e) { f.role = e.target.value; renderUsers(); } },
           h('option', { value: '', text: 'Any role' }),
@@ -435,15 +574,13 @@ details summary { cursor: pointer; color: var(--soft); }
         h('select', { 'aria-label': 'Cohort', onchange: function (e) { f.cohort = e.target.value; renderUsers(); } },
           h('option', { value: '', text: 'Any cohort' }),
           s.cohorts.map(function (c) { return h('option', { value: c.cohort, selected: f.cohort === c.cohort ? true : null, text: c.cohort }); })),
-        h('label', { class: 'row soft', style: 'gap: 6px' }, h('input', { type: 'checkbox', checked: f.pending, onchange: function (e) { f.pending = e.target.checked; renderUsers(); } }), 'Waiting for an invite'),
-        h('span', { class: 'spacer' }),
-        h('span', { class: 'muted', text: users.length + (users.length === 500 ? '+' : '') + ' people' })));
+        h('label', { class: 'soft', style: 'display:flex;align-items:center;gap:6px' }, h('input', { type: 'checkbox', checked: f.pending, onchange: function (e) { f.pending = e.target.checked; renderUsers(); } }), 'Waiting for an invite')));
 
-      if (!users.length) { main.appendChild(h('div', { class: 'empty', text: 'Nobody matches.' })); return; }
+      if (!users.length) { main.appendChild(h('div', { class: 'empty', text: 'Nobody matches. Clear the search or filters.' })); return; }
       var body = h('tbody');
       users.forEach(function (u) { body.appendChild(userRow(u)); });
       main.appendChild(h('div', { class: 'panel table-wrap', style: 'padding: 6px 8px' }, h('table', null,
-        h('thead', null, h('tr', null, ['Email', 'Role', 'Cohort', 'Access', 'Setup', 'Meals', 'Invite', 'Joined'].map(function (t) { return h('th', { text: t }); }))),
+        h('thead', null, h('tr', null, h('th', { text: 'Email' }), h('th', { text: 'Role' }), h('th', { text: 'Cohort' }), h('th', { text: 'Access' }), h('th', { text: 'Setup' }), h('th', { class: 'num', text: 'Meals' }), h('th', { text: 'Invite' }), h('th', { text: 'Joined' }))),
         body)));
     }).catch(fail);
   }
@@ -462,26 +599,23 @@ details summary { cursor: pointer; color: var(--soft); }
     function drawAccess() {
       clear(access);
       if (u.accessGrantedAt) access.appendChild(h('span', { class: 'mono soft', text: fmtDate(u.accessGrantedAt) }));
-      else access.appendChild(h('div', { class: 'row', style: 'gap: 8px' }, h('span', { class: 'badge lit', text: 'Waiting' }),
+      else access.appendChild(h('div', { style: 'display:flex;align-items:center;gap:8px' }, h('span', { class: 'badge lit', text: 'Waiting' }),
         h('button', { class: 'btn small', text: 'Let in', onclick: function () { save({ access: true }, drawAccess); } })));
     }
     drawAccess();
     return h('tr', null,
-      h('td', null, h('button', { class: 'linkish', text: u.email || '(no email)', onclick: function () { openPerson(u.id); } }), h('div', { class: 'mono muted', style: 'font-size: 10px', text: u.id })),
+      h('td', null, h('button', { class: 'linkish', text: u.email || '(no email)', onclick: function () { go('users', u.id); } }), h('div', { class: 'mono muted', style: 'font-size: 11px', text: u.id })),
       h('td', null, role),
       h('td', null, cohort),
       access,
-      h('td', null, u.onboarding && u.onboarding.completedAt ? h('span', { class: 'badge good', text: 'Done' }) : h('span', { class: 'badge', text: 'Not yet' })),
-      h('td', { class: 'mono', text: fmtNum(u._count ? u._count.meals : 0) }),
+      h('td', null, u.onboarding && u.onboarding.completedAt ? h('span', { class: 'muted', text: 'Done' }) : h('span', { class: 'badge lit', text: 'Not yet' })),
+      h('td', { class: 'num', text: fmtNum(u._count ? u._count.meals : 0) }),
       h('td', { class: 'mono soft', text: u.inviteCode ? u.inviteCode.code : '—' }),
       h('td', { class: 'mono soft', text: fmtDate(u.createdAt) }));
   }
 
-  // ---------- meals ----------
-  var SOURCES = [['', 'Any way'], ['TEXT', 'Typed'], ['PHOTO', 'Photo'], ['SAVED', 'Usual'], ['BARCODE', 'Barcode'], ['CATALOG', 'Foods'], ['PRESCRIPTION', 'Check-in plate']];
+  var SOURCES = [['', 'Any way'], ['TEXT', 'Typed'], ['MANUAL', 'Typed'], ['PHOTO', 'Photo'], ['SAVED', 'Usual'], ['BARCODE', 'Barcode'], ['CATALOG', 'Foods'], ['PRESCRIPTION', 'Check-in plate']];
   function sourceLabel(src) { for (var i = 0; i < SOURCES.length; i++) if (SOURCES[i][0] === src) return SOURCES[i][1]; return src; }
-
-  function openPerson(id) { state.person = id; renderShell(); window.scrollTo(0, 0); }
 
   function lightbox(url) {
     var box = h('div', { class: 'lightbox', role: 'dialog', 'aria-label': 'Meal photo', onclick: function () { box.remove(); } }, h('img', { src: url, alt: 'Meal photo' }));
@@ -493,7 +627,7 @@ details summary { cursor: pointer; color: var(--soft); }
     var items = (m.items || []).map(function (it) { return it.name + (it.quantity ? ' (' + it.quantity + ')' : '') + ' · ' + it.kcal; }).join(' / ');
     return h('div', { class: 'panel meal' },
       m.photoUrl ? h('img', { src: m.photoUrl, alt: m.summary || 'Meal photo', loading: 'lazy', onclick: function () { lightbox(m.photoUrl); } }) : null,
-      h('div', { class: 'row', style: 'gap: 6px' },
+      h('div', { style: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap' },
         h('span', { class: 'badge', text: sourceLabel(m.source) }),
         m.fixed ? h('span', { class: 'badge haze', text: 'Fixed' }) : null,
         m.parseConfidence !== null && m.parseConfidence < 0.45 ? h('span', { class: 'badge lit', text: 'Rough estimate' }) : null,
@@ -503,7 +637,7 @@ details summary { cursor: pointer; color: var(--soft); }
       items ? h('div', { class: 'items', text: items }) : null,
       h('div', { class: 'macros' }, h('span', null, h('b', { text: fmtNum(m.kcal) }), ' kcal'), h('span', null, h('b', { text: Math.round(m.proteinG) }), ' g protein'), h('span', { text: Math.round(m.carbsG) + ' g carbs' }), h('span', { text: Math.round(m.fatG) + ' g fat' })),
       m.notes ? h('div', { class: 'items', text: m.notes }) : null,
-      showUser && m.user ? h('button', { class: 'linkish', style: 'font-size: 13px', text: (m.user.email || m.user.id) + (m.user.cohort ? ' · ' + m.user.cohort : ''), onclick: function () { openPerson(m.user.id); } }) : null);
+      showUser && m.user ? h('button', { class: 'linkish', style: 'font-size: 13px', text: (m.user.email || m.user.id) + (m.user.cohort ? ' · ' + m.user.cohort : ''), onclick: function () { go('users', m.user.id); } }) : null);
   }
 
   function renderMeals() {
@@ -512,7 +646,8 @@ details summary { cursor: pointer; color: var(--soft); }
     Promise.all([state.status ? Promise.resolve(state.status) : refreshStatus()]).then(function (r) {
       var s = r[0];
       clear(main);
-      main.appendChild(h('div', { class: 'row', style: 'margin-bottom: 14px' },
+      pageHead('Meals');
+      main.appendChild(h('div', { class: 'toolbar' },
         h('select', { 'aria-label': 'Cohort', onchange: function (e) { f.cohort = e.target.value; renderMeals(); } },
           h('option', { value: '', text: 'Everyone' }),
           s.cohorts.map(function (c) { return h('option', { value: c.cohort, selected: f.cohort === c.cohort ? true : null, text: c.cohort }); })),
@@ -532,7 +667,7 @@ details summary { cursor: pointer; color: var(--soft); }
         api('/meals?' + qs.join('&')).then(function (res) {
           res.meals.forEach(function (m) { grid.appendChild(mealCard(m, true)); });
           clear(more);
-          if (!grid.children.length) more.appendChild(h('div', { class: 'empty', text: 'No meals logged yet.' }));
+          if (!grid.children.length) more.appendChild(h('div', { class: 'empty', text: 'No meals logged yet. They show up here as people log them in the app.' }));
           else if (res.nextBefore) more.appendChild(h('button', { class: 'btn', text: 'Load more', onclick: function () { load(res.nextBefore); } }));
         }).catch(fail);
       }
@@ -540,21 +675,20 @@ details summary { cursor: pointer; color: var(--soft); }
     }).catch(fail);
   }
 
-  // ---------- one person ----------
   function renderPerson(id) {
     loading();
     api('/users/' + encodeURIComponent(id) + '/profile').then(function (p) {
       clear(main);
       var u = p.user, o = u.onboarding;
-      main.appendChild(h('div', { class: 'row', style: 'margin-bottom: 14px' },
-        h('button', { class: 'btn small', text: '← Back', onclick: function () { state.person = null; renderShell(); } }),
-        h('span', { style: 'font-size: 18px', text: u.email || u.id }),
+      main.appendChild(h('div', { class: 'toolbar' },
+        h('button', { class: 'btn small', text: 'Back to users', onclick: function () { go('users'); } }),
+        h('h1', { style: 'font-size: 24px; font-weight: 650; letter-spacing: -0.03em; margin: 0', text: u.email || u.id }),
         h('span', { class: 'badge', text: u.role.toLowerCase() }),
         u.cohort ? h('span', { class: 'badge haze', text: u.cohort }) : null,
         u.accessGrantedAt ? null : h('span', { class: 'badge lit', text: 'Waiting for an invite' })));
 
       var weightNow = p.weights.length ? p.weights[p.weights.length - 1].weightKg : (o ? o.weightKg : null);
-      var plan = h('div', { class: 'panel' }, h('div', { class: 'label', style: 'margin-bottom: 10px', text: 'Plan' }),
+      var plan = h('div', { class: 'panel' }, h('h2', { text: 'Plan' }),
         o ? h('dl', { class: 'kv' },
           h('dt', { text: 'Goal' }), h('dd', { text: o.goal.charAt(0) + o.goal.slice(1).toLowerCase() + (o.paceKgPerWeek ? ' · ' + o.paceKgPerWeek + ' kg/wk' : '') }),
           h('dt', { text: 'Calories' }), h('dd', { text: fmtNum(o.dailyKcalTarget) + ' kcal a day' }),
@@ -569,26 +703,26 @@ details summary { cursor: pointer; color: var(--soft); }
           h('dt', { text: 'Meals logged' }), h('dd', { text: fmtNum(p.mealCount) }),
           h('dt', { text: 'Time zone' }), h('dd', { text: u.timezone })));
 
-      var days = h('div', { class: 'panel chart' }, h('div', { class: 'label', style: 'margin-bottom: 10px', text: 'Last 14 days · eaten vs target' }), personChart(p.days),
+      var days = h('div', { class: 'panel chart' }, h('h2', { text: 'Last 14 days' }), personChart(p.days),
         h('div', { class: 'legend' },
-          h('span', null, h('span', { class: 'dot', style: 'background: var(--ember)' }), 'Eaten'),
-          h('span', null, h('span', { class: 'dot', style: 'background: rgba(255,255,255,0.6)' }), 'Target'),
-          h('span', null, h('span', { class: 'dot', style: 'background: var(--haze)' }), 'Protein vs target')));
-      main.appendChild(h('div', { class: 'grid', style: 'grid-template-columns: repeat(auto-fit, minmax(340px, 1fr))' }, plan, days));
+          h('span', null, h('span', { class: 'dot', style: 'background: var(--accent)' }), 'Eaten'),
+          h('span', null, h('span', { class: 'dot', style: 'background: #6B7280' }), 'Target'),
+          h('span', null, h('span', { class: 'dot', style: 'background: #111827' }), 'Protein vs target')));
+      main.appendChild(h('div', { class: 'grid split' }, plan, days));
 
       var dayRows = p.days.slice().reverse().map(function (d) {
         return h('tr', null,
           h('td', { class: 'mono', text: d.date }),
-          h('td', { class: 'mono', text: fmtNum(d.kcal) + (d.targetKcal ? ' / ' + fmtNum(d.targetKcal) : '') }),
-          h('td', { class: 'mono', text: d.proteinG + (d.targetProteinG ? ' / ' + d.targetProteinG + ' g' : ' g') }),
-          h('td', { class: 'mono', text: String(d.meals) }),
+          h('td', { class: 'num', text: fmtNum(d.kcal) + (d.targetKcal ? ' / ' + fmtNum(d.targetKcal) : '') }),
+          h('td', { class: 'num', text: d.proteinG + (d.targetProteinG ? ' / ' + d.targetProteinG + ' g' : ' g') }),
+          h('td', { class: 'num', text: String(d.meals) }),
           h('td', null, d.kind ? h('span', { class: 'badge ' + ({ ON_TRACK: 'good', OVER: 'good', UNDER: 'lit', MISSED: 'bad' }[d.kind] || ''), text: d.kind.replace('_', ' ').toLowerCase() }) : null));
       });
-      var weightPanel = h('div', { class: 'panel chart' }, h('div', { class: 'label', style: 'margin-bottom: 10px', text: 'Weight · last 6 months' }),
+      var weightPanel = h('div', { class: 'panel chart' }, h('h2', { text: 'Weight · last 6 months' }),
         p.weights.length >= 2 ? weightChart(p.weights) : h('div', { class: 'muted', text: p.weights.length ? 'One weigh-in: ' + p.weights[0].weightKg + ' kg on ' + fmtDate(p.weights[0].measuredAt) : 'No weigh-ins.' }));
-      main.appendChild(h('div', { class: 'grid section', style: 'grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); align-items: start' },
+      main.appendChild(h('div', { class: 'grid split section' },
         h('div', { class: 'panel table-wrap' }, h('table', null,
-          h('thead', null, h('tr', null, ['Day', 'Calories', 'Protein', 'Meals', 'Result'].map(function (t) { return h('th', { text: t }); }))),
+          h('thead', null, h('tr', null, h('th', { text: 'Day' }), h('th', { class: 'num', text: 'Calories' }), h('th', { class: 'num', text: 'Protein' }), h('th', { class: 'num', text: 'Meals' }), h('th', { text: 'Result' }))),
           h('tbody', null, dayRows))),
         weightPanel));
 
@@ -597,10 +731,10 @@ details summary { cursor: pointer; color: var(--soft); }
           h('td', { class: 'mono', text: new Date(c.createdAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) }),
           h('td', { class: 'soft', text: c.kind.toLowerCase() + (c.slot ? ' · ' + c.slot : '') + (c.tier > 1 ? ' · tier ' + c.tier : '') }),
           h('td', null, h('span', { class: 'badge', text: c.status.toLowerCase() })),
-          h('td', { class: 'soft', text: c.feedbackPositive === true ? '👍' : c.feedbackPositive === false ? '👎' : '' }));
+          h('td', { class: 'soft', text: c.feedbackPositive === true ? 'Yes' : c.feedbackPositive === false ? 'No' : '' }));
       });
-      main.appendChild(h('div', { class: 'panel table-wrap section' }, h('div', { class: 'label', style: 'margin-bottom: 6px', text: 'Check-ins · last 14 days' }),
-        checkRows.length ? h('table', null, h('thead', null, h('tr', null, ['When', 'Kind', 'Status', 'Feedback'].map(function (t) { return h('th', { text: t }); }))), h('tbody', null, checkRows))
+      main.appendChild(h('div', { class: 'panel table-wrap section' }, h('h2', { text: 'Check-ins · last 14 days' }),
+        checkRows.length ? h('table', null, h('thead', null, h('tr', null, h('th', { text: 'When' }), h('th', { text: 'Kind' }), h('th', { text: 'Status' }), h('th', { text: 'Feedback' }))), h('tbody', null, checkRows))
           : h('div', { class: 'muted', text: 'No check-ins.' })));
 
       main.appendChild(h('div', { class: 'section' }, h('h2', { text: 'Meals' + (p.mealCount > p.meals.length ? ' · latest ' + p.meals.length + ' of ' + fmtNum(p.mealCount) : '') })));
@@ -611,24 +745,24 @@ details summary { cursor: pointer; color: var(--soft); }
   function personChart(days) {
     var W = 600, H = 180, pad = 22;
     var max = Math.max(1, Math.max.apply(null, days.map(function (d) { return Math.max(d.kcal, d.targetKcal || 0); })));
+    var wrap = h('div');
+    wrap.appendChild(h('div', { class: 'chart-max', text: fmtNum(max) + ' kcal' }));
     var s = svg('svg', { viewBox: '0 0 ' + W + ' ' + H, preserveAspectRatio: 'none', role: 'img', 'aria-label': 'Calories eaten against target per day' });
     var step = (W - pad) / days.length, bw = Math.max(3, step * 0.55);
     var pts = [];
     days.forEach(function (d, i) {
       var x = pad + i * step + (step - bw) / 2;
       var bh = (d.kcal / max) * (H - pad * 2);
-      s.appendChild(svg('rect', { x: x, y: H - pad - bh, width: bw, height: Math.max(0, bh), rx: 2, fill: d.targetKcal && d.kcal >= 0.9 * d.targetKcal ? '#86EFAC' : '#FF7A3D', opacity: d.kind === 'TODAY' ? 0.5 : 0.85 }));
+      s.appendChild(svg('rect', { x: x, y: H - pad - bh, width: bw, height: Math.max(0, bh), rx: 2, fill: d.targetKcal && d.kcal >= 0.9 * d.targetKcal ? '#047857' : '#1D4ED8', opacity: d.kind === 'TODAY' ? 0.5 : 0.9 }));
       if (d.targetKcal) {
         var ty = H - pad - (d.targetKcal / max) * (H - pad * 2);
-        s.appendChild(svg('line', { x1: x - 2, y1: ty, x2: x + bw + 2, y2: ty, stroke: 'rgba(255,255,255,0.6)', 'stroke-width': 2 }));
+        s.appendChild(svg('line', { x1: x - 2, y1: ty, x2: x + bw + 2, y2: ty, stroke: '#6B7280', 'stroke-width': 2 }));
       }
       if (d.targetProteinG) pts.push((x + bw / 2).toFixed(1) + ',' + (H - pad - Math.min(1.5, d.proteinG / d.targetProteinG) / 1.5 * (H - pad * 2)).toFixed(1));
     });
-    if (pts.length > 1) s.appendChild(svg('polyline', { points: pts.join(' '), fill: 'none', stroke: '#818CF8', 'stroke-width': 2, 'vector-effect': 'non-scaling-stroke' }));
-    var t = svg('text', { x: 0, y: pad - 6, fill: '#8B8B94', 'font-size': 11, 'font-family': 'Geist Mono, monospace' });
-    t.textContent = fmtNum(max) + ' kcal';
-    s.appendChild(t);
-    return s;
+    if (pts.length > 1) s.appendChild(svg('polyline', { points: pts.join(' '), fill: 'none', stroke: '#111827', 'stroke-width': 2, 'vector-effect': 'non-scaling-stroke' }));
+    wrap.appendChild(s);
+    return wrap;
   }
 
   function weightChart(rows) {
@@ -637,22 +771,19 @@ details summary { cursor: pointer; color: var(--soft); }
     var lo = Math.min.apply(null, ws) - 0.5, hi = Math.max.apply(null, ws) + 0.5;
     var t0 = new Date(rows[0].measuredAt).getTime(), t1 = new Date(rows[rows.length - 1].measuredAt).getTime();
     var span = Math.max(1, t1 - t0);
+    var wrap = h('div');
+    wrap.appendChild(h('div', { class: 'chart-max', text: (hi - 0.5).toFixed(1) + ' – ' + (lo + 0.5).toFixed(1) + ' kg' }));
     var s = svg('svg', { viewBox: '0 0 ' + W + ' ' + H, preserveAspectRatio: 'none', role: 'img', 'aria-label': 'Weight over time' });
     var pts = rows.map(function (r) {
       var x = pad + ((new Date(r.measuredAt).getTime() - t0) / span) * (W - pad * 2);
       var y = H - pad - ((r.weightKg - lo) / (hi - lo)) * (H - pad * 2);
       return x.toFixed(1) + ',' + y.toFixed(1);
     });
-    s.appendChild(svg('polyline', { points: pts.join(' '), fill: 'none', stroke: '#FFB86B', 'stroke-width': 2, 'vector-effect': 'non-scaling-stroke' }));
-    [[hi - 0.5, pad], [lo + 0.5, H - pad]].forEach(function (v) {
-      var t = svg('text', { x: 0, y: v[1], fill: '#8B8B94', 'font-size': 11, 'font-family': 'Geist Mono, monospace' });
-      t.textContent = v[0].toFixed(1);
-      s.appendChild(t);
-    });
-    return s;
+    s.appendChild(svg('polyline', { points: pts.join(' '), fill: 'none', stroke: '#1D4ED8', 'stroke-width': 2, 'vector-effect': 'non-scaling-stroke' }));
+    wrap.appendChild(s);
+    return wrap;
   }
 
-  // ---------- invites ----------
   function inviteState(inv) {
     if (inv.disabledAt) return ['Disabled', 'bad'];
     if (inv.expiresAt && new Date(inv.expiresAt) <= new Date()) return ['Expired', 'bad'];
@@ -669,6 +800,9 @@ details summary { cursor: pointer; color: var(--soft); }
     loading();
     api('/invites').then(function (r) {
       clear(main);
+      pageHead('Invites', state.status && !state.status.switches.inviteOnly
+        ? 'Invite-only is off, so new accounts get in without a code. A code still puts people in its cohort.'
+        : 'Invite-only is on: new accounts need one of these codes.');
       var code = h('input', { type: 'text', placeholder: 'Random if empty', 'aria-label': 'Code' });
       var cohort = h('input', { type: 'text', placeholder: 'e.g. dvir-pilot', 'aria-label': 'Cohort' });
       var role = h('select', { 'aria-label': 'Role' }, ['USER', 'TRAINER', 'ADMIN'].map(function (x) { return h('option', { value: x, text: x.charAt(0) + x.slice(1).toLowerCase() }); }));
@@ -687,23 +821,24 @@ details summary { cursor: pointer; color: var(--soft); }
         if (expires.value) body.expiresAt = new Date(expires.value + 'T23:59:59').toISOString();
         if (note.value.trim()) body.note = note.value.trim();
         createBtn.disabled = true;
+        createBtn.classList.add('busy');
         api('/invites', { method: 'POST', body: body }).then(function (res) {
           renderInvites();
           setTimeout(function () {
             var box = document.getElementById('created');
             if (box) { clear(box); box.appendChild(h('div', { class: 'created' }, h('span', { class: 'code', text: res.invite.code }), h('span', { class: 'soft', text: res.invite.cohort ? 'cohort ' + res.invite.cohort : 'no cohort' }), h('span', { class: 'spacer' }), h('button', { class: 'btn small', type: 'button', text: 'Copy', onclick: function () { copy(res.invite.code); } }))); }
           }, 0);
-        }).catch(function (err) { createBtn.disabled = false; fail(err); });
+        }).catch(function (err) { createBtn.disabled = false; createBtn.classList.remove('busy'); fail(err); });
       } },
-        h('div', { class: 'label', style: 'margin-bottom: 12px', text: 'New invite code' }),
+        h('h2', { text: 'New invite code' }),
         h('div', { class: 'form-grid' },
-          field('Code', code), field('Cohort', cohort), field('Role', role), field('Max uses', maxUses), field('Expires', expires), field('Note', note), createBtn),
-        h('div', { id: 'created' }, created),
-        h('div', { class: 'muted', style: 'margin-top: 10px; font-size: 12px', text: state.status && !state.status.switches.inviteOnly ? 'Invite-only is off, so new accounts get in without a code. A code still puts people in its cohort. Turn on INVITE_ONLY in Vercel to require one.' : 'Invite-only is on: new accounts need one of these codes.' }));
+          field('Code', code), field('Cohort', cohort), field('Role', role), field('Max uses', maxUses), field('Expires', expires), field('Note', note)),
+        h('div', { class: 'form-actions' }, createBtn),
+        h('div', { id: 'created' }, created));
       main.appendChild(form);
 
       var invites = r.invites;
-      if (!invites.length) { main.appendChild(h('div', { class: 'empty section', text: 'No codes yet.' })); return; }
+      if (!invites.length) { main.appendChild(h('div', { class: 'empty section', text: 'No codes yet. Create one above.' })); return; }
       var body = h('tbody');
       invites.forEach(function (inv) {
         var st = inviteState(inv);
@@ -711,12 +846,12 @@ details summary { cursor: pointer; color: var(--soft); }
           h('td', null, h('button', { class: 'btn small mono', title: 'Copy', text: inv.code, onclick: function () { copy(inv.code); } })),
           h('td', { class: 'soft', text: inv.cohort || '—' }),
           h('td', { class: 'soft', text: inv.role.charAt(0) + inv.role.slice(1).toLowerCase() }),
-          h('td', { class: 'mono', text: inv.uses + (inv.maxUses !== null ? ' / ' + inv.maxUses : '') }),
+          h('td', { class: 'num', text: inv.uses + (inv.maxUses !== null ? ' / ' + inv.maxUses : '') }),
           h('td', { class: 'mono soft', text: inv.expiresAt ? fmtDate(inv.expiresAt) : 'Never' }),
           h('td', null, h('span', { class: 'badge ' + st[1], text: st[0] })),
           h('td', { class: 'soft', text: inv.note || '' }),
           h('td', { class: 'mono soft', text: fmtDate(inv.createdAt) }),
-          h('td', null, inv.disabledAt ? null : h('button', { class: 'btn small danger', text: 'Disable', onclick: function () {
+          h('td', null, inv.disabledAt ? null : h('button', { class: 'btn small danger isolate', text: 'Disable', onclick: function () {
             if (!confirm('Disable ' + inv.code + '? Nobody new can use it.')) return;
             api('/invites/' + encodeURIComponent(inv.code) + '/disable', { method: 'POST', body: {} }).then(function () { toast('Disabled ' + inv.code); renderInvites(); }).catch(fail);
           } }))));
@@ -729,12 +864,11 @@ details summary { cursor: pointer; color: var(--soft); }
 
   function field(label, control) { return h('label', { class: 'field' }, h('span', { text: label }), control); }
 
-  // ---------- flags ----------
   function renderFlags() {
     loading();
     Promise.all([api('/flags'), state.status ? Promise.resolve(state.status) : refreshStatus()]).then(function (r) {
       clear(main);
-      main.appendChild(h('div', { class: 'muted', style: 'margin-bottom: 14px', text: 'Each feature has a default in code. An override turns it on for everyone, off for everyone, or on only for some cohorts, roles or people. The app picks changes up on its next launch.' }));
+      pageHead('Flags', 'Each feature has a default in code. An override turns it on for everyone, off for everyone, or on only for some cohorts, roles or people. The app picks changes up on its next launch.');
       var wrap = h('div', { class: 'grid' });
       r[0].flags.forEach(function (f) { wrap.appendChild(flagCard(f, r[1])); });
       main.appendChild(wrap);
@@ -747,15 +881,15 @@ details summary { cursor: pointer; color: var(--soft); }
     var card = h('div', { class: 'panel flag' });
     var cohorts = h('input', { type: 'text', value: o ? o.cohorts.join(', ') : '', placeholder: 'dvir-pilot, beta', 'aria-label': 'Cohorts' });
     var roles = ['USER', 'TRAINER', 'ADMIN'].map(function (x) {
-      return h('label', { class: 'row soft', style: 'gap: 6px' }, h('input', { type: 'checkbox', value: x, checked: o && o.roles.indexOf(x) >= 0 }), x.charAt(0) + x.slice(1).toLowerCase());
+      return h('label', { class: 'soft', style: 'display:flex;align-items:center;gap:6px' }, h('input', { type: 'checkbox', value: x, checked: o && o.roles.indexOf(x) >= 0 }), x.charAt(0) + x.slice(1).toLowerCase());
     });
     var userIds = h('textarea', { placeholder: 'User ids, one per line', 'aria-label': 'User ids' });
     userIds.value = o ? o.userIds.join('\n') : '';
     var some = h('div', { class: 'grid', style: 'gap: 12px' },
       field('Cohorts', cohorts),
-      h('div', { class: 'field' }, h('span', { text: 'Roles' }), h('div', { class: 'row', style: 'gap: 14px' }, roles)),
+      h('div', { class: 'field' }, h('span', { text: 'Roles' }), h('div', { style: 'display:flex;gap:14px;flex-wrap:wrap' }, roles)),
       field('People', userIds),
-      status.cohorts.length ? h('div', { class: 'muted', style: 'font-size: 12px', text: 'Cohorts in use: ' + status.cohorts.map(function (c) { return c.cohort; }).join(', ') }) : null);
+      status.cohorts.length ? h('div', { class: 'muted', style: 'font-size: 13px', text: 'Cohorts in use: ' + status.cohorts.map(function (c) { return c.cohort; }).join(', ') }) : null);
 
     var modes = h('div', { class: 'modes', role: 'radiogroup', 'aria-label': 'State' });
     var choices = [['default', 'Default (' + (f.default ? 'on' : 'off') + ')'], ['on', 'On for everyone'], ['off', 'Off for everyone'], ['some', 'Only for…']];
@@ -771,6 +905,7 @@ details summary { cursor: pointer; color: var(--soft); }
 
     var saveBtn = h('button', { class: 'btn primary', text: 'Save', onclick: function () {
       saveBtn.disabled = true;
+      saveBtn.classList.add('busy');
       var req;
       if (mode === 'default') req = api('/flags/' + f.key, { method: 'DELETE' });
       else {
@@ -779,11 +914,11 @@ details summary { cursor: pointer; color: var(--soft); }
           body.cohorts = cohorts.value.split(',').map(function (x) { return x.trim(); }).filter(Boolean);
           body.roles = roles.map(function (l) { return l.querySelector('input'); }).filter(function (i) { return i.checked; }).map(function (i) { return i.value; });
           body.userIds = userIds.value.split(/[\s,]+/).map(function (x) { return x.trim(); }).filter(Boolean);
-          if (!body.cohorts.length && !body.roles.length && !body.userIds.length) { saveBtn.disabled = false; toast('Pick at least one cohort, role or person.', true); return; }
+          if (!body.cohorts.length && !body.roles.length && !body.userIds.length) { saveBtn.disabled = false; saveBtn.classList.remove('busy'); toast('Pick at least one cohort, role or person.', true); return; }
         }
         req = api('/flags/' + f.key, { method: 'PUT', body: body });
       }
-      req.then(function () { toast('Saved ' + f.key + '.'); renderFlags(); }).catch(function (err) { saveBtn.disabled = false; fail(err); });
+      req.then(function () { toast('Saved ' + f.key + '.'); renderFlags(); }).catch(function (err) { saveBtn.disabled = false; saveBtn.classList.remove('busy'); fail(err); });
     } });
 
     var summary = !o ? 'Default · ' + (f.default ? 'on' : 'off') + ' for everyone'
@@ -794,28 +929,28 @@ details summary { cursor: pointer; color: var(--soft); }
       h('div', { class: 'flag-head' }, h('span', { class: 'flag-key', text: f.key }), h('span', { class: 'badge ' + (o ? 'haze' : ''), text: summary })),
       h('div', { class: 'soft', text: f.description }),
       modes, some,
-      h('div', { class: 'row' }, saveBtn, o && o.updatedAt ? h('span', { class: 'muted', text: 'Changed ' + fmtDate(o.updatedAt) }) : null),
+      h('div', { style: 'display:flex;align-items:center;gap:10px' }, saveBtn, o && o.updatedAt ? h('span', { class: 'muted', text: 'Changed ' + fmtDate(o.updatedAt) }) : null),
     ]);
     return card;
   }
 
-  // ---------- health ----------
   function renderHealth() {
     loading();
     api('/metrics').then(function (m) {
       clear(main);
+      pageHead('Health');
       var sch = m.scheduler || {};
       var alerts = (m.stopConditions && m.stopConditions.evaluation && m.stopConditions.evaluation.alerts) || [];
-      main.appendChild(h('div', { class: 'grid kpis' },
-        kpi('Check-in scheduler', sch.stale ? 'Stale' : sch.lastOk === false ? 'Failing' : 'Running', sch.lastRunAt ? 'last run ' + new Date(sch.lastRunAt).toLocaleString('en-GB') : 'never ran'),
-        kpi('Alerts', String(alerts.length), alerts.length ? alerts.join(', ') : 'none'),
+      var schLabel = sch.stale ? 'Stale' : sch.lastOk === false ? 'Failing' : 'Running';
+      main.appendChild(h('div', { class: 'grid kpis kpis-3' },
+        kpi('Check-in scheduler', schLabel, sch.lastRunAt ? 'last run ' + new Date(sch.lastRunAt).toLocaleString('en-GB') : 'never ran', sch.stale || sch.lastOk === false),
+        kpi('Alerts', String(alerts.length), alerts.length ? alerts.join(', ') : 'none', alerts.length),
         kpi('Wearable modifier', m.wearableModifier && m.wearableModifier.killSwitch ? 'On' : 'Off', m.wearableModifier && m.wearableModifier.haltedByStopConditions ? 'halted by stop conditions' : (m.wearableModifier ? m.wearableModifier.cohortPercent + '% cohort' : ''))));
       var copyM = Object.assign({}, m);
       main.appendChild(h('div', { class: 'panel section' }, h('details', null, h('summary', { text: 'All beta metrics (last 21 days)' }), h('pre', { style: 'margin-top: 12px', text: JSON.stringify(copyM, null, 2) }))));
     }).catch(fail);
   }
 
-  // ---------- start ----------
   if (state.secret) {
     root.appendChild(h('div', { class: 'empty', style: 'margin-top: 20vh', text: 'Signing in…' }));
     api('/status').then(function (s) { state.status = s; renderShell(); }).catch(function (e) { if (e.message !== 'unauthorized') signOut(e.message); });
