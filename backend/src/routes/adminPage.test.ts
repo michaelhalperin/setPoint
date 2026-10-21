@@ -13,6 +13,7 @@ describe('GET /admin', () => {
     expect(res.headers['x-frame-options']).toBe('DENY');
     expect(res.headers['content-security-policy']).toContain("connect-src 'self'");
     expect(res.body).toContain('<title>SetPoint Admin</title>');
+    expect(res.body).toContain("['notifications', 'Notifications']");
     // The page holds no data of its own.
     expect(res.body).not.toMatch(/@[a-z0-9-]+\.[a-z]{2,}/i);
   });

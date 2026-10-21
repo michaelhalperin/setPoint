@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import { toAdminCheckIn } from '../admin/checkInWhy.js';
 import { nutritionOverview, personDays, weightTrends, type PersonTargets } from '../analytics/nutrition.js';
 import { getPrisma } from '../db/client.js';
 import { toMealSummaries } from '../meals/summary.js';
@@ -20,6 +21,34 @@ const rangeQuery = z.object({
   to: z.string().datetime().optional(),
   cohort: z.string().optional(),
 });
+
+const CHECK_IN_KINDS = ['MEAL', 'TOP_UP', 'CLOSE', 'HEADS_UP', 'REFUEL', 'PRE_WORKOUT'] as const;
+
+const checkInsQuery = z.object({
+  userId: z.string().optional(),
+  cohort: z.string().optional(),
+  kind: z.enum(CHECK_IN_KINDS).optional(),
+  /** Older than this — for "load more". */
+  before: z.string().datetime().optional(),
+  limit: z.coerce.number().int().min(1).max(200).default(80),
+});
+
+const CHECK_IN_FIELDS = {
+  id: true,
+  createdAt: true,
+  deliveredAt: true,
+  kind: true,
+  slot: true,
+  tier: true,
+  status: true,
+  deliveryStatus: true,
+  message: true,
+  movedFromMin: true,
+  coveredByDinner: true,
+  lastPushError: true,
+  feedbackPositive: true,
+  confidenceScore: { select: { hoursSinceMeal: true, overdueMin: true } },
+} as const;
 
 const MEAL_FIELDS = {
   id: true,
@@ -84,6 +113,28 @@ export async function adminInsightRoutes(app: FastifyInstance): Promise<void> {
     };
   });
 
+  // Every check-in the scheduler created: when the push went out, and why.
+  app.get('/check-ins', async (req) => {
+    const q = checkInsQuery.parse(req.query);
+    const prisma = getPrisma();
+    const rows = await prisma.checkIn.findMany({
+      where: {
+        ...(q.userId ? { userId: q.userId } : {}),
+        ...(q.cohort ? { user: { cohort: q.cohort } } : {}),
+        ...(q.kind ? { kind: q.kind } : {}),
+        ...(q.before ? { createdAt: { lt: new Date(q.before) } } : {}),
+      },
+      select: { ...CHECK_IN_FIELDS, user: { select: { id: true, email: true, cohort: true } } },
+      orderBy: { createdAt: 'desc' },
+      take: q.limit,
+    });
+    const oldest = rows.length ? rows[rows.length - 1]!.createdAt : null;
+    return {
+      checkIns: rows.map(toAdminCheckIn),
+      nextBefore: rows.length === q.limit && oldest ? oldest.toISOString() : null,
+    };
+  });
+
   // One person: their plan, last 14 days against target, meals, weight, check-ins.
   app.get('/users/:id/profile', async (req) => {
     const { id } = z.object({ id: z.string().min(1) }).parse(req.params);
@@ -124,7 +175,7 @@ export async function adminInsightRoutes(app: FastifyInstance): Promise<void> {
       prisma.meal.findMany({ where: { userId: id }, select: MEAL_FIELDS, orderBy: { loggedAt: 'desc' }, take: 60 }),
       prisma.dayOutcome.findMany({ where: { userId: id, date: { gte: since14 } }, select: { userId: true, date: true, kind: true, kcalConsumed: true, kcalTarget: true } }),
       prisma.weightEntry.findMany({ where: { userId: id, measuredAt: { gte: new Date(now.getTime() - 180 * 86_400_000) } }, select: { weightKg: true, measuredAt: true, source: true }, orderBy: { measuredAt: 'asc' } }),
-      prisma.checkIn.findMany({ where: { userId: id, createdAt: { gte: since14 } }, select: { id: true, createdAt: true, kind: true, slot: true, tier: true, status: true, feedbackPositive: true }, orderBy: { createdAt: 'desc' }, take: 60 }),
+      prisma.checkIn.findMany({ where: { userId: id, createdAt: { gte: since14 } }, select: CHECK_IN_FIELDS, orderBy: { createdAt: 'desc' }, take: 60 }),
       prisma.analyticsEvent.findFirst({ where: { userId: id }, orderBy: { occurredAt: 'desc' }, select: { occurredAt: true, name: true } }),
       prisma.meal.count({ where: { userId: id } }),
     ]);
@@ -142,7 +193,7 @@ export async function adminInsightRoutes(app: FastifyInstance): Promise<void> {
       meals: meals.map((m) => ({ ...m, fixed: fixed.has(m.id) })),
       mealCount,
       weights,
-      checkIns,
+      checkIns: checkIns.map(toAdminCheckIn),
       lastActive: lastEvent ? { at: lastEvent.occurredAt, event: lastEvent.name } : null,
     };
   });

@@ -1,8 +1,8 @@
 /**
- * The owner's dashboard at /admin: analytics, users, invite codes, feature flags
- * and system health, on top of /api/admin. One self-contained page — it holds no
- * data itself; everything loads after signing in with the admin secret, which
- * stays in this browser tab's session storage.
+ * The owner's dashboard at /admin: analytics, users, meals, notifications, invite
+ * codes, feature flags and system health, on top of /api/admin. One self-contained
+ * page — it holds no data itself; everything loads after signing in with the admin
+ * secret, which stays in this browser tab's session storage.
  *
  * Kept as a raw string so it ships inside the serverless bundle. The script
  * avoids template literals so nothing here is read as interpolation.
@@ -181,6 +181,10 @@ details summary { cursor: pointer; color: var(--soft); }
 .kv { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; font-size: 14px; }
 .kv dt { color: var(--faint); }
 .kv dd { margin: 0; }
+td.why { white-space: normal; max-width: 340px; }
+td.copy { white-space: normal; max-width: 280px; color: var(--soft); font-size: 13px; }
+.when .sub { display: block; color: var(--faint); font-size: 12px; font-family: var(--sans); font-weight: 400; margin-top: 2px; }
+.when .sub.bad { color: var(--bad); }
 
 @media (max-width: 960px) {
   .kpis, .kpis-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -209,8 +213,8 @@ details summary { cursor: pointer; color: var(--soft); }
 (function () {
   'use strict';
   var KEY = 'setpoint.admin.secret';
-  var TABS = [['overview', 'Overview'], ['users', 'Users'], ['meals', 'Meals'], ['invites', 'Invites'], ['flags', 'Flags'], ['health', 'Health']];
-  var state = { secret: null, tab: 'overview', status: null, range: 14, cohort: '', userFilter: { q: '', role: '', cohort: '', pending: false }, person: null, mealFilter: { cohort: '', source: '' } };
+  var TABS = [['overview', 'Overview'], ['users', 'Users'], ['meals', 'Meals'], ['notifications', 'Notifications'], ['invites', 'Invites'], ['flags', 'Flags'], ['health', 'Health']];
+  var state = { secret: null, tab: 'overview', status: null, range: 14, cohort: '', userFilter: { q: '', role: '', cohort: '', pending: false }, person: null, mealFilter: { cohort: '', source: '' }, checkInFilter: { cohort: '', kind: '' } };
   var root = document.getElementById('app');
 
   try { state.secret = sessionStorage.getItem(KEY); } catch (e) { state.secret = null; }
@@ -293,7 +297,7 @@ details summary { cursor: pointer; color: var(--soft); }
   function readHash() {
     var raw = (location.hash || '').replace(/^#/, '');
     if (raw.indexOf('user/') === 0) { state.person = raw.slice(5); state.tab = 'users'; return; }
-    var known = { overview: 1, users: 1, meals: 1, invites: 1, flags: 1, health: 1 };
+    var known = { overview: 1, users: 1, meals: 1, notifications: 1, invites: 1, flags: 1, health: 1 };
     if (known[raw]) { state.tab = raw; state.person = null; }
   }
   function setHash() {
@@ -373,12 +377,12 @@ details summary { cursor: pointer; color: var(--soft); }
     root.appendChild(main);
     setHash();
     if (state.person) { renderPerson(state.person); return; }
-    ({ overview: renderOverview, users: renderUsers, meals: renderMeals, invites: renderInvites, flags: renderFlags, health: renderHealth })[state.tab]();
+    ({ overview: renderOverview, users: renderUsers, meals: renderMeals, notifications: renderNotifications, invites: renderInvites, flags: renderFlags, health: renderHealth })[state.tab]();
   }
 
   function loading() {
     clear(main);
-    var titles = { overview: 'Overview', users: 'Users', meals: 'Meals', invites: 'Invites', flags: 'Flags', health: 'Health' };
+    var titles = { overview: 'Overview', users: 'Users', meals: 'Meals', notifications: 'Notifications', invites: 'Invites', flags: 'Flags', health: 'Health' };
     if (!state.person) pageHead(titles[state.tab] || '');
     main.appendChild(h('div', { class: 'grid kpis', 'aria-hidden': 'true' },
       h('div', { class: 'skel' }), h('div', { class: 'skel' }), h('div', { class: 'skel' }), h('div', { class: 'skel' })));
@@ -615,6 +619,40 @@ details summary { cursor: pointer; color: var(--soft); }
   }
 
   var SOURCES = [['', 'Any way'], ['TEXT', 'Typed'], ['MANUAL', 'Typed'], ['PHOTO', 'Photo'], ['SAVED', 'Usual'], ['BARCODE', 'Barcode'], ['CATALOG', 'Foods'], ['PRESCRIPTION', 'Check-in plate']];
+  var KINDS = [['', 'Any kind'], ['MEAL', 'Meal due'], ['TOP_UP', 'Too light'], ['CLOSE', 'Evening close'], ['HEADS_UP', 'Calendar'], ['REFUEL', 'After training'], ['PRE_WORKOUT', 'Before training']];
+
+  function fmtWhen(iso) {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  }
+  function deliveryNote(c) {
+    if (c.deliveryStatus === 'FAILED') return 'push failed';
+    if (!c.deliveredAt) return 'not sent';
+    return null;
+  }
+  function statusBadge(c) {
+    var cls = { LOGGED: 'good', EXPIRED: 'bad', ESCALATED: 'lit', BACKED_OFF: 'lit' }[c.status] || '';
+    return h('span', { class: 'badge ' + cls, text: c.status.toLowerCase().replace('_', ' ') });
+  }
+  function checkInHead(showUser) {
+    return h('thead', null, h('tr', null,
+      h('th', { text: 'When' }),
+      showUser ? h('th', { text: 'Who' }) : null,
+      h('th', { text: 'Why' }),
+      h('th', { text: 'Copy' }),
+      h('th', { text: 'Status' }),
+      h('th', { text: 'Feedback' })));
+  }
+  function checkInRow(c, showUser) {
+    var note = deliveryNote(c);
+    return h('tr', null,
+      h('td', { class: 'mono when' }, fmtWhen(c.when), note ? h('span', { class: 'sub' + (c.deliveryStatus === 'FAILED' ? ' bad' : ''), text: note }) : null),
+      showUser && c.user ? h('td', null, h('button', { class: 'linkish', text: (c.user.email || c.user.id) + (c.user.cohort ? ' · ' + c.user.cohort : ''), onclick: function () { go('users', c.user.id); } })) : (showUser ? h('td') : null),
+      h('td', { class: 'why', text: c.why }),
+      h('td', { class: 'copy', text: c.message || '' }),
+      h('td', null, statusBadge(c)),
+      h('td', { class: 'soft', text: c.feedbackPositive === true ? 'Yes' : c.feedbackPositive === false ? 'No' : '' }));
+  }
   function sourceLabel(src) { for (var i = 0; i < SOURCES.length; i++) if (SOURCES[i][0] === src) return SOURCES[i][1]; return src; }
 
   function lightbox(url) {
@@ -675,6 +713,44 @@ details summary { cursor: pointer; color: var(--soft); }
     }).catch(fail);
   }
 
+  function renderNotifications() {
+    var f = state.checkInFilter;
+    loading();
+    Promise.all([state.status ? Promise.resolve(state.status) : refreshStatus()]).then(function (r) {
+      var s = r[0];
+      clear(main);
+      pageHead('Notifications', 'Every check-in the scheduler sent — the time it went out and why.');
+      main.appendChild(h('div', { class: 'toolbar' },
+        h('select', { 'aria-label': 'Cohort', onchange: function (e) { f.cohort = e.target.value; renderNotifications(); } },
+          h('option', { value: '', text: 'Everyone' }),
+          s.cohorts.map(function (c) { return h('option', { value: c.cohort, selected: f.cohort === c.cohort ? true : null, text: c.cohort }); })),
+        h('select', { 'aria-label': 'Kind', onchange: function (e) { f.kind = e.target.value; renderNotifications(); } },
+          KINDS.map(function (x) { return h('option', { value: x[0], selected: f.kind === x[0] ? true : null, text: x[1] }); }))));
+      var body = h('tbody');
+      var wrap = h('div', { class: 'panel table-wrap' }, h('table', null, checkInHead(true), body));
+      var more = h('div', { style: 'margin-top: 16px; text-align: center' });
+      main.appendChild(wrap);
+      main.appendChild(more);
+      function load(before) {
+        var qs = ['limit=80'];
+        if (f.cohort) qs.push('cohort=' + encodeURIComponent(f.cohort));
+        if (f.kind) qs.push('kind=' + f.kind);
+        if (before) qs.push('before=' + encodeURIComponent(before));
+        clear(more);
+        more.appendChild(h('span', { class: 'muted', text: 'Loading…' }));
+        api('/check-ins?' + qs.join('&')).then(function (res) {
+          res.checkIns.forEach(function (c) { body.appendChild(checkInRow(c, true)); });
+          clear(more);
+          if (!body.children.length) {
+            wrap.style.display = 'none';
+            more.appendChild(h('div', { class: 'empty', text: 'No notifications yet. They show up here when the scheduler sends a check-in.' }));
+          } else if (res.nextBefore) more.appendChild(h('button', { class: 'btn', text: 'Load more', onclick: function () { load(res.nextBefore); } }));
+        }).catch(fail);
+      }
+      load(null);
+    }).catch(fail);
+  }
+
   function renderPerson(id) {
     loading();
     api('/users/' + encodeURIComponent(id) + '/profile').then(function (p) {
@@ -726,16 +802,10 @@ details summary { cursor: pointer; color: var(--soft); }
           h('tbody', null, dayRows))),
         weightPanel));
 
-      var checkRows = p.checkIns.map(function (c) {
-        return h('tr', null,
-          h('td', { class: 'mono', text: new Date(c.createdAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) }),
-          h('td', { class: 'soft', text: c.kind.toLowerCase() + (c.slot ? ' · ' + c.slot : '') + (c.tier > 1 ? ' · tier ' + c.tier : '') }),
-          h('td', null, h('span', { class: 'badge', text: c.status.toLowerCase() })),
-          h('td', { class: 'soft', text: c.feedbackPositive === true ? 'Yes' : c.feedbackPositive === false ? 'No' : '' }));
-      });
-      main.appendChild(h('div', { class: 'panel table-wrap section' }, h('h2', { text: 'Check-ins · last 14 days' }),
-        checkRows.length ? h('table', null, h('thead', null, h('tr', null, h('th', { text: 'When' }), h('th', { text: 'Kind' }), h('th', { text: 'Status' }), h('th', { text: 'Feedback' }))), h('tbody', null, checkRows))
-          : h('div', { class: 'muted', text: 'No check-ins.' })));
+      var checkRows = p.checkIns.map(function (c) { return checkInRow(c, false); });
+      main.appendChild(h('div', { class: 'panel table-wrap section' }, h('h2', { text: 'Notifications · last 14 days' }),
+        checkRows.length ? h('table', null, checkInHead(false), h('tbody', null, checkRows))
+          : h('div', { class: 'muted', text: 'No notifications in the last 14 days.' })));
 
       main.appendChild(h('div', { class: 'section' }, h('h2', { text: 'Meals' + (p.mealCount > p.meals.length ? ' · latest ' + p.meals.length + ' of ' + fmtNum(p.mealCount) : '') })));
       main.appendChild(p.meals.length ? h('div', { class: 'meals' }, p.meals.map(function (m) { return mealCard(m, false); })) : h('div', { class: 'empty', text: 'No meals yet.' }));
