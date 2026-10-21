@@ -592,12 +592,15 @@ model Workout {
   activeKcal  Int?
   /// HealthKit UUID or a client-generated planned-session id — upsert key.
   clientId    String?
+  /// Shared by the sessions of one weekly repeat; null for one-offs and Apple Health.
+  seriesId    String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@unique([userId, clientId])
   @@index([userId, start])
+  @@index([userId, seriesId])
 }
 
 model DayAppetite {

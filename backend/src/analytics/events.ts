@@ -52,6 +52,8 @@ export async function track(
   props?: EventProps,
   opts: { dedupeKey?: string; at?: Date } = {},
 ): Promise<void> {
+  // Test doubles of the database leave the table out.
+  if (!prisma.analyticsEvent) return;
   try {
     await prisma.analyticsEvent.createMany({
       data: [
