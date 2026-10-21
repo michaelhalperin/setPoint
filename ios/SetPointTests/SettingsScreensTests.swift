@@ -29,12 +29,26 @@ final class SettingsScreensTests: XCTestCase {
 
     func testGoalSaveNoteForTargetPaceAndRecalc() {
         let vm = SettingsViewModel.previewed()
+        XCTAssertEqual(vm.displayedKcalTarget, 3100)
         vm.targetWeightKg = 80
         vm.applyPaceShortcut(.gentle)
+        XCTAssertLessThan(vm.displayedKcalTarget, 3100)
         XCTAssertEqual(
             vm.goalSaveNote,
-            "Target 84 → 80 kg · Timeframe 18 → 4 weeks · Your daily target will be recalculated."
+            "Target 84 → 80 kg · Timeframe 18 → 4 weeks · Daily target \(3100.formatted()) → \(vm.displayedKcalTarget.formatted()) kcal"
         )
+    }
+
+    func testDisplayedKcalFollowsTimeframeUntilTheUserSetsIt() {
+        let vm = SettingsViewModel.previewed()
+        let baseline = vm.displayedKcalTarget
+        vm.setDurationWeeks(8)
+        XCTAssertGreaterThan(vm.displayedKcalTarget, baseline)
+        vm.setDurationWeeks(36)
+        XCTAssertLessThan(vm.displayedKcalTarget, baseline)
+        vm.kcalTarget = 2800
+        vm.setDurationWeeks(8)
+        XCTAssertEqual(vm.displayedKcalTarget, 2800)
     }
 
     func testGoalSaveNoteForEditedKcal() {

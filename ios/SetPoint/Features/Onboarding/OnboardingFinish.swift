@@ -132,6 +132,7 @@ private struct LockScreenPreview: View {
 
 struct CoveredStep: View {
     @Bindable var model: OnboardingViewModel
+    @Environment(AppEnvironment.self) private var env
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var markers = false
@@ -214,7 +215,7 @@ struct CoveredStep: View {
 
             Spacer(minLength: Space.md)
 
-            ActionButton(title: "Start my day") { showingPaywall = true }
+            ActionButton(title: "Start my day") { startDay() }
                 .staggerReveal(markers, index: 6, rise: 14)
         }
         .background(alignment: .topLeading) {
@@ -305,6 +306,14 @@ struct CoveredStep: View {
             return L10n( "From your answers, I won’t push you to eat. If eating feels hard right now, a doctor or an eating-disorder service can help in a way an app can’t.")
         default:
             return L10n( "I won’t push you to eat — that’s your care team’s call, not an app’s. This isn’t a substitute for their plan.")
+        }
+    }
+
+    private func startDay() {
+        if env.flags.isOn(.paywall) {
+            showingPaywall = true
+        } else {
+            model.advance()
         }
     }
 

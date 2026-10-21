@@ -92,19 +92,31 @@ final class SettingsViewModel {
         return inferredWeeks(goal: Goal(rawValue: o.goal) ?? goal, current: o.currentWeightKg, target: o.targetWeightKg, paceKgPerWeek: o.paceKgPerWeek)
     }
 
-    var durationMessage: String? {
-        guard goal.hasWeightTarget, targetWeightMessage == nil,
-              let preferred = preferredDurationWeeks,
-              let honest = honestDurationWeeks,
-              preferred != honest else { return nil }
-        if preferred < honest {
-            return L10n( "That's faster than a safe pace — about \(honest) weeks.")
-        }
-        return L10n( "That's slower than I'll go — about \(honest) weeks.")
-    }
-
     var honestDurationWeeks: Int? {
         resolvedPace.preferredDurationWeeks
+    }
+
+    var timeframeFit: WeightPace.TimeframeFit {
+        WeightPace.timeframeFit(
+            goal: goal,
+            weightKg: currentWeightKg,
+            remainingKg: remainingKg,
+            preferredWeeks: preferredDurationWeeks
+        )
+    }
+
+    /// Why the entered timeframe won't be honored, or nil when it's inside the real cap.
+    var durationMessage: String? {
+        guard goal.hasWeightTarget, targetWeightMessage == nil else { return nil }
+        return WeightPace.durationMessage(goal: goal, fit: timeframeFit)
+    }
+
+    /// Weeks the plan will actually run — the pick, or the cap when the pick is out of bounds.
+    var planDurationWeeks: Int? {
+        switch timeframeFit {
+        case .ok: return preferredDurationWeeks ?? honestDurationWeeks
+        case .tooFast(let weeks), .tooSlow(let weeks): return weeks
+        }
     }
 
     private var remainingKg: Double? {
@@ -208,6 +220,23 @@ final class SettingsViewModel {
     var savedKcalTarget: Int { original?.dailyKcalTarget ?? kcalTarget }
     var savedProteinTarget: Int? { original?.dailyProteinTargetG }
 
+    /// Daily calories implied by the current goal and timeframe, from the saved target
+    /// plus the change in surplus/deficit. The backend still recomputes on save.
+    var previewKcalTarget: Int {
+        guard let o = original else { return kcalTarget }
+        let oldGoal = Goal(rawValue: o.goal) ?? goal
+        let oldDelta = WeightPace.paceToKcalDelta(goal: oldGoal, paceKgPerWeek: o.paceKgPerWeek)
+        let newDelta = WeightPace.paceToKcalDelta(goal: goal, paceKgPerWeek: resolvedPace.paceKgPerWeek)
+        return WeightPace.shiftKcal(o.dailyKcalTarget, by: newDelta - oldDelta)
+    }
+
+    /// What Your day should show: a number the user set, otherwise the live preview
+    /// once the plan itself has changed. Unchanged plans keep the saved target.
+    var displayedKcalTarget: Int {
+        if kcalEdited { return kcalTarget }
+        return weightGoalDirty ? previewKcalTarget : kcalTarget
+    }
+
     var goalSaveNote: String? {
         guard let o = original, goalDirty else { return nil }
         var parts: [String] = []
@@ -217,8 +246,8 @@ final class SettingsViewModel {
         if goal.hasWeightTarget, let oldW = originalDurationWeeks, let newW = preferredDurationWeeks, oldW != newW {
             parts.append("Timeframe \(oldW) → \(newW) weeks")
         }
-        if kcalEdited {
-            parts.append("Daily target \(o.dailyKcalTarget.formatted()) → \(kcalTarget.formatted()) kcal")
+        if displayedKcalTarget != o.dailyKcalTarget {
+            parts.append("Daily target \(o.dailyKcalTarget.formatted()) → \(displayedKcalTarget.formatted()) kcal")
         } else if weightGoalDirty {
             parts.append("Your daily target will be recalculated.")
         }

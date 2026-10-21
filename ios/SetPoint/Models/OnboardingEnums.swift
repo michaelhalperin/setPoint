@@ -82,6 +82,9 @@ enum WeightPace {
     static let bulkMaxKgPerWeek = 0.5
     static let minWeeks = 1
     static let maxWeeks = 104
+    /// ~7,700 kcal per kg of body mass — mirrored from `targets.ts`.
+    static let kcalPerKg = 7700.0
+    static let minDailyKcal = 1200
 
     static func remainingKg(goal: Goal, currentKg: Double, targetKg: Double) -> Double {
         let delta = goal == .bulk ? targetKg - currentKg : currentKg - targetKg
@@ -107,6 +110,64 @@ enum WeightPace {
     static func etaWeeks(remainingKg: Double, paceKgPerWeek: Double) -> Int? {
         guard remainingKg > 0.05, paceKgPerWeek > 0 else { return nil }
         return Int((remainingKg / paceKgPerWeek).rounded(.up))
+    }
+
+    /// Fastest pace the goal will honor. Diet scales with body mass; bulk is flat.
+    static func maxKgPerWeek(goal: Goal, weightKg: Double?) -> Double {
+        clampKgPerWeek(goal: goal, weightKg: weightKg, pace: bulkMaxKgPerWeek * 100)
+    }
+
+    /// Compare the user's weeks to the real min/max pace — not to a rounded re-derive,
+    /// so a safe pick does not chase a warning that ticks up with every bump.
+    enum TimeframeFit: Equatable {
+        case ok
+        case tooFast(safeWeeks: Int)
+        case tooSlow(honestWeeks: Int)
+    }
+
+    static func timeframeFit(
+        goal: Goal,
+        weightKg: Double?,
+        remainingKg: Double?,
+        preferredWeeks: Int?
+    ) -> TimeframeFit {
+        guard goal.hasWeightTarget,
+              let remainingKg, remainingKg > 0.05,
+              let preferredWeeks, preferredWeeks > 0 else { return .ok }
+        if let floor = etaWeeks(remainingKg: remainingKg, paceKgPerWeek: maxKgPerWeek(goal: goal, weightKg: weightKg)),
+           preferredWeeks < floor {
+            return .tooFast(safeWeeks: floor)
+        }
+        if let ceiling = etaWeeks(remainingKg: remainingKg, paceKgPerWeek: minKgPerWeek),
+           preferredWeeks > ceiling {
+            return .tooSlow(honestWeeks: ceiling)
+        }
+        return .ok
+    }
+
+    /// Signed daily calorie delta a pace implies. Maintain is neutral.
+    static func paceToKcalDelta(goal: Goal, paceKgPerWeek: Double) -> Int {
+        if goal == .maintain { return 0 }
+        let perDay = Int(((abs(paceKgPerWeek) * kcalPerKg) / 7).rounded())
+        return goal == .bulk ? perDay : -perDay
+    }
+
+    /// Shift a stored daily target by a surplus/deficit change, nearest 10, never below the floor.
+    static func shiftKcal(_ kcal: Int, by delta: Int) -> Int {
+        max(minDailyKcal, Int((Double(kcal + delta) / 10).rounded()) * 10)
+    }
+
+    static func durationMessage(goal: Goal, fit: TimeframeFit) -> String? {
+        switch fit {
+        case .ok:
+            return nil
+        case .tooFast(let weeks):
+            return goal == .diet
+                ? L10n("That's faster than a safe pace — about \(weeks) weeks.")
+                : L10n("That's faster than I'll put on well — about \(weeks) weeks.")
+        case .tooSlow(let weeks):
+            return L10n("That's slower than I'll go — about \(weeks) weeks.")
+        }
     }
 
     /// Matches backend `resolveGoalPace`. Duration wins when both are present.

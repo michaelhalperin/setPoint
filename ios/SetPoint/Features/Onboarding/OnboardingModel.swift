@@ -253,16 +253,20 @@ final class OnboardingViewModel {
         resolvedPace.preferredDurationWeeks
     }
 
-    /// Why the entered timeframe won't be honored, or nil when it matches a safe pace.
+    var timeframeFit: WeightPace.TimeframeFit {
+        guard let goal = draft.goal else { return .ok }
+        return WeightPace.timeframeFit(
+            goal: goal,
+            weightKg: draft.weightKg,
+            remainingKg: remainingKg,
+            preferredWeeks: draft.preferredDurationWeeks
+        )
+    }
+
+    /// Why the entered timeframe won't be honored, or nil when it's inside the real cap.
     var durationMessage: String? {
-        guard targetWeightMessage == nil,
-              let preferred = draft.preferredDurationWeeks,
-              let honest = etaWeeks,
-              preferred != honest else { return nil }
-        if preferred < honest {
-            return L10n( "That's faster than a safe pace — about \(honest) weeks.")
-        }
-        return L10n( "That's slower than I'll go — about \(honest) weeks.")
+        guard let goal = draft.goal, targetWeightMessage == nil else { return nil }
+        return WeightPace.durationMessage(goal: goal, fit: timeframeFit)
     }
 
     private var remainingKg: Double? {

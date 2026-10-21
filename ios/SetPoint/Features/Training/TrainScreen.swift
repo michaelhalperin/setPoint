@@ -32,7 +32,6 @@ struct TrainingScreen: View {
     var body: some View {
         SettingsScreen(
             title: "Train",
-            accessory: AnyView(TrainPlanPill { sheet = .plan(defaultStart(on: .now)) }),
             showsBack: !isTabRoot,
             glow: .haze,
             showsHeadline: false,
@@ -71,6 +70,23 @@ struct TrainingScreen: View {
         let selected = days.first { $0.key == (selectedKey ?? todayKey) } ?? days.first { $0.isToday } ?? days[0]
         let upcoming = store.sessions.filter { $0.isPlanned && $0.start > now }
         return VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .center, spacing: 12) {
+                Text(dayLabel(selected))
+                    .font(Typography.mono(11))
+                    .tracking(1.3)
+                    .foregroundStyle(Palette.inkFaint)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+                Spacer(minLength: 8)
+                if selected.canAdd {
+                    TrainPlanPill { sheet = .plan(defaultStart(on: selected.date)) }
+                }
+            }
+            .padding(.horizontal, 4)
+            .id("label-\(selected.key)")
+            .transition(dayChange)
+            .appearIn(0, rise: 12)
+
             TrainWeekStrip(
                 title: weekTitle,
                 range: weekRange(days),
@@ -93,15 +109,6 @@ struct TrainingScreen: View {
             .simultaneousGesture(swipe(latest: latest, byDay: byDay, now: now))
             .appearIn(1, rise: 14)
 
-            Text(dayLabel(selected))
-                .font(Typography.mono(11))
-                .tracking(1.3)
-                .foregroundStyle(Palette.inkFaint)
-                .padding(.horizontal, 4)
-                .padding(.top, 4)
-                .id("label-\(selected.key)")
-                .transition(dayChange)
-
             dayCard(selected, now: now)
                 .id(selected.key)
                 .transition(dayChange)
@@ -118,7 +125,7 @@ struct TrainingScreen: View {
             .padding(.top, 6)
             .appearIn(3, rise: 14)
 
-            TrainSettingsRow(addCalories: store.addCalories, nudgeMin: store.nudgeMin, healthOn: env.health.connected) {
+            TrainSettingsRow {
                 sheet = .settings
             }
             .appearIn(4, rise: 14)
@@ -147,11 +154,12 @@ struct TrainingScreen: View {
                 onLog: { env.chrome.logPanelOpen = true },
                 onLogSnack: { snack in Task { await store.logSnack(snack, env: env, home: home) } },
                 loggingSnack: store.loggingSnack,
-                snackLogged: store.loggedSnackId != nil && store.loggedSnackId == store.snackBefore?.id,
+                snackLogged: store.isSnackLogged(meals: homeMeals),
                 onOpenSnack: { sheet = .snack($0) },
                 onEdit: first.canEdit(now: now) ? { sheet = .edit(first) } : nil
             )
             .animation(Motion.settle, value: bump)
+            .animation(Motion.settle, value: store.loggedSnackId)
         } else if day.isPast {
             TrainPastCard(day: day, weightKg: store.weightKg)
         } else {
@@ -185,6 +193,11 @@ struct TrainingScreen: View {
     }
 
     // MARK: Today
+
+    private var homeMeals: [MealSummary] {
+        guard let home, case let .loaded(response) = home.phase else { return [] }
+        return response.meals
+    }
 
     /// Today's meals, from the Today tab's data; nil when it isn't loaded.
     private var todayMeals: [TrainMath.Meal]? {
@@ -358,7 +371,7 @@ struct TrainingScreen: View {
             TrainSnackSheet(
                 snack: snack,
                 logging: store.loggingSnack,
-                logged: store.loggedSnackId == snack.id
+                logged: store.isSnackLogged(snack, meals: homeMeals)
             ) {
                 Task { await store.logSnack(snack, env: env, home: home) }
             }
@@ -386,8 +399,8 @@ struct TrainSkeletonView: View {
             }
             .padding(.horizontal, 4)
 
-            weekStrip
             dayLabel
+            weekStrip
             dayCard
             comingUp
             settingsRow
@@ -452,9 +465,12 @@ struct TrainSkeletonView: View {
     }
 
     private var dayLabel: some View {
-        SkeletonBlock(width: 148, height: 10)
-            .padding(.horizontal, 4)
-            .padding(.top, 4)
+        HStack(alignment: .center, spacing: 12) {
+            SkeletonBlock(width: 148, height: 10)
+            Spacer(minLength: 8)
+            SkeletonBlock(width: 72, height: 40, radius: 20)
+        }
+        .padding(.horizontal, 4)
     }
 
     private var dayCard: some View {
@@ -531,10 +547,7 @@ struct TrainSkeletonView: View {
     private var settingsRow: some View {
         HStack(spacing: 12) {
             SkeletonBlock(width: 36, height: 36, radius: 11)
-            VStack(alignment: .leading, spacing: 6) {
-                SkeletonBlock(width: 132, height: 14)
-                SkeletonBlock(width: 168, height: 11)
-            }
+            SkeletonBlock(width: 132, height: 14)
             Spacer()
         }
         .padding(16)
@@ -545,7 +558,7 @@ struct TrainSkeletonView: View {
 
 #if DEBUG
 #Preview("Skeleton") {
-    SettingsScreen(title: "Train", accessory: AnyView(TrainPlanPill { }), showsBack: true, glow: .haze, showsHeadline: false) {
+    SettingsScreen(title: "Train", showsBack: true, glow: .haze, showsHeadline: false) {
         TrainSkeletonView()
     }
 }

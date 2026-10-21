@@ -25,7 +25,7 @@ struct SettingsView: View {
             if let model {
                 content(model)
             } else {
-                SettingsSkeletonView()
+                SettingsSkeletonView(showPro: env.flags.isOn(.paywall))
             }
         }
         .task {
@@ -51,7 +51,7 @@ struct SettingsView: View {
     private func content(_ model: SettingsViewModel) -> some View {
         switch model.phase {
         case .loading:
-            SettingsSkeletonView()
+            SettingsSkeletonView(showPro: env.flags.isOn(.paywall))
         case let .failed(message):
             VStack(spacing: 14) {
                 Text(message)
@@ -98,8 +98,10 @@ struct SettingsView: View {
                 setupGrid(model)
                     .appearIn(2)
 
-                proCard
-                    .appearIn(3)
+                if env.flags.isOn(.paywall) {
+                    proCard
+                        .appearIn(3)
+                }
 
                 if let error = model.error {
                     Text(error)
@@ -118,7 +120,7 @@ struct SettingsView: View {
             .padding(.bottom, 90)
         }
         .pullToReload({ await model.load(showSpinner: false) }, covering: $reloading)
-        .reloadCover(reloading) { SettingsSkeletonView() }
+        .reloadCover(reloading) { SettingsSkeletonView(showPro: env.flags.isOn(.paywall)) }
         .background(alignment: .top) { AmbientGlow(tone: .mixed, strength: 0.6).offset(y: -140).ignoresSafeArea() }
         .background(Palette.background.ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
@@ -792,6 +794,7 @@ private struct CheckInModeSwitch: View {
 
 /// Matches the loaded You layout: Edit plan, goal orb card, check-in switch, setup grid.
 private struct SettingsSkeletonView: View {
+    var showPro = false
     private let wash = Color.white.opacity(0.06)
     private let washStrong = Color.white.opacity(0.1)
 
@@ -807,7 +810,7 @@ private struct SettingsSkeletonView: View {
                 goalCard
                 checkIns
                 setupGrid
-                proCard
+                if showPro { proCard }
             }
             .padding(Space.gutter)
         }

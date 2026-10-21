@@ -187,6 +187,50 @@ final class TrainPlanTests: XCTestCase {
         XCTAssertEqual(picked.name, "Greek yogurt")
     }
 
+    func testAteTodaySurvivesARelaunch() {
+        let snack = TrainingWeekResponse.SnackBefore(
+            name: "Greek yogurt",
+            kcal: 220,
+            source: "suggested",
+            proteinG: 20,
+            items: [.init(name: "Greek yogurt", quantity: "1 cup", kcal: 220, proteinG: 20)]
+        )
+        let today = MealSummary(
+            id: "m-today",
+            loggedAt: "2026-10-21T08:15:00Z",
+            kcal: 220,
+            proteinG: 20,
+            carbsG: 12,
+            fatG: 5,
+            source: "TEXT",
+            summary: "Greek yogurt",
+            photoUrl: nil,
+            notes: nil,
+            items: [
+                MealSummary.Item(name: "Greek yogurt", quantity: "1 cup", kcal: 220, proteinG: 20, carbsG: 12, fatG: 5)
+            ],
+            parseConfidence: 1
+        )
+        let yesterday = MealSummary(
+            id: "m-yday",
+            loggedAt: "2026-10-20T08:15:00Z",
+            kcal: 220,
+            proteinG: 20,
+            carbsG: 12,
+            fatG: 5,
+            source: "TEXT",
+            summary: "Greek yogurt",
+            photoUrl: nil,
+            notes: nil,
+            items: nil,
+            parseConfidence: 1
+        )
+        let now = date("2026-10-21T10:00:00Z")
+        XCTAssertTrue(TrainMath.ateToday(snack, meals: [today], now: now, calendar: calendar))
+        XCTAssertFalse(TrainMath.ateToday(snack, meals: [yesterday], now: now, calendar: calendar))
+        XCTAssertFalse(TrainMath.ateToday(snack, meals: [], now: now, calendar: calendar))
+    }
+
     func testDecodesSnackBeforeItems() throws {
         let json = """
         {"name":"Banana + Peanut butter","kcal":180,"source":"history","proteinG":4,

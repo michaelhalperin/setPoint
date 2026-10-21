@@ -28,7 +28,7 @@ Members use the iOS app. The owner signs into `/admin` with an admin secret kept
 
 ## Capabilities and Constraints
 
-Confirmed on `/admin` today: sign-in with admin secret; Overview (range, cohort, KPIs, funnel, daily chart, calories vs target, screens, events, env switches); Users (search, role/cohort/pending filters, inline role/cohort/access edits, person profile with plan, days, weight, check-ins, meals); Meals (cohort/source filters, photo lightbox, load more); Invites (create/copy/disable); Flags (default/on/off/cohort-role-user overrides); Health (scheduler, alerts, wearable modifier, raw metrics JSON).
+Confirmed on `/admin` today: sign-in with admin secret; Overview (range, cohort, KPIs, crash and failed-log callout, funnel, daily chart, problems, meals by source, calories vs target, screens, events, env switches); Users (search, role/cohort/pending filters, inline role/cohort/access edits, person profile with plan, days, weight, check-ins, meals); Meals (cohort/source filters, photo lightbox, load more); Invites (create/copy/disable); Flags (default/on/off/cohort-role-user overrides); Health (scheduler, alerts, wearable modifier, raw metrics JSON).
 
 Technical: one self-contained HTML string in `backend/src/admin/dashboardPage.ts`, served at `GET /admin` with a strict CSP (`script-src 'unsafe-inline'`, styles from Google Fonts today). DOM is built in JS without `innerHTML` from data. Must keep working against the existing `/api/admin` contract. Do not invent metrics, users, or claims.
 

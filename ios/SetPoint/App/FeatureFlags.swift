@@ -11,12 +11,14 @@ final class FeatureFlags {
         case orderNearby = "order_nearby"
         case appLanguage = "app_language"
         case nutritionChat = "nutrition_chat"
+        case paywall = "paywall"
 
         var defaultValue: Bool {
             switch self {
             case .orderNearby: return true
             case .appLanguage: return false
             case .nutritionChat: return false
+            case .paywall: return false
             }
         }
     }

@@ -36,6 +36,8 @@ struct GoalSettingsView: View {
         }
         .animation(Motion.settle, value: model.goal)
         .animation(Motion.settle, value: model.pace)
+        .animation(Motion.settle, value: model.durationMessage)
+        .animation(Motion.settle, value: model.displayedKcalTarget)
         .settingsSaveBar(
             visible: model.goalDirty,
             note: model.goalSaveNote,
@@ -198,7 +200,7 @@ struct GoalSettingsView: View {
 
             StepperRow(
                 name: "Timeframe",
-                note: "or set the weeks yourself",
+                note: timeframeStepperNote,
                 value: "\(weeks) wk",
                 canDown: weeks > 1,
                 onDown: { withAnimation(Motion.settle) { model.setDurationWeeks(weeks - 1) } },
@@ -217,6 +219,14 @@ struct GoalSettingsView: View {
 
     private var weeks: Int { model.preferredDurationWeeks ?? model.honestDurationWeeks ?? 12 }
 
+    private var timeframeStepperNote: String {
+        if model.durationMessage != nil { return L10n("I'll hold a safe pace") }
+        let remaining = WeightPace.remainingKg(goal: model.goal, currentKg: currentKg, targetKg: targetKg)
+        guard remaining > 0, weeks > 0 else { return L10n("or set the weeks yourself") }
+        let rate = remaining / Double(weeks)
+        return L10n("\(massUnit.formatKg(rate, digits: 2))/wk · \(Self.monthYear(weeksFromNow: weeks))")
+    }
+
     // MARK: Your day
 
     /// The day the plan works out to — tap a number to set it yourself.
@@ -227,14 +237,15 @@ struct GoalSettingsView: View {
                     Text("Your day").sectionLabelStyle(Palette.amber)
                     Button { editingTarget = .kcal } label: {
                         HStack(alignment: .firstTextBaseline, spacing: 6) {
-                            Text(model.kcalTarget.formatted())
+                            Text(model.displayedKcalTarget.formatted())
                                 .font(Typography.data(38, weight: .light))
                                 .tracking(-1.5)
                                 .foregroundStyle(Palette.ink)
+                                .contentTransition(.numericText(value: Double(model.displayedKcalTarget)))
                             Text("kcal")
                                 .font(Typography.data(14, weight: .regular))
                                 .foregroundStyle(Palette.inkSoft)
-                            if model.kcalEdited {
+                            if model.displayedKcalTarget != model.savedKcalTarget {
                                 Text(model.savedKcalTarget.formatted())
                                     .font(Typography.mono(12))
                                     .strikethrough()
@@ -243,7 +254,7 @@ struct GoalSettingsView: View {
                         }
                     }
                     .buttonStyle(PressableCard())
-                    .accessibilityLabel(L10n("\(model.kcalTarget) calories a day. Set it yourself."))
+                    .accessibilityLabel(L10n("\(model.displayedKcalTarget) calories a day. Set it yourself."))
                 }
                 Spacer(minLength: 8)
                 if let protein = model.proteinTarget {
@@ -259,7 +270,7 @@ struct GoalSettingsView: View {
             }
             HStack(spacing: 6) {
                 dayChip(model.dailyTargetsEdited ? "Set by you" : "From your goal", tint: nil)
-                if model.goal.hasWeightTarget, let eta = model.honestDurationWeeks {
+                if model.goal.hasWeightTarget, let eta = model.planDurationWeeks {
                     dayChip(L10n("~\(eta) weeks to target"), tint: Palette.amber)
                 }
             }
@@ -420,7 +431,7 @@ private struct DailyTargetSheet: View {
         }
         .padding(Space.gutter)
         .onAppear {
-            value = field == .kcal ? Double(model.kcalTarget) : Double(model.proteinTarget ?? 40)
+            value = field == .kcal ? Double(model.displayedKcalTarget) : Double(model.proteinTarget ?? 40)
         }
     }
 }

@@ -205,9 +205,59 @@ final class OnboardingTests: XCTestCase {
         XCTAssertEqual(vm.etaWeeks, 24)
         vm.draft.preferredDurationWeeks = 4
         XCTAssertEqual(vm.etaWeeks, 12) // 6 kg at the 0.5 kg/wk bulk cap
-        XCTAssertEqual(vm.durationMessage, "That's faster than a safe pace — about 12 weeks.")
+        XCTAssertEqual(vm.durationMessage, "That's faster than I'll put on well — about 12 weeks.")
+        vm.draft.preferredDurationWeeks = 22
+        XCTAssertNil(vm.durationMessage)
+        vm.draft.preferredDurationWeeks = 32
+        XCTAssertNil(vm.durationMessage)
         vm.draft.goal = .maintain
         XCTAssertNil(vm.etaWeeks)
+    }
+
+    func testTimeframeFitOnlyWarnsOutsideTheCap() {
+        // 6 kg bulk, cap 0.5 kg/wk → 12 weeks is the floor. Bumping a safe
+        // pick must not chase a warning that ticks up with rounding.
+        XCTAssertEqual(
+            WeightPace.timeframeFit(goal: .bulk, weightKg: 74, remainingKg: 6, preferredWeeks: 4),
+            .tooFast(safeWeeks: 12)
+        )
+        XCTAssertEqual(
+            WeightPace.timeframeFit(goal: .bulk, weightKg: 74, remainingKg: 6, preferredWeeks: 11),
+            .tooFast(safeWeeks: 12)
+        )
+        XCTAssertEqual(
+            WeightPace.timeframeFit(goal: .bulk, weightKg: 74, remainingKg: 6, preferredWeeks: 12),
+            .ok
+        )
+        XCTAssertEqual(
+            WeightPace.timeframeFit(goal: .bulk, weightKg: 74, remainingKg: 6, preferredWeeks: 22),
+            .ok
+        )
+        XCTAssertEqual(
+            WeightPace.timeframeFit(goal: .bulk, weightKg: 74, remainingKg: 6, preferredWeeks: 32),
+            .ok
+        )
+        XCTAssertEqual(
+            WeightPace.timeframeFit(goal: .bulk, weightKg: 74, remainingKg: 6, preferredWeeks: 80),
+            .tooSlow(honestWeeks: 60)
+        )
+
+        // Diet cap is 0.75 % of body mass / week: 80 kg → 0.6 kg/wk, 6 kg → 10 weeks.
+        XCTAssertEqual(
+            WeightPace.timeframeFit(goal: .diet, weightKg: 80, remainingKg: 6, preferredWeeks: 4),
+            .tooFast(safeWeeks: 10)
+        )
+        XCTAssertEqual(
+            WeightPace.timeframeFit(goal: .diet, weightKg: 80, remainingKg: 6, preferredWeeks: 10),
+            .ok
+        )
+        XCTAssertEqual(
+            WeightPace.durationMessage(
+                goal: .diet,
+                fit: .tooFast(safeWeeks: 10)
+            ),
+            "That's faster than a safe pace — about 10 weeks."
+        )
     }
 
     func testWeightPaceClampsAnAggressiveTimeframe() {
@@ -222,6 +272,13 @@ final class OnboardingTests: XCTestCase {
         )
         XCTAssertEqual(resolved.paceKgPerWeek, 0.6, accuracy: 0.001)
         XCTAssertEqual(resolved.preferredDurationWeeks, 10)
+    }
+
+    func testPaceToKcalDeltaMatchesTheBackend() {
+        XCTAssertEqual(WeightPace.paceToKcalDelta(goal: .diet, paceKgPerWeek: 0.5), -550)
+        XCTAssertEqual(WeightPace.paceToKcalDelta(goal: .bulk, paceKgPerWeek: 0.25), 275)
+        XCTAssertEqual(WeightPace.paceToKcalDelta(goal: .maintain, paceKgPerWeek: 1), 0)
+        XCTAssertEqual(WeightPace.shiftKcal(3100, by: -275 + 110), 2940)
     }
 
     func testHealthProfileFillsOnlyWhatItKnows() {

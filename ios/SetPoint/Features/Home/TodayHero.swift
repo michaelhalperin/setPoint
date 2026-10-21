@@ -238,8 +238,7 @@ struct TodayHero: View {
         }
     }
 
-    /// Persistent pull under the ledger — help with what’s left today. Always
-    /// on Today so it isn’t lost when appetite is asking or remaining is low.
+    /// Under the ledger. Hidden when the flag is off (`onAskNutrition` is nil).
     @ViewBuilder
     private var nutritionEntry: some View {
         if let onAskNutrition {

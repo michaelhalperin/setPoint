@@ -252,6 +252,26 @@ enum TrainMath {
         )
     }
 
+    /// Today's log includes this plate — so Train still shows it logged after a relaunch.
+    static func ateToday(
+        _ snack: TrainingWeekResponse.SnackBefore,
+        meals: [MealSummary],
+        now: Date = .now,
+        calendar: Calendar = .current
+    ) -> Bool {
+        meals.contains { meal in
+            guard let at = MealFormat.parse(meal.loggedAt), calendar.isDate(at, inSameDayAs: now) else { return false }
+            guard abs(meal.kcal - snack.kcal) <= 40 else { return false }
+            let want = snack.name.lowercased()
+            if meal.title.lowercased() == want { return true }
+            let fromItems = snackName(
+                items: meal.items?.map { ($0.name, $0.quantity, $0.kcal, $0.proteinG) },
+                fallback: meal.title
+            )
+            return fromItems.lowercased() == want
+        }
+    }
+
     private static func allowed(_ name: String, blocked: [String]) -> Bool {
         let n = name.lowercased()
         return !blocked.contains { n.contains($0) }

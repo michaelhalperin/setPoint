@@ -315,7 +315,7 @@ private struct TargetCard: View {
                 GlassList {
                     StepperRow(
                         name: "Timeframe",
-                        note: "Shorter isn’t always safe",
+                        note: timeframeStepperNote,
                         value: "\(weeks) wk",
                         canDown: weeks > 1,
                         onDown: { model.setDurationWeeks(weeks - 1) },
@@ -335,11 +335,23 @@ private struct TargetCard: View {
 
     private var weeks: Int { model.draft.preferredDurationWeeks ?? model.etaWeeks ?? 12 }
 
+    private var remainingKg: Double {
+        WeightPace.remainingKg(goal: goal, currentKg: model.draft.weightKg ?? target, targetKg: target)
+    }
+
+    private var timeframeStepperNote: String {
+        if model.durationMessage != nil { return L10n("I'll hold a safe pace") }
+        guard remainingKg > 0, weeks > 0 else { return L10n("Shorter isn’t always safe") }
+        let rate = remainingKg / Double(weeks)
+        return L10n("\(massUnit.number(rate, digits: 2 ... 2)) \(massUnit.abbreviation)/wk")
+    }
+
     private var paceLine: String {
         if let message = model.targetWeightMessage { return message }
         if let message = model.durationMessage { return message }
-        guard let eta = model.etaWeeks else { return " " }
-        return L10n( "About \(eta) weeks at this pace.")
+        guard remainingKg > 0, weeks > 0 else { return " " }
+        let rate = remainingKg / Double(weeks)
+        return L10n("About \(weeks) weeks at \(massUnit.formatKg(rate, digits: 2))/wk.")
     }
 
     private func nudge(_ delta: Double) {

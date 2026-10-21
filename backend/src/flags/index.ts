@@ -14,6 +14,10 @@ export const FLAGS = {
     default: false,
     description: 'Nutrition assistant (ember). Off until a cohort whitelist.',
   },
+  paywall: {
+    default: false,
+    description: 'SetPoint Pro: paywall, subscription upsells, and locking training behind a plan.',
+  },
 } as const satisfies Record<string, { default: boolean; description: string }>;
 
 export type FlagKey = keyof typeof FLAGS;

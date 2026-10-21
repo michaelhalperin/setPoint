@@ -100,6 +100,7 @@ enum DebugPreviewStub {
     case widgets
     case burn
     case orderNearby
+    case nutritionAssistant(String)
     case paywall
     case settingsAccount
     case settingsDelete
@@ -237,6 +238,8 @@ enum DebugPreviewStub {
             NavigationStack { AppetiteSettingsView(previewHistory: .sample, previewMode: "SMALL_FREQUENT") }
         case .widgets:
             WidgetsStubHost()
+        case let .nutritionAssistant(state):
+            NutritionAssistantView(previewModel: .previewed(state))
         case .orderNearby:
             NavigationStack {
                 OrderNearbyView(gapKcal: 700, slotTitle: "Lunch", preview: .sample)
@@ -345,6 +348,9 @@ enum DebugPreviewStub {
         case "widgets": return .widgets
         case "burn": return .burn
         case "order-nearby": return .orderNearby
+        case "assistant": return .nutritionAssistant("chat")
+        case "assistant-empty": return .nutritionAssistant("empty")
+        case "assistant-consent": return .nutritionAssistant("consent")
         case "paywall": return .paywall
         case "settings-goal": return .settingsGoal
         case "settings-meal-times": return .settingsMealTimes

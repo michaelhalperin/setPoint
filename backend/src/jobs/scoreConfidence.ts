@@ -62,7 +62,8 @@ import {
 import { REFUEL_TARGET_PROTEIN_G } from '../solver/meals.js';
 import { prescriptionFromSavedMeal } from '../savedMeals/index.js';
 import { trainingForLocalDay } from '../training/day.js';
-import { isEntitled } from '../subscription/entitlement.js';
+import { isFlagOnForUser } from '../flags/index.js';
+import { isEntitled, subscriptionGateOn } from '../subscription/entitlement.js';
 
 export type ScoreConfidenceDeps = {
   prisma: PrismaClient;
@@ -288,8 +289,13 @@ async function processUser(
   }
 
   // Meal and close-the-gap check-ins are free — they're the product. A
-  // subscription adds training check-ins and calendar-aware timing.
-  const entitled = isEntitled(user, now);
+  // subscription adds training check-ins and calendar-aware timing, only when
+  // both SUBSCRIPTION_GATE and the paywall flag are on for this user.
+  const entitled = isEntitled(
+    user,
+    now,
+    subscriptionGateOn() && (await isFlagOnForUser(prisma, user.id, 'paywall')),
+  );
 
   if (
     entitled &&

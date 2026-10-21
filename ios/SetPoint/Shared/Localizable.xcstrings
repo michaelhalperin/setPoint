@@ -238,6 +238,16 @@
         }
       }
     },
+    "%@/wk · %@": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@/שבוע · %@"
+          }
+        }
+      }
+    },
     "%@ kcal a day": {
       "localizations": {
         "he": {
@@ -1638,6 +1648,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "בבית"
+          }
+        }
+      }
+    },
+    "About %lld weeks at %@/wk.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "בערך %lld שבועות ב-%@/שבוע."
           }
         }
       }
@@ -4104,6 +4124,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "קוד הזמנה"
+          }
+        }
+      }
+    },
+    "I'll hold a safe pace": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אשמור על קצב בטוח"
           }
         }
       }
@@ -7109,6 +7139,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "זה מהר יותר מקצב בטוח — בערך %lld שבועות."
+          }
+        }
+      }
+    },
+    "That's faster than I'll put on well — about %lld weeks.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "זה מהר יותר ממה שאעלה טוב — בערך %lld שבועות."
           }
         }
       }

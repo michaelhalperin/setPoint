@@ -56,7 +56,8 @@ const schema = z.object({
   WEARABLE_MODIFIER_COHORT_PERCENT: z.coerce.number().int().min(0).max(100).catch(0),
   SCORE_BATCH_SIZE: z.coerce.number().int().positive().catch(50),
   // Only "true" turns the paywall on: check-ins/calendar/training/appetite then need a live
-  // subscription. Off by default so a deploy never cuts existing users off.
+  // subscription. Off by default so a deploy never cuts existing users off. The `paywall`
+  // feature flag must also be on for that user (admin Flags) or they stay unlocked.
   SUBSCRIPTION_GATE: z.string().default(''),
   // App Store purchase verification. APPLE_APP_APPLE_ID is the numeric Apple ID from
   // App Store Connect — required to accept production (App Store) purchases.

@@ -250,8 +250,10 @@ struct HomeContent: View {
                 .presentationBackground(Palette.background)
         }
         .sheet(isPresented: $showingPaywall) {
-            PaywallView()
-                .presentationDetents([.large])
+            if env.flags.isOn(.paywall) {
+                PaywallView()
+                    .presentationDetents([.large])
+            }
         }
         .onChange(of: hidesNav, initial: true) { _, hidden in
             env.chrome.navHidden = hidden
@@ -369,7 +371,7 @@ struct HomeContent: View {
                             onLog: { openLog() },
                             onOpenCheckIn: openCheckIn,
                             onOrder: orderAction,
-                            onAskNutrition: { showingNutrition = true }
+                            onAskNutrition: env.flags.isOn(.nutritionChat) ? { showingNutrition = true } : nil
                         )
                     }
                     .padding(.horizontal, Space.gutter)

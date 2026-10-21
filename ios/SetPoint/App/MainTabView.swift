@@ -100,7 +100,9 @@ struct MainTabView: View {
             CrashReporting.flush(api: env.api)
             Analytics.screen(selection.screenName, api: env.api)
             await env.flags.refresh(using: env.api)
-            await env.subscription.refresh(using: env.api)
+            if env.flags.isOn(.paywall) {
+                await env.subscription.refresh(using: env.api)
+            }
         }
     }
 
@@ -112,10 +114,10 @@ struct MainTabView: View {
                 case .today:
                     HomeContent(model: home, deepLinkCheckInID: $deepLinkCheckInID)
                 case .training:
-                    if env.subscription.entitled {
-                        TrainingScreen(isTabRoot: true, home: home)
-                    } else {
+                    if env.flags.isOn(.paywall), !env.subscription.entitled {
                         TrainingLockedView()
+                    } else {
+                        TrainingScreen(isTabRoot: true, home: home)
                     }
                 case .week:
                     SettlementView()

@@ -23,7 +23,7 @@ export type SubscriptionUser = {
 
 export class SubscriptionVerificationError extends Error {}
 
-/** Off unless SUBSCRIPTION_GATE=true — turning it on cuts non-subscribers off from check-ins. */
+/** Off unless SUBSCRIPTION_GATE=true. Training lock also needs the `paywall` flag on for the user. */
 export function subscriptionGateOn(): boolean {
   return env.SUBSCRIPTION_GATE === 'true';
 }

@@ -150,6 +150,16 @@ final class TrainingStore {
             disliked: (settings?.dislikedFoods ?? []) + (settings?.restrictions.map(\.label) ?? []),
             pantry: settings?.pantryTokens ?? []
         )
+        if let snack = snackBefore, TrainMath.ateToday(snack, meals: meals) {
+            loggedSnackId = snack.id
+        }
+    }
+
+    /// Logged this process, or already on today's meals after a relaunch.
+    func isSnackLogged(_ snack: TrainingWeekResponse.SnackBefore? = nil, meals: [MealSummary] = []) -> Bool {
+        guard let snack = snack ?? snackBefore else { return false }
+        if loggedSnackId == snack.id { return true }
+        return TrainMath.ateToday(snack, meals: meals)
     }
 
     /// Logs the suggested plate as-is — no composer, no parse.
@@ -161,6 +171,7 @@ final class TrainingStore {
             return
         }
         loggingSnack = true
+        loggedSnackId = snack.id
         let pendingId = "pending-snack-\(UUID().uuidString)"
         let pending = Self.mealSummary(from: snack, id: pendingId)
         let slot = Self.currentSlot(in: home)
@@ -180,7 +191,6 @@ final class TrainingStore {
                     MealCorrectionRequest(summary: snack.name, items: snack.correctionItems)
                 )
             }
-            loggedSnackId = snack.id
             let landed = Self.mealSummary(from: snack, id: res.meal.id, kcal: res.meal.kcal, proteinG: res.meal.proteinG)
             if let before { home?.restore(before) }
             home?.applyLoggedMeal(landed, slot: slot)
@@ -189,8 +199,10 @@ final class TrainingStore {
             todayChanged?()
             await HealthKitManager.shared.writeMeal(landed)
         } catch APIError.unauthorized {
+            loggedSnackId = nil
             if let before { home?.restore(before) }
         } catch {
+            loggedSnackId = nil
             if let before { home?.restore(before) }
             env.chrome.reportFailure(retry: { [weak self] in
                 Task { await self?.logSnack(snack, env: env, home: home) }

@@ -89,22 +89,22 @@ private struct EditPill: View {
     }
 }
 
-/// The "+ Plan" pill: the header's action and the rest day's.
+/// The "+" pill: the header's action and the rest day's.
 struct TrainPlanPill: View {
-    var title = "Plan"
+    var title = L10n("Plan")
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            Label(LocalizedStringKey(title), systemImage: "plus")
-                .font(Typography.data(14, weight: .medium))
+            Image(systemName: "plus")
+                .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(Color(hex: 0xE0E7FF))
-                .padding(.horizontal, 16)
-                .frame(minHeight: 40)
+                .frame(width: 40, height: 40)
                 .background(Palette.haze.opacity(0.16), in: Capsule())
                 .overlay(Capsule().strokeBorder(Palette.haze.opacity(0.45)))
         }
         .buttonStyle(PressableCard())
+        .accessibilityLabel(title)
         .frame(minHeight: 44)
     }
 }
@@ -400,7 +400,7 @@ struct TrainTodayCard: View {
         let refuelBy = end + window
         let refuelKcal = min(450, max(250, bumpKcal))
         let raw: [(title: String, when: String, hint: String, detail: String, missed: String, done: Bool, over: Bool, loggable: Bool)] = [
-            (L10n("Snack before"), trainClock(max(0, start - 90)), snackHint, snackDetail, L10n("Nothing logged before — that’s fine. The refuel matters more."), steps?.before ?? false, nowMin >= start, true),
+            (L10n("Snack before"), trainClock(max(0, start - 90)), snackHint, snackDetail, L10n("Nothing logged before — that’s fine. The refuel matters more."), (steps?.before ?? false) || snackLogged, nowMin >= start, true),
             (TrainKind.title(session.kind), trainClock(start), L10n("\(session.durationMin) min"), session.isPlanned ? L10n("Apple Health adds it when your watch saves it.") : L10n("From Apple Health."), "", (steps?.workout ?? false) || nowMin >= end, false, false),
             (L10n("Refuel after"), trainClock(refuelBy), "~\(refuelKcal)", L10n("Something with protein within \(window) min of finishing — chocolate milk or a sandwich. I’ll remind you."), L10n("Missed the window — still eat something with protein now."), steps?.refuel ?? false, nowMin > refuelBy, true),
             (bumpKcal > 0 ? L10n("Dinner, a bit bigger") : L10n("Dinner"), trainClock(dinnerMin), "", bumpKcal > 0 ? L10n("Your usual dinner plus a side.") : L10n("Your usual dinner."), "", steps?.dinner ?? false, false, true),
@@ -478,6 +478,7 @@ struct TrainTodayCard: View {
                     .buttonStyle(PressableCard())
                     .padding(.top, 4)
                     .accessibilityHint(L10n("Opens the snack"))
+                    .accessibilityValue(snackLogged ? L10n("Logged") : "")
                 } else if step.state == .next {
                     Text(step.detail)
                         .font(Typography.data(13, weight: .regular))
@@ -486,11 +487,11 @@ struct TrainTodayCard: View {
                         .hintCopy()
                 }
                 if step.state == .next && step.loggable {
-                    if step.title == L10n("Snack before"), let snack = snackBefore {
+                    if step.title == L10n("Snack before"), let snack = snackBefore, !snackLogged {
                         Button {
                             onLogSnack?(snack)
                         } label: {
-                            Text(loggingSnack ? "Logging…" : snackLogged ? "Logged" : "Log it")
+                            Text(loggingSnack ? "Logging…" : "Log it")
                                 .font(Typography.data(13, weight: .medium))
                                 .foregroundStyle(Palette.onBone)
                                 .padding(.horizontal, 16)
@@ -498,9 +499,9 @@ struct TrainTodayCard: View {
                                 .background(Palette.ink, in: Capsule())
                         }
                         .buttonStyle(PressableCard())
-                        .disabled(loggingSnack || snackLogged)
+                        .disabled(loggingSnack)
                         .padding(.top, 6)
-                    } else {
+                    } else if step.title != L10n("Snack before") {
                         Button(action: onLog) {
                             Text("Log it")
                                 .font(Typography.data(13, weight: .medium))
@@ -550,17 +551,32 @@ struct TrainTodayCard: View {
                         }
                     }
                 }
-            } else {
+            } else if !snackLogged {
                 Text(snackDetail)
                     .font(Typography.data(13, weight: .regular))
                     .foregroundStyle(Palette.inkSoft)
                     .fixedSize(horizontal: false, vertical: true)
             }
+            if snackLogged {
+                Text(L10n("Logged · \(snack.kcal.formatted()) kcal"))
+                    .font(Typography.data(12, weight: .regular))
+                    .foregroundStyle(Palette.positive)
+            }
         }
-        .padding(.vertical, 8)
-        .padding(.horizontal, 10)
+        .padding(.vertical, snackLogged ? 10 : 8)
+        .padding(.horizontal, snackLogged ? 12 : 10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .background {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(snackLogged
+                      ? AnyShapeStyle(LinearGradient(colors: [Palette.positive.opacity(0.10), Palette.positive.opacity(0.03)], startPoint: .top, endPoint: .bottom))
+                      : AnyShapeStyle(Color.white.opacity(0.05)))
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .strokeBorder(snackLogged ? Palette.positive.opacity(0.40) : Color.clear)
+        }
+        .animation(Motion.settle, value: snackLogged)
     }
 }
 
@@ -915,9 +931,6 @@ struct TrainComingUp: View {
 // MARK: - Settings, folded into one row
 
 struct TrainSettingsRow: View {
-    let addCalories: Bool
-    let nudgeMin: Int
-    let healthOn: Bool
     let action: () -> Void
 
     var body: some View {
@@ -929,14 +942,9 @@ struct TrainSettingsRow: View {
                     .frame(width: 36, height: 36)
                     .background(Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 11, style: .continuous))
                     .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Training settings")
-                        .font(Typography.data(14, weight: .regular))
-                        .foregroundStyle(Palette.ink)
-                    Text(summary)
-                        .font(Typography.data(12, weight: .regular))
-                        .foregroundStyle(Palette.inkFaint)
-                }
+                Text("Training settings")
+                    .font(Typography.data(14, weight: .regular))
+                    .foregroundStyle(Palette.ink)
                 Spacer(minLength: 8)
                 Image(systemName: "chevron.forward")
                     .font(.system(size: 12, weight: .semibold))
@@ -947,19 +955,5 @@ struct TrainSettingsRow: View {
             .glass(radius: 20, fill: Color.white.opacity(0.035), stroke: Color.white.opacity(0.08))
         }
         .buttonStyle(PressableCard())
-    }
-
-    private var summary: String {
-        let calories = addCalories ? L10n( "Adds calories") : L10n( "Calories stay the same")
-        let nudge: String
-        if nudgeMin == 0 {
-            nudge = L10n( "no nudge")
-        } else if nudgeMin == 120 {
-            nudge = L10n( "nudge 2 h before")
-        } else {
-            nudge = L10n( "nudge \(nudgeMin) min before")
-        }
-        let health = healthOn ? L10n( "on") : L10n( "off")
-        return L10n( "\(calories) · \(nudge) · Apple Health \(health)")
     }
 }

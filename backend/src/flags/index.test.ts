@@ -45,4 +45,9 @@ describe('feature flags', () => {
     expect(flagOn('nutrition_chat', user, undefined)).toBe(false);
     expect(flagOn('nutrition_chat', user, { ...row({ enabled: true }), key: 'nutrition_chat' })).toBe(true);
   });
+
+  it('keeps SetPoint Pro off until an override turns it on', () => {
+    expect(flagOn('paywall', user, undefined)).toBe(false);
+    expect(flagOn('paywall', user, { ...row({ enabled: true }), key: 'paywall' })).toBe(true);
+  });
 });

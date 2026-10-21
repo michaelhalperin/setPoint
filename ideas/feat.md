@@ -25,11 +25,6 @@ user screen. v
 
                 ------------------------------------
 
-IDEA: 
-talk with dvir on a pilot, to use this app on his trainers - free for now.
-
-                ------------------------------------
-
 FUTURE IMPLEMENTAION:
 
 admin dashboard. v
