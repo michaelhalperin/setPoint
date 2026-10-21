@@ -144,7 +144,7 @@ function fromMeal(meal: SnackHistoryMeal, blocked: string[]): SnackBefore | null
 
 function fromSaved(meal: SnackSavedMeal, blocked: string[]): SnackBefore | null {
   if (!isSnackSize(meal.kcal)) return null;
-  const name = meal.name.trim() || mealName({ loggedAt: new Date(0), kcal: meal.kcal, items: meal.items });
+  const name = meal.name.trim() || mealName({ items: meal.items });
   if (!name || isBlocked(name, blocked)) return null;
   const items = plateItems(meal.items);
   const proteinG = items.reduce((sum, item) => sum + item.proteinG, 0);
