@@ -112,7 +112,7 @@ struct MainTabView: View {
                     HomeContent(model: home, deepLinkCheckInID: $deepLinkCheckInID)
                 case .training:
                     if env.subscription.entitled {
-                        TrainingScreen(isTabRoot: true)
+                        TrainingScreen(isTabRoot: true, home: home)
                     } else {
                         TrainingLockedView()
                     }

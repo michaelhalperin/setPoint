@@ -780,7 +780,14 @@ struct TrainingWeekResponse: Decodable {
     let addCalories: Bool
     var preWorkoutNudgeMin: Int? = nil
     let fueledWell: Fueled
+    /// The last 14 days and how each went (refuel status).
     let days: [Day]
+    /// Every session from two weeks back to the planning horizon. Older servers leave it out.
+    var sessions: [Entry]? = nil
+    /// How many days ahead sessions can be planned.
+    var horizonDays: Int? = nil
+    /// For the phone's own estimate of what a session adds while it saves.
+    var weightKg: Double? = nil
     let today: Today
 
     struct Fueled: Decodable {
@@ -794,6 +801,17 @@ struct TrainingWeekResponse: Decodable {
         let bumpKcal: Int
         let rest: Bool
         let workouts: [Session]
+        /// After the session: "done" · "missed" · "due" · "planned"; nil on rest days.
+        var refuel: String? = nil
+        /// All food logged that day. Older servers leave it out.
+        var eatenKcal: Int? = nil
+        /// The meal that counted as the refuel.
+        var refuelMeal: RefuelMeal? = nil
+    }
+
+    struct RefuelMeal: Decodable {
+        let at: String
+        let kcal: Int
     }
 
     struct Session: Decodable, Identifiable {
@@ -806,6 +824,18 @@ struct TrainingWeekResponse: Decodable {
         var activeKcal: Int? = nil
     }
 
+    /// One session in `sessions`: planned (by the person) or recorded by Apple Health.
+    struct Entry: Decodable {
+        let id: String
+        var clientId: String? = nil
+        var seriesId: String? = nil
+        let kind: String
+        let source: String
+        let start: String
+        let durationMin: Int
+        var activeKcal: Int? = nil
+    }
+
     struct Today: Decodable {
         let baseKcal: Int
         let bumpKcal: Int
@@ -813,6 +843,18 @@ struct TrainingWeekResponse: Decodable {
         let workouts: [Session]
         let dinnerMin: Int
         let timeline: [TimelineEvent]
+        /// Which of today's steps are done. Older servers leave it out.
+        var steps: Steps? = nil
+        var refuelWindowMin: Int? = nil
+        /// What training adds today even while "Add calories" is off.
+        var trainingKcal: Int? = nil
+    }
+
+    struct Steps: Decodable {
+        let before: Bool
+        let workout: Bool
+        let refuel: Bool
+        let dinner: Bool
     }
 
     struct TimelineEvent: Decodable, Identifiable {

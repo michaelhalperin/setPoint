@@ -123,6 +123,8 @@ struct PaywallView: View {
         }
         .scrollBounceBehavior(.basedOnSize)
         .background(Palette.background.ignoresSafeArea())
+        .toolbar(.hidden, for: .navigationBar)
+        .navigationBarBackButtonHidden(true)
         .task { await store.refresh(using: env.api) }
     }
 

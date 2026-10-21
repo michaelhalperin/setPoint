@@ -1,10 +1,12 @@
 import SwiftUI
 
-// Train, drawn as two pictures: today as a river from the snack before to dinner
-// (the session a lit bar, the refuel window dashed after it), and the week as
-// pillars sized by the extra food each day earned. Tap a pillar for that day.
+// Train, week first: a strip of seven days to pick from, then a card for the day
+// picked — today's food around the session, how a past one went, what a planned
+// one will add, or a rest day — then what's coming up, then settings in one row.
 
 enum TrainKind {
+    static let all = ["STRENGTH", "CARDIO", "MIXED"]
+
     static func title(_ kind: String) -> String {
         switch kind {
         case "CARDIO": return "Cardio"
@@ -20,478 +22,779 @@ enum TrainKind {
         default: return "dumbbell.fill"
         }
     }
+}
 
-    static func source(_ source: String) -> String {
-        switch source {
-        case "HEALTHKIT": return "Apple Health"
-        case "PLANNED": return "planned"
-        default: return "added by you"
+/// "17:00" from minutes after midnight.
+func trainClock(_ minutes: Int) -> String {
+    let m = ((minutes % 1440) + 1440) % 1440
+    return String(format: "%02d:%02d", m / 60, m % 60)
+}
+
+/// "17:00" from a date, on the phone's clock.
+func trainClock(_ date: Date) -> String {
+    trainClock(TrainMath.minute(date))
+}
+
+/// One day in the week strip, with everything its card needs.
+struct TrainDay: Identifiable {
+    var id: String { key }
+    let key: String
+    let date: Date
+    let sessions: [TrainSession]
+    /// What training adds that day (0 when "Add calories" is off).
+    let bumpKcal: Int
+    let refuel: TrainMath.Refuel?
+    let isToday: Bool
+    let isPast: Bool
+    /// A session can still be added on this day.
+    let canAdd: Bool
+    /// All food logged that day, when known.
+    var eatenKcal: Int? = nil
+    /// The meal that counted as the refuel.
+    var refuelMeal: TrainMath.Meal? = nil
+}
+
+// MARK: - Small shared pieces
+
+private struct KindTile: View {
+    let kind: String
+    var tint: Color = Palette.hazeSoft
+    var fill: Color = Palette.haze.opacity(0.18)
+
+    var body: some View {
+        Image(systemName: TrainKind.symbol(kind))
+            .font(.system(size: 19, weight: .medium))
+            .foregroundStyle(tint)
+            .frame(width: 44, height: 44)
+            .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(fill))
+            .accessibilityHidden(true)
+    }
+}
+
+private struct EditPill: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text("Edit")
+                .font(Typography.data(13, weight: .medium))
+                .foregroundStyle(Palette.hazeSoft)
+                .padding(.horizontal, 14)
+                .frame(minHeight: 36)
+                .background(Palette.haze.opacity(0.14), in: Capsule())
+                .overlay(Capsule().strokeBorder(Palette.haze.opacity(0.40)))
         }
+        .buttonStyle(PressableCard())
+        .frame(minHeight: 44)
+    }
+}
+
+/// The "+ Plan" pill: the header's action and the rest day's.
+struct TrainPlanPill: View {
+    var title = "Plan"
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Label(title, systemImage: "plus")
+                .font(Typography.data(14, weight: .medium))
+                .foregroundStyle(Color(hex: 0xE0E7FF))
+                .padding(.horizontal, 16)
+                .frame(minHeight: 40)
+                .background(Palette.haze.opacity(0.16), in: Capsule())
+                .overlay(Capsule().strokeBorder(Palette.haze.opacity(0.45)))
+        }
+        .buttonStyle(PressableCard())
+        .frame(minHeight: 44)
+    }
+}
+
+private func sessionTitle(_ s: TrainSession) -> String {
+    "\(TrainKind.title(s.kind)) · \(trainClock(s.start))–\(trainClock(s.end))"
+}
+
+private func repeatText(_ s: TrainSession) -> String {
+    s.repeats ? "Every \(s.start.formatted(.dateTime.weekday(.wide)))" : "Once"
+}
+
+// MARK: - The week strip
+
+struct TrainWeekStrip: View {
+    let title: String
+    let range: String
+    let summary: String
+    let days: [TrainDay]
+    let selectedKey: String
+    let canGoBack: Bool
+    let canGoForward: Bool
+    let onBack: () -> Void
+    let onForward: () -> Void
+    /// Set when the strip shows a week other than this one.
+    var onThisWeek: (() -> Void)?
+    let onPick: (TrainDay) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 6) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(Typography.data(15, weight: .regular))
+                        .foregroundStyle(Palette.ink)
+                    Text(range.uppercased())
+                        .font(Typography.mono(11))
+                        .tracking(0.6)
+                        .foregroundStyle(Palette.inkFaint)
+                }
+                Spacer(minLength: 4)
+                if let onThisWeek {
+                    Button("This week", action: onThisWeek)
+                        .font(Typography.data(13, weight: .medium))
+                        .foregroundStyle(Palette.hazeSoft)
+                        .frame(minHeight: 44)
+                        .padding(.horizontal, 4)
+                }
+                arrow("chevron.left", label: "Earlier week", enabled: canGoBack, action: onBack)
+                arrow("chevron.right", label: "Later week", enabled: canGoForward, action: onForward)
+            }
+            .padding(.horizontal, 4)
+
+            HStack(spacing: 4) {
+                ForEach(days) { day in
+                    dayButton(day)
+                }
+            }
+
+            Text(summary)
+                .font(Typography.data(12, weight: .regular))
+                .foregroundStyle(Palette.inkSoft)
+                .padding(.horizontal, 4)
+        }
+        .padding(.horizontal, 12)
+        .padding(.top, 14)
+        .padding(.bottom, 12)
+        .glass(radius: 24, fill: Color.white.opacity(0.035), stroke: Color.white.opacity(0.08))
+    }
+
+    private func arrow(_ symbol: String, label: String, enabled: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(enabled ? Palette.ink : Palette.inkFaint.opacity(0.5))
+                .frame(width: 44, height: 44)
+                .background(Color.white.opacity(enabled ? 0.07 : 0.02), in: Circle())
+        }
+        .buttonStyle(PressableCard())
+        .disabled(!enabled)
+        .accessibilityLabel(label)
+    }
+
+    private func dayButton(_ day: TrainDay) -> some View {
+        let selected = day.key == selectedKey
+        return Button { onPick(day) } label: {
+            VStack(spacing: 5) {
+                Text(day.date.formatted(.dateTime.weekday(.narrow)))
+                    .font(Typography.mono(10))
+                    .opacity(0.8)
+                Text(day.date.formatted(.dateTime.day()))
+                    .font(Typography.data(17, weight: .medium))
+                mark(day, selected: selected)
+            }
+            .foregroundStyle(selected ? Palette.onBone : Palette.ink)
+            .frame(maxWidth: .infinity, minHeight: 64)
+            .background {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(selected ? Palette.ink : day.isToday ? Palette.haze.opacity(0.10) : .clear)
+            }
+            .overlay {
+                if day.isToday && !selected {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Palette.hazeSoft.opacity(0.6))
+                }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(accessibility(day))
+        .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+
+    @ViewBuilder
+    private func mark(_ day: TrainDay, selected: Bool) -> some View {
+        if day.sessions.isEmpty {
+            Circle().fill(.clear).frame(width: 6, height: 6)
+        } else if day.refuel == .planned && !day.isToday && !selected {
+            Circle().strokeBorder(Palette.hazeSoft, lineWidth: 1.5).frame(width: 6, height: 6)
+        } else {
+            Circle().fill(markColor(day.refuel, selected: selected)).frame(width: 6, height: 6)
+        }
+    }
+
+    private func markColor(_ refuel: TrainMath.Refuel?, selected: Bool) -> Color {
+        switch refuel {
+        case .done: return selected ? Color(hex: 0x16A34A) : Palette.positive
+        case .missed, .due: return selected ? Color(hex: 0xC2410C) : Palette.amber
+        case .planned: return selected ? Color(hex: 0x4F46E5) : Palette.hazeSoft
+        case nil: return selected ? Palette.onBone.opacity(0.5) : Palette.inkFaint
+        }
+    }
+
+    private func accessibility(_ day: TrainDay) -> String {
+        let name = day.date.formatted(.dateTime.weekday(.wide).day())
+        guard let first = day.sessions.first else { return "\(name), rest day" }
+        let status: String
+        switch day.refuel {
+        case .done: status = "refueled"
+        case .missed: status = "missed the refuel"
+        case .due: status = "refuel now"
+        case .planned: status = "planned"
+        case nil: status = ""
+        }
+        return "\(name), \(TrainKind.title(first.kind)) \(status)"
     }
 }
 
 // MARK: - Today
 
 struct TrainTodayCard: View {
-    let today: TrainingWeekResponse.Today
+    let session: TrainSession
+    let baseKcal: Int
+    let bumpKcal: Int
+    let targetKcal: Int
+    let addCalories: Bool
+    let dinnerMin: Int
+    let steps: TrainMath.Steps?
+    let now: Date
+    var onLog: () -> Void
+    /// Set while the session can still be changed.
+    var onEdit: (() -> Void)?
 
-    private var workout: TrainingWeekResponse.Session? { today.workouts.first }
+    private var start: Int { TrainMath.minute(session.start) }
+    private var end: Int { start + session.durationMin }
+    private var nowMin: Int { TrainMath.minute(now) }
+    private var window: Int { TrainMath.refuelWindowMin }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Text(label).sectionLabelStyle(Palette.hazeSoft)
+            HStack(spacing: 12) {
+                KindTile(kind: session.kind)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(sessionTitle(session))
+                        .font(Typography.data(17, weight: .regular))
+                        .foregroundStyle(Palette.ink)
+                    Text(status)
+                        .font(Typography.data(13, weight: .regular))
+                        .foregroundStyle(Palette.inkSoft)
+                }
                 Spacer(minLength: 8)
-                if today.bumpKcal > 0 {
-                    Text("+\(today.bumpKcal) kcal")
-                        .font(Typography.mono(12))
-                        .foregroundStyle(Palette.hazeSoft)
+                if let onEdit { EditPill(action: onEdit).accessibilityLabel("Edit today’s session") }
+            }
+
+            VStack(alignment: .leading, spacing: 10) {
+                if bumpKcal > 0 {
+                    (Text("Eat ") + Text("\(bumpKcal) more").foregroundColor(Palette.hazeSoft) + Text(" today."))
+                        .font(Typography.display(28))
+                        .tracking(-0.8)
+                        .foregroundStyle(Palette.ink)
+                        .contentTransition(.numericText())
+                    targetBar
+                } else {
+                    Headline("Eat around it.", tail: addCalories ? "Here’s when." : "“Add calories” is off — today stays at \(baseKcal.formatted()).", size: 26)
                 }
             }
-            Headline(title, tail: tail, size: 28)
 
-            if workout != nil {
-                SessionRiver(today: today)
-                    .frame(height: 70)
-            }
-
-            if today.bumpKcal > 0 {
-                equation
+            VStack(alignment: .leading, spacing: 0) {
+                let rows = stepRows
+                ForEach(Array(rows.enumerated()), id: \.offset) { index, step in
+                    stepRow(step, last: index == rows.count - 1)
+                }
             }
         }
         .padding(18)
-        .frame(maxWidth: .infinity, alignment: .leading)
         .background {
             RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .fill(LinearGradient(colors: [Palette.haze.opacity(0.17), Palette.haze.opacity(0.03)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                .fill(LinearGradient(colors: [Palette.haze.opacity(0.17), Color.white.opacity(0.03)], startPoint: .topLeading, endPoint: UnitPoint(x: 0.6, y: 0.9)))
         }
         .overlay {
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .strokeBorder(Palette.hazeSoft.opacity(0.30))
+            RoundedRectangle(cornerRadius: 28, style: .continuous).strokeBorder(Palette.hazeSoft.opacity(0.40))
         }
     }
 
-    private var label: String {
-        guard let workout else { return "Today · rest" }
-        return "Today · \(TrainKind.title(workout.kind).lowercased()) · \(clock24(workout.startMin))"
+    private var status: String {
+        if nowMin >= end { return "Done · \(session.isPlanned ? "added by you" : "from Apple Health")" }
+        if nowMin >= start { return "Under way · until \(trainClock(end))" }
+        return "\(repeatText(session)) · \(session.isPlanned ? "added by you" : "from Apple Health")"
     }
 
-    private var title: String {
-        guard let workout else { return "Rest day." }
-        return "\(TrainKind.title(workout.kind)) day."
-    }
-
-    private var tail: String {
-        if workout == nil { return "Plates as usual: \(today.baseKcal.formatted()) kcal." }
-        return today.bumpKcal > 0 ? "More food today, timed around it." : "Food timed around it."
-    }
-
-    private var equation: some View {
-        HStack(spacing: 6) {
-            term(today.baseKcal.formatted(), "your day", tint: nil)
-            Text("+").foregroundStyle(Palette.inkFaint)
-            term(today.bumpKcal.formatted(), "the session", tint: Palette.haze)
-            Text("=").foregroundStyle(Palette.inkFaint)
-            term(today.targetKcal.formatted(), "today", tint: Palette.ember)
-        }
-        .font(Typography.data(15, weight: .light))
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(today.baseKcal) plus \(today.bumpKcal) for the session makes \(today.targetKcal) kilocalories today")
-    }
-
-    private func term(_ value: String, _ caption: String, tint: Color?) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(value)
-                .font(Typography.mono(15))
-                .foregroundStyle(tint == Palette.haze ? Palette.hazeSoft : tint == Palette.ember ? Palette.amber : Palette.ink)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-            Text(caption)
-                .font(Typography.data(11, weight: .regular))
-                .foregroundStyle(Palette.inkSoft)
-                .lineLimit(1)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(tint.map { $0.opacity(0.13) } ?? Color.white.opacity(0.05))
-        }
-        .overlay {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .strokeBorder(tint == Palette.haze ? Palette.hazeSoft.opacity(0.35) : tint == Palette.ember ? Color(hex: 0xFF8A50, opacity: 0.5) : Color.white.opacity(0.08))
-        }
-    }
-}
-
-/// Today from the snack before to dinner: rings for food, a lit bar for the
-/// session, a dashed band for the refuel window.
-struct SessionRiver: View {
-    let today: TrainingWeekResponse.Today
-
-    /// The backend counts a refuel within this many minutes of the session ending.
-    static let refuelWindowMin = 45
-
-    private struct Stop: Identifiable {
-        enum Kind { case before, session, refuel, dinner }
-        let id: String
-        let kind: Kind
-        let atMin: Int
-        let lengthMin: Int
-        let top: String
-        let time: String?
-    }
-
-    private var stops: [Stop] {
-        let workout = today.workouts.first
-        return today.timeline.compactMap { event -> Stop? in
-            switch event.kind {
-            case "before":
-                return Stop(id: "before", kind: .before, atMin: event.atMin, lengthMin: 0, top: "EAT", time: clock24(event.atMin))
-            case "workout":
-                let title = workout.map { TrainKind.title($0.kind).uppercased() } ?? "SESSION"
-                return Stop(id: "session", kind: .session, atMin: event.atMin, lengthMin: max(20, workout?.durationMin ?? 60), top: title, time: clock24(event.atMin))
-            case "refuel":
-                return Stop(id: "refuel", kind: .refuel, atMin: event.atMin, lengthMin: Self.refuelWindowMin, top: "REFUEL", time: nil)
-            case "dinner":
-                return Stop(id: "dinner", kind: .dinner, atMin: event.atMin, lengthMin: 0, top: "DINNER", time: clock24(event.atMin))
-            default:
-                return nil
-            }
-        }
-    }
-
-    var body: some View {
-        let stops = stops
-        let lo = Double(((stops.map(\.atMin).min() ?? 840) - 30) / 60 * 60)
-        let hi = Double(((stops.map { $0.atMin + $0.lengthMin }.max() ?? 1260) + 89) / 60 * 60)
-        GeometryReader { geo in
-            let width = geo.size.width
-            let x = { (minute: Int) -> CGFloat in CGFloat((Double(minute) - lo) / max(1, hi - lo)) * width }
-            ZStack(alignment: .topLeading) {
-                Capsule()
-                    .fill(Color.white.opacity(0.10))
-                    .frame(width: width, height: 2)
-                    .offset(y: 40)
-                ForEach(stops) { stop in
-                    let start = x(stop.atMin)
-                    let length = stop.lengthMin > 0 ? max(14, x(stop.atMin + stop.lengthMin) - start) : 0
-                    VStack(alignment: length > 0 ? .leading : .center, spacing: 6) {
-                        Text(stop.top)
-                            .font(Typography.mono(9))
-                            .tracking(0.9)
-                            .foregroundStyle(topColor(stop.kind))
-                            .fixedSize()
-                            .frame(height: 12)
-                        mark(stop.kind)
-                            .frame(width: length > 0 ? length : 12, height: 12)
-                        Text(stop.time ?? " ")
-                            .font(Typography.mono(10))
-                            .foregroundStyle(Palette.inkSoft)
-                            .fixedSize()
-                            .frame(height: 12)
-                    }
-                    .frame(width: length > 0 ? length : 44, alignment: length > 0 ? .leading : .center)
-                    .offset(x: length > 0 ? start : start - 22, y: 17)
+    /// Today's target as one bar: a normal day, then what training adds.
+    private var targetBar: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            GeometryReader { geo in
+                let total = max(1, CGFloat(baseKcal + bumpKcal))
+                let baseWidth = max(0, (geo.size.width - 3) * CGFloat(baseKcal) / total)
+                HStack(spacing: 3) {
+                    UnevenRoundedRectangle(topLeadingRadius: 5, bottomLeadingRadius: 5)
+                        .fill(Palette.ink.opacity(0.82))
+                        .frame(width: baseWidth)
+                    UnevenRoundedRectangle(bottomTrailingRadius: 5, topTrailingRadius: 5)
+                        .fill(LinearGradient(colors: [Palette.haze, Palette.hazeSoft], startPoint: .leading, endPoint: .trailing))
+                        .shadow(color: Palette.haze.opacity(0.6), radius: 6)
                 }
             }
+            .frame(height: 10)
+            .animation(Motion.settle, value: bumpKcal)
+            HStack {
+                barLabel(baseKcal.formatted(), "normal day", tint: Palette.ink)
+                Spacer(minLength: 4)
+                barLabel("+\(bumpKcal.formatted())", "training", tint: Palette.hazeSoft)
+                Spacer(minLength: 4)
+                barLabel(targetKcal.formatted(), "today", tint: Palette.amber)
+            }
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(stops.map { stop in
-            switch stop.kind {
-            case .before: return "eat at \(clock24(stop.atMin))"
-            case .session: return "\(stop.top.lowercased()) at \(clock24(stop.atMin))"
-            case .refuel: return "refuel within \(Self.refuelWindowMin) minutes"
-            case .dinner: return "dinner at \(clock24(stop.atMin))"
+        .accessibilityLabel("\(baseKcal) on a normal day, plus \(bumpKcal) for training, makes \(targetKcal) today")
+    }
+
+    private func barLabel(_ value: String, _ caption: String, tint: Color) -> some View {
+        (Text(value).font(Typography.mono(12)).foregroundColor(tint) + Text(" \(caption)").font(Typography.data(12, weight: .regular)).foregroundColor(Palette.inkSoft))
+            .contentTransition(.numericText())
+    }
+
+    // MARK: Steps
+
+    private enum StepState { case done, next, later, missed }
+
+    private struct Step {
+        let title: String
+        let when: String
+        let hint: String
+        let detail: String
+        let state: StepState
+        let loggable: Bool
+    }
+
+    private var stepRows: [Step] {
+        let refuelBy = end + window
+        let refuelKcal = min(450, max(250, bumpKcal))
+        let raw: [(title: String, when: String, hint: String, detail: String, missed: String, done: Bool, over: Bool, loggable: Bool)] = [
+            ("Snack before", trainClock(max(0, start - 90)), "~250", "Something light — fuel without feeling full.", "Nothing logged before — that’s fine. The refuel matters more.", steps?.before ?? false, nowMin >= start, true),
+            (TrainKind.title(session.kind), trainClock(start), "\(session.durationMin) min", session.isPlanned ? "Apple Health adds it when your watch saves it." : "From Apple Health.", "", (steps?.workout ?? false) || nowMin >= end, false, false),
+            ("Refuel after", trainClock(refuelBy), "~\(refuelKcal)", "Something with protein within \(window) min of finishing — chocolate milk or a sandwich. I’ll remind you.", "Missed the window — still eat something with protein now.", steps?.refuel ?? false, nowMin > refuelBy, true),
+            (bumpKcal > 0 ? "Dinner, a bit bigger" : "Dinner", trainClock(dinnerMin), "", bumpKcal > 0 ? "Your usual dinner plus a side." : "Your usual dinner.", "", steps?.dinner ?? false, false, true),
+        ]
+        var foundNext = false
+        return raw.map { r in
+            let state: StepState
+            if r.done { state = .done }
+            else if r.over && !r.missed.isEmpty { state = .missed }
+            else if !foundNext { state = .next; foundNext = true }
+            else { state = .later }
+            return Step(title: r.title, when: r.when, hint: r.hint, detail: state == .missed ? r.missed : r.detail, state: state, loggable: r.loggable)
+        }
+    }
+
+    private func stepRow(_ step: Step, last: Bool) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Text(step.when)
+                .font(Typography.mono(11))
+                .foregroundStyle(step.state == .next ? Palette.hazeSoft : Palette.inkFaint)
+                .frame(width: 44, alignment: .leading)
+                .padding(.top, 3)
+
+            VStack(spacing: 4) {
+                ZStack {
+                    switch step.state {
+                    case .done:
+                        Circle().fill(Palette.positive)
+                        Image(systemName: "checkmark").font(.system(size: 10, weight: .bold)).foregroundStyle(Palette.onBone)
+                    case .next:
+                        Circle().fill(Palette.background)
+                        Circle().strokeBorder(Palette.hazeSoft, lineWidth: 2)
+                    case .missed:
+                        Circle().fill(Palette.background)
+                        Circle().strokeBorder(Palette.amber, lineWidth: 1.5)
+                        Text("!").font(Typography.data(10, weight: .semibold)).foregroundStyle(Palette.amber)
+                    case .later:
+                        Circle().fill(Palette.background)
+                        Circle().strokeBorder(Color.white.opacity(0.25), lineWidth: 1.5)
+                    }
+                }
+                .frame(width: 20, height: 20)
+                .shadow(color: step.state == .next ? Palette.haze.opacity(0.7) : .clear, radius: 6)
+                .animation(Motion.settle, value: step.state == .done)
+                if !last {
+                    Capsule()
+                        .fill(step.state == .done ? Palette.positive.opacity(0.5) : Color.white.opacity(0.10))
+                        .frame(width: 2)
+                        .frame(minHeight: 12)
+                }
             }
-        }.joined(separator: ", "))
-    }
+            .frame(width: 20)
 
-    @ViewBuilder
-    private func mark(_ kind: Stop.Kind) -> some View {
-        switch kind {
-        case .before:
-            Circle().fill(Palette.background).overlay(Circle().strokeBorder(Palette.amber, lineWidth: 2))
-        case .session:
-            Capsule()
-                .fill(LinearGradient(colors: [Palette.haze, Palette.hazeSoft], startPoint: .leading, endPoint: .trailing))
-                .shadow(color: Palette.haze.opacity(0.8), radius: 7)
-        case .refuel:
-            Capsule()
-                .fill(Palette.hazeSoft.opacity(0.10))
-                .overlay(Capsule().strokeBorder(Palette.hazeSoft, style: StrokeStyle(lineWidth: 1.5, dash: [4, 3])))
-        case .dinner:
-            Circle().fill(Palette.background).overlay(Circle().strokeBorder(Color.white.opacity(0.35), lineWidth: 1.5))
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(step.title)
+                        .font(Typography.data(15, weight: .regular))
+                        .foregroundStyle(step.state == .done ? Palette.inkFaint : Palette.ink)
+                    Spacer(minLength: 8)
+                    Text(step.hint)
+                        .font(Typography.mono(11))
+                        .foregroundStyle(Palette.inkFaint)
+                }
+                if step.state == .next || step.state == .missed {
+                    Text(step.detail)
+                        .font(Typography.data(13, weight: .regular))
+                        .foregroundStyle(step.state == .missed ? Palette.amber : Palette.inkSoft)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                if step.state == .next && step.loggable {
+                    Button(action: onLog) {
+                        Text("Log it")
+                            .font(Typography.data(13, weight: .medium))
+                            .foregroundStyle(Palette.onBone)
+                            .padding(.horizontal, 16)
+                            .frame(height: 36)
+                            .background(Palette.ink, in: Capsule())
+                    }
+                    .buttonStyle(PressableCard())
+                    .padding(.top, 6)
+                }
+            }
+            .padding(.bottom, last ? 0 : 14)
         }
-    }
-
-    private func topColor(_ kind: Stop.Kind) -> Color {
-        switch kind {
-        case .before: return Palette.amber
-        case .dinner: return Palette.inkSoft
-        default: return Palette.hazeSoft
-        }
+        .accessibilityElement(children: .combine)
     }
 }
 
-// MARK: - Week
+// MARK: - A day that's happened
 
-struct TrainWeekCard: View {
-    let week: TrainingWeekResponse
-    let todayISO: String
-    @Binding var selected: String?
-
-    private var selectedDay: TrainingWeekResponse.Day? {
-        let id = selected ?? todayISO
-        return week.days.first { $0.date == id } ?? week.days.last
-    }
+struct TrainPastCard: View {
+    let day: TrainDay
+    let weightKg: Double
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Text("This week").sectionLabelStyle()
-                Spacer(minLength: 8)
-                fueled
-            }
-            .padding(.horizontal, 2)
-
-            HStack(alignment: .bottom, spacing: 6) {
-                ForEach(week.days) { day in
-                    pillar(day)
+            HStack(spacing: 12) {
+                KindTile(kind: first.kind, tint: Color(hex: 0xD4D4D8), fill: Color.white.opacity(0.06))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(Typography.data(17, weight: .regular))
+                        .foregroundStyle(Palette.ink)
+                    Text("\(trainClock(first.start)) · \(first.isPlanned ? "added by you" : "from Apple Health")")
+                        .font(Typography.data(13, weight: .regular))
+                        .foregroundStyle(Palette.inkSoft)
                 }
             }
-            .frame(height: 156)
 
-            Rectangle().fill(Color.white.opacity(0.07)).frame(height: 1)
+            if let result {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(result.title)
+                        .font(Typography.data(15, weight: .regular))
+                        .foregroundStyle(result.tint)
+                    Text(result.detail)
+                        .font(Typography.data(13, weight: .regular))
+                        .foregroundStyle(Palette.inkSoft)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .background(result.tint.opacity(0.07), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(result.tint.opacity(0.32)))
+            }
 
-            if let day = selectedDay {
-                detail(day)
-                    .padding(.horizontal, 2)
-                    .id(day.date)
-                    .transition(.opacity)
+            HStack(spacing: 8) {
+                stat(burned, burnedCaption)
+                stat(day.eatenKcal.map { "\($0.formatted()) kcal" } ?? "—", "eaten that day")
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 18)
-        .padding(.bottom, 16)
-        .glass(radius: 26)
+        .padding(18)
+        .glass(radius: 28, fill: Color.white.opacity(0.04), stroke: Color.white.opacity(0.09))
     }
 
-    // MARK: Fueled
+    private var first: TrainSession { day.sessions[0] }
 
-    @ViewBuilder
-    private var fueled: some View {
-        let total = min(week.fueledWell.total, 8)
-        if total > 0 {
-            HStack(spacing: 8) {
-                HStack(spacing: 3) {
-                    ForEach(0..<total, id: \.self) { i in
-                        Capsule()
-                            .fill(i < week.fueledWell.good ? Palette.amber : Color.white.opacity(0.12))
-                            .frame(width: 14, height: 6)
+    private var title: String {
+        let base = "\(TrainKind.title(first.kind)) · \(first.durationMin) min"
+        return day.sessions.count > 1 ? "\(base) + \(day.sessions.count - 1) more" : base
+    }
+
+    private var result: (title: String, detail: String, tint: Color)? {
+        switch day.refuel {
+        case .done:
+            let detail = day.refuelMeal.map { "\($0.kcal) kcal at \(trainClock($0.at)) — within the window." } ?? "You ate within the window."
+            return ("Refueled", detail, Palette.positive)
+        case .missed:
+            return ("Missed the refuel", "Nothing logged within \(TrainMath.refuelWindowMin) min of finishing. Next time, a drink counts.", Palette.amber)
+        default:
+            return nil
+        }
+    }
+
+    private var recorded: Int? {
+        let values = day.sessions.compactMap(\.activeKcal).filter { $0 > 0 }
+        return values.isEmpty ? nil : values.reduce(0, +)
+    }
+
+    private var burned: String {
+        if let recorded { return "\(recorded.formatted()) kcal" }
+        let estimate = day.sessions.reduce(0) { $0 + TrainMath.sessionKcal($1, weightKg: weightKg) }
+        return "~\(Int(estimate.rounded()).formatted()) kcal"
+    }
+
+    private var burnedCaption: String { recorded == nil ? "burned · estimate" : "burned · Apple Health" }
+
+    private func stat(_ value: String, _ caption: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(value).font(Typography.mono(15)).foregroundStyle(Palette.ink)
+            Text(caption).font(Typography.data(11, weight: .regular)).foregroundStyle(Palette.inkFaint)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(Color.white.opacity(0.04), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .accessibilityElement(children: .combine)
+    }
+}
+
+// MARK: - A planned day ahead
+
+struct TrainPlannedCard: View {
+    let session: TrainSession
+    /// What the day's training adds; nil on a second session that day.
+    let dayBumpKcal: Int?
+    let addCalories: Bool
+    let dinnerMin: Int
+    let onEdit: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 12) {
+                KindTile(kind: session.kind, fill: Palette.haze.opacity(0.14))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(sessionTitle(session))
+                        .font(Typography.data(17, weight: .regular))
+                        .foregroundStyle(Palette.ink)
+                    Text(session.repeats ? repeatText(session) : "Just once")
+                        .font(Typography.data(13, weight: .regular))
+                        .foregroundStyle(Palette.inkSoft)
+                }
+                Spacer(minLength: 8)
+                EditPill(action: onEdit).accessibilityLabel("Edit this session")
+            }
+
+            if let bump = dayBumpKcal {
+                Group {
+                    if addCalories && bump > 0 {
+                        Text("I’ll add ") + Text("\(bump.formatted())").foregroundColor(Palette.hazeSoft) + Text(" to that day.")
+                    } else {
+                        Text("“Add calories” is off, so that day’s target stays the same.")
                     }
                 }
-                .accessibilityHidden(true)
-                Text("\(week.fueledWell.good) of \(week.fueledWell.total) fueled well")
-                    .font(Typography.data(12, weight: .regular))
-                    .foregroundStyle(Palette.inkSoft)
+                .font(Typography.display(22))
+                .tracking(-0.4)
+                .foregroundStyle(Palette.ink)
+                .fixedSize(horizontal: false, vertical: true)
             }
-        } else {
-            Text("Refuels count after a session")
+
+            VStack(alignment: .leading, spacing: 8) {
+                line(trainClock(TrainMath.minute(session.start) - 90), "Snack before")
+                line(trainClock(session.start), "\(TrainKind.title(session.kind)), \(session.durationMin) min")
+                line("by \(trainClock(TrainMath.minute(session.end) + TrainMath.refuelWindowMin))", "Refuel with protein")
+                line(trainClock(dinnerMin), "Dinner, a bit bigger")
+            }
+
+            Text("You can change it until it starts.")
                 .font(Typography.data(12, weight: .regular))
                 .foregroundStyle(Palette.inkFaint)
         }
-    }
-
-    // MARK: Pillar
-
-    private enum PillarState { case rest, done, planned }
-
-    private func state(_ day: TrainingWeekResponse.Day) -> PillarState {
-        if day.rest || day.workouts.isEmpty { return .rest }
-        return day.workouts.contains { $0.source != "PLANNED" } ? .done : .planned
-    }
-
-    private func pillar(_ day: TrainingWeekResponse.Day) -> some View {
-        let state = state(day)
-        let on = day.date == (selectedDay?.date ?? todayISO)
-        let isToday = day.date == todayISO
-        let height: CGFloat = state == .rest ? 10 : 34 + CGFloat(min(day.bumpKcal, 600)) / 600 * 74
-        return Button {
-            withAnimation(Motion.settle) { selected = day.date }
-        } label: {
-            VStack(spacing: 6) {
-                Text(day.bumpKcal > 0 ? "+\(day.bumpKcal)" : " ")
-                    .font(Typography.mono(9))
-                    .foregroundStyle(Palette.hazeSoft)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-                    .frame(height: 12)
-                cap(state, on: on)
-                    .frame(maxWidth: 34)
-                    .frame(height: height)
-                Text(weekdayLetter(day.date))
-                    .font(Typography.mono(10))
-                    .foregroundStyle(on ? Palette.ink : isToday ? Palette.hazeSoft : Palette.inkFaint)
-            }
-            .padding(.top, 6)
-            .padding(.bottom, 8)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-            .background {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(on ? Color.white.opacity(0.05) : .clear)
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .strokeBorder(on ? Color.white.opacity(0.12) : .clear)
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(PressableCard())
-        .accessibilityLabel(accessibility(day, state: state, isToday: isToday))
-        .accessibilityAddTraits(on ? .isSelected : [])
-    }
-
-    @ViewBuilder
-    private func cap(_ state: PillarState, on: Bool) -> some View {
-        let shape = RoundedRectangle(cornerRadius: 12, style: .continuous)
-        switch state {
-        case .rest:
-            shape.fill(Color.white.opacity(0.08))
-        case .planned:
-            shape
-                .fill(Palette.haze.opacity(0.16))
-                .overlay(shape.strokeBorder(Palette.hazeSoft.opacity(0.55), style: StrokeStyle(lineWidth: 1, dash: [4, 3])))
-        case .done:
-            shape
-                .fill(LinearGradient(colors: [Palette.hazeSoft, Palette.haze], startPoint: .top, endPoint: .bottom))
-                .shadow(color: Palette.haze.opacity(on ? 0.75 : 0.45), radius: on ? 9 : 5)
+        .padding(18)
+        .background(Palette.haze.opacity(0.06), in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .strokeBorder(Palette.hazeSoft.opacity(0.45), style: StrokeStyle(lineWidth: 1, dash: [5, 4]))
         }
     }
 
-    private func accessibility(_ day: TrainingWeekResponse.Day, state: PillarState, isToday: Bool) -> String {
-        let name = weekdayLong(day.date) + (isToday ? ", today" : "")
-        switch state {
-        case .rest: return "\(name), rest"
-        case .planned, .done:
-            let kind = day.workouts.first.map { TrainKind.title($0.kind) } ?? "Session"
-            let extra = day.bumpKcal > 0 ? ", plus \(day.bumpKcal) kilocalories" : ""
-            return "\(name), \(kind)\(state == .planned ? ", planned" : "")\(extra)"
+    private func line(_ at: String, _ text: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Text(at)
+                .font(Typography.mono(11))
+                .foregroundStyle(Palette.inkFaint)
+                .frame(width: 60, alignment: .leading)
+            Text(text)
+                .font(Typography.data(13, weight: .regular))
+                .foregroundStyle(Color(hex: 0xD4D4D8))
         }
     }
+}
 
-    // MARK: Detail
+// MARK: - A rest day
 
-    @ViewBuilder
-    private func detail(_ day: TrainingWeekResponse.Day) -> some View {
-        let isToday = day.date == todayISO
+struct TrainRestCard: View {
+    let day: TrainDay
+    let onPlan: () -> Void
+
+    var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text(weekdayLong(day.date) + (isToday ? " · today" : ""))
-                    .font(Typography.data(17, weight: .regular))
-                    .foregroundStyle(Palette.ink)
-                Spacer(minLength: 8)
-                Text(day.rest ? "Rest" : day.bumpKcal > 0 ? "+\(day.bumpKcal) kcal" : "No extra food")
-                    .font(Typography.mono(12))
-                    .foregroundStyle(day.rest ? Palette.inkFaint : Palette.hazeSoft)
+            (Text("Rest day. ") + Text("Normal food — rest is when you build back up.").foregroundColor(Palette.inkFaint))
+                .font(Typography.display(22))
+                .tracking(-0.4)
+                .foregroundStyle(Palette.ink)
+                .fixedSize(horizontal: false, vertical: true)
+            if !day.isPast {
+                TrainPlanPill(title: day.isToday ? "Plan a session today" : "Plan a session on \(day.date.formatted(.dateTime.weekday(.wide)))", action: onPlan)
+            } else if day.canAdd {
+                Button("Trained without your watch? Add it.", action: onPlan)
+                    .font(Typography.data(13, weight: .medium))
+                    .foregroundStyle(Palette.hazeSoft)
+                    .frame(minHeight: 44)
             }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(18)
+        .glass(radius: 28, fill: Color.white.opacity(0.03), stroke: Color.white.opacity(0.08))
+    }
+}
 
-            ForEach(day.workouts) { session in
-                HStack(spacing: 12) {
-                    Image(systemName: TrainKind.symbol(session.kind))
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundStyle(Palette.hazeSoft)
-                        .frame(width: 36, height: 36)
-                        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Palette.haze.opacity(0.14)))
-                        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Palette.hazeSoft.opacity(0.3)))
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(TrainKind.title(session.kind))
-                            .font(Typography.data(15, weight: .regular))
-                            .foregroundStyle(Palette.ink)
-                        Text(sessionMeta(session))
-                            .font(Typography.data(12, weight: .regular))
-                            .foregroundStyle(Palette.inkSoft)
-                    }
-                    Spacer(minLength: 0)
-                }
-                .accessibilityElement(children: .combine)
-            }
+// MARK: - Coming up
 
-            if isToday, !day.workouts.isEmpty {
-                VStack(alignment: .leading, spacing: 10) {
-                    ForEach(week.today.timeline) { event in
-                        HStack(spacing: 10) {
-                            stepDot(event.kind)
-                                .frame(width: 9, height: 9)
-                            Text(clock24(event.atMin))
-                                .font(Typography.mono(11))
-                                .foregroundStyle(Palette.inkSoft)
-                                .frame(width: 42, alignment: .leading)
-                            Text(stepText(event))
-                                .font(Typography.data(14, weight: .regular))
-                                .foregroundStyle(Palette.ink)
-                            Spacer(minLength: 0)
-                        }
-                    }
-                }
-                .padding(.leading, 4)
-            }
+struct TrainComingUp: View {
+    let sessions: [TrainSession]
+    /// The last planned session's day.
+    let through: Date?
+    let weightKg: Double
+    let addCalories: Bool
+    let onOpen: (TrainSession) -> Void
+    let onPlan: () -> Void
 
-            if day.rest {
-                Text("Rest day. Plates as usual: \(week.today.baseKcal.formatted()) kcal.")
-                    .font(Typography.data(14, weight: .regular))
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("Coming up").sectionLabelStyle()
+                Spacer()
+                Text(through.map { "Planned through \($0.formatted(.dateTime.day().month(.abbreviated)))" } ?? "Nothing planned yet")
+                    .font(Typography.data(12, weight: .regular))
                     .foregroundStyle(Palette.inkSoft)
             }
+            .padding(.horizontal, 4)
+
+            VStack(spacing: 0) {
+                ForEach(sessions) { s in
+                    Button { onOpen(s) } label: { row(s) }
+                        .buttonStyle(.plain)
+                        .accessibilityHint("Edits the session")
+                    Rectangle().fill(Color.white.opacity(0.06)).frame(height: 1)
+                }
+                Button(action: onPlan) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "plus")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(Palette.hazeSoft)
+                            .frame(width: 44, height: 40)
+                            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Palette.hazeSoft.opacity(0.5), style: StrokeStyle(lineWidth: 1, dash: [4, 3])))
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Plan ahead")
+                                .font(Typography.data(14, weight: .regular))
+                                .foregroundStyle(Palette.hazeSoft)
+                            Text("Once, or every week for 8 weeks")
+                                .font(Typography.data(12, weight: .regular))
+                                .foregroundStyle(Palette.inkFaint)
+                        }
+                        Spacer()
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+            .glass(radius: 22, fill: Color.white.opacity(0.035), stroke: Color.white.opacity(0.08))
         }
     }
 
-    private func sessionMeta(_ session: TrainingWeekResponse.Session) -> String {
-        var parts = ["\(session.durationMin) min", clock24(session.startMin), TrainKind.source(session.source)]
-        if let kcal = session.activeKcal, kcal > 0 { parts.append("\(kcal) active kcal") }
-        return parts.joined(separator: " · ")
-    }
-
-    @ViewBuilder
-    private func stepDot(_ kind: String) -> some View {
-        switch kind {
-        case "workout":
-            RoundedRectangle(cornerRadius: 3).fill(Palette.haze)
-        case "refuel":
-            Circle().strokeBorder(Palette.hazeSoft, lineWidth: 1.5)
-        case "before":
-            Circle().strokeBorder(Palette.amber, lineWidth: 1.5)
-        default:
-            Circle().strokeBorder(Color.white.opacity(0.3), lineWidth: 1.5)
+    private func row(_ s: TrainSession) -> some View {
+        HStack(spacing: 12) {
+            VStack(spacing: 1) {
+                Text(s.start.formatted(.dateTime.weekday(.abbreviated)).uppercased())
+                    .font(Typography.mono(10))
+                    .foregroundStyle(Palette.hazeSoft)
+                Text(s.start.formatted(.dateTime.day()))
+                    .font(Typography.data(16, weight: .medium))
+                    .foregroundStyle(Palette.ink)
+            }
+            .frame(width: 44)
+            .padding(.vertical, 6)
+            .background(Palette.haze.opacity(0.10), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Text("\(TrainKind.title(s.kind)) · \(s.durationMin) min")
+                        .font(Typography.data(14, weight: .regular))
+                        .foregroundStyle(Palette.ink)
+                    if s.repeats {
+                        Image(systemName: "repeat")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(Palette.inkFaint)
+                            .accessibilityLabel("weekly")
+                    }
+                }
+                Text("\(trainClock(s.start)) · \(s.repeats ? "every \(s.start.formatted(.dateTime.weekday(.wide)))" : "once")")
+                    .font(Typography.data(12, weight: .regular))
+                    .foregroundStyle(Palette.inkFaint)
+            }
+            Spacer(minLength: 8)
+            if addCalories {
+                Text("+\(TrainMath.bump([s], weightKg: weightKg))")
+                    .font(Typography.mono(12))
+                    .foregroundStyle(Palette.hazeSoft)
+            }
+            Image(systemName: "chevron.right")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(Palette.inkFaint)
         }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .contentShape(Rectangle())
     }
+}
 
-    private func stepText(_ event: TrainingWeekResponse.TimelineEvent) -> String {
-        switch event.kind {
-        case "before": return "Eat before you train"
-        case "workout": return week.today.workouts.first.map { TrainKind.title($0.kind) } ?? "Session"
-        case "refuel": return "Refuel within \(SessionRiver.refuelWindowMin) min"
-        case "dinner": return week.today.bumpKcal > 0 ? "Dinner · a bit bigger tonight" : "Dinner"
-        default: return event.label
+// MARK: - Settings, folded into one row
+
+struct TrainSettingsRow: View {
+    let addCalories: Bool
+    let nudgeMin: Int
+    let healthOn: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: "slider.horizontal.3")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(Color(hex: 0xD4D4D8))
+                    .frame(width: 36, height: 36)
+                    .background(Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Training settings")
+                        .font(Typography.data(14, weight: .regular))
+                        .foregroundStyle(Palette.ink)
+                    Text(summary)
+                        .font(Typography.data(12, weight: .regular))
+                        .foregroundStyle(Palette.inkFaint)
+                }
+                Spacer(minLength: 8)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Palette.inkFaint)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .glass(radius: 20, fill: Color.white.opacity(0.035), stroke: Color.white.opacity(0.08))
         }
+        .buttonStyle(PressableCard())
     }
 
-    // MARK: Dates
-
-    private func date(_ iso: String) -> Date? { WeekStation.parse(iso) }
-
-    private func weekdayLetter(_ iso: String) -> String {
-        guard let d = date(iso) else { return "·" }
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
-        return String(calendar.veryShortWeekdaySymbols[calendar.component(.weekday, from: d) - 1])
-    }
-
-    private func weekdayLong(_ iso: String) -> String {
-        guard let d = date(iso) else { return iso }
-        let f = DateFormatter()
-        f.timeZone = TimeZone(secondsFromGMT: 0)
-        f.dateFormat = "EEEE"
-        return f.string(from: d)
+    private var summary: String {
+        let calories = addCalories ? "Adds calories" : "Calories stay the same"
+        let nudge = nudgeMin == 0 ? "no nudge" : nudgeMin == 120 ? "nudge 2 h before" : "nudge \(nudgeMin) min before"
+        return "\(calories) · \(nudge) · Apple Health \(healthOn ? "on" : "off")"
     }
 }
