@@ -26,6 +26,8 @@ describe('summarizeEvents', () => {
     { userId: 'a', name: 'screen_viewed', props: { screen: 'today' }, occurredAt: at('2026-10-12') },
     { userId: 'a', name: 'screen_viewed', props: { screen: 'today' }, occurredAt: at('2026-10-12') },
     { userId: 'b', name: 'screen_viewed', props: { screen: 'train' }, occurredAt: at('2026-10-12') },
+    { userId: 'a', name: 'meal_log_failed', props: { source: 'PHOTO', reason: 'offline' }, occurredAt: at('2026-10-12') },
+    { userId: 'b', name: 'app_crashed', props: { kind: 'fatal', name: 'sentry' }, occurredAt: at('2026-10-12') },
   ];
   const summary = summarizeEvents(rows);
 
@@ -44,9 +46,9 @@ describe('summarizeEvents', () => {
 
   it('gives people and actions per day, not counting the nightly settle as activity', () => {
     expect(summary.daily).toEqual([
-      { date: '2026-10-10', activeUsers: 2, mealsLogged: 0, checkInsAnswered: 0 },
-      { date: '2026-10-11', activeUsers: 1, mealsLogged: 2, checkInsAnswered: 1 },
-      { date: '2026-10-12', activeUsers: 3, mealsLogged: 1, checkInsAnswered: 0 },
+      { date: '2026-10-10', activeUsers: 2, mealsLogged: 0, checkInsAnswered: 0, mealsFailed: 0, crashes: 0 },
+      { date: '2026-10-11', activeUsers: 1, mealsLogged: 2, checkInsAnswered: 1, mealsFailed: 0, crashes: 0 },
+      { date: '2026-10-12', activeUsers: 3, mealsLogged: 1, checkInsAnswered: 0, mealsFailed: 1, crashes: 1 },
     ]);
   });
 
@@ -55,5 +57,25 @@ describe('summarizeEvents', () => {
       { screen: 'today', views: 2, users: 1 },
       { screen: 'train', views: 1, users: 1 },
     ]);
+  });
+
+  it('counts meal log attempts, failures, and crashes for the owner dashboard', () => {
+    expect(summary.meals).toEqual({
+      logged: 3,
+      failed: 1,
+      deleted: 0,
+      queuedOffline: 0,
+      failRate: 0.25,
+      bySource: [
+        { source: 'TEXT', logged: 2, failed: 0 },
+        { source: 'PHOTO', logged: 0, failed: 1 },
+        { source: 'SAVED', logged: 1, failed: 0 },
+      ],
+    });
+    expect(summary.problems.crashes).toBe(1);
+    expect(summary.problems.crashUsers).toBe(1);
+    expect(summary.problems.mealLogFailed).toBe(1);
+    expect(summary.problems.byReason).toEqual([{ reason: 'offline', events: 1 }]);
+    expect(summary.problems.recent.map((r) => r.name)).toEqual(['app_crashed', 'meal_log_failed']);
   });
 });

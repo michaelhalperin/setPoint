@@ -15,6 +15,25 @@ type Portion = {
 
 const round1 = (n: number): number => Math.round(n * 10) / 10;
 
+export function isLowFriction(food: Pick<SolverFood, 'tags'>): boolean {
+  return food.tags.includes('no_cook') || food.tags.includes('portable');
+}
+
+export function mealKcalFloor(constraints: PrescriptionConstraints, config: SolverConfig): number {
+  return constraints.requireDrinkable ? config.drinkableMinMealKcal : config.minMealKcal;
+}
+
+/** Hard shape filters for the nutrition assistant. Check-in callers leave them unset. */
+export function applyHardShape(
+  foods: SolverFood[],
+  constraints: PrescriptionConstraints,
+): SolverFood[] {
+  let out = foods;
+  if (constraints.requireNoCook) out = out.filter(isLowFriction);
+  if (constraints.requireDrinkable) out = out.filter((food) => DRINKABLE_SLUGS.has(food.slug));
+  return out;
+}
+
 /**
  * Narrows a large food list to the `maxCandidates` most promising options before
  * the O(n³) search. Deterministic: ties break on slug. A list already at or
@@ -27,7 +46,7 @@ export function selectCandidates(
 ): SolverFood[] {
   if (foods.length <= config.maxCandidates) return foods;
 
-  const target = clamp(constraints.targetKcal, config.minMealKcal, config.maxMealKcal);
+  const target = clamp(constraints.targetKcal, mealKcalFloor(constraints, config), config.maxMealKcal);
   const wantsProtein = (constraints.targetProteinG ?? 0) > 0;
 
   const scored = foods.map((food) => {
@@ -41,7 +60,7 @@ export function selectCandidates(
     const proteinDensity = food.kcal > 0 ? food.proteinG / food.kcal : 0;
     const proteinScore = Math.min(proteinDensity / 0.12, 1); // ~0.12 g/kcal ≈ very lean protein
 
-    const lowFriction = food.tags.includes('no_cook') || food.tags.includes('portable');
+    const lowFriction = isLowFriction(food);
     const frictionScore = lowFriction ? 1 : 0;
     const pantryHit =
       (constraints.pantryTokens ?? []).some(
@@ -114,7 +133,7 @@ function scoreCombo(
 
   const frictionWeight = constraints.preferLowFriction ? 1.5 : 1;
   const cookPenalty = combo.reduce((acc, p) => {
-    const lowFriction = p.food.tags.includes('no_cook') || p.food.tags.includes('portable');
+    const lowFriction = isLowFriction(p.food);
     return acc + (lowFriction ? 0 : config.cookPenalty * frictionWeight);
   }, 0);
 
@@ -162,11 +181,11 @@ export function prescribe(
   constraints: PrescriptionConstraints,
   config: SolverConfig = SOLVER_CONFIG,
 ): PrescriptionResult | null {
-  const permitted = filterAllowedFoods(foods, constraints.excludedTokens);
+  const permitted = applyHardShape(filterAllowedFoods(foods, constraints.excludedTokens), constraints);
   if (permitted.length === 0) return null;
   const allowed = selectCandidates(permitted, constraints, config);
 
-  const target = clamp(constraints.targetKcal, config.minMealKcal, config.maxMealKcal);
+  const target = clamp(constraints.targetKcal, mealKcalFloor(constraints, config), config.maxMealKcal);
   const minKcal = target * config.minKcalRatio;
   const maxKcal = target * config.maxKcalRatio;
 

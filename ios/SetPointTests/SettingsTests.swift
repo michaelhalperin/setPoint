@@ -96,6 +96,44 @@ final class SettingsTests: XCTestCase {
     }
 
     @MainActor
+    func testApplePrivateRelayEmailIsHidden() {
+        XCTAssertNil(SettingsViewModel.publicEmail("sk3x@privaterelay.appleid.com"))
+        XCTAssertNil(SettingsViewModel.publicEmail("SK3X@PrivateRelay.AppleID.com"))
+        XCTAssertNil(SettingsViewModel.publicEmail(""))
+        XCTAssertNil(SettingsViewModel.publicEmail(nil))
+        XCTAssertEqual(SettingsViewModel.publicEmail("maya@icloud.com"), "maya@icloud.com")
+    }
+
+    @MainActor
+    func testSettingsDoNotReuseAPreviousAccountName() {
+        UserDefaults.standard.set("Leftover Alex", forKey: SettingsViewModel.displayNameKey)
+        defer { UserDefaults.standard.removeObject(forKey: SettingsViewModel.displayNameKey) }
+
+        let vm = SettingsViewModel(api: AppEnvironment.preview().api, onUnauthorized: {}, onDeleted: {})
+        vm.apply(SettingsResponse(
+            email: "sk3x@privaterelay.appleid.com",
+            displayName: nil,
+            goal: "BULK",
+            mode: "BASIC",
+            timezone: "UTC",
+            dailyKcalTarget: 2500,
+            dailyProteinTargetG: nil,
+            targetWeightKg: nil,
+            paceKgPerWeek: 0,
+            startWeightKg: nil,
+            currentWeightKg: nil,
+            mealTimes: .init(breakfastMin: 480, lunchMin: 780, dinnerMin: 1140),
+            quietHours: .init(startMin: 1380, endMin: 420),
+            checkInsPaused: false,
+            restrictions: [],
+            enforcementEnabled: true,
+            enforcementDisabledReason: nil
+        ))
+        XCTAssertEqual(vm.displayName, "")
+        XCTAssertNil(vm.visibleEmail)
+    }
+
+    @MainActor
     func testRevertToOriginalRestoresDraft() {
         let vm = SettingsViewModel.previewed()
         let originalGoal = vm.goal

@@ -166,7 +166,7 @@ model User {
   subscriptionEnvironment           String?
 
   role UserRole @default(USER)
-  /// A named group, e.g. "dvir-pilot" — set by the invite code, used by feature flags.
+  /// A named group, e.g. "beta" — set by the invite code, used by feature flags.
   cohort String?
   /// When this account was let in. Null means it's waiting for an invite code
   /// (only enforced while INVITE_ONLY is on). Accounts from before invites were backfilled.
@@ -200,6 +200,8 @@ model User {
   workouts                Workout[]
   dayAppetites            DayAppetite[]
   analyticsEvents         AnalyticsEvent[]
+  expertConversations     ExpertConversation[]
+  expertSafetyTrips       ExpertSafetyTrip[]
 }
 
 model PushToken {
@@ -736,6 +738,91 @@ model EscalationConversation {
   resolvedAt DateTime?
 
   @@index([userId])
+}
+
+enum ExpertKind {
+  NUTRITION
+}
+
+enum ExpertProposalStatus {
+  PENDING
+  CONFIRMED
+  DISMISSED
+  EXPIRED
+  SUPERSEDED
+  INVALID
+}
+
+/// Nutrition assistant (ember). One open thread per user per kind.
+model ExpertConversation {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  kind ExpertKind @default(NUTRITION)
+
+  transcript Json @default("[]") // [{ role, content, at }]
+
+  /// First-turn AI consent. Null until they accept.
+  consentedAt DateTime?
+  /// Explicit opt-in to full-transcript review. Default off.
+  reviewConsentAt DateTime?
+
+  lockedUntil DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  proposals   ExpertProposal[]
+  safetyTrips ExpertSafetyTrip[]
+
+  @@unique([userId, kind])
+  @@index([userId])
+}
+
+model ExpertProposal {
+  id             String              @id @default(cuid())
+  conversationId String
+  conversation   ExpertConversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  status    ExpertProposalStatus @default(PENDING)
+  kind      String               // "suggest_plate"
+  args      Json
+  expiresAt DateTime
+
+  createdAt  DateTime  @default(now())
+  resolvedAt DateTime?
+
+  @@index([conversationId, status])
+}
+
+/// Safety-flagged turns are reviewable without full-transcript consent.
+model ExpertSafetyTrip {
+  id             String             @id @default(cuid())
+  conversationId String?
+  conversation   ExpertConversation? @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  layer        String // input | model_flag | output_rules | output_haiku | eligibility | lock
+  code         String
+  userMessage  String?
+  discardedReply String?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([conversationId])
+}
+
+model ExpertReviewAudit {
+  id             String   @id @default(cuid())
+  reviewer       String
+  conversationId String
+  reason         String
+  at             DateTime @default(now())
+
+  @@index([conversationId, at])
 }
 
 // ---------------------------------------------------------------------------

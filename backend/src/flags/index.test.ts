@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { FLAGS, flagOn, resolveFlags } from './index.js';
 
-const user = { id: 'u1', role: 'USER' as const, cohort: 'dvir-pilot' };
+const user = { id: 'u1', role: 'USER' as const, cohort: 'beta' };
 const row = (over: Partial<{ enabled: boolean; cohorts: string[]; roles: ('USER' | 'TRAINER' | 'ADMIN')[]; userIds: string[] }>) => ({
   key: 'order_nearby',
   enabled: false,
@@ -25,8 +25,8 @@ describe('feature flags', () => {
   });
 
   it('turns on for a cohort, a role or a user', () => {
-    expect(flagOn('order_nearby', user, row({ cohorts: ['dvir-pilot'] }))).toBe(true);
-    expect(flagOn('order_nearby', { ...user, cohort: null }, row({ cohorts: ['dvir-pilot'] }))).toBe(false);
+    expect(flagOn('order_nearby', user, row({ cohorts: ['beta'] }))).toBe(true);
+    expect(flagOn('order_nearby', { ...user, cohort: null }, row({ cohorts: ['beta'] }))).toBe(false);
     expect(flagOn('order_nearby', { ...user, role: 'TRAINER' }, row({ roles: ['TRAINER'] }))).toBe(true);
     expect(flagOn('order_nearby', user, row({ userIds: ['u1'] }))).toBe(true);
     expect(flagOn('order_nearby', user, row({ userIds: ['u2'], roles: ['ADMIN'] }))).toBe(false);
@@ -39,5 +39,10 @@ describe('feature flags', () => {
   it('keeps in-app language off until an override turns it on', () => {
     expect(flagOn('app_language', user, undefined)).toBe(false);
     expect(flagOn('app_language', user, { ...row({ enabled: true }), key: 'app_language' })).toBe(true);
+  });
+
+  it('keeps the nutrition assistant off until an override turns it on', () => {
+    expect(flagOn('nutrition_chat', user, undefined)).toBe(false);
+    expect(flagOn('nutrition_chat', user, { ...row({ enabled: true }), key: 'nutrition_chat' })).toBe(true);
   });
 });

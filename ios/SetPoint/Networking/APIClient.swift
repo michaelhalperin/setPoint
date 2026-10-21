@@ -60,6 +60,23 @@ actor APIClient {
         try await perform(path, method: "POST", body: try Self.encoder.encode(body))
     }
 
+    /// Logs a meal and records client-side failures (offline, timeout, decode)
+    /// for the owner dashboard. HTTP errors are recorded by the server.
+    func logMeal(_ request: LogMealRequest, reportFailure: Bool = true) async throws -> LogMealResponse {
+        do {
+            return try await post("/api/meals", request)
+        } catch {
+            if reportFailure, Analytics.isClientSideFailure(error) {
+                Analytics.send(
+                    .mealLogFailed,
+                    props: ["source": Analytics.mealSource(request), "reason": Analytics.failReason(error)],
+                    api: self
+                )
+            }
+            throw error
+        }
+    }
+
     func post(_ path: String, _ body: some Encodable) async throws {
         let _: EmptyResponse = try await perform(path, method: "POST", body: try Self.encoder.encode(body))
     }

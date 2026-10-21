@@ -157,7 +157,7 @@ final class LogMealViewModel {
         backdate = nil
         phase = .parsing
         do {
-            let res: LogMealResponse = try await api.post("/api/meals", body)
+            let res: LogMealResponse = try await api.logMeal(body)
             phase = .logged(
                 Logged(
                     mealId: res.meal.id,
@@ -176,6 +176,7 @@ final class LogMealViewModel {
             await writeLoggedMealToHealth()
         } catch let error where snapshotPhoto == nil && !prompt.isEmpty && OfflineMealQueue.isOffline(error) {
             OfflineMealQueue.enqueue(.init(id: clientId, text: prompt, loggedAt: eatenAt))
+            Analytics.send(.mealQueuedOffline, props: ["source": "TEXT"], api: api)
             heldText = ""
             submittedSlot = nil
             submittedLoggedAt = nil
@@ -251,8 +252,7 @@ final class LogMealViewModel {
         pendingKnownMeal = knownMeal(summary: summary, kcal: kcal, proteinG: proteinG ?? 0, carbsG: carbsG ?? 0, fatG: fatG ?? 0, source: source)
         phase = .parsing
         do {
-            let res: LogMealResponse = try await api.post(
-                "/api/meals",
+            let res: LogMealResponse = try await api.logMeal(
                 LogMealRequest(
                     text: summary,
                     macros: .init(kcal: kcal, proteinG: proteinG, carbsG: carbsG, fatG: fatG),
@@ -311,8 +311,7 @@ final class LogMealViewModel {
         )
         phase = .parsing
         do {
-            let res: LogMealResponse = try await api.post(
-                "/api/meals",
+            let res: LogMealResponse = try await api.logMeal(
                 LogMealRequest(
                     savedMealId: meal.id,
                     loggedAt: snapshotBackdate.map { ISO8601DateFormatter().string(from: $0.at) },
@@ -392,8 +391,7 @@ final class LogMealViewModel {
         )
         phase = .parsing
         do {
-            let res: LogMealResponse = try await api.post(
-                "/api/meals",
+            let res: LogMealResponse = try await api.logMeal(
                 LogMealRequest(
                     catalogId: food.id,
                     grams: grams,
@@ -486,8 +484,7 @@ final class LogMealViewModel {
         self.product = nil
         phase = .parsing
         do {
-            let res: LogMealResponse = try await api.post(
-                "/api/meals",
+            let res: LogMealResponse = try await api.logMeal(
                 LogMealRequest(
                     barcode: food.code,
                     servings: servings,

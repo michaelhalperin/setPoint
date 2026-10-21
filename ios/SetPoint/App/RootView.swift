@@ -42,8 +42,9 @@ struct RootView: View {
             }
         case .signedOut:
             WelcomeView()
-        case .signedIn:
+        case let .signedIn(userId):
             MainTabView()
+                .id(userId)
         case .needsInvite:
             InviteCodeView()
         }

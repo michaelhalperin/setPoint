@@ -14,6 +14,8 @@ describe('GET /admin', () => {
     expect(res.headers['content-security-policy']).toContain("connect-src 'self'");
     expect(res.body).toContain('<title>SetPoint Admin</title>');
     expect(res.body).toContain("['notifications', 'Notifications']");
+    expect(res.body).toContain("h('h2', { text: 'Problems' })");
+    expect(res.body).toContain("h('h2', { text: 'Meals by source' })");
     // The page holds no data of its own.
     expect(res.body).not.toMatch(/@[a-z0-9-]+\.[a-z]{2,}/i);
   });

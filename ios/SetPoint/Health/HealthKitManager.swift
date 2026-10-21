@@ -424,11 +424,18 @@ final class HealthKitManager {
     }
 
     /// Sign-out: HealthKit permission is user-level (don't stop observers), but
-    /// the weight cursor and last-sync stamp belong to the account.
+    /// the weight cursor, last-sync stamp, and written-meal ledger belong to the account.
     func clearAccountSyncState() {
         lastSyncAt = nil
+        lastKnownMode = nil
+        writePreferences = HealthWritePreferences()
+        todayWrittenKcal = 0
         defaults.removeObject(forKey: Self.lastSyncKey)
         defaults.removeObject(forKey: Self.bodyMassAnchorKey)
+        defaults.removeObject(forKey: Self.lastModeKey)
+        defaults.removeObject(forKey: Self.writePrefsKey)
+        defaults.removeObject(forKey: Self.writtenMealsKey)
+        defaults.removeObject(forKey: HealthWritePreferences.versionsKey)
     }
 
     func uploadWorkouts(now: Date = Date()) async {

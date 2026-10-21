@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import { track } from '../analytics/events.js';
 import { requireAuth, type AuthedRequest } from '../auth/index.js';
 import { OnboardingIncompleteError } from '../dashboard/home.js';
 import { getPrisma } from '../db/client.js';
@@ -19,11 +20,14 @@ export async function weightRoutes(app: FastifyInstance): Promise<void> {
   app.post('/', async (req) => {
     const input = body.parse(req.body);
     try {
-      return await logWeight({ prisma: getPrisma() }, (req as AuthedRequest).userId, {
+      const userId = (req as AuthedRequest).userId;
+      const result = await logWeight({ prisma: getPrisma() }, userId, {
         weightKg: input.weightKg,
         measuredAt: input.measuredAt ? new Date(input.measuredAt) : undefined,
         source: input.source,
       });
+      await track(getPrisma(), userId, 'weigh_in_logged', { source: input.source ?? 'manual' });
+      return result;
     } catch (err) {
       if (err instanceof OnboardingIncompleteError) throw app.httpErrors.conflict(err.message);
       if (err instanceof InvalidWeightError) throw app.httpErrors.badRequest(err.message);

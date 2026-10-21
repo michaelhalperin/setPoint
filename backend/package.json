@@ -13,6 +13,7 @@
     "vercel-build": "prisma generate && node scripts/migrate-deploy.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "eval:experts": "tsx src/ai/experts/eval/live.ts",
     "test:watch": "vitest",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",

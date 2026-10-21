@@ -187,6 +187,13 @@ enum PatternMemory {
     static func dismiss(_ pattern: SettlementResponse.Record.Pattern) {
         UserDefaults.standard.set(true, forKey: key(pattern))
     }
+
+    static func clear(in store: UserDefaults = .standard) {
+        let prefix = "com.setpoint.app.pattern."
+        for key in store.dictionaryRepresentation().keys where key.hasPrefix(prefix) {
+            store.removeObject(forKey: key)
+        }
+    }
 }
 
 #if DEBUG

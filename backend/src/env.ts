@@ -66,6 +66,12 @@ const schema = z.object({
   NEARBY_SAMPLE_VENUES: z.string().default(''),
   /** "true": new accounts need an invite code before they can use the app. */
   INVITE_ONLY: z.string().default(''),
+  /**
+   * Belt on the nutrition assistant. Even with the DB flag on, the API stays
+   * closed unless this is "true". Flipping it requires a Vercel redeploy —
+   * the minutes-scale off is the `nutrition_chat` flag.
+   */
+  EXPERT_NUTRITION_ENABLED: z.string().default(''),
 });
 
 const parsed = schema.safeParse(process.env);

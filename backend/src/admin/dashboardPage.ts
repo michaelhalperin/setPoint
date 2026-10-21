@@ -96,6 +96,7 @@ h2 { font-size: 15px; font-weight: 650; margin: 0 0 10px; letter-spacing: -0.02e
 .split { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
 
 .callout { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 14px; border: 1px solid #F5D0A6; background: var(--warn-bg); border-radius: var(--r); margin-bottom: 16px; color: var(--ink); }
+.callout.bad { border-color: #FECACA; background: var(--bad-bg); }
 .callout b { font-weight: 650; }
 
 .badge { white-space: nowrap; font-size: 12px; font-weight: 600; padding: 3px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--soft); background: var(--panel); }
@@ -213,7 +214,7 @@ td.copy { white-space: normal; max-width: 280px; color: var(--soft); font-size: 
 (function () {
   'use strict';
   var KEY = 'setpoint.admin.secret';
-  var TABS = [['overview', 'Overview'], ['users', 'Users'], ['meals', 'Meals'], ['notifications', 'Notifications'], ['invites', 'Invites'], ['flags', 'Flags'], ['health', 'Health']];
+  var TABS = [['overview', 'Overview'], ['users', 'Users'], ['meals', 'Meals'], ['notifications', 'Notifications'], ['invites', 'Invites'], ['flags', 'Flags'], ['assistant', 'Assistant'], ['health', 'Health']];
   var state = { secret: null, tab: 'overview', status: null, range: 14, cohort: '', userFilter: { q: '', role: '', cohort: '', pending: false }, person: null, mealFilter: { cohort: '', source: '' }, checkInFilter: { cohort: '', kind: '' } };
   var root = document.getElementById('app');
 
@@ -264,6 +265,11 @@ td.copy { white-space: normal; max-width: 280px; color: var(--soft); font-size: 
     var d = new Date(iso);
     return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: d.getFullYear() === new Date().getFullYear() ? undefined : 'numeric' });
   }
+  function fmtWhen(iso) {
+    if (!iso) return '—';
+    var d = new Date(iso);
+    return d.toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  }
   function fmtNum(n) { return n === null || n === undefined ? '—' : Number(n).toLocaleString('en-US'); }
   function pct(n) { return n === null || n === undefined ? '—' : Math.round(n * 100) + '%'; }
 
@@ -297,7 +303,7 @@ td.copy { white-space: normal; max-width: 280px; color: var(--soft); font-size: 
   function readHash() {
     var raw = (location.hash || '').replace(/^#/, '');
     if (raw.indexOf('user/') === 0) { state.person = raw.slice(5); state.tab = 'users'; return; }
-    var known = { overview: 1, users: 1, meals: 1, notifications: 1, invites: 1, flags: 1, health: 1 };
+    var known = { overview: 1, users: 1, meals: 1, notifications: 1, invites: 1, flags: 1, assistant: 1, health: 1 };
     if (known[raw]) { state.tab = raw; state.person = null; }
   }
   function setHash() {
@@ -377,12 +383,12 @@ td.copy { white-space: normal; max-width: 280px; color: var(--soft); font-size: 
     root.appendChild(main);
     setHash();
     if (state.person) { renderPerson(state.person); return; }
-    ({ overview: renderOverview, users: renderUsers, meals: renderMeals, notifications: renderNotifications, invites: renderInvites, flags: renderFlags, health: renderHealth })[state.tab]();
+    ({ overview: renderOverview, users: renderUsers, meals: renderMeals, notifications: renderNotifications, invites: renderInvites, flags: renderFlags, assistant: renderAssistant, health: renderHealth })[state.tab]();
   }
 
   function loading() {
     clear(main);
-    var titles = { overview: 'Overview', users: 'Users', meals: 'Meals', notifications: 'Notifications', invites: 'Invites', flags: 'Flags', health: 'Health' };
+    var titles = { overview: 'Overview', users: 'Users', meals: 'Meals', notifications: 'Notifications', invites: 'Invites', flags: 'Flags', assistant: 'Nutrition assistant', health: 'Health' };
     if (!state.person) pageHead(titles[state.tab] || '');
     main.appendChild(h('div', { class: 'grid kpis', 'aria-hidden': 'true' },
       h('div', { class: 'skel' }), h('div', { class: 'skel' }), h('div', { class: 'skel' }), h('div', { class: 'skel' })));
@@ -424,12 +430,24 @@ td.copy { white-space: normal; max-width: 280px; color: var(--soft); font-size: 
 
       var last = a.daily.length ? a.daily[a.daily.length - 1] : null;
       var totals = a.totals || {};
+      var p = a.problems || {};
       function total(name) { return totals[name] ? totals[name].events : 0; }
       function people(name) { return totals[name] ? totals[name].users : 0; }
+      var problemBits = [];
+      if (p.crashes) problemBits.push(p.crashes + (p.crashes === 1 ? ' crash' : ' crashes') + (p.crashUsers ? ' · ' + p.crashUsers + (p.crashUsers === 1 ? ' person' : ' people') : ''));
+      if (p.mealLogFailed) problemBits.push(p.mealLogFailed + (p.mealLogFailed === 1 ? ' meal log failed' : ' meal logs failed') + (p.mealFailRate ? ' · ' + pct(p.mealFailRate) + ' of attempts' : ''));
+      if (p.queuedOffline) problemBits.push(p.queuedOffline + ' queued offline');
+      if (p.checkInFailed) problemBits.push(p.checkInFailed + (p.checkInFailed === 1 ? ' check-in failed' : ' check-ins failed'));
+      if (p.serverErrors) problemBits.push(p.serverErrors + (p.serverErrors === 1 ? ' server error' : ' server errors'));
+      if (problemBits.length) {
+        hero.appendChild(h('div', { class: 'callout' + (p.crashes || p.serverErrors ? ' bad' : ''), role: 'status' },
+          h('div', null, h('b', { text: problemBits[0] }), h('div', { class: 'muted', text: problemBits.slice(1).join(' · ') || 'Details below.' }))));
+      }
+
       hero.appendChild(h('div', { class: 'grid kpis' },
         kpi('People', fmtNum(s.users.total), s.users.pending ? s.users.pending + ' waiting for an invite' : 'none waiting', s.users.pending),
         kpi('Active, last day', fmtNum(last ? last.activeUsers : 0), last ? fmtDate(last.date) : 'no activity yet'),
-        kpi('Meals logged', fmtNum(total('meal_logged')), people('meal_logged') + ' people'),
+        kpi('Meals logged', fmtNum(total('meal_logged')), people('meal_logged') + ' people' + (p.mealLogFailed ? ' · ' + p.mealLogFailed + ' failed' : '')),
         kpi('Days fully eaten', pct(a.days.fullyEatenRate), a.days.fullyEaten + ' of ' + a.days.settled + ' settled days')
       ));
 
@@ -461,6 +479,73 @@ td.copy { white-space: normal; max-width: 280px; color: var(--soft); font-size: 
           h('span', null, h('span', { class: 'dot', style: 'background: #111827' }), 'Meals logged')));
 
       main.appendChild(h('div', { class: 'grid split section' }, funnel, chart));
+
+      var problemLabels = {
+        app_crashed: 'Crash',
+        meal_log_failed: 'Meal log failed',
+        meal_queued_offline: 'Queued offline',
+        check_in_failed: 'Check-in failed',
+        weigh_in_failed: 'Weigh-in failed',
+        request_failed: 'Server error',
+        expert_safety_trip: 'Assistant safety trip',
+        expert_safety_lock: 'Assistant locked',
+      };
+      function propCode(props, key) {
+        if (!props || typeof props !== 'object') return '';
+        var v = props[key];
+        return typeof v === 'string' || typeof v === 'number' ? String(v) : '';
+      }
+      var recent = p.recent || [];
+      var problemPanel = h('div', { class: 'panel' }, h('h2', { text: 'Problems' }),
+        h('p', { class: 'muted', style: 'margin: 0 0 10px', text: 'Crashes, failed logs, and server errors in this range' }));
+      function stat(label, value, sub, warn) {
+        return h('div', { class: 'kpi' }, h('div', { class: 'soft', text: label }), h('div', { class: 'value', style: 'font-size: 28px', text: value }), h('div', { class: 'sub' + (warn ? ' warn' : ''), text: sub }));
+      }
+      problemPanel.appendChild(h('div', { class: 'grid kpis-3', style: 'margin-bottom: 14px' },
+        stat('Crashes', fmtNum(p.crashes || 0), (p.crashUsers || 0) + ' people', p.crashes),
+        stat('Log failures', fmtNum(p.mealLogFailed || 0), p.mealFailRate == null ? 'no attempts yet' : pct(p.mealFailRate) + ' of attempts', p.mealLogFailed),
+        stat('Server errors', fmtNum(p.serverErrors || 0), p.checkInFailed && p.queuedOffline ? p.checkInFailed + ' check-in · ' + p.queuedOffline + ' queued' : p.checkInFailed ? p.checkInFailed + ' failed check-ins' : p.queuedOffline ? p.queuedOffline + ' queued offline' : 'in API calls', p.serverErrors)
+      ));
+      if ((p.byReason || []).length) {
+        problemPanel.appendChild(h('h2', { text: 'Why logs failed' }));
+        problemPanel.appendChild(h('div', { class: 'table-wrap' }, h('table', null,
+          h('thead', null, h('tr', null, h('th', { text: 'Reason' }), h('th', { class: 'num', text: 'Times' }))),
+          h('tbody', null, p.byReason.map(function (x) {
+            return h('tr', null, h('td', { class: 'mono', text: x.reason }), h('td', { class: 'num', text: fmtNum(x.events) }));
+          }))
+        )));
+      }
+      if (recent.length) {
+        problemPanel.appendChild(h('h2', { style: 'margin-top: 16px', text: 'Recent' }));
+        problemPanel.appendChild(h('div', { class: 'table-wrap' }, h('table', null,
+          h('thead', null, h('tr', null, h('th', { text: 'When' }), h('th', { text: 'What' }), h('th', { text: 'Who' }))),
+          h('tbody', null, recent.map(function (r) {
+            var detail = propCode(r.props, 'reason') || propCode(r.props, 'kind') || propCode(r.props, 'source') || propCode(r.props, 'route');
+            var who = r.email || r.userId;
+            return h('tr', null,
+              h('td', { class: 'mono', text: fmtWhen(r.occurredAt) }),
+              h('td', null, h('div', { text: problemLabels[r.name] || r.name }), detail ? h('div', { class: 'mono muted', style: 'font-size: 11px', text: detail }) : null),
+              who ? h('td', null, h('button', { class: 'linkish', text: r.email || r.userId, onclick: function () { go('users', r.userId); } })) : h('td', { class: 'muted', text: '—' })
+            );
+          }))
+        )));
+      }
+      if (!p.crashes && !p.mealLogFailed && !p.serverErrors && !p.checkInFailed && !recent.length) {
+        problemPanel.appendChild(h('div', { class: 'muted', text: 'Nothing failed in this range.' }));
+      }
+
+      var mealSources = (a.meals && a.meals.bySource) || [];
+      var mealPanel = h('div', { class: 'panel' }, h('h2', { text: 'Meals by source' }),
+        h('p', { class: 'muted', style: 'margin: 0 0 10px', text: 'Logged vs failed, from the same events' }));
+      if (!mealSources.length) mealPanel.appendChild(h('div', { class: 'muted', text: 'No meal attempts in this range.' }));
+      else mealPanel.appendChild(h('div', { class: 'table-wrap' }, h('table', null,
+        h('thead', null, h('tr', null, h('th', { text: 'Source' }), h('th', { class: 'num', text: 'Logged' }), h('th', { class: 'num', text: 'Failed' }))),
+        h('tbody', null, mealSources.map(function (x) {
+          return h('tr', null, h('td', { class: 'mono', text: x.source }), h('td', { class: 'num', text: fmtNum(x.logged) }), h('td', { class: 'num', text: fmtNum(x.failed) }));
+        }))
+      )));
+
+      main.appendChild(h('div', { class: 'grid split section' }, problemPanel, mealPanel));
 
       var calPanel = h('div', { class: 'panel chart' }, h('h2', { text: 'Calories eaten vs target' }),
         n.calories.daily.length ? shareChart(n.calories.daily) : h('div', { class: 'muted', text: 'No settled days in this range yet.' }));
@@ -807,6 +892,48 @@ td.copy { white-space: normal; max-width: 280px; color: var(--soft); font-size: 
         checkRows.length ? h('table', null, checkInHead(false), h('tbody', null, checkRows))
           : h('div', { class: 'muted', text: 'No notifications in the last 14 days.' })));
 
+      if (p.expert) {
+        var expertMeta = h('dl', { class: 'kv' },
+          h('dt', { text: 'Consent' }), h('dd', { text: p.expert.consentedAt ? fmtDate(p.expert.consentedAt) : '—' }),
+          h('dt', { text: 'Full-thread review' }), h('dd', { text: p.expert.reviewConsent ? 'On' : 'Off (default)' }),
+          h('dt', { text: 'Locked until' }), h('dd', { text: p.expert.lockedUntil ? fmtDate(p.expert.lockedUntil) : '—' }),
+          h('dt', { text: 'Proposals / trips' }), h('dd', { text: p.expert.proposalCount + ' / ' + p.expert.safetyTripCount }));
+        var tripBox = h('div', { class: 'muted', text: 'Loading flagged turns…' });
+        var transcriptBox = h('div');
+        if (p.expert.reviewConsent) {
+          var loadThread = h('button', { class: 'btn small', text: 'Load transcript (audited)', onclick: function () {
+            loadThread.disabled = true;
+            api('/users/' + encodeURIComponent(id) + '/expert-transcript').then(function (res) {
+              var turns = (res.transcript || []).map(function (t) {
+                return h('p', null, h('strong', { text: t.role + ': ' }), t.content);
+              });
+              clear(transcriptBox);
+              transcriptBox.appendChild(h('div', { class: 'section' }, turns.length ? turns : h('div', { class: 'muted', text: 'Empty thread.' })));
+            }).catch(fail);
+          } });
+          transcriptBox.appendChild(loadThread);
+        } else {
+          transcriptBox.appendChild(h('div', { class: 'muted', text: 'Full transcript needs explicit review consent.' }));
+        }
+        main.appendChild(h('div', { class: 'panel section' }, h('h2', { text: 'Nutrition assistant' }), expertMeta, tripBox, transcriptBox));
+        api('/users/' + encodeURIComponent(id) + '/expert-trips').then(function (res) {
+          clear(tripBox);
+          if (!res.trips || !res.trips.length) {
+            tripBox.appendChild(h('div', { class: 'muted', text: 'No safety-flagged turns.' }));
+            return;
+          }
+          tripBox.appendChild(h('table', null,
+            h('thead', null, h('tr', null, h('th', { text: 'When' }), h('th', { text: 'Layer' }), h('th', { text: 'Code' }), h('th', { text: 'Message' }))),
+            h('tbody', null, res.trips.map(function (t) {
+              return h('tr', null,
+                h('td', { class: 'mono', text: fmtDate(t.createdAt) }),
+                h('td', { text: t.layer }),
+                h('td', { class: 'mono', text: t.code }),
+                h('td', { text: t.userMessage || '—' }));
+            }))));
+        }).catch(fail);
+      }
+
       main.appendChild(h('div', { class: 'section' }, h('h2', { text: 'Meals' + (p.mealCount > p.meals.length ? ' · latest ' + p.meals.length + ' of ' + fmtNum(p.mealCount) : '') })));
       main.appendChild(p.meals.length ? h('div', { class: 'meals' }, p.meals.map(function (m) { return mealCard(m, false); })) : h('div', { class: 'empty', text: 'No meals yet.' }));
     }).catch(fail);
@@ -874,7 +1001,7 @@ td.copy { white-space: normal; max-width: 280px; color: var(--soft); font-size: 
         ? 'Invite-only is off, so new accounts get in without a code. A code still puts people in its cohort.'
         : 'Invite-only is on: new accounts need one of these codes.');
       var code = h('input', { type: 'text', placeholder: 'Random if empty', 'aria-label': 'Code' });
-      var cohort = h('input', { type: 'text', placeholder: 'e.g. dvir-pilot', 'aria-label': 'Cohort' });
+      var cohort = h('input', { type: 'text', placeholder: 'e.g. beta', 'aria-label': 'Cohort' });
       var role = h('select', { 'aria-label': 'Role' }, ['USER', 'TRAINER', 'ADMIN'].map(function (x) { return h('option', { value: x, text: x.charAt(0) + x.slice(1).toLowerCase() }); }));
       var maxUses = h('input', { type: 'number', min: 1, placeholder: 'Unlimited', 'aria-label': 'Max uses' });
       var expires = h('input', { type: 'date', 'aria-label': 'Expires' });
@@ -934,6 +1061,28 @@ td.copy { white-space: normal; max-width: 280px; color: var(--soft); font-size: 
 
   function field(label, control) { return h('label', { class: 'field' }, h('span', { text: label }), control); }
 
+  function renderAssistant() {
+    loading();
+    api('/experts/pilot').then(function (r) {
+      clear(main);
+      pageHead('Nutrition assistant', 'ITT vs holdout. Hard auto-kill is safety-only. Metric deltas pause and inspect after the sample floor — they do not auto-kill.');
+      main.appendChild(h('div', { class: 'grid kpis' },
+        h('div', { class: 'kpi' }, h('div', { class: 'label', text: 'Flag-on' }), h('div', { class: 'value', text: fmtNum(r.flagOnUsers) })),
+        h('div', { class: 'kpi' }, h('div', { class: 'label', text: 'Holdout' }), h('div', { class: 'value', text: fmtNum(r.holdoutUsers) })),
+        h('div', { class: 'kpi' }, h('div', { class: 'label', text: 'Opened (of flag-on)' }), h('div', { class: 'value', text: pct(r.openerRate) })),
+        h('div', { class: 'kpi' }, h('div', { class: 'label', text: 'ITT confirm' }), h('div', { class: 'value', text: pct(r.ittConfirmRate) }))));
+      main.appendChild(h('div', { class: 'grid kpis-3 section' },
+        h('div', { class: 'kpi' }, h('div', { class: 'label', text: 'Confirm among openers' }), h('div', { class: 'value', text: pct(r.confirmAmongOpeners) })),
+        h('div', { class: 'kpi' }, h('div', { class: 'label', text: 'Trips / sends' }), h('div', { class: 'value', text: pct(r.tripRateOfTurns) })),
+        h('div', { class: 'kpi' }, h('div', { class: 'label', text: 'Verdict' }), h('div', { class: 'value', text: r.verdict }))));
+      main.appendChild(h('div', { class: 'panel section' },
+        h('p', { class: 'soft', text: r.contamination }),
+        h('p', { class: 'muted', text: r.sampleFloorMet ? 'Sample floor met (≥15 per arm, ≥50 check-ins).' : 'Sample floor not met — look, do not decide.' }),
+        r.hardKill && r.hardKill.length ? h('p', { style: 'color: var(--bad)', text: 'Hard auto-kill: ' + r.hardKill.join(', ') }) : null,
+        r.pauseTripRate ? h('p', { style: 'color: var(--warn)', text: 'Trip rate above 5% — pause and inspect.' }) : null));
+    }).catch(fail);
+  }
+
   function renderFlags() {
     loading();
     Promise.all([api('/flags'), state.status ? Promise.resolve(state.status) : refreshStatus()]).then(function (r) {
@@ -949,7 +1098,7 @@ td.copy { white-space: normal; max-width: 280px; color: var(--soft); font-size: 
     var o = f.override;
     var mode = !o ? 'default' : o.enabled ? 'on' : (o.cohorts.length || o.roles.length || o.userIds.length) ? 'some' : 'off';
     var card = h('div', { class: 'panel flag' });
-    var cohorts = h('input', { type: 'text', value: o ? o.cohorts.join(', ') : '', placeholder: 'dvir-pilot, beta', 'aria-label': 'Cohorts' });
+    var cohorts = h('input', { type: 'text', value: o ? o.cohorts.join(', ') : '', placeholder: 'beta, trainers', 'aria-label': 'Cohorts' });
     var roles = ['USER', 'TRAINER', 'ADMIN'].map(function (x) {
       return h('label', { class: 'soft', style: 'display:flex;align-items:center;gap:6px' }, h('input', { type: 'checkbox', value: x, checked: o && o.roles.indexOf(x) >= 0 }), x.charAt(0) + x.slice(1).toLowerCase());
     });

@@ -9,7 +9,7 @@ const body = z.object({
   props: z.record(z.unknown()).optional(),
 });
 
-/** The few events only the app can see (opened the app, opened Wolt). */
+/** The few events only the app can see (opened, crashed, a log that never reached us). */
 export async function eventRoutes(app: FastifyInstance): Promise<void> {
   // Open to accounts waiting for an invite, so the invite screen counts too.
   app.addHook('preHandler', requireAuth(app, { allowPendingInvite: true }));

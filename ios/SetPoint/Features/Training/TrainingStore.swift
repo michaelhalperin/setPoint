@@ -167,8 +167,7 @@ final class TrainingStore {
         let before = home?.applyNow { $0.inserting(pending, into: slot) }
         Haptics.landed()
         do {
-            let res: LogMealResponse = try await env.api.post(
-                "/api/meals",
+            let res: LogMealResponse = try await env.api.logMeal(
                 LogMealRequest(
                     text: snack.name,
                     macros: .init(kcal: snack.kcal, proteinG: snack.proteinG),

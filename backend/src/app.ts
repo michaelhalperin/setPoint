@@ -6,6 +6,7 @@ import { AiQuotaExceededError } from './ai/quota.js';
 import { getPrisma } from './db/client.js';
 import { env } from './env.js';
 import { postgresRateLimiter, type RateLimiter } from './http/rateLimit.js';
+import { trackHttpFailure } from './analytics/failures.js';
 import { captureError, flushSentry, initSentry } from './observability/sentry.js';
 import { UnderageError } from './onboarding/age.js';
 import { UnhealthyTargetError } from './onboarding/targets.js';
@@ -34,6 +35,7 @@ import { workoutRoutes } from './routes/workouts.js';
 import { appetiteRoutes } from './routes/appetite.js';
 import { insightRoutes } from './routes/insights.js';
 import { subscriptionRoutes } from './routes/subscription.js';
+import { expertRoutes } from './routes/experts.js';
 
 const AUTH_LIMIT_PER_MINUTE = 40;
 
@@ -114,10 +116,12 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
         req.log.warn(err as Error);
         await reportServerError(err, req);
       }
+      await trackHttpFailure(req, err, e.statusCode);
       return reply.status(e.statusCode).send({ error: e.name ?? 'Error', message: e.message ?? '' });
     }
     req.log.error(err as Error);
     await reportServerError(err, req);
+    await trackHttpFailure(req, err, 500);
     return reply.status(500).send({ error: 'Internal Server Error' });
   });
 
@@ -137,6 +141,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   await app.register(insightRoutes, { prefix: '/api/insights' });
   await app.register(subscriptionRoutes, { prefix: '/api/subscription' });
   await app.register(checkInRoutes, { prefix: '/api/checkins' });
+  await app.register(expertRoutes, { prefix: '/api/experts' });
   await app.register(biosignalRoutes, { prefix: '/api/biosignals' });
   await app.register(pushTokenRoutes, { prefix: '/api/push-tokens' });
   await app.register(weightRoutes, { prefix: '/api/weight' });

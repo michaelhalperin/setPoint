@@ -10,11 +10,13 @@ final class FeatureFlags {
     enum Flag: String, CaseIterable {
         case orderNearby = "order_nearby"
         case appLanguage = "app_language"
+        case nutritionChat = "nutrition_chat"
 
         var defaultValue: Bool {
             switch self {
             case .orderNearby: return true
             case .appLanguage: return false
+            case .nutritionChat: return false
             }
         }
     }

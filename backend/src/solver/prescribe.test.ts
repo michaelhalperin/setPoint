@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { DRINKABLE_SLUGS } from '../engine/appetite.js';
 import { STAPLE_FOODS } from '../data/stapleFoods.js';
 import { prescribe, prescriptionSummary, selectCandidates } from './prescribe.js';
 import { SOLVER_CONFIG } from './config.js';
@@ -92,6 +93,42 @@ describe('prescribe', () => {
     const summary = prescriptionSummary(rx);
     expect(summary.length).toBeGreaterThan(0);
     expect(summary).toContain(rx.items[0]!.servingDesc || rx.items[0]!.name);
+  });
+});
+
+describe('hard shape filters (nutrition assistant aha)', () => {
+  it('requireNoCook never returns a cooking-only plate', () => {
+    const rx = prescribe(STAPLE_FOODS, constraints({ targetKcal: 400, requireNoCook: true }));
+    expect(rx).not.toBeNull();
+    if (!rx) return;
+    for (const item of rx.items) {
+      const food = STAPLE_FOODS.find((f) => f.slug === item.slug)!;
+      expect(food.tags.some((t) => t === 'no_cook' || t === 'portable')).toBe(true);
+    }
+  });
+
+  it('requireDrinkable never returns a non-drinkable plate', () => {
+    const rx = prescribe(STAPLE_FOODS, constraints({ targetKcal: 300, requireDrinkable: true }));
+    expect(rx).not.toBeNull();
+    if (!rx) return;
+    for (const item of rx.items) {
+      expect(DRINKABLE_SLUGS.has(item.slug)).toBe(true);
+    }
+  });
+
+  it('returns null rather than falling back when the hard filter is empty', () => {
+    const empty = prescribe(STAPLE_FOODS, constraints({
+      targetKcal: 300,
+      requireDrinkable: true,
+      excludedTokens: ['dairy', 'soy', 'vegan'],
+    }));
+    expect(empty).toBeNull();
+  });
+
+  it('leaves check-in plates unchanged when the hard flags are unset', () => {
+    const a = prescribe(STAPLE_FOODS, constraints({ targetKcal: 450 }));
+    const b = prescribe(STAPLE_FOODS, constraints({ targetKcal: 450, requireNoCook: false, requireDrinkable: false }));
+    expect(a).toEqual(b);
   });
 });
 

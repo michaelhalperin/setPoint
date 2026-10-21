@@ -17,6 +17,8 @@ export const SOLVER_CONFIG = {
 
   /** A single prescription targets a meal-sized slice of the day's remaining gap. */
   minMealKcal: 300,
+  /** Drinkable-only plates are smaller (a shake, not a meal). Used when requireDrinkable. */
+  drinkableMinMealKcal: 150,
   maxMealKcal: 700,
   /** Protein asked for in one meal, at most. */
   maxProteinPerMeal: 60,

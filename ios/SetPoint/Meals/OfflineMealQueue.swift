@@ -55,7 +55,7 @@ enum OfflineMealQueue {
         var delivered = 0
         for item in all(in: store).sorted(by: { $0.loggedAt < $1.loggedAt }) {
             do {
-                let _: LogMealResponse = try await api.post("/api/meals", request(for: item))
+                let _: LogMealResponse = try await api.logMeal(request(for: item), reportFailure: false)
                 remove(id: item.id, in: store)
                 delivered += 1
             } catch let APIError.http(status, _) where (400 ..< 500).contains(status)

@@ -26,6 +26,7 @@ struct HomeContent: View {
     @State private var logOpen = false
     @State private var showingDay = false
     @State private var showingOrder = false
+    @State private var showingNutrition = false
     @State private var reloading = false
     @AppStorage("topUpDismissed") private var topUpDismissed = ""
     @FocusState private var composerFocused: Bool
@@ -242,6 +243,12 @@ struct HomeContent: View {
             .presentationBackground(Palette.sheet)
             .presentationCornerRadius(32)
         }
+        .sheet(isPresented: $showingNutrition) {
+            NutritionAssistantView()
+                .presentationDetents([.large])
+                .presentationDragIndicator(.hidden)
+                .presentationBackground(Palette.background)
+        }
         .sheet(isPresented: $showingPaywall) {
             PaywallView()
                 .presentationDetents([.large])
@@ -361,7 +368,8 @@ struct HomeContent: View {
                             onPick: logPick,
                             onLog: { openLog() },
                             onOpenCheckIn: openCheckIn,
-                            onOrder: orderAction
+                            onOrder: orderAction,
+                            onAskNutrition: { showingNutrition = true }
                         )
                     }
                     .padding(.horizontal, Space.gutter)

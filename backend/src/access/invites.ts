@@ -3,7 +3,7 @@ import type { InviteCode, PrismaClient, UserRole } from '@prisma/client';
 
 /**
  * Invite codes: while sign-up is invite-only, a new account is let in by
- * redeeming one. A code can put people in a cohort ("dvir-pilot") and give them
+ * redeeming one. A code can put people in a cohort ("beta") and give them
  * a role, and can be capped in uses and time.
  */
 
@@ -16,7 +16,7 @@ export function generateInviteCode(length = 8): string {
   return code;
 }
 
-/** Case and spaces don't matter: "dvir 2026" and "DVIR2026" are the same code. */
+/** Case and spaces don't matter: "beta 2026" and "BETA2026" are the same code. */
 export function normalizeInviteCode(raw: string): string {
   return raw.replace(/[\s-]+/g, '').toUpperCase();
 }

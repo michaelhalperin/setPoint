@@ -364,6 +364,17 @@ struct SettingsView: View {
                         }
                     }
                 }
+                if env.flags.isOn(.nutritionChat), model.enforcementDisabledReason == nil {
+                    NavigationLink { NutritionAssistantView() } label: {
+                        SetupTile(title: "Nutrition assistant", value: L10n("AI")) {
+                            HStack(spacing: 5) {
+                                FuelOrb(size: 18, breathing: false, glow: 0.3)
+                                Circle().fill(Palette.ember).frame(width: 8, height: 8)
+                                    .shadow(color: Palette.ember.opacity(0.55), radius: 3)
+                            }
+                        }
+                    }
+                }
                 NavigationLink { SavedMealsSettingsView() } label: {
                     SetupTile(title: "My meals") {
                         HStack(spacing: 5) {
@@ -373,15 +384,6 @@ struct SettingsView: View {
                                 .shadow(color: Palette.ember.opacity(0.55), radius: 3)
                             Circle().strokeBorder(Palette.amber, lineWidth: 1.5).frame(width: 9, height: 9)
                         }
-                    }
-                }
-                NavigationLink {
-                    TrainingScreen(isTabRoot: false)
-                } label: {
-                    SetupTile(title: "Train", value: L10n("Sessions and refuel")) {
-                        Image(systemName: "figure.strengthtraining.traditional")
-                            .font(.system(size: 16, weight: .regular))
-                            .foregroundStyle(Palette.hazeSoft)
                     }
                 }
                 NavigationLink {
@@ -430,7 +432,7 @@ struct SettingsView: View {
                 .foregroundStyle(Palette.onBone)
         }
         .frame(width: 44, height: 44)
-        .accessibilityLabel("\(identityName(model)), \(model.email ?? L10n( "Account")). Opens your details")
+        .accessibilityLabel(identityAccessibilityLabel(model))
     }
 
     private func identityName(_ model: SettingsViewModel) -> String {
@@ -438,10 +440,17 @@ struct SettingsView: View {
         return name.isEmpty ? L10n( "You") : name
     }
 
+    private func identityAccessibilityLabel(_ model: SettingsViewModel) -> String {
+        if let email = model.visibleEmail {
+            return "\(identityName(model)), \(email). Opens your details"
+        }
+        return "\(identityName(model)). Opens your details"
+    }
+
     private func identityInitial(_ model: SettingsViewModel) -> String {
         let name = model.displayName.trimmingCharacters(in: .whitespacesAndNewlines)
         if let first = name.first { return String(first).uppercased() }
-        if let first = model.email?.first { return String(first).uppercased() }
+        if let first = model.visibleEmail?.first { return String(first).uppercased() }
         return "Y"
     }
 

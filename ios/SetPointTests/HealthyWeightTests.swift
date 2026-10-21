@@ -90,4 +90,32 @@ final class HealthyWeightTests: XCTestCase {
     func testCrashReportingStaysOffWithoutADSN() {
         XCTAssertNil(CrashReporting.dsn(in: .main))
     }
+
+    func testCrashMarkerRoundTripAndSanitize() {
+        let name = "crash-test-\(UUID().uuidString)"
+        let suite = UserDefaults(suiteName: name)!
+        CrashReporting.defaults = suite
+        defer {
+            suite.removePersistentDomain(forName: name)
+            CrashReporting.defaults = .standard
+        }
+        CrashReporting.remember(.init(kind: "exception", name: "NSRangeException"))
+        XCTAssertEqual(CrashReporting.pendingMarker(), .init(kind: "exception", name: "NSRangeException"))
+        XCTAssertEqual(CrashReporting.consumePending()?.name, "NSRangeException")
+        XCTAssertNil(CrashReporting.pendingMarker())
+        XCTAssertEqual(CrashReporting.sanitize("NS Range!"), "NS_Range_")
+        XCTAssertEqual(CrashReporting.sanitize(String(repeating: "a", count: 50)).count, 40)
+    }
+
+    func testAnalyticsFailReasonCodes() {
+        XCTAssertEqual(Analytics.failReason(APIError.transport(URLError(.notConnectedToInternet))), "offline")
+        XCTAssertEqual(Analytics.failReason(APIError.transport(URLError(.timedOut))), "timeout")
+        XCTAssertEqual(Analytics.failReason(APIError.http(status: 503, message: nil)), "parse")
+        XCTAssertEqual(Analytics.failReason(APIError.http(status: 429, message: nil)), "quota")
+        XCTAssertEqual(Analytics.failReason(APIError.decoding(URLError(.cannotDecodeContentData))), "decoding")
+        XCTAssertTrue(Analytics.isClientSideFailure(APIError.transport(URLError(.timedOut))))
+        XCTAssertFalse(Analytics.isClientSideFailure(APIError.http(status: 500, message: nil)))
+        XCTAssertEqual(Analytics.mealSource(LogMealRequest(text: "oats", image: nil, loggedAt: nil, clientId: nil)), "TEXT")
+        XCTAssertEqual(Analytics.mealSource(LogMealRequest(text: nil, image: nil, barcode: "12345678", servings: 1, loggedAt: nil, clientId: nil)), "BARCODE")
+    }
 }

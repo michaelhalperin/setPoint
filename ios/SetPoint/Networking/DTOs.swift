@@ -1185,3 +1185,78 @@ struct NearbyResponse: Decodable {
         let woltUrl: String?
     }
 }
+
+struct ExpertThreadResponse: Decodable {
+    let state: String
+    var message: String? = nil
+    var remainingKcal: Int? = nil
+    var chips: [ExpertChip]? = nil
+    var consent: ExpertConsentCopy? = nil
+    var messages: [ExpertMessage]? = nil
+    var pendingProposal: ExpertProposalCard? = nil
+    var stages: ExpertStages? = nil
+    var reviewConsent: Bool? = nil
+}
+
+struct ExpertChip: Decodable, Equatable {
+    let id: String
+    let title: String
+    let message: String
+}
+
+struct ExpertConsentCopy: Decodable {
+    let title: String
+    let body: String
+    let review: String
+    let accept: String
+    let decline: String
+}
+
+struct ExpertStages: Decodable {
+    let look: String
+    let plate: String
+    let check: String
+    static let defaults = ExpertStages(look: "Looking at today", plate: "Building a plate", check: "Checking")
+}
+
+struct ExpertMessage: Decodable, Equatable {
+    var id: String { role + (at ?? "") + content }
+    let role: String
+    let content: String
+    let at: String?
+}
+
+struct ExpertProposalCard: Decodable, Equatable {
+    let id: String
+    let kind: String
+    let title: String
+    let summary: String
+    let localDate: String
+    let timezone: String
+    let expiresAt: String
+    let items: [Item]
+    let totals: Totals
+
+    struct Item: Decodable, Equatable {
+        let slug: String
+        let name: String
+        let servingDesc: String
+        let quantity: Int
+        let kcal: Int
+        let proteinG: Double
+        let carbsG: Double
+        let fatG: Double
+    }
+
+    struct Totals: Decodable, Equatable {
+        let kcal: Int
+        let proteinG: Double
+        let carbsG: Double
+        let fatG: Double
+    }
+}
+
+struct ExpertConfirmResponse: Decodable {
+    let ok: Bool
+    var already: Bool? = nil
+}

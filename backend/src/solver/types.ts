@@ -25,6 +25,10 @@ export type PrescriptionConstraints = {
   prepTimeMaxMin?: number | null;
   preferCalorieDense?: boolean;
   preferDrinkable?: boolean;
+  /** Hard filter: only no_cook or portable foods. Unset for check-in plates. */
+  requireNoCook?: boolean;
+  /** Hard filter: only slugs in DRINKABLE_SLUGS. Unset for check-in plates. */
+  requireDrinkable?: boolean;
 };
 
 export type PrescriptionLineItem = {

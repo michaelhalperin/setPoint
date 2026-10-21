@@ -199,7 +199,7 @@ export async function adminAccessRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // Product numbers for a range (default: the last two weeks), optionally for one
-  // cohort — e.g. ?cohort=dvir-pilot for the pilot.
+  // cohort — e.g. ?cohort=beta.
   app.get('/analytics', async (req) => {
     const q = analyticsQuery.parse(req.query);
     const to = q.to ? new Date(q.to) : new Date();
@@ -210,11 +210,29 @@ export async function adminAccessRoutes(app: FastifyInstance): Promise<void> {
       orderBy: { occurredAt: 'asc' },
       take: ANALYTICS_MAX_ROWS,
     });
+    const summary = summarizeEvents(rows);
+    const problemUserIds = [
+      ...new Set(summary.problems.recent.map((r) => r.userId).filter((id): id is string => !!id)),
+    ];
+    const emails = problemUserIds.length
+      ? await getPrisma().user.findMany({
+          where: { id: { in: problemUserIds } },
+          select: { id: true, email: true },
+        })
+      : [];
+    const emailById = new Map(emails.map((u) => [u.id, u.email]));
     return {
       range: { from: from.toISOString(), to: to.toISOString() },
       cohort: q.cohort ?? null,
       truncated: rows.length === ANALYTICS_MAX_ROWS,
-      ...summarizeEvents(rows),
+      ...summary,
+      problems: {
+        ...summary.problems,
+        recent: summary.problems.recent.map((r) => ({
+          ...r,
+          email: r.userId ? (emailById.get(r.userId) ?? null) : null,
+        })),
+      },
     };
   });
 }

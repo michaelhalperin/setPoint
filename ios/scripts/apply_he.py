@@ -812,6 +812,15 @@ HE: dict[str, str] = {
     "Train": "אימון",
     "Progress": "התקדמות",
     "You": "אתה",
+    "Nutrition assistant · AI": "עוזר תזונה · AI",
+    "Nutrition assistant": "עוזר תזונה",
+    "AI": "AI",
+    "AI — not a dietitian.": "AI — לא דיאטן.",
+    "SetPoint may read this whole chat to check it is safe.": "SetPoint רשאית לקרוא את כל השיחה הזו כדי לבדוק שהיא בטוחה.",
+    "Ask about today’s food…": "שאלו על האוכל של היום…",
+    "Ask the nutrition assistant": "שאלו את עוזר התזונה",
+    "This is paused.": "זה מושהה כרגע.",
+    "Too many requests right now. Try again in a bit.": "יותר מדי בקשות כרגע. נסו שוב בעוד רגע.",
     "Continue": "המשך",
     "Start": "התחל",
     "Start · 60-second setup": "התחל · הקמה של 60 שניות",
@@ -1415,6 +1424,12 @@ def apply() -> None:
         "Connected · Apple Calendar", "Nothing to move", "Why %@?",
         "Nothing moves.", "1 meal moved.", "%lld meals moved.",
         "Weekdays", "Weekends", "Quiet from", "Quiet until",
+        "Nutrition assistant · AI", "Nutrition assistant", "AI",
+        "AI — not a dietitian.",
+        "SetPoint may read this whole chat to check it is safe.",
+        "Ask about today’s food…", "Ask the nutrition assistant",
+        "This is paused.",
+        "Too many requests right now. Try again in a bit.",
     ):
         strings.setdefault(extra, {})
     applied = 0

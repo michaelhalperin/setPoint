@@ -26,6 +26,9 @@ export const DRINKABLE_SLUGS = new Set([
   'whey-protein-shake',
   'ready-protein-shake',
   'plant-protein-shake',
+  'chocolate-milk',
+  'fruit-smoothie',
+  'protein-smoothie',
 ]);
 
 export function appetiteShape(mode: AppetiteMode, dayLevel: AppetiteLevel | null): AppetiteShape {

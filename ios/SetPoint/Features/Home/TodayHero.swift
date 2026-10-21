@@ -23,6 +23,8 @@ struct TodayHero: View {
     var onOpenCheckIn: () -> Void = {}
     /// Order nearby — no food at hand. Nil hides the pill.
     var onOrder: (() -> Void)? = nil
+    /// Nutrition assistant. Nil hides the row.
+    var onAskNutrition: (() -> Void)? = nil
 
     @Environment(AppEnvironment.self) private var env
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -67,6 +69,8 @@ struct TodayHero: View {
             }
             .buttonStyle(PressableCard())
             .accessibilityHint("Shows today’s meals")
+
+            nutritionEntry
 
                 Group {
                     if AppetiteTodayVisibility.resolve(home: home) == .ask {
@@ -231,6 +235,34 @@ struct TodayHero: View {
                 .foregroundStyle(Palette.amber)
                 .padding(.top, 2)
             }
+        }
+    }
+
+    /// Persistent pull under the ledger — help with what’s left today. Always
+    /// on Today so it isn’t lost when appetite is asking or remaining is low.
+    @ViewBuilder
+    private var nutritionEntry: some View {
+        if let onAskNutrition {
+            Button(action: onAskNutrition) {
+                HStack(spacing: 10) {
+                    FuelOrb(size: 16, breathing: false, glow: 0.35)
+                    Text(L10n("Nutrition assistant"))
+                        .font(Typography.data(14, weight: .regular))
+                        .foregroundStyle(Palette.ink)
+                    Text(L10n("AI"))
+                        .font(Typography.mono(10, weight: .medium))
+                        .foregroundStyle(Palette.amber)
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.forward")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(Palette.inkFaint)
+                }
+                .padding(.horizontal, 14)
+                .frame(maxWidth: .infinity, minHeight: 44)
+                .glassCapsule(fill: Palette.ember.opacity(0.12), stroke: Palette.ember.opacity(0.38))
+            }
+            .buttonStyle(PressableCard())
+            .accessibilityLabel(L10n("Nutrition assistant · AI"))
         }
     }
 

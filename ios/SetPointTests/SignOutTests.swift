@@ -40,4 +40,23 @@ final class SignOutTests: XCTestCase {
         await push.unregister(sessionToken: "old-session", baseURL: URL(string: "https://api.test")!, session: session)
         XCTAssertEqual(requests.get().count, 2)
     }
+
+    @MainActor
+    func testClearDropsLeftoverNameOnboardingAndIgnoredCheckIn() {
+        let defaults = UserDefaults.standard
+        defaults.set("Leftover Alex", forKey: SettingsViewModel.displayNameKey)
+        defaults.set(Data("draft".utf8), forKey: "com.setpoint.app.onboarding.progress")
+        defaults.set("ci_old", forKey: HomeViewModel.ignoredCheckInKey)
+        defer {
+            defaults.removeObject(forKey: SettingsViewModel.displayNameKey)
+            defaults.removeObject(forKey: "com.setpoint.app.onboarding.progress")
+            defaults.removeObject(forKey: HomeViewModel.ignoredCheckInKey)
+        }
+
+        AccountLocalState.clear()
+
+        XCTAssertNil(defaults.string(forKey: SettingsViewModel.displayNameKey))
+        XCTAssertNil(defaults.data(forKey: "com.setpoint.app.onboarding.progress"))
+        XCTAssertNil(defaults.string(forKey: HomeViewModel.ignoredCheckInKey))
+    }
 }

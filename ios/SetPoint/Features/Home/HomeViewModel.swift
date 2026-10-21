@@ -18,7 +18,11 @@ final class HomeViewModel {
     private var loadedAt: Date?
     /// Debug previews show sample data and never touch the network.
     private var isPreview = false
-    private static let ignoredCheckInKey = "com.setpoint.app.ignoredCheckInID"
+    static let ignoredCheckInKey = "com.setpoint.app.ignoredCheckInID"
+
+    static func clearIgnoredCheckIn(in store: UserDefaults = .standard) {
+        store.removeObject(forKey: ignoredCheckInKey)
+    }
 
     private let api: APIClient
     private let onUnauthorized: @MainActor () -> Void

@@ -11420,6 +11420,96 @@
           }
         }
       }
+    },
+    "Nutrition assistant · AI": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "עוזר תזונה · AI"
+          }
+        }
+      }
+    },
+    "Nutrition assistant": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "עוזר תזונה"
+          }
+        }
+      }
+    },
+    "AI": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI"
+          }
+        }
+      }
+    },
+    "AI — not a dietitian.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI — לא דיאטן."
+          }
+        }
+      }
+    },
+    "SetPoint may read this whole chat to check it is safe.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SetPoint רשאית לקרוא את כל השיחה הזו כדי לבדוק שהיא בטוחה."
+          }
+        }
+      }
+    },
+    "Ask about today’s food…": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "שאלו על האוכל של היום…"
+          }
+        }
+      }
+    },
+    "Ask the nutrition assistant": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "שאלו את עוזר התזונה"
+          }
+        }
+      }
+    },
+    "This is paused.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "זה מושהה כרגע."
+          }
+        }
+      }
+    },
+    "Too many requests right now. Try again in a bit.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "יותר מדי בקשות כרגע. נסו שוב בעוד רגע."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

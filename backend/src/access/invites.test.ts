@@ -14,7 +14,7 @@ describe('invite codes', () => {
   });
 
   it('ignores case, spaces and dashes', () => {
-    expect(normalizeInviteCode(' dvir 2026 ')).toBe('DVIR2026');
+    expect(normalizeInviteCode(' beta 2026 ')).toBe('BETA2026');
     expect(normalizeInviteCode('ab-cd-ef')).toBe('ABCDEF');
   });
 

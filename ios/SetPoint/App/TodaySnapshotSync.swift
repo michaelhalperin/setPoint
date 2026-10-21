@@ -29,6 +29,11 @@ enum TodaySnapshotSync {
         WidgetCenter.shared.reloadAllTimelines()
     }
 
+    static func clear() {
+        AppGroup.defaults.removeObject(forKey: AppGroup.snapshotKey)
+        WidgetCenter.shared.reloadAllTimelines()
+    }
+
     /// Widgets show the first two; Siri picks by meal from the rest.
     private static func snapshotMeals(_ saved: [SavedMeal]) -> [TodaySnapshot.Saved] {
         saved.prefix(12).map {

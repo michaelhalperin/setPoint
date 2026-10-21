@@ -65,6 +65,13 @@ describe('consumeAiQuota', () => {
     expect(prisma.rows).toHaveLength(hourly);
   });
 
+  it('caps nutrition_message at 10/hour and 20/day', () => {
+    expect(AI_QUOTAS.nutrition_message).toEqual([
+      { windowMs: HOUR, max: 10 },
+      { windowMs: 24 * HOUR, max: 20 },
+    ]);
+  });
+
   it('keeps users and kinds separate', async () => {
     const prisma = fakePrisma();
     const db = prisma as unknown as PrismaClient;

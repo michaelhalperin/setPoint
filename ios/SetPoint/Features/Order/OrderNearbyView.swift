@@ -197,14 +197,6 @@ struct OrderNearbyView: View {
         return L10n( "FILLS IT · +\(diff.formatted())")
     }
 
-    private func why(_ dish: NearbyResponse.Dish) -> String {
-        if isLogged { return L10n( "Logged as \(slotTitle.lowercased()). It’s on Today with its calories and protein.") }
-        if swapped {
-            return dish.kcal - gapKcal < -60 ? "Your swap. A snack later covers the rest." : "Your swap. Close enough to the gap."
-        }
-        return dish.proteinG >= 40 ? "Closest to your gap, and high in protein." : "Closest to your gap from what’s near you."
-    }
-
     private func share(_ kcal: Int) -> CGFloat {
         min(1, CGFloat(kcal) / CGFloat(max(gapKcal, 1)))
     }
@@ -422,11 +414,15 @@ struct OrderNearbyView: View {
             }
 
             HStack(spacing: 12) {
-                Text(why(dish))
-                    .font(Typography.data(12, weight: .regular))
-                    .foregroundStyle(Palette.inkSoft)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                if isLogged {
+                    Text(L10n("Logged as \(slotTitle.lowercased()). It’s on Today with its calories and protein."))
+                        .font(Typography.data(12, weight: .regular))
+                        .foregroundStyle(Palette.inkSoft)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                } else {
+                    Spacer(minLength: 0)
+                }
                 if canShuffle && !isLogged {
                     Button(action: shuffle) {
                         HStack(spacing: 6) {
@@ -741,8 +737,7 @@ struct OrderNearbyView: View {
         logging = true
         defer { logging = false }
         do {
-            let response: LogMealResponse = try await env.api.post(
-                "/api/meals",
+            let response: LogMealResponse = try await env.api.logMeal(
                 LogMealRequest(
                     text: "\(dish.name) · \(hero.venue.name)",
                     macros: .init(kcal: dish.kcal, proteinG: dish.proteinG, carbsG: dish.carbsG, fatG: dish.fatG),

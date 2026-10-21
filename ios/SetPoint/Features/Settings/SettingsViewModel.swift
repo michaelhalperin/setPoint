@@ -35,7 +35,19 @@ final class SettingsViewModel {
     private(set) var email: String?
     var displayName = ""
     private var savedDisplayName = ""
-    private static let displayNameKey = "com.setpoint.app.displayName"
+    static let displayNameKey = "com.setpoint.app.displayName"
+
+    /// Apple Hide My Email addresses stay off the account screen — just the name.
+    var visibleEmail: String? { Self.publicEmail(email) }
+
+    static func publicEmail(_ email: String?) -> String? {
+        guard let email, !email.isEmpty, let host = email.split(separator: "@").last else { return nil }
+        let lower = host.lowercased()
+        if lower == "privaterelay.appleid.com" || lower.hasSuffix(".privaterelay.appleid.com") {
+            return nil
+        }
+        return email
+    }
 
     var displayNameDirty: Bool {
         displayName.trimmingCharacters(in: .whitespacesAndNewlines) != savedDisplayName
@@ -343,7 +355,6 @@ final class SettingsViewModel {
         let next = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
         let value = next.isEmpty ? nil : String(next.prefix(80))
         displayName = value ?? ""
-        UserDefaults.standard.set(displayName, forKey: Self.displayNameKey)
         savedDisplayName = displayName
         saving = true
         error = nil
@@ -383,7 +394,7 @@ final class SettingsViewModel {
         }
     }
 
-    private func apply(_ s: SettingsResponse) {
+    func apply(_ s: SettingsResponse) {
         original = s
         goal = Goal(rawValue: s.goal) ?? .bulk
         targetWeightKg = s.targetWeightKg
@@ -407,14 +418,8 @@ final class SettingsViewModel {
         mode = s.mode
         timezone = s.timezone
         email = s.email
-        let remoteName = s.displayName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        let localName = UserDefaults.standard.string(forKey: Self.displayNameKey)?
-            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        displayName = remoteName.isEmpty ? localName : remoteName
+        displayName = s.displayName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         savedDisplayName = displayName
-        if !displayName.isEmpty {
-            UserDefaults.standard.set(displayName, forKey: Self.displayNameKey)
-        }
         enforcementEnabled = s.enforcementEnabled
         enforcementDisabledReason = s.enforcementDisabledReason
     }

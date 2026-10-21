@@ -1,4 +1,5 @@
 import type { FeatureFlag, PrismaClient, UserRole } from '@prisma/client';
+import { env } from '../env.js';
 
 /**
  * Feature flags. Every flag is declared here with its default, so a flag with no
@@ -9,6 +10,10 @@ import type { FeatureFlag, PrismaClient, UserRole } from '@prisma/client';
 export const FLAGS = {
   order_nearby: { default: true, description: 'Order nearby: dishes near you with Wolt links.' },
   app_language: { default: false, description: 'In-app language picker (English / Hebrew) on Settings.' },
+  nutrition_chat: {
+    default: false,
+    description: 'Nutrition assistant (ember). Off until a cohort whitelist.',
+  },
 } as const satisfies Record<string, { default: boolean; description: string }>;
 
 export type FlagKey = keyof typeof FLAGS;
@@ -42,7 +47,11 @@ export async function flagsForUser(prisma: PrismaClient, userId: string): Promis
     prisma.user.findUnique({ where: { id: userId }, select: { id: true, role: true, cohort: true } }),
     prisma.featureFlag.findMany(),
   ]);
-  return resolveFlags(user ?? { id: userId, role: 'USER', cohort: null }, rows);
+  const flags = resolveFlags(user ?? { id: userId, role: 'USER', cohort: null }, rows);
+  // Env is the second kill switch. Tiles hide on the next /api/flags without a redeploy
+  // of the flag row — but env off still wins even if the row is enabled.
+  if (env.EXPERT_NUTRITION_ENABLED !== 'true') flags.nutrition_chat = false;
+  return flags;
 }
 
 export async function isFlagOnForUser(prisma: PrismaClient, userId: string, key: FlagKey): Promise<boolean> {

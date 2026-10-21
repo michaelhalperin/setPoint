@@ -97,6 +97,7 @@ struct MainTabView: View {
             home = h
             await h.load()
             Analytics.send(.appOpened, api: env.api)
+            CrashReporting.flush(api: env.api)
             Analytics.screen(selection.screenName, api: env.api)
             await env.flags.refresh(using: env.api)
             await env.subscription.refresh(using: env.api)

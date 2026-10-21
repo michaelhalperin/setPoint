@@ -10,7 +10,7 @@
 import { env } from '../env.js';
 
 /** Bump when the substance changes; the app can compare it to what a user accepted. */
-export const LEGAL_VERSION = '2026-10-21-food-catalog';
+export const LEGAL_VERSION = '2026-10-21-nutrition-assistant';
 export const LEGAL_EFFECTIVE_DATE = 'October 21, 2026';
 
 const SUPPORT = env.SUPPORT_EMAIL;
@@ -90,6 +90,7 @@ never sell your data or use health data for advertising.</p>
   <li>To understand how the app is used and make it better — for example, which screens help people eat enough and where they get stuck.</li>
 </ul>
 <p><strong>Review by the SetPoint team.</strong> Members of the SetPoint team can see the meals you log (including their text and photos), your calorie and protein numbers, your weight entries, your check-in answers, and how you use the app, linked to your account. We look at this to support you, to check that estimates and check-ins are working, and to improve the app. Access is limited to the people who run SetPoint.</p>
+<p><strong>Nutrition assistant.</strong> This is an AI assistant, not a dietitian or a doctor. It is off unless you are in a flagged group and you accept an in-app consent screen. Your trainer cannot see the chat. If a message is flagged as unsafe, SetPoint may read that turn to check the safety system. Full-thread reading happens only if you explicitly opt in. Counsel review of this surface is required before it is turned on for a cohort.</p>
 <p>We do not use your information for advertising, and we do not sell it.</p>
 
 <h2>Calendar</h2>
@@ -118,7 +119,7 @@ Health app or in iOS Settings.</p>
 
 <h2>Service providers</h2>
 <ul>
-  <li><strong>Anthropic</strong> — processes the meal text or photo you submit to return a nutrition estimate, and generates the wording of check-in messages. Input is sent over an encrypted connection for that purpose. Meals you log from a saved plate, a barcode, or the food catalog are not sent to the model.</li>
+  <li><strong>Anthropic</strong> — processes the meal text or photo you submit to return a nutrition estimate, and generates the wording of check-in messages. If you use the Nutrition assistant, your messages and a snapshot of today’s meals, plan, and restrictions are also sent to generate a reply. Meal photos are not sent in that chat. Input is sent over an encrypted connection for those purposes. Meals you log from a saved plate, a barcode, or the food catalog are not sent to the model.</li>
   <li><strong>Open Food Facts</strong> — a public food database we query when you scan a barcode, to look up the product name and per-100g nutrition. We send only the barcode.</li>
   <li><strong>USDA FoodData Central</strong> — a public-domain food composition dataset we import so you can search generic foods (chicken, rice, banana) and get per-100g calories and macros. We do not send your search to USDA at lookup time.</li>
   <li><strong>Vercel</strong> — hosts the backend service.</li>

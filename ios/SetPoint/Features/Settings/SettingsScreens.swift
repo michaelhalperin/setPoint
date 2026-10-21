@@ -1458,11 +1458,18 @@ struct AccountSettingsView: View {
                     .submitLabel(.done)
                     .onSubmit { nameFocused = false }
                     .accessibilityLabel("Name")
-                Text(model.email ?? L10n( "Signed in with Apple"))
-                    .font(Typography.data(14, weight: .regular))
-                    .foregroundStyle(Palette.inkSoft)
-                    .textSelection(.enabled)
-                    .lineLimit(1)
+                if let email = model.visibleEmail {
+                    Text(email)
+                        .font(Typography.data(14, weight: .regular))
+                        .foregroundStyle(Palette.inkSoft)
+                        .textSelection(.enabled)
+                        .lineLimit(1)
+                } else if model.email == nil {
+                    Text(L10n( "Signed in with Apple"))
+                        .font(Typography.data(14, weight: .regular))
+                        .foregroundStyle(Palette.inkSoft)
+                        .lineLimit(1)
+                }
             }
         }
         .padding(18)
@@ -1473,7 +1480,7 @@ struct AccountSettingsView: View {
     private var identityInitial: String {
         let name = model.displayName.trimmingCharacters(in: .whitespacesAndNewlines)
         if let first = name.first { return String(first).uppercased() }
-        if let first = model.email?.first { return String(first).uppercased() }
+        if let first = model.visibleEmail?.first { return String(first).uppercased() }
         return "Y"
     }
 

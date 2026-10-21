@@ -5,6 +5,7 @@ import { nutritionOverview, personDays, weightTrends, type PersonTargets } from 
 import { getPrisma } from '../db/client.js';
 import { toMealSummaries } from '../meals/summary.js';
 import { getPhotoStore } from '../photos/store.js';
+import { gatherPilot } from '../ai/experts/pilot.js';
 import { requireAdmin } from './admin.js';
 
 const mealsQuery = z.object({
@@ -170,7 +171,7 @@ export async function adminInsightRoutes(app: FastifyInstance): Promise<void> {
 
     const now = new Date();
     const since14 = new Date(now.getTime() - 15 * 86_400_000);
-    const [recentMeals, mealRows, outcomes, weights, checkIns, lastEvent, mealCount] = await Promise.all([
+    const [recentMeals, mealRows, outcomes, weights, checkIns, lastEvent, mealCount, expertMeta] = await Promise.all([
       prisma.meal.findMany({ where: { userId: id, loggedAt: { gte: since14 } }, select: { userId: true, loggedAt: true, kcal: true, proteinG: true } }),
       prisma.meal.findMany({ where: { userId: id }, select: MEAL_FIELDS, orderBy: { loggedAt: 'desc' }, take: 60 }),
       prisma.dayOutcome.findMany({ where: { userId: id, date: { gte: since14 } }, select: { userId: true, date: true, kind: true, kcalConsumed: true, kcalTarget: true } }),
@@ -178,6 +179,17 @@ export async function adminInsightRoutes(app: FastifyInstance): Promise<void> {
       prisma.checkIn.findMany({ where: { userId: id, createdAt: { gte: since14 } }, select: CHECK_IN_FIELDS, orderBy: { createdAt: 'desc' }, take: 60 }),
       prisma.analyticsEvent.findFirst({ where: { userId: id }, orderBy: { occurredAt: 'desc' }, select: { occurredAt: true, name: true } }),
       prisma.meal.count({ where: { userId: id } }),
+      prisma.expertConversation.findUnique({
+        where: { userId_kind: { userId: id, kind: 'NUTRITION' } },
+        select: {
+          id: true,
+          consentedAt: true,
+          reviewConsentAt: true,
+          lockedUntil: true,
+          updatedAt: true,
+          _count: { select: { proposals: true, safetyTrips: true } },
+        },
+      }),
     ]);
 
     const targets: PersonTargets = {
@@ -195,8 +207,58 @@ export async function adminInsightRoutes(app: FastifyInstance): Promise<void> {
       weights,
       checkIns: checkIns.map(toAdminCheckIn),
       lastActive: lastEvent ? { at: lastEvent.occurredAt, event: lastEvent.name } : null,
+      expert: expertMeta
+        ? {
+            kind: 'nutrition',
+            conversationId: expertMeta.id,
+            lastTurnAt: expertMeta.updatedAt,
+            consentedAt: expertMeta.consentedAt,
+            reviewConsent: !!expertMeta.reviewConsentAt,
+            lockedUntil: expertMeta.lockedUntil,
+            proposalCount: expertMeta._count.proposals,
+            safetyTripCount: expertMeta._count.safetyTrips,
+          }
+        : null,
     };
   });
+
+  // Safety-flagged turns only — full transcript requires reviewConsent + audit.
+  app.get('/users/:id/expert-trips', async (req) => {
+    const { id } = z.object({ id: z.string().min(1) }).parse(req.params);
+    const trips = await getPrisma().expertSafetyTrip.findMany({
+      where: { userId: id },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+      select: { id: true, layer: true, code: true, createdAt: true, userMessage: true, discardedReply: true },
+    });
+    return { trips };
+  });
+
+  app.post('/users/:id/expert-review-audit', async (req) => {
+    const { id } = z.object({ id: z.string().min(1) }).parse(req.params);
+    const body = z.object({ conversationId: z.string().min(1), reason: z.string().min(1).max(200) }).parse(req.body);
+    const row = await getPrisma().expertReviewAudit.create({
+      data: { reviewer: 'admin', conversationId: body.conversationId, reason: body.reason },
+    });
+    return { id: row.id, at: row.at };
+  });
+
+  app.get('/users/:id/expert-transcript', async (req) => {
+    const { id } = z.object({ id: z.string().min(1) }).parse(req.params);
+    const prisma = getPrisma();
+    const convo = await prisma.expertConversation.findUnique({
+      where: { userId_kind: { userId: id, kind: 'NUTRITION' } },
+      select: { id: true, transcript: true, reviewConsentAt: true },
+    });
+    if (!convo) return { transcript: [], reviewConsent: false };
+    if (!convo.reviewConsentAt) throw app.httpErrors.forbidden('no review consent');
+    await prisma.expertReviewAudit.create({
+      data: { reviewer: 'admin', conversationId: convo.id, reason: 'full_transcript' },
+    });
+    return { transcript: convo.transcript, reviewConsent: true };
+  });
+
+  app.get('/experts/pilot', async () => gatherPilot(getPrisma()));
 
   // Calories against target, protein, and weight change, for everyone or a cohort.
   app.get('/nutrition', async (req) => {

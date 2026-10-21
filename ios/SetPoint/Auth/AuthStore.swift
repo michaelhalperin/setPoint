@@ -61,17 +61,16 @@ final class AuthStore {
     func signOut() {
         // Several requests can 401 at once — sign out only once.
         let sessionToken = tokenStore.read()
-        guard sessionToken != nil || status != .signedOut else { return }
+        guard sessionToken != nil || status != .signedOut else {
+            AccountLocalState.clear()
+            return
+        }
         tokenStore.clear()
         status = .signedOut
         if let sessionToken {
             Task { await PushManager.shared.unregister(sessionToken: sessionToken) }
         }
-        HealthKitManager.shared.clearAccountSyncState()
-        CalendarManager.shared.clearAccountState()
-        OnboardingViewModel.clearProgress()
-        OfflineMealQueue.clear()
-        FeatureFlags.clearStored()
+        AccountLocalState.clear()
     }
 
     /// Called by the caller when any request comes back 401.
@@ -177,6 +176,7 @@ final class AuthStore {
                 return false
             }
             let auth = try JSONDecoder().decode(AuthResponse.self, from: data)
+            AccountLocalState.clear()
             tokenStore.write(auth.token)
             if path.hasSuffix("/dev") {
                 UserDefaults.standard.set(auth.userId, forKey: Self.devUserKey)

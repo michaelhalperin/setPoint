@@ -22,8 +22,7 @@ enum CheckInActions {
 
     /// "I ate this" — logs the prescription's totals and answers the check-in.
     static func eat(prescriptionID: String, api: APIClient) async throws {
-        let _: LogMealResponse = try await api.post(
-            "/api/meals",
+        let _: LogMealResponse = try await api.logMeal(
             LogMealRequest(text: nil, macros: nil, prescriptionId: prescriptionID)
         )
     }

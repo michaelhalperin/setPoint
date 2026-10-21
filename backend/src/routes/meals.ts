@@ -5,6 +5,7 @@ import { createMealParser } from '../ai/parseMeal.js';
 import { consumeAiQuota } from '../ai/quota.js';
 import { requireAuth, type AuthedRequest } from '../auth/index.js';
 import { getPrisma } from '../db/client.js';
+import { failReason, mealSourceFromBody } from '../analytics/failures.js';
 import { EmptyMealError, MealParsingUnavailableError, logMeal } from '../meals/logMeal.js';
 import { fetchOpenFoodFacts } from '../foods/barcode.js';
 import { listMealsForDate } from '../meals/listMeals.js';
@@ -88,12 +89,12 @@ export async function mealRoutes(app: FastifyInstance): Promise<void> {
   // against the user's AI quota); explicit macros skip the model. Resolves any
   // open check-in.
   app.post('/', async (req) => {
-    const input = body.parse(req.body);
     const userId = (req as AuthedRequest).userId;
     const prisma = getPrisma();
     const client = getAnthropic();
 
     try {
+      const input = body.parse(req.body);
       const result = await logMeal(
         {
           prisma,
@@ -124,6 +125,10 @@ export async function mealRoutes(app: FastifyInstance): Promise<void> {
       }
       return result;
     } catch (err) {
+      await track(prisma, userId, 'meal_log_failed', {
+        source: mealSourceFromBody(req.body),
+        reason: failReason(err),
+      });
       if (err instanceof MealParsingUnavailableError) throw app.httpErrors.serviceUnavailable(err.message);
       if (err instanceof EmptyMealError) throw app.httpErrors.badRequest(err.message);
       throw err;
@@ -159,6 +164,7 @@ export async function mealRoutes(app: FastifyInstance): Promise<void> {
     const meal = await prisma.meal.findFirst({ where: { id, userId }, select: { photoKey: true } });
     const result = await prisma.meal.deleteMany({ where: { id, userId } });
     if (!meal || result.count === 0) throw app.httpErrors.notFound('meal not found');
+    await track(prisma, userId, 'meal_deleted');
 
     const photos = getPhotoStore();
     if (meal.photoKey && photos) {

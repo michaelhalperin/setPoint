@@ -21,7 +21,7 @@ struct SignInSheet: View {
             }
 
             SignInWithAppleButton(.continue) { request in
-                request.requestedScopes = [.email]
+                request.requestedScopes = [.fullName, .email]
             } onCompletion: { result in
                 Task { await env.auth.completeSignInWithApple(result) }
             }
