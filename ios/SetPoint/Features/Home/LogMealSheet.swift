@@ -738,6 +738,18 @@ struct MealCorrectionEditor: View {
         (0.36, 0.38, true), (0.66, 0.46, true), (0.62, 0.70, true), (0.32, 0.66, false), (0.5, 0.24, true), (0.76, 0.30, true), (0.24, 0.48, false), (0.5, 0.84, false),
     ]
 
+    /// Horizontal nudge so a chip label doesn't get clipped by the screen edge.
+    private static func chipDx(spotX: CGFloat, containerWidth: CGFloat) -> CGFloat {
+        let margin: CGFloat = 12
+        let maxHalf: CGFloat = 100
+        let cx = spotX * containerWidth
+        let rightOver = cx + maxHalf - (containerWidth - margin)
+        if rightOver > 0 { return -rightOver }
+        let leftOver = margin - (cx - maxHalf)
+        if leftOver > 0 { return leftOver }
+        return 0
+    }
+
     init(
         logged: LogMealViewModel.Logged,
         photo: UIImage?,
@@ -956,7 +968,7 @@ struct MealCorrectionEditor: View {
                             .background(on ? AnyShapeStyle(Palette.ink) : AnyShapeStyle(.ultraThinMaterial), in: Capsule())
                             .overlay(Capsule().strokeBorder(on ? .clear : Color.white.opacity(0.18)))
                             .fixedSize()
-                            .offset(y: spot.up ? -25 : 25)
+                            .offset(x: Self.chipDx(spotX: spot.x, containerWidth: w), y: spot.up ? -25 : 25)
                         }
                         .contentShape(Rectangle())
                     }
@@ -967,7 +979,6 @@ struct MealCorrectionEditor: View {
             }
         }
         .frame(height: 380)
-        .clipped()
     }
 
     // MARK: Selected

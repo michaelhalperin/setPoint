@@ -469,6 +469,10 @@ struct TrainTodayCard: View {
                         .font(Typography.data(13, weight: .regular))
                         .foregroundStyle(Palette.amber)
                         .fixedSize(horizontal: false, vertical: true)
+                } else if step.title == L10n("Snack before"), step.state == .done, !snackLogged {
+                    Text(L10n("You had a meal before — that counts."))
+                        .font(Typography.data(13, weight: .regular))
+                        .foregroundStyle(Palette.inkSoft)
                 } else if step.title == L10n("Snack before"), let snack = snackBefore {
                     Button {
                         onOpenSnack?(snack)
