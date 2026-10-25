@@ -388,9 +388,7 @@ struct ScannedProductCard: View {
             HStack(alignment: .top, spacing: 12) {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(L10n("Barcode · \(slotTitle.lowercased())")).sectionLabelStyle()
-                    Headline(product.food.name, size: 26)
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.8)
+                    FittingHeadline(product.food.name, size: 26)
                     Text(detailLine)
                         .font(Typography.data(13))
                         .foregroundStyle(Palette.inkSoft)

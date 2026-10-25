@@ -71,7 +71,10 @@ const RECORD_MEAL_TOOL: Anthropic.Tool = {
         type: 'number',
         description: '0–1: how sure you are of the foods AND the portion sizes together',
       },
-      summary: { type: 'string', description: 'short human label for the meal, e.g. "Chicken burrito bowl"' },
+      summary: {
+        type: 'string',
+        description: 'the meal\'s name as a person would say it, 2–5 words, e.g. "Chicken burrito bowl" — details belong in the items',
+      },
       notes: { type: 'string', description: 'the assumptions a person might want to correct (portion, oil, sauce)' },
     },
     required: ['observations', 'items', 'confidence', 'summary'],

@@ -277,6 +277,31 @@ struct GlassCard<Content: View>: View {
 
 /// A light headline with a dim tail: "How's your appetite today? *I'll shape
 /// the plates.*" The tail is what the app adds; the first part is the point.
+/// A meal or product name in the headline face that is never cut off: a short
+/// name keeps the designed size, a longer one steps down so it still sits in
+/// about two lines, and a very long one wraps rather than truncating.
+struct FittingHeadline: View {
+    let text: String
+    var size: CGFloat = 30
+
+    init(_ text: String, size: CGFloat = 30) {
+        self.text = text
+        self.size = size
+    }
+
+    private var fittedSize: CGFloat {
+        switch text.count {
+        case ..<26: return size
+        case ..<40: return size * 0.86
+        default: return size * 0.76
+        }
+    }
+
+    var body: some View {
+        Headline(text, size: fittedSize)
+    }
+}
+
 struct Headline: View {
     let text: String
     var tail: String? = nil

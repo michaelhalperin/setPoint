@@ -355,9 +355,7 @@ struct MealDetailSheet: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Headline(meal.title, size: 30)
-                .lineLimit(3)
-                .minimumScaleFactor(0.8)
+            FittingHeadline(meal.title, size: 30)
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text(meal.kcal.formatted())
                     .font(.system(size: 52, weight: .light))
