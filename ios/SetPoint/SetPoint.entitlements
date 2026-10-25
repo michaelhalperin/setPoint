@@ -16,11 +16,11 @@
 	<true/>
 	<key>com.apple.security.application-groups</key>
 	<array>
-		<string>group.app.setpoint.ios</string>
+		<string>group.com.michaelhalperin.setpointapp</string>
 	</array>
 	<key>keychain-access-groups</key>
 	<array>
-		<string>$(AppIdentifierPrefix)group.app.setpoint.ios</string>
+		<string>$(AppIdentifierPrefix)group.com.michaelhalperin.setpointapp</string>
 	</array>
 </dict>
 </plist>

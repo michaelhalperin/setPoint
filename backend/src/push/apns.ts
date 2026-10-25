@@ -7,7 +7,7 @@ export type ApnsConfig = {
   teamId: string;
   /** Contents of the APNs auth key (.p8) — a PEM private key. */
   privateKey: string;
-  /** App bundle id, e.g. app.setpoint.ios. */
+  /** App bundle id, e.g. com.michaelhalperin.setpointapp. */
   bundleId: string;
   /** true → api.push.apple.com, false → sandbox. */
   production: boolean;

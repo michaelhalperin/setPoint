@@ -1129,7 +1129,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = app.setpoint.ios;
+				PRODUCT_BUNDLE_IDENTIFIER = com.michaelhalperin.setpointapp;
 				SDKROOT = iphoneos;
 				SENTRY_DSN = "";
 				TARGETED_DEVICE_FAMILY = 1;
@@ -1211,7 +1211,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = app.setpoint.ios.widgets;
+				PRODUCT_BUNDLE_IDENTIFIER = com.michaelhalperin.setpointapp.widgets;
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
 				TARGETED_DEVICE_FAMILY = 1;
@@ -1299,7 +1299,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = app.setpoint.ios.tests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.michaelhalperin.setpointapp.tests;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = 1;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SetPoint.app/SetPoint";
@@ -1320,7 +1320,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = app.setpoint.ios;
+				PRODUCT_BUNDLE_IDENTIFIER = com.michaelhalperin.setpointapp;
 				SDKROOT = iphoneos;
 				SENTRY_DSN = "";
 				TARGETED_DEVICE_FAMILY = 1;
@@ -1337,7 +1337,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = app.setpoint.ios.tests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.michaelhalperin.setpointapp.tests;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = 1;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SetPoint.app/SetPoint";
@@ -1355,7 +1355,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = app.setpoint.ios.widgets;
+				PRODUCT_BUNDLE_IDENTIFIER = com.michaelhalperin.setpointapp.widgets;
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
 				TARGETED_DEVICE_FAMILY = 1;

@@ -3,6 +3,6 @@
 //
 //   cp ios/Config/Signing.xcconfig.example ios/Config/Signing.xcconfig
 //
-// The App ID app.setpoint.ios must have the HealthKit capability (with
+// The App ID com.michaelhalperin.setpointapp must have the HealthKit capability (with
 // background delivery) enabled in the Apple Developer portal.
 SETPOINT_TEAM_ID = XXXXXXXXXX

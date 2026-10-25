@@ -1,7 +1,7 @@
 name: SetPoint
 
 options:
-  bundleIdPrefix: app.setpoint.ios
+  bundleIdPrefix: com.michaelhalperin.setpointapp
   deploymentTarget:
     iOS: "17.0"
   developmentLanguage: en
@@ -61,11 +61,11 @@ targets:
         NSLocationWhenInUseUsageDescription: "Find places near you with a dish that fits what you still need. Your location is used for that search only and isn't stored."
         SentryDSN: $(SENTRY_DSN)
         CFBundleURLTypes:
-          - CFBundleURLName: app.setpoint.ios
+          - CFBundleURLName: com.michaelhalperin.setpointapp
             CFBundleURLSchemes: [setpoint]
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: app.setpoint.ios
+        PRODUCT_BUNDLE_IDENTIFIER: com.michaelhalperin.setpointapp
         TARGETED_DEVICE_FAMILY: "1"
         ENABLE_PREVIEWS: YES
         # Sentry DSN for crash reporting (a public client key, not a secret).
@@ -101,7 +101,7 @@ targets:
       - path: SetPoint/Shared
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: app.setpoint.ios.widgets
+        PRODUCT_BUNDLE_IDENTIFIER: com.michaelhalperin.setpointapp.widgets
         TARGETED_DEVICE_FAMILY: "1"
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: SetPointWidgets/Info.plist
@@ -110,9 +110,9 @@ targets:
       path: SetPointWidgets/SetPointWidgets.entitlements
       properties:
         com.apple.security.application-groups:
-          - group.app.setpoint.ios
+          - group.com.michaelhalperin.setpointapp
         keychain-access-groups:
-          - $(AppIdentifierPrefix)group.app.setpoint.ios
+          - $(AppIdentifierPrefix)group.com.michaelhalperin.setpointapp
     dependencies:
       - sdk: ActivityKit.framework
       - sdk: WidgetKit.framework
@@ -128,7 +128,7 @@ targets:
       - target: SetPoint
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: app.setpoint.ios.tests
+        PRODUCT_BUNDLE_IDENTIFIER: com.michaelhalperin.setpointapp.tests
         TARGETED_DEVICE_FAMILY: "1"
         GENERATE_INFOPLIST_FILE: YES
 
