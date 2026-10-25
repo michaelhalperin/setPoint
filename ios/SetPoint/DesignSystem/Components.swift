@@ -345,7 +345,9 @@ private struct PullReloadModifier: ViewModifier {
     func body(content: Content) -> some View {
         if let action {
             content
-                .scrollBounceBehavior(.always)
+                // Vertical only: the default axes are both, which lets the whole
+                // screen rubber-band sideways.
+                .scrollBounceBehavior(.always, axes: .vertical)
                 .refreshable {
                     await PullReload.run(show: covering, reduceMotion: reduceMotion, work: action)
                 }
