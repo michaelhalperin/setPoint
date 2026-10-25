@@ -1,7 +1,7 @@
 name: SetPoint
 
 options:
-  bundleIdPrefix: com.michaelhalperin.setpoint
+  bundleIdPrefix: app.setpoint.ios
   deploymentTarget:
     iOS: "17.0"
   developmentLanguage: en
@@ -12,7 +12,7 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.0"
-    MARKETING_VERSION: "0.1.0"
+    MARKETING_VERSION: "1.0.0"
     CURRENT_PROJECT_VERSION: "1"
     CODE_SIGN_STYLE: Automatic
     DEVELOPMENT_TEAM: $(SETPOINT_TEAM_ID)
@@ -40,6 +40,9 @@ targets:
     info:
       path: SetPoint/Info.plist
       properties:
+        CFBundleDisplayName: SetPoint
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UILaunchScreen: {}
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: false
@@ -58,30 +61,24 @@ targets:
         NSLocationWhenInUseUsageDescription: "Find places near you with a dish that fits what you still need. Your location is used for that search only and isn't stored."
         SentryDSN: $(SENTRY_DSN)
         CFBundleURLTypes:
-          - CFBundleURLName: com.michaelhalperin.setpoint
+          - CFBundleURLName: app.setpoint.ios
             CFBundleURLSchemes: [setpoint]
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.michaelhalperin.setpoint
+        PRODUCT_BUNDLE_IDENTIFIER: app.setpoint.ios
+        TARGETED_DEVICE_FAMILY: "1"
         ENABLE_PREVIEWS: YES
         # Sentry DSN for crash reporting (a public client key, not a secret).
         # Empty = reporting off.
         SENTRY_DSN: ""
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
-    entitlements:
-      path: SetPoint/SetPoint.entitlements
-      properties:
-        com.apple.developer.applesignin:
-          - Default
-        aps-environment: development
-        com.apple.developer.healthkit: true
-        com.apple.developer.healthkit.access: []
-        com.apple.developer.healthkit.background-delivery: true
-        com.apple.security.application-groups:
-          - group.com.michaelhalperin.setpoint
-        keychain-access-groups:
-          - $(AppIdentifierPrefix)group.com.michaelhalperin.setpoint
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.healthcare-fitness
+      configs:
+        Debug:
+          CODE_SIGN_ENTITLEMENTS: SetPoint/SetPoint.entitlements
+        Release:
+          CODE_SIGN_ENTITLEMENTS: SetPoint/SetPointRelease.entitlements
     dependencies:
       - target: SetPointWidgets
         embed: true
@@ -104,7 +101,8 @@ targets:
       - path: SetPoint/Shared
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.michaelhalperin.setpoint.widgets
+        PRODUCT_BUNDLE_IDENTIFIER: app.setpoint.ios.widgets
+        TARGETED_DEVICE_FAMILY: "1"
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: SetPointWidgets/Info.plist
         SKIP_INSTALL: YES
@@ -112,9 +110,9 @@ targets:
       path: SetPointWidgets/SetPointWidgets.entitlements
       properties:
         com.apple.security.application-groups:
-          - group.com.michaelhalperin.setpoint
+          - group.app.setpoint.ios
         keychain-access-groups:
-          - $(AppIdentifierPrefix)group.com.michaelhalperin.setpoint
+          - $(AppIdentifierPrefix)group.app.setpoint.ios
     dependencies:
       - sdk: ActivityKit.framework
       - sdk: WidgetKit.framework
@@ -130,7 +128,8 @@ targets:
       - target: SetPoint
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.michaelhalperin.setpoint.tests
+        PRODUCT_BUNDLE_IDENTIFIER: app.setpoint.ios.tests
+        TARGETED_DEVICE_FAMILY: "1"
         GENERATE_INFOPLIST_FILE: YES
 
 schemes:

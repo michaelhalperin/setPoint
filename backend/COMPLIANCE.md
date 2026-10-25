@@ -43,6 +43,7 @@ Apple requires in-app account deletion for any app with account creation.
       answers (passive tracking, no check-ins). Barcode lookups go to Open Food
       Facts (barcode only); saved meals stay on the account.
 - [ ] App Store Connect privacy labels still need to be filed at submission.
+- Support contact for App Review: `michaelwork1010@gmail.com`.
 
 ## Safety screening
 

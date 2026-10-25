@@ -1542,7 +1542,7 @@ struct AccountSettingsView: View {
 
     private var privacyURL: URL { APIConfig.baseURL.appending(path: "privacy") }
     private var termsURL: URL { APIConfig.baseURL.appending(path: "terms") }
-    private var supportURL: URL { URL(string: "mailto:support@setpoint.app")! }
+    private var supportURL: URL { APIConfig.supportMailto }
 
     private func legalRow(_ title: String, url: URL) -> some View {
         Link(destination: url) {

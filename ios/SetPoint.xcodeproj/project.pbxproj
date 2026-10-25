@@ -106,6 +106,7 @@
 		9BFF374841C89CA935F78B0A /* MassUnitTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B9A434B0F6DB211B7FFFBF7 /* MassUnitTests.swift */; };
 		9D7D9B463A7DFAAE6F63461B /* SetPointIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5408A9946A1C2F6DE77028BA /* SetPointIntents.swift */; };
 		9F0D1EC76A037AFE96546243 /* LogMealTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AEEC804F40BC95701983A78 /* LogMealTests.swift */; };
+		A05095F0EDEE7BB27A8AE916 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 1605D1BA6C7169FC5AC825DE /* PrivacyInfo.xcprivacy */; };
 		A1A74296EC0BEF91244B9D53 /* Atmosphere.swift in Sources */ = {isa = PBXBuildFile; fileRef = B928BF25A65B632CE14AD292 /* Atmosphere.swift */; };
 		A1E337DF032F197F35D4D31B /* PrescriptionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC5D2AA52B39239A03B631E7 /* PrescriptionView.swift */; };
 		A38E7582EF499FCC5655E6F5 /* OfflineMealQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3F407E159A63AA5EC2F9EDE /* OfflineMealQueue.swift */; };
@@ -138,6 +139,7 @@
 		D4936AF39D9B12A642403907 /* OfflineMealQueueTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E386E3A32DE63D1A145C81BA /* OfflineMealQueueTests.swift */; };
 		D7C5D0F4C3435F333230962C /* GapTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2D6CAB0C84B4E604DD85E65 /* GapTests.swift */; };
 		D96CBB38A59F458B632BF989 /* SettlementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41940FEB3FCE32BEAD7DFF75 /* SettlementView.swift */; };
+		D9C82480B2C673001EC17A31 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 570256363E1AA015D455565D /* PrivacyInfo.xcprivacy */; };
 		DB11CC4A8C9EF0D31F71E6B5 /* FastLogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F28C50796E5A8C192ECE1AD /* FastLogTests.swift */; };
 		DB15457EFAA8BB5DC1F7943C /* WeekViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = B013F542C7E7F3E861186A47 /* WeekViews.swift */; };
 		DC7F347096373A1E9436BBA1 /* UserFacingErrorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC19D55D1281123B324AC40B /* UserFacingErrorTests.swift */; };
@@ -197,6 +199,7 @@
 
 /* Begin PBXFileReference section */
 		00492385276DCD4BF736B46F /* SavedMealEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedMealEditorView.swift; sourceTree = "<group>"; };
+		027C1E0A4C462A8F4E927398 /* SetPointRelease.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SetPointRelease.entitlements; sourceTree = "<group>"; };
 		04F3CEFC1A1CBC4838533BE5 /* SettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsTests.swift; sourceTree = "<group>"; };
 		0502A37CD529AFC3FD7679CE /* AppetiteTodayLine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppetiteTodayLine.swift; sourceTree = "<group>"; };
 		05C15A4F8ED895D36CC26A74 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -211,6 +214,7 @@
 		1321B5026CD43EA7B9F899F3 /* SetPointWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SetPointWidgets.entitlements; sourceTree = "<group>"; };
 		14219540B9F9117D76AF9B3A /* WeekStation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeekStation.swift; sourceTree = "<group>"; };
 		1445D836A22672FF8571409D /* BiosignalStatsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiosignalStatsTests.swift; sourceTree = "<group>"; };
+		1605D1BA6C7169FC5AC825DE /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		164B6BA9F86C99092FEC618E /* HealthyWeightTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthyWeightTests.swift; sourceTree = "<group>"; };
 		181BAF4A550A9B8371140C49 /* Analytics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Analytics.swift; sourceTree = "<group>"; };
 		19F7ECB0DD3A7883A2824FC1 /* ActivityKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ActivityKit.framework; path = System/Library/Frameworks/ActivityKit.framework; sourceTree = SDKROOT; };
@@ -245,6 +249,7 @@
 		5200F5347EF2F9288FDE504A /* PushManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushManager.swift; sourceTree = "<group>"; };
 		5408A9946A1C2F6DE77028BA /* SetPointIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetPointIntents.swift; sourceTree = "<group>"; };
 		5455AEE49A9744D266234D15 /* InviteCodeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InviteCodeView.swift; sourceTree = "<group>"; };
+		570256363E1AA015D455565D /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		5757ABD836E69A9824F2F4C5 /* Spacing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Spacing.swift; sourceTree = "<group>"; };
 		59A5DF79076B600F6BF06497 /* SetPointWidgetsBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetPointWidgetsBundle.swift; sourceTree = "<group>"; };
 		5E9CA8DCA3E6A98362A62117 /* CalendarsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarsScreen.swift; sourceTree = "<group>"; };
@@ -535,6 +540,7 @@
 			isa = PBXGroup;
 			children = (
 				2EAFBFE5FC7C3F7CDAD9E1D0 /* CheckInLiveActivity.swift */,
+				1605D1BA6C7169FC5AC825DE /* PrivacyInfo.xcprivacy */,
 				1321B5026CD43EA7B9F899F3 /* SetPointWidgets.entitlements */,
 				59A5DF79076B600F6BF06497 /* SetPointWidgetsBundle.swift */,
 				50E01D5B7E999D2C927B2941 /* TodayWidgets.swift */,
@@ -648,7 +654,9 @@
 				DCD871B37364AE4BFBDD2456 /* Shared */,
 				5DD21E36076AE147DCDE4DB7 /* Store */,
 				B57AC17EF1067B3CA5D592DB /* InfoPlist.xcstrings */,
+				570256363E1AA015D455565D /* PrivacyInfo.xcprivacy */,
 				8C8F075855C3FB6506F00810 /* SetPoint.entitlements */,
+				027C1E0A4C462A8F4E927398 /* SetPointRelease.entitlements */,
 			);
 			path = SetPoint;
 			sourceTree = "<group>";
@@ -914,6 +922,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				16FB8B06E79FDAAFB97072FA /* Localizable.xcstrings in Resources */,
+				A05095F0EDEE7BB27A8AE916 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -924,6 +933,7 @@
 				8B964D56522A275394FEDBBF /* Assets.xcassets in Resources */,
 				6EAD91C1AD796B9C265398D6 /* InfoPlist.xcstrings in Resources */,
 				4FEF914FD0C1011E96DB6E95 /* Localizable.xcstrings in Resources */,
+				D9C82480B2C673001EC17A31 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1110,18 +1120,19 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = SetPoint/SetPoint.entitlements;
+				CODE_SIGN_ENTITLEMENTS = SetPoint/SetPointRelease.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = SetPoint/Info.plist;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.michaelhalperin.setpoint;
+				PRODUCT_BUNDLE_IDENTIFIER = app.setpoint.ios;
 				SDKROOT = iphoneos;
 				SENTRY_DSN = "";
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
 		};
@@ -1177,7 +1188,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 1.0.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1200,10 +1211,10 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.michaelhalperin.setpoint.widgets;
+				PRODUCT_BUNDLE_IDENTIFIER = app.setpoint.ios.widgets;
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
 		};
@@ -1265,7 +1276,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 1.0.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -1288,9 +1299,9 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.michaelhalperin.setpoint.tests;
+				PRODUCT_BUNDLE_IDENTIFIER = app.setpoint.ios.tests;
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SetPoint.app/SetPoint";
 			};
 			name = Debug;
@@ -1304,14 +1315,15 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = SetPoint/Info.plist;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.michaelhalperin.setpoint;
+				PRODUCT_BUNDLE_IDENTIFIER = app.setpoint.ios;
 				SDKROOT = iphoneos;
 				SENTRY_DSN = "";
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
 		};
@@ -1325,9 +1337,9 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.michaelhalperin.setpoint.tests;
+				PRODUCT_BUNDLE_IDENTIFIER = app.setpoint.ios.tests;
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SetPoint.app/SetPoint";
 			};
 			name = Release;
@@ -1343,10 +1355,10 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.michaelhalperin.setpoint.widgets;
+				PRODUCT_BUNDLE_IDENTIFIER = app.setpoint.ios.widgets;
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
 		};

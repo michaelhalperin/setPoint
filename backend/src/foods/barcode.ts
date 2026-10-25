@@ -3,6 +3,8 @@
  * Unknown codes return null so the app can fall back to typing.
  */
 
+import { env } from '../env.js';
+
 export type BarcodeFoodView = {
   code: string;
   name: string;
@@ -169,7 +171,7 @@ export async function lookupBarcode(deps: BarcodeLookupDeps, rawCode: string): P
 }
 
 const OFF_URL = 'https://world.openfoodfacts.org/api/v2/product';
-const OFF_USER_AGENT = 'SetPoint/0.1 (https://setpoint.app; support@setpoint.app)';
+const OFF_USER_AGENT = `SetPoint/1.0 (https://setpoint.app; ${env.SUPPORT_EMAIL})`;
 const OFF_TIMEOUT_MS = 5_000;
 
 export async function fetchOpenFoodFacts(code: string): Promise<OffProduct | null> {

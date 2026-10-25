@@ -70,7 +70,7 @@ describe('subscription entitlement', () => {
       const forged = unsignedJws({
         productId: 'setpoint.yearly',
         originalTransactionId: '1',
-        bundleId: 'com.michaelhalperin.setpoint',
+        bundleId: 'app.setpoint.ios',
         expiresDate: NOW.getTime() + 3650 * DAY,
         signedDate: NOW.getTime(),
         environment,

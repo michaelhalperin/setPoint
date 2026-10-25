@@ -19,7 +19,7 @@ const schema = z.object({
   ADMIN_SECRET: z.string().default(''),
 
   // Shown in the privacy policy / terms footer and the app's support link.
-  SUPPORT_EMAIL: z.string().default('support@setpoint.app'),
+  SUPPORT_EMAIL: z.string().default('michaelwork1010@gmail.com'),
 
   // Meal-photo object storage — any S3-compatible bucket (Cloudflare R2
   // recommended). When unset, photos are still parsed by the AI but not kept.
@@ -48,7 +48,7 @@ const schema = z.object({
   ANTHROPIC_API_KEY: z.string().default(''),
   APNS_KEY_ID: z.string().default(''),
   APNS_TEAM_ID: z.string().default(''),
-  APNS_BUNDLE_ID: z.string().default('com.michaelhalperin.setpoint'),
+  APNS_BUNDLE_ID: z.string().default('app.setpoint.ios'),
   APNS_PRIVATE_KEY: z.string().default(''),
 
   // Wearable modifier kill switch + cohort. Off until beta proves incremental value.
@@ -61,7 +61,7 @@ const schema = z.object({
   SUBSCRIPTION_GATE: z.string().default(''),
   // App Store purchase verification. APPLE_APP_APPLE_ID is the numeric Apple ID from
   // App Store Connect — required to accept production (App Store) purchases.
-  APP_BUNDLE_ID: z.string().default('com.michaelhalperin.setpoint'),
+  APP_BUNDLE_ID: z.string().default('app.setpoint.ios'),
   APPLE_APP_APPLE_ID: z.string().default(''),
   // Order nearby: "true" adds made-up places around the user, for trying the screen.
   NEARBY_SAMPLE_VENUES: z.string().default(''),

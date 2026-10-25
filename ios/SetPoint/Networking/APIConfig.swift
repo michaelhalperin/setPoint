@@ -20,4 +20,9 @@ enum APIConfig {
         return false
         #endif
     }
+
+    /// Inbox Apple and users write to. Keep in lockstep with `SUPPORT_EMAIL` on the backend.
+    static let supportEmail = "michaelwork1010@gmail.com"
+
+    static var supportMailto: URL { URL(string: "mailto:\(supportEmail)")! }
 }
