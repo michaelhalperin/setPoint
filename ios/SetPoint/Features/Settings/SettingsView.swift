@@ -427,13 +427,34 @@ struct SettingsView: View {
     }
 
     private func identityChip(_ model: SettingsViewModel) -> some View {
-        ZStack {
-            FuelOrb(size: 36, breathing: false, glow: 0.45)
+        HStack(spacing: 10) {
             Text(identityInitial(model))
-                .font(Typography.data(15, weight: .medium))
+                .font(Typography.data(15, weight: .semibold))
                 .foregroundStyle(Palette.onBone)
+                .frame(width: 32, height: 32)
+                .background(
+                    Circle().fill(
+                        RadialGradient(
+                            colors: [Color(hex: 0xFFD9A8), Palette.ember, Color(hex: 0xC2410C)],
+                            center: UnitPoint(x: 0.35, y: 0.3),
+                            startRadius: 0,
+                            endRadius: 20
+                        )
+                    )
+                    .shadow(color: Palette.ember.opacity(0.5), radius: 8)
+                )
+            Text(identityName(model))
+                .font(Typography.data(15, weight: .regular))
+                .foregroundStyle(Palette.ink)
+                .lineLimit(1)
+            Image(systemName: "chevron.forward")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(Palette.inkFaint)
         }
-        .frame(width: 44, height: 44)
+        .padding(.leading, 6)
+        .padding(.trailing, 14)
+        .frame(height: 44)
+        .glassCapsule(fill: Color.white.opacity(0.06), stroke: Color.white.opacity(0.10))
         .accessibilityLabel(identityAccessibilityLabel(model))
     }
 
