@@ -150,7 +150,7 @@ enum DebugPreviewStub {
         case .fixMeal:
             FixMealStubHost()
         case let .scanner(status):
-            BarcodeScannerView(status: status, previewAiming: true, onCode: { _ in }, onRescan: {}, onType: {}, onLabelPhoto: { _ in }, onCancel: {})
+            ScannerStubHost(status: status)
         case .snooze:
             ZStack(alignment: .bottom) {
                 PrescriptionStubHost()
@@ -308,6 +308,7 @@ enum DebugPreviewStub {
         case "scanner-looking": return .scanner(.lookingUp)
         case "scanner-miss": return .scanner(.notFound)
         case "scanner-label": return .scanner(.readingLabel)
+        case "scanner-found": return .scanner(.found)
         case "log-typing": return .logMeal(.typing)
         case "log-working": return .logMeal(.working)
         case "log-offline": return .logMeal(.offline)
@@ -506,27 +507,31 @@ private struct FixMealStubHost: View {
 }
 
 private struct LogScanStubHost: View {
-    @State private var product = LogMealViewModel.BarcodeProduct(food: .sampleYogurt, servings: 1)
+    var body: some View {
+        ScannerStubHost(status: .found)
+    }
+}
+
+/// The scanner over a black stand-in camera, with a live product so the amount
+/// picks can be tried.
+private struct ScannerStubHost: View {
+    let status: LogMealViewModel.ScanStatus
+    @State private var product: LogMealViewModel.BarcodeProduct? = .init(food: .sampleYogurt, servings: 1)
 
     var body: some View {
-        ZStack(alignment: .bottom) {
-            Color.black.ignoresSafeArea()
-            VStack(spacing: Space.sm) {
-                Image(systemName: "barcode.viewfinder")
-                    .font(.system(size: 44, weight: .medium))
-                    .foregroundStyle(Palette.lockScreenText)
-                Text("Point the camera at a barcode")
-                    .font(Typography.voice(22))
-                    .foregroundStyle(Palette.lockScreenText)
-            }
-            BarcodeProductSheet(
-                product: $product,
-                slotTitle: "Lunch",
-                onLog: {},
-                onSave: {},
-                onClose: {}
-            )
-        }
+        BarcodeScannerView(
+            status: status,
+            product: $product,
+            slotTitle: "Lunch",
+            previewAiming: true,
+            onCode: { _ in },
+            onRescan: {},
+            onType: {},
+            onLabelPhoto: { _ in },
+            onLog: {},
+            onSave: {},
+            onCancel: {}
+        )
     }
 }
 

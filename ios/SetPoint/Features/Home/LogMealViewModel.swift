@@ -87,8 +87,8 @@ final class LogMealViewModel {
     var showPhotoPicker = false
     var showCamera = false
     var product: BarcodeProduct?
-    /// Found while the scanner was up; becomes `product` in `scannerDismissed()`.
-    private var scannedProduct: BarcodeProduct?
+    /// "Save as my meal" from the scanner; opens once the scanner has closed.
+    private var pendingEditor: SavedMealDraft?
 
     /// The code being looked up, kept so a label photo can be filed under it.
     private var lastScannedCode: String?
@@ -96,6 +96,7 @@ final class LogMealViewModel {
     enum ScanStatus: Equatable {
         case scanning
         case lookingUp
+        case found
         case notFound
         case readingLabel
         case failed(String)
@@ -463,21 +464,22 @@ final class LogMealViewModel {
 
     func openScanner() {
         mode = .scan
+        product = nil
         scanStatus = .scanning
         showScanner = true
     }
 
-    /// The scanner stays up while the code is looked up, so a miss can be shown
-    /// there with a way forward instead of the screen just closing.
+    /// Scan, confirm and log all happen on the scanner: a hit shows the product
+    /// card over the paused camera, a miss offers the label photo or typing.
     func handleScannedCode(_ code: String) async {
         guard scanStatus == .scanning else { return }
         lastScannedCode = code
         scanStatus = .lookingUp
         do {
             let res: BarcodeFoodResponse = try await api.get("/api/foods/barcode/\(code)")
-            scannedProduct = BarcodeProduct(food: res.food, servings: 1)
+            product = BarcodeProduct(food: res.food, servings: 1)
             actionError = nil
-            showScanner = false
+            scanStatus = .found
         } catch let error as APIError {
             if case let .http(status, _) = error, status == 404 {
                 scanStatus = .notFound
@@ -490,7 +492,21 @@ final class LogMealViewModel {
     }
 
     func rescan() {
+        product = nil
         scanStatus = .scanning
+    }
+
+    /// Closes the scanner onto the log panel, which shows the meal landing.
+    func logScannedProduct() async {
+        guard product != nil else { return }
+        showScanner = false
+        await logBarcode()
+    }
+
+    func saveScannedProduct() {
+        guard let product else { return }
+        pendingEditor = SavedMealDraft(from: product)
+        showScanner = false
     }
 
     /// Reads the pack's nutrition label and files it under the scanned code, so
@@ -507,9 +523,9 @@ final class LogMealViewModel {
                 "/api/foods/barcode/\(code)/label",
                 BarcodeLabelRequest(image: .init(data: photo.base64, mediaType: photo.mediaType))
             )
-            scannedProduct = BarcodeProduct(food: res.food, servings: 1)
+            product = BarcodeProduct(food: res.food, servings: 1)
             actionError = nil
-            showScanner = false
+            scanStatus = .found
         } catch let error as APIError {
             if case let .http(status, _) = error, status == 422 {
                 scanStatus = .failed(L10n("Couldn’t read that label. Get the numbers in focus and try again."))
@@ -530,12 +546,12 @@ final class LogMealViewModel {
     /// while it is still animating away never appears.
     func scannerDismissed() {
         scanStatus = .scanning
-        if let scannedProduct {
-            product = scannedProduct
-            self.scannedProduct = nil
-        } else if mode == .scan {
-            mode = .type
+        if phase != .parsing { product = nil }
+        if let pendingEditor {
+            editor = pendingEditor
+            self.pendingEditor = nil
         }
+        if mode == .scan { mode = .type }
     }
 
     /// Camera when the device has one, the library otherwise (simulator).
@@ -614,11 +630,6 @@ final class LogMealViewModel {
 
     func openEditor(from meal: SavedMeal) {
         editor = SavedMealDraft(from: meal)
-    }
-
-    func openEditorToSaveProduct() {
-        guard let product else { return }
-        editor = SavedMealDraft(from: product)
     }
 
     func openEditorToSaveCatalog() {

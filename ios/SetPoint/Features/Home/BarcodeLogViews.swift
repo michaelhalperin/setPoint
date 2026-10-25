@@ -3,21 +3,28 @@ import PhotosUI
 import SwiftUI
 import VisionKit
 
-/// Full-bleed barcode scanner with a frame to aim at. It stays up while the code
-/// is looked up, and a miss is answered here — photograph the label (which adds
-/// the product for next time), scan again, or type it — rather than by closing. Falls back to a dark empty state when VisionKit cannot run
+/// Full-bleed barcode scanner with a frame to aim at. Scan, confirm and log all
+/// happen here: a hit pauses the camera and raises the product card over it; a
+/// miss offers a label photo (which adds the product for next time), another
+/// scan, or typing. Falls back to a dark empty state when VisionKit cannot run
 /// (simulator, no camera) and explains when camera access is off.
 struct BarcodeScannerView: View {
     var status: LogMealViewModel.ScanStatus
+    @Binding var product: LogMealViewModel.BarcodeProduct?
+    /// The meal this lands under, for the card's label ("Barcode · lunch").
+    var slotTitle: String
     /// Debug stubs only: draw the aiming frame where the simulator has no camera.
     var previewAiming = false
     var onCode: (String) -> Void
     var onRescan: () -> Void
     var onType: () -> Void
     var onLabelPhoto: (Data) -> Void
+    var onLog: () -> Void
+    var onSave: () -> Void
     var onCancel: () -> Void
 
     @Environment(\.openURL) private var openURL
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var camera: AVAuthorizationStatus = AVCaptureDevice.authorizationStatus(for: .video)
     @State private var showLabelCamera = false
     @State private var showLabelLibrary = false
@@ -43,9 +50,9 @@ struct BarcodeScannerView: View {
                     onCode(code)
                 }
                 .ignoresSafeArea()
-                aimingOverlay
+                if status != .found { aimingOverlay }
             } else if previewAiming {
-                aimingOverlay
+                if status != .found { aimingOverlay }
             } else if DataScannerViewController.isSupported, camera == .denied || camera == .restricted {
                 emptyState(
                     title: "Camera access is off",
@@ -64,6 +71,36 @@ struct BarcodeScannerView: View {
                 )
             }
 
+            if status == .found, let current = product {
+                Color.black.opacity(0.55)
+                    .ignoresSafeArea()
+                    .transition(.opacity)
+                VStack(spacing: Space.md) {
+                    Spacer()
+                    HStack(spacing: 8) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(Palette.positive)
+                        Text(current.food.code)
+                            .font(Typography.mono(13))
+                            .foregroundStyle(Palette.lockScreenText)
+                    }
+                    .padding(.horizontal, 14)
+                    .frame(height: 36)
+                    .background(.black.opacity(0.5), in: Capsule())
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(Text("Barcode found"))
+                    ScannedProductCard(
+                        product: Binding(get: { product ?? current }, set: { product = $0 }),
+                        slotTitle: slotTitle,
+                        onLog: onLog,
+                        onSave: onSave,
+                        onRescan: onRescan
+                    )
+                }
+                .ignoresSafeArea(edges: .bottom)
+                .transition(.move(edge: .bottom))
+            }
+
             Button(action: onCancel) {
                 Image(systemName: "xmark")
                     .font(.system(size: 15, weight: .semibold))
@@ -74,6 +111,7 @@ struct BarcodeScannerView: View {
             .padding(Space.gutter)
             .accessibilityLabel("Close scanner")
         }
+        .animation(Motion.adaptive(Motion.snappy, reduceMotion: reduceMotion), value: status)
         .statusBarHidden(true)
         .task {
             guard camera == .notDetermined else { return }
@@ -160,6 +198,8 @@ struct BarcodeScannerView: View {
             busyPill("Looking it up…")
         case .readingLabel:
             busyPill("Reading the label…")
+        case .found:
+            EmptyView()
         case .notFound:
             missPanel(
                 title: "Not in the food database yet",
@@ -303,76 +343,91 @@ private struct DataScannerRepresentable: UIViewControllerRepresentable {
     }
 }
 
-/// Product sheet after a scan: Exact badge, macro tiles, amount stepper,
-/// "Log for <slot>", star to save.
-struct BarcodeProductSheet: View {
+/// The scanned product over the paused camera. Barcode data is the maker's own
+/// label, so it reads as exact rather than an estimate; the amount is the only
+/// thing to decide before logging.
+struct ScannedProductCard: View {
     @Binding var product: LogMealViewModel.BarcodeProduct
     var slotTitle: String
-    var logging = false
     var onLog: () -> Void
     var onSave: () -> Void
-    var onClose: () -> Void
+    var onRescan: () -> Void
+
+    private var hasServing: Bool { (product.food.servingG ?? 0) > 0 }
 
     private var portion: (grams: Double, kcal: Int, proteinG: Double, carbsG: Double, fatG: Double) {
         product.food.portion(servings: product.servings)
     }
 
+    /// Without a serving size on the pack, one step is 100 g.
+    private var presets: [(value: Double, title: String)] {
+        hasServing
+            ? [(0.5, "½"), (1, "1"), (2, "2"), (3, "3")]
+            : [(0.5, "50 g"), (1, "100 g"), (1.5, "150 g"), (2, "200 g")]
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: Space.sm) {
             Capsule()
                 .fill(Color.white.opacity(0.18))
                 .frame(width: 40, height: 5)
                 .frame(maxWidth: .infinity)
 
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Found").sectionLabelStyle(Palette.positive)
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(L10n("Barcode · \(slotTitle.lowercased())")).sectionLabelStyle()
                     Headline(product.food.name, size: 26)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.8)
                     Text(detailLine)
-                        .font(Typography.data(13, weight: .regular))
+                        .font(Typography.data(13))
                         .foregroundStyle(Palette.inkSoft)
+                        .lineLimit(1)
                 }
-                Spacer(minLength: 8)
-                RoundIconButton("star", label: "Save as my meal", action: onSave)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                Text("Label values")
+                    .font(Typography.data(12, weight: .regular))
+                    .foregroundStyle(Palette.positive)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Palette.positive.opacity(0.12), in: Capsule())
+                    .fixedSize()
+                    .padding(.top, 2)
             }
 
             HStack(spacing: 8) {
-                macroTile("kcal", value: "\(portion.kcal)")
-                macroTile("Protein", value: L10n("\(Int(portion.proteinG.rounded())) g"))
-                macroTile("Carbs", value: L10n("\(Int(portion.carbsG.rounded())) g"))
-                macroTile("Fat", value: L10n("\(Int(portion.fatG.rounded())) g"))
+                let kcal = Double(max(portion.kcal, 1))
+                macro("kcal", value: "\(portion.kcal)", fraction: 1, color: Palette.amber)
+                macro("Protein", value: L10n("\(Int(portion.proteinG.rounded())) g"), fraction: portion.proteinG * 4 / kcal, color: Palette.amber)
+                macro("Carbs", value: L10n("\(Int(portion.carbsG.rounded())) g"), fraction: portion.carbsG * 4 / kcal, color: Palette.ink)
+                macro("Fat", value: L10n("\(Int(portion.fatG.rounded())) g"), fraction: portion.fatG * 9 / kcal, color: Palette.inkFaint)
+            }
+            .animation(.snappy(duration: 0.2), value: product.servings)
+
+            amount
+
+            HStack(spacing: 10) {
+                ActionButton(title: L10n("Log \(portion.kcal) kcal"), symbol: "plus", action: onLog)
+                Button(action: onSave) {
+                    Label("Save", systemImage: "star")
+                        .font(Typography.data(15, weight: .regular))
+                        .foregroundStyle(Palette.ink)
+                        .frame(width: 96, height: 58)
+                        .glassCapsule(fill: Color.white.opacity(0.06), stroke: Color.white.opacity(0.10))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Save as my meal")
             }
 
-            GlassList {
-                StepperRow(
-                    name: (product.food.servingG ?? 0) > 0 ? "Servings" : "Amount",
-                    // No serving size on the label: each step is 100 g.
-                    note: (product.food.servingG ?? 0) > 0 ? nil : "× 100 g",
-                    value: product.servings == product.servings.rounded() ? "\(Int(product.servings))" : String(format: "%.1f", product.servings),
-                    canDown: product.servings > 0.5,
-                    canUp: product.servings < 20,
-                    onDown: { product.servings = max(0.5, (product.servings * 2 - 1) / 2) },
-                    onUp: { product.servings = min(20, product.servings + 0.5) }
-                )
-            }
-
-            VStack(spacing: 4) {
-                ActionButton(
-                    title: L10n("Log \(portion.kcal) kcal · \(slotTitle.lowercased())"),
-                    busy: logging,
-                    busyTitle: "Logging",
-                    symbol: "plus",
-                    action: onLog
-                )
-                Button("Not this", action: onClose)
-                    .font(Typography.data(14, weight: .regular))
-                    .foregroundStyle(Palette.inkSoft)
-                    .frame(maxWidth: .infinity, minHeight: 40)
-            }
+            Button("Not this — scan again", action: onRescan)
+                .font(Typography.data(14, weight: .regular))
+                .foregroundStyle(Palette.inkSoft)
+                .frame(maxWidth: .infinity, minHeight: 36)
         }
         .padding(.horizontal, Space.gutter)
         .padding(.top, Space.sm)
-        .padding(.bottom, Space.md)
+        .padding(.bottom, Space.lg)
         .background {
             UnevenRoundedRectangle(topLeadingRadius: 32, topTrailingRadius: 32, style: .continuous)
                 .fill(Palette.sheet)
@@ -383,26 +438,117 @@ struct BarcodeProductSheet: View {
     private var detailLine: String {
         var parts: [String] = []
         if let brand = product.food.brand, !brand.isEmpty { parts.append(brand) }
-        parts.append(L10n("\(Int(portion.grams.rounded())) g"))
+        if let serving = product.food.servingG, serving > 0 {
+            parts.append(L10n("1 serving = \(Int(serving.rounded())) g"))
+        } else {
+            parts.append(L10n("per 100 g"))
+        }
         return parts.joined(separator: " · ")
     }
 
-    private func macroTile(_ label: String, value: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(LocalizedStringKey(label))
-                .font(Typography.mono(9))
-                .tracking(1.1)
-                .textCase(.uppercase)
-                .foregroundStyle(Palette.inkFaint)
+    /// Quick picks for the usual amounts, fine steps on the side.
+    private var amount: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("How much").sectionLabelStyle()
+                Text(L10n("\(Int(portion.grams.rounded())) g"))
+                    .font(Typography.mono(12))
+                    .foregroundStyle(Palette.inkFaint)
+                    .contentTransition(.numericText(value: portion.grams))
+                Spacer()
+                stepper
+            }
+            HStack(spacing: 8) {
+                ForEach(presets, id: \.value) { preset in
+                    let selected = abs(product.servings - preset.value) < 0.01
+                    Button {
+                        product.servings = preset.value
+                        Haptics.select()
+                    } label: {
+                        Text(preset.title)
+                            .font(Typography.data(15, weight: selected ? .semibold : .regular))
+                            .foregroundStyle(selected ? Palette.onBone : Palette.ink)
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                            .background {
+                                if selected {
+                                    Capsule().fill(Palette.ink)
+                                } else {
+                                    Capsule().fill(Color.white.opacity(0.06))
+                                        .overlay(Capsule().strokeBorder(Color.white.opacity(0.10)))
+                                }
+                            }
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityAddTraits(selected ? .isSelected : [])
+                }
+            }
+        }
+    }
+
+    private var stepper: some View {
+        HStack(spacing: 0) {
+            stepButton("minus", label: "Less", enabled: product.servings > 0.5) {
+                product.servings = max(0.5, product.servings - 0.5)
+            }
+            Text(servingsText)
+                .font(Typography.data(15, weight: .medium))
+                .foregroundStyle(Palette.ink)
+                .frame(minWidth: 34)
+                .contentTransition(.numericText(value: product.servings))
+            stepButton("plus", label: "More", enabled: product.servings < 20) {
+                product.servings = min(20, product.servings + 0.5)
+            }
+        }
+        .glassCapsule(fill: Color.white.opacity(0.05), stroke: Color.white.opacity(0.10))
+    }
+
+    private var servingsText: String {
+        let s = product.servings
+        if !hasServing { return L10n("\(Int((s * 100).rounded())) g") }
+        if s == 0.5 { return "½" }
+        return s == s.rounded() ? "\(Int(s))" : String(format: "%.1f", s)
+    }
+
+    private func stepButton(_ symbol: String, label: LocalizedStringKey, enabled: Bool, action: @escaping () -> Void) -> some View {
+        Button {
+            action()
+            Haptics.select()
+        } label: {
+            Image(systemName: symbol)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(enabled ? Palette.ink : Palette.inkFaint.opacity(0.5))
+                .frame(width: 36, height: 36)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(!enabled)
+        .accessibilityLabel(label)
+    }
+
+    private func macro(_ label: String, value: String, fraction: Double, color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(LocalizedStringKey(label)).sectionLabelStyle()
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
             Text(value)
                 .font(Typography.data(18, weight: .regular))
                 .foregroundStyle(Palette.ink)
                 .lineLimit(1)
-                .minimumScaleFactor(0.7)
+                .minimumScaleFactor(0.6)
+                .contentTransition(.numericText())
+            GeometryReader { box in
+                Capsule().fill(Color.white.opacity(0.08))
+                    .overlay(alignment: .leading) {
+                        Capsule().fill(color)
+                            .frame(width: box.size.width * min(1, max(0, fraction)))
+                    }
+            }
+            .frame(height: 5)
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
         .glass(radius: 14)
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -509,15 +655,15 @@ struct CatalogFoodSheet: View {
 }
 
 #if DEBUG
-#Preview("Product") {
+#Preview("Scanned product") {
     Color.black.ignoresSafeArea()
         .safeAreaInset(edge: .bottom) {
-            BarcodeProductSheet(
+            ScannedProductCard(
                 product: .constant(.init(food: .sampleYogurt, servings: 1)),
                 slotTitle: "Lunch",
                 onLog: {},
                 onSave: {},
-                onClose: {}
+                onRescan: {}
             )
         }
 }

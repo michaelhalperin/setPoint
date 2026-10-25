@@ -11710,6 +11710,116 @@
           }
         }
       }
+    },
+    "Label values": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ערכים מהתווית"
+          }
+        }
+      }
+    },
+    "Barcode · %@": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ברקוד · %@"
+          }
+        }
+      }
+    },
+    "1 serving = %lld g": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מנה אחת = %lld ג׳"
+          }
+        }
+      }
+    },
+    "per 100 g": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ל-100 ג׳"
+          }
+        }
+      }
+    },
+    "How much": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "כמה"
+          }
+        }
+      }
+    },
+    "Log %lld kcal": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "רשום %lld קלוריות"
+          }
+        }
+      }
+    },
+    "Save": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "שמור"
+          }
+        }
+      }
+    },
+    "Not this — scan again": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "לא זה — סרוק שוב"
+          }
+        }
+      }
+    },
+    "Less": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "פחות"
+          }
+        }
+      }
+    },
+    "More": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "יותר"
+          }
+        }
+      }
+    },
+    "Barcode found": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "הברקוד נמצא"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

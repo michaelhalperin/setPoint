@@ -1,8 +1,9 @@
 import XCTest
 @testable import SetPoint
 
-/// The scanner stays up through the lookup: a miss is answered on the scanner,
-/// and a hit only becomes the product sheet once the scanner has closed.
+/// Scan, confirm and log all happen on the scanner: a hit shows the product card
+/// there, a miss offers the label photo or typing, and only "Save as my meal"
+/// waits for the scanner to close before opening its editor.
 @MainActor
 final class BarcodeScanTests: XCTestCase {
     override func tearDown() {
@@ -41,19 +42,36 @@ final class BarcodeScanTests: XCTestCase {
         XCTAssertEqual(vm.scanStatus, .scanning)
     }
 
-    func testFoundProductOpensOnlyAfterScannerCloses() async {
+    func testFoundProductIsShownOnTheScanner() async {
         StubURLProtocol.handler = { _ in (200, ["Content-Type": "application/json"], Self.yogurt) }
         let vm = makeVM()
         vm.openScanner()
 
         await vm.handleScannedCode("7290000000001")
 
+        XCTAssertTrue(vm.showScanner)
+        XCTAssertEqual(vm.scanStatus, .found)
+        XCTAssertEqual(vm.product?.food.name, "Greek yogurt")
+
+        vm.rescan()
+        XCTAssertNil(vm.product)
+        XCTAssertEqual(vm.scanStatus, .scanning)
+    }
+
+    func testSavingFromTheScannerOpensTheEditorOnceItHasClosed() async {
+        StubURLProtocol.handler = { _ in (200, ["Content-Type": "application/json"], Self.yogurt) }
+        let vm = makeVM()
+        vm.openScanner()
+        await vm.handleScannedCode("7290000000001")
+
+        vm.saveScannedProduct()
         XCTAssertFalse(vm.showScanner)
-        XCTAssertNil(vm.product, "a sheet asked for while the scanner is still closing never appears")
+        XCTAssertNil(vm.editor, "a sheet asked for while the scanner is still closing never appears")
 
         vm.scannerDismissed()
-        XCTAssertEqual(vm.product?.food.name, "Greek yogurt")
-        XCTAssertEqual(vm.scanStatus, .scanning)
+        XCTAssertNotNil(vm.editor)
+        XCTAssertNil(vm.product)
+        XCTAssertEqual(vm.mode, .type)
     }
 
     func testTypeInsteadClosesScannerIntoTyping() {
@@ -91,8 +109,8 @@ final class BarcodeScanTests: XCTestCase {
         await vm.readLabel(Self.labelPhoto)
 
         XCTAssertEqual(requests.get().last, "POST /api/foods/barcode/7290000000001/label")
-        XCTAssertFalse(vm.showScanner)
-        vm.scannerDismissed()
+        XCTAssertTrue(vm.showScanner)
+        XCTAssertEqual(vm.scanStatus, .found)
         XCTAssertEqual(vm.product?.food.name, "Greek yogurt")
     }
 

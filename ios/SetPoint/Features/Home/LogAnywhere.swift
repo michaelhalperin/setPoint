@@ -41,38 +41,21 @@ struct LogAnywhere: ViewModifier {
             .fullScreenCover(isPresented: scannerPresented, onDismiss: { logger?.scannerDismissed() }) {
                 BarcodeScannerView(
                     status: logger?.scanStatus ?? .scanning,
+                    product: productBinding,
+                    slotTitle: slotTitle,
                     onCode: { code in
                         Task { await logger?.handleScannedCode(code) }
                     },
                     onRescan: { logger?.rescan() },
                     onType: { logger?.typeInsteadOfScanning() },
                     onLabelPhoto: { data in Task { await logger?.readLabel(data) } },
+                    onLog: { Task { await logger?.logScannedProduct() } },
+                    onSave: { logger?.saveScannedProduct() },
                     onCancel: {
                         logger?.showScanner = false
                         logger?.mode = .type
                     }
                 )
-            }
-            .sheet(item: productBinding) { product in
-                BarcodeProductSheet(
-                    product: Binding(
-                        get: { logger?.product ?? product },
-                        set: { logger?.product = $0 }
-                    ),
-                    slotTitle: slotTitle,
-                    logging: {
-                        if case .parsing = logger?.phase { return true }
-                        return false
-                    }(),
-                    onLog: { Task { await logger?.logBarcode() } },
-                    onSave: { logger?.openEditorToSaveProduct() },
-                    onClose: {
-                        logger?.product = nil
-                        logger?.mode = .type
-                    }
-                )
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
             }
             .sheet(item: catalogBinding) { pick in
                 CatalogFoodSheet(
