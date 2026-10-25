@@ -67,4 +67,48 @@ final class BarcodeScanTests: XCTestCase {
         XCTAssertEqual(vm.mode, .type)
         XCTAssertNil(vm.product)
     }
+
+    private static var labelPhoto: Data {
+        UIGraphicsImageRenderer(size: CGSize(width: 40, height: 40)).pngData { ctx in
+            UIColor.white.setFill()
+            ctx.fill(CGRect(x: 0, y: 0, width: 40, height: 40))
+        }
+    }
+
+    func testLabelPhotoFillsAMissAndOpensTheProduct() async {
+        let requests = LockedBox<[String]>([])
+        StubURLProtocol.handler = { request in
+            let path = request.url?.path ?? ""
+            requests.set(requests.get() + ["\(request.httpMethod ?? "") \(path)"])
+            if path.hasSuffix("/label") { return (200, ["Content-Type": "application/json"], Self.yogurt) }
+            return (404, ["Content-Type": "application/json"], Data("{}".utf8))
+        }
+        let vm = makeVM()
+        vm.openScanner()
+        await vm.handleScannedCode("7290000000001")
+        XCTAssertEqual(vm.scanStatus, .notFound)
+
+        await vm.readLabel(Self.labelPhoto)
+
+        XCTAssertEqual(requests.get().last, "POST /api/foods/barcode/7290000000001/label")
+        XCTAssertFalse(vm.showScanner)
+        vm.scannerDismissed()
+        XCTAssertEqual(vm.product?.food.name, "Greek yogurt")
+    }
+
+    func testUnreadableLabelStaysOnTheScanner() async {
+        StubURLProtocol.handler = { request in
+            let status = (request.url?.path ?? "").hasSuffix("/label") ? 422 : 404
+            return (status, ["Content-Type": "application/json"], Data("{}".utf8))
+        }
+        let vm = makeVM()
+        vm.openScanner()
+        await vm.handleScannedCode("7290000000001")
+
+        await vm.readLabel(Self.labelPhoto)
+
+        XCTAssertTrue(vm.showScanner)
+        guard case .failed = vm.scanStatus else { return XCTFail("expected a failed status, got \(vm.scanStatus)") }
+        XCTAssertNil(vm.product)
+    }
 }

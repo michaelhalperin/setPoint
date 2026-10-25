@@ -1,10 +1,11 @@
 import AVFoundation
+import PhotosUI
 import SwiftUI
 import VisionKit
 
 /// Full-bleed barcode scanner with a frame to aim at. It stays up while the code
-/// is looked up, and a miss is answered here (scan again / type it) rather than
-/// by closing. Falls back to a dark empty state when VisionKit cannot run
+/// is looked up, and a miss is answered here — photograph the label (which adds
+/// the product for next time), scan again, or type it — rather than by closing. Falls back to a dark empty state when VisionKit cannot run
 /// (simulator, no camera) and explains when camera access is off.
 struct BarcodeScannerView: View {
     var status: LogMealViewModel.ScanStatus
@@ -13,10 +14,14 @@ struct BarcodeScannerView: View {
     var onCode: (String) -> Void
     var onRescan: () -> Void
     var onType: () -> Void
+    var onLabelPhoto: (Data) -> Void
     var onCancel: () -> Void
 
     @Environment(\.openURL) private var openURL
     @State private var camera: AVAuthorizationStatus = AVCaptureDevice.authorizationStatus(for: .video)
+    @State private var showLabelCamera = false
+    @State private var showLabelLibrary = false
+    @State private var labelPickerItem: PhotosPickerItem?
 
     private static let frameSize = CGSize(width: 300, height: 180)
 
@@ -75,6 +80,32 @@ struct BarcodeScannerView: View {
             _ = await AVCaptureDevice.requestAccess(for: .video)
             camera = AVCaptureDevice.authorizationStatus(for: .video)
         }
+        .fullScreenCover(isPresented: $showLabelCamera) {
+            CameraCapture(
+                onPhoto: { data in
+                    showLabelCamera = false
+                    onLabelPhoto(data)
+                },
+                onCancel: { showLabelCamera = false }
+            )
+            .ignoresSafeArea()
+        }
+        .photosPicker(isPresented: $showLabelLibrary, selection: $labelPickerItem, matching: .images)
+        .onChange(of: labelPickerItem) { _, item in
+            guard let item else { return }
+            Task {
+                if let data = try? await item.loadTransferable(type: Data.self) { onLabelPhoto(data) }
+                labelPickerItem = nil
+            }
+        }
+    }
+
+    private func photographLabel() {
+        if CameraCapture.isAvailable {
+            showLabelCamera = true
+        } else {
+            showLabelLibrary = true
+        }
     }
 
     /// Dimmed surround with a clear window, corner marks, and the hint/status below.
@@ -126,39 +157,48 @@ struct BarcodeScannerView: View {
                 .foregroundStyle(Palette.lockScreenText.opacity(0.7))
                 .multilineTextAlignment(.center)
         case .lookingUp:
-            HStack(spacing: 10) {
-                ProgressView().tint(Palette.lockScreenText)
-                Text("Looking it up…")
-                    .font(Typography.data(14, weight: .medium))
-                    .foregroundStyle(Palette.lockScreenText)
-            }
-            .padding(.horizontal, 18)
-            .frame(height: 44)
-            .background(.black.opacity(0.45), in: Capsule())
+            busyPill("Looking it up…")
+        case .readingLabel:
+            busyPill("Reading the label…")
         case .notFound:
             missPanel(
-                title: "Not in the food database",
-                detail: L10n("Some products aren’t listed yet. Type what it is and I’ll work it out.")
+                title: "Not in the food database yet",
+                detail: L10n("Snap the nutrition label and I’ll add it — next time it scans instantly.")
             )
         case let .failed(message):
-            missPanel(title: "Couldn't look that up", detail: message)
+            missPanel(title: nil, detail: message)
         }
     }
 
-    private func missPanel(title: LocalizedStringKey, detail: String) -> some View {
+    private func busyPill(_ text: LocalizedStringKey) -> some View {
+        HStack(spacing: 10) {
+            ProgressView().tint(Palette.lockScreenText)
+            Text(text)
+                .font(Typography.data(14, weight: .medium))
+                .foregroundStyle(Palette.lockScreenText)
+        }
+        .padding(.horizontal, 18)
+        .frame(height: 44)
+        .background(.black.opacity(0.45), in: Capsule())
+    }
+
+    private func missPanel(title: LocalizedStringKey?, detail: String) -> some View {
         VStack(spacing: Space.sm) {
             VStack(spacing: 4) {
-                Text(title)
-                    .font(Typography.data(16, weight: .semibold))
-                    .foregroundStyle(Palette.ink)
+                if let title {
+                    Text(title)
+                        .font(Typography.data(16, weight: .semibold))
+                        .foregroundStyle(Palette.ink)
+                }
                 Text(detail)
-                    .font(Typography.data(13))
-                    .foregroundStyle(Palette.inkSoft)
+                    .font(title == nil ? Typography.data(15, weight: .medium) : Typography.data(13))
+                    .foregroundStyle(title == nil ? Palette.ink : Palette.inkSoft)
                     .multilineTextAlignment(.center)
             }
+            PillButton(title: L10n("Photograph the label"), action: photographLabel)
             HStack(spacing: 10) {
                 PillButton(title: L10n("Scan again"), kind: .secondary, action: onRescan)
-                PillButton(title: L10n("Type it instead"), action: onType)
+                PillButton(title: L10n("Type it instead"), kind: .secondary, action: onType)
             }
         }
         .padding(Space.md)

@@ -10,3 +10,5 @@ export const MEAL_PARSE_MODEL = 'claude-haiku-4-5';
 export const MANAGER_VOICE_MODEL = 'claude-sonnet-5';
 export const EXPERT_NUTRITION_MODEL = 'claude-sonnet-5-5';
 export const EXPERT_VALIDATOR_MODEL = 'claude-haiku-5-5';
+/** Reading a photographed nutrition label into per-100 g values for the barcode cache. */
+export const LABEL_READ_MODEL = 'claude-haiku-5-5';

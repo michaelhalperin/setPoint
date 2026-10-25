@@ -183,6 +183,7 @@ struct HomeContent: View {
                 },
                 onRescan: { logger?.rescan() },
                 onType: { logger?.typeInsteadOfScanning() },
+                onLabelPhoto: { data in Task { await logger?.readLabel(data) } },
                 onCancel: {
                     logger?.showScanner = false
                     logger?.mode = .type

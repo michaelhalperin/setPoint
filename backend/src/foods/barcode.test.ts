@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  barcodeVariants,
+  expandUpcE,
   lookupBarcode,
   macrosForServings,
   normalizeBarcode,
@@ -78,6 +80,36 @@ describe('parseOffProduct', () => {
       NOW,
     );
     expect(parsed?.kcal100g).toBe(400);
+  });
+});
+
+describe('barcode forms', () => {
+  it('expands UPC-E and pairs UPC-A with its EAN-13', () => {
+    expect(expandUpcE('04252614')).toBe('042100005264');
+    expect(barcodeVariants('04252614')).toEqual(['04252614', '042100005264', '0042100005264']);
+    expect(barcodeVariants('016000275287')).toEqual(['016000275287', '0016000275287']);
+    expect(barcodeVariants('0016000275287')).toEqual(['0016000275287', '016000275287']);
+    expect(barcodeVariants('7290000066318')).toEqual(['7290000066318']);
+  });
+});
+
+describe('parseOffProduct leniency', () => {
+  it('uses a local-language name when there is no main name', () => {
+    const parsed = parseOffProduct(
+      '7290000066318',
+      { status: 1, product: { product_name: '', product_name_he: 'במבה', nutriments: { 'energy-kcal_100g': 535 } } as never },
+      NOW,
+    );
+    expect(parsed?.name).toBe('במבה');
+  });
+
+  it('works out calories from macros when energy is missing', () => {
+    const parsed = parseOffProduct(
+      '1',
+      { status: 1, product: { product_name: 'Oats', nutriments: { proteins_100g: 13, carbohydrates_100g: 60, fat_100g: 7 } } },
+      NOW,
+    );
+    expect(parsed?.kcal100g).toBe(355);
   });
 });
 
@@ -161,5 +193,55 @@ describe('lookupBarcode', () => {
       '00000000',
     );
     expect(miss).toBeNull();
+  });
+
+  it('tries the EAN-13 form, then the fallback source, before calling it a miss', async () => {
+    const seen: string[] = [];
+    const fromEan = await lookupBarcode(
+      {
+        prisma: cachePrisma() as never,
+        fetchProduct: async (c) => {
+          seen.push(c);
+          return c === '0016000275287' ? offHit : { status: 0 };
+        },
+        now: NOW,
+      },
+      '016000275287',
+    );
+    expect(seen).toEqual(['016000275287', '0016000275287']);
+    expect(fromEan?.name).toBe('Greek yogurt');
+
+    const rows: Record<string, unknown>[] = [];
+    const fallback = vi.fn(async () => ({
+      name: 'Cheerios Cereal', brand: 'General Mills', servingG: 28,
+      kcal100g: 359, proteinG100g: 12.8, carbsG100g: 74.4, fatG100g: 6.4,
+    }));
+    const fromUsda = await lookupBarcode(
+      { prisma: cachePrisma(rows) as never, fetchProduct: async () => null, fetchFallback: fallback, now: NOW },
+      '016000275287',
+    );
+    expect(fallback).toHaveBeenCalledWith(['016000275287', '0016000275287']);
+    expect(fromUsda?.name).toBe('Cheerios Cereal');
+    expect(rows[0]?.code).toBe('016000275287');
+  });
+
+  it('still asks the fallback when Open Food Facts is down, and only errors if nothing answers', async () => {
+    const down = async () => {
+      throw new Error('Open Food Facts 503');
+    };
+    const rescued = await lookupBarcode(
+      {
+        prisma: cachePrisma() as never,
+        fetchProduct: down,
+        fetchFallback: async () => ({ name: 'Bar', brand: null, servingG: null, kcal100g: 400, proteinG100g: 20, carbsG100g: 40, fatG100g: 15 }),
+        now: NOW,
+      },
+      '7290000000001',
+    );
+    expect(rescued?.name).toBe('Bar');
+
+    await expect(
+      lookupBarcode({ prisma: cachePrisma() as never, fetchProduct: down, fetchFallback: async () => null, now: NOW }, '7290000000001'),
+    ).rejects.toThrow('503');
   });
 });

@@ -63,6 +63,9 @@ const schema = z.object({
   // App Store Connect — required to accept production (App Store) purchases.
   APP_BUNDLE_ID: z.string().default('com.michaelhalperin.setpointapp'),
   APPLE_APP_APPLE_ID: z.string().default(''),
+  // USDA FoodData Central — second barcode source. Free key at api.data.gov;
+  // without one the shared DEMO_KEY allows only a few lookups an hour.
+  FDC_API_KEY: z.string().default(''),
   // Order nearby: "true" adds made-up places around the user, for trying the screen.
   NEARBY_SAMPLE_VENUES: z.string().default(''),
   /** "true": new accounts need an invite code before they can use the app. */

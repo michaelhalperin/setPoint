@@ -46,6 +46,7 @@ struct LogAnywhere: ViewModifier {
                     },
                     onRescan: { logger?.rescan() },
                     onType: { logger?.typeInsteadOfScanning() },
+                    onLabelPhoto: { data in Task { await logger?.readLabel(data) } },
                     onCancel: {
                         logger?.showScanner = false
                         logger?.mode = .type

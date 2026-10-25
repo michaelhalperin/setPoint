@@ -11631,26 +11631,6 @@
         }
       }
     },
-    "Not in the food database": {
-      "localizations": {
-        "he": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "לא נמצא במאגר המזון"
-          }
-        }
-      }
-    },
-    "Some products aren’t listed yet. Type what it is and I’ll work it out.": {
-      "localizations": {
-        "he": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "חלק מהמוצרים עוד לא במאגר. כתוב מה זה ואני אחשב את השאר."
-          }
-        }
-      }
-    },
     "Couldn't look that up.": {
       "localizations": {
         "he": {
@@ -11661,22 +11641,72 @@
         }
       }
     },
-    "Couldn't look that up": {
-      "localizations": {
-        "he": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "לא הצלחתי לחפש את זה"
-          }
-        }
-      }
-    },
     "Scan again": {
       "localizations": {
         "he": {
           "stringUnit": {
             "state": "translated",
             "value": "סרוק שוב"
+          }
+        }
+      }
+    },
+    "Not in the food database yet": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "עוד לא במאגר המזון"
+          }
+        }
+      }
+    },
+    "Snap the nutrition label and I’ll add it — next time it scans instantly.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "צלם את הסימון התזונתי ואני אוסיף את המוצר — בפעם הבאה הוא ייסרק מיד."
+          }
+        }
+      }
+    },
+    "Photograph the label": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "צלם את הסימון התזונתי"
+          }
+        }
+      }
+    },
+    "Reading the label…": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "קורא את הסימון…"
+          }
+        }
+      }
+    },
+    "Couldn’t read that label. Get the numbers in focus and try again.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "לא הצלחתי לקרוא את הסימון. ודא שהמספרים חדים ונסה שוב."
+          }
+        }
+      }
+    },
+    "Couldn’t read that label.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "לא הצלחתי לקרוא את הסימון."
           }
         }
       }

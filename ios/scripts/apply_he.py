@@ -1285,11 +1285,14 @@ HE: dict[str, str] = {
     "Line up the barcode inside the frame": "מקם את הברקוד בתוך המסגרת",
     "It scans on its own — no button to press.": "הסריקה אוטומטית — אין צורך ללחוץ על כלום.",
     "Looking it up…": "מחפש…",
-    "Not in the food database": "לא נמצא במאגר המזון",
-    "Some products aren’t listed yet. Type what it is and I’ll work it out.": "חלק מהמוצרים עוד לא במאגר. כתוב מה זה ואני אחשב את השאר.",
     "Couldn't look that up.": "לא הצלחתי לחפש את זה.",
-    "Couldn't look that up": "לא הצלחתי לחפש את זה",
     "Scan again": "סרוק שוב",
+    "Not in the food database yet": "עוד לא במאגר המזון",
+    "Snap the nutrition label and I’ll add it — next time it scans instantly.": "צלם את הסימון התזונתי ואני אוסיף את המוצר — בפעם הבאה הוא ייסרק מיד.",
+    "Photograph the label": "צלם את הסימון התזונתי",
+    "Reading the label…": "קורא את הסימון…",
+    "Couldn’t read that label. Get the numbers in focus and try again.": "לא הצלחתי לקרוא את הסימון. ודא שהמספרים חדים ונסה שוב.",
+    "Couldn’t read that label.": "לא הצלחתי לקרוא את הסימון.",
 }
 
 
@@ -1455,11 +1458,14 @@ def apply() -> None:
         "Line up the barcode inside the frame",
         "It scans on its own — no button to press.",
         "Looking it up…",
-        "Not in the food database",
-        "Some products aren’t listed yet. Type what it is and I’ll work it out.",
         "Couldn't look that up.",
-        "Couldn't look that up",
         "Scan again",
+        "Not in the food database yet",
+        "Snap the nutrition label and I’ll add it — next time it scans instantly.",
+        "Photograph the label",
+        "Reading the label…",
+        "Couldn’t read that label. Get the numbers in focus and try again.",
+        "Couldn’t read that label.",
     ):
         strings.setdefault(extra, {})
     applied = 0

@@ -1112,6 +1112,11 @@ struct BarcodeFoodResponse: Decodable {
     let food: BarcodeFood
 }
 
+/// A photo of the pack's nutrition label for a barcode no database knows.
+struct BarcodeLabelRequest: Encodable {
+    let image: LogMealRequest.ImagePayload
+}
+
 struct CatalogFood: Decodable, Identifiable, Hashable {
     let id: String
     let fdcId: Int

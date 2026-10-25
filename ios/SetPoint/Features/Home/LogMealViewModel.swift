@@ -90,10 +90,14 @@ final class LogMealViewModel {
     /// Found while the scanner was up; becomes `product` in `scannerDismissed()`.
     private var scannedProduct: BarcodeProduct?
 
+    /// The code being looked up, kept so a label photo can be filed under it.
+    private var lastScannedCode: String?
+
     enum ScanStatus: Equatable {
         case scanning
         case lookingUp
         case notFound
+        case readingLabel
         case failed(String)
     }
     var catalogPick: CatalogPick?
@@ -467,6 +471,7 @@ final class LogMealViewModel {
     /// there with a way forward instead of the screen just closing.
     func handleScannedCode(_ code: String) async {
         guard scanStatus == .scanning else { return }
+        lastScannedCode = code
         scanStatus = .lookingUp
         do {
             let res: BarcodeFoodResponse = try await api.get("/api/foods/barcode/\(code)")
@@ -486,6 +491,34 @@ final class LogMealViewModel {
 
     func rescan() {
         scanStatus = .scanning
+    }
+
+    /// Reads the pack's nutrition label and files it under the scanned code, so
+    /// the next scan of this product — by anyone — finds it straight away.
+    func readLabel(_ data: Data) async {
+        guard let code = lastScannedCode, scanStatus != .readingLabel else { return }
+        guard let photo = MealPhoto.make(from: data) else {
+            scanStatus = .failed(L10n("Couldn’t read that label. Get the numbers in focus and try again."))
+            return
+        }
+        scanStatus = .readingLabel
+        do {
+            let res: BarcodeFoodResponse = try await api.post(
+                "/api/foods/barcode/\(code)/label",
+                BarcodeLabelRequest(image: .init(data: photo.base64, mediaType: photo.mediaType))
+            )
+            scannedProduct = BarcodeProduct(food: res.food, servings: 1)
+            actionError = nil
+            showScanner = false
+        } catch let error as APIError {
+            if case let .http(status, _) = error, status == 422 {
+                scanStatus = .failed(L10n("Couldn’t read that label. Get the numbers in focus and try again."))
+            } else {
+                scanStatus = .failed(UserFacingError.message(for: error, fallback: L10n("Couldn’t read that label.")))
+            }
+        } catch {
+            scanStatus = .failed(UserFacingError.message(for: error, fallback: L10n("Couldn’t read that label.")))
+        }
     }
 
     func typeInsteadOfScanning() {
