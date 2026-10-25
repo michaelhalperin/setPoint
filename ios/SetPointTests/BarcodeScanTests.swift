@@ -1,0 +1,70 @@
+import XCTest
+@testable import SetPoint
+
+/// The scanner stays up through the lookup: a miss is answered on the scanner,
+/// and a hit only becomes the product sheet once the scanner has closed.
+@MainActor
+final class BarcodeScanTests: XCTestCase {
+    override func tearDown() {
+        StubURLProtocol.handler = nil
+        super.tearDown()
+    }
+
+    private func makeVM() -> LogMealViewModel {
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [StubURLProtocol.self]
+        let api = APIClient(
+            baseURL: URL(string: "https://api.test")!,
+            session: URLSession(configuration: config),
+            tokenProvider: { "token" }
+        )
+        return LogMealViewModel(api: api)
+    }
+
+    private static let yogurt = Data("""
+    {"food":{"code":"7290000000001","name":"Greek yogurt","brand":"Tara","servingG":150,
+    "kcal100g":97,"proteinG100g":9,"carbsG100g":4,"fatG100g":5,"fetchedAt":"2026-10-25T00:00:00.000Z"}}
+    """.utf8)
+
+    func testUnknownCodeKeepsScannerOpenWithAWayForward() async {
+        StubURLProtocol.handler = { _ in (404, ["Content-Type": "application/json"], Data("{}".utf8)) }
+        let vm = makeVM()
+        vm.openScanner()
+
+        await vm.handleScannedCode("0000000000000")
+
+        XCTAssertTrue(vm.showScanner)
+        XCTAssertEqual(vm.scanStatus, .notFound)
+        XCTAssertNil(vm.product)
+
+        vm.rescan()
+        XCTAssertEqual(vm.scanStatus, .scanning)
+    }
+
+    func testFoundProductOpensOnlyAfterScannerCloses() async {
+        StubURLProtocol.handler = { _ in (200, ["Content-Type": "application/json"], Self.yogurt) }
+        let vm = makeVM()
+        vm.openScanner()
+
+        await vm.handleScannedCode("7290000000001")
+
+        XCTAssertFalse(vm.showScanner)
+        XCTAssertNil(vm.product, "a sheet asked for while the scanner is still closing never appears")
+
+        vm.scannerDismissed()
+        XCTAssertEqual(vm.product?.food.name, "Greek yogurt")
+        XCTAssertEqual(vm.scanStatus, .scanning)
+    }
+
+    func testTypeInsteadClosesScannerIntoTyping() {
+        let vm = makeVM()
+        vm.openScanner()
+
+        vm.typeInsteadOfScanning()
+        vm.scannerDismissed()
+
+        XCTAssertFalse(vm.showScanner)
+        XCTAssertEqual(vm.mode, .type)
+        XCTAssertNil(vm.product)
+    }
+}

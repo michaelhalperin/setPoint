@@ -38,11 +38,14 @@ struct LogAnywhere: ViewModifier {
                     .animation(Motion.adaptive(Motion.sheet, reduceMotion: reduceMotion), value: open)
                     .animation(Motion.adaptive(Motion.morph, reduceMotion: reduceMotion), value: logger?.confirmingPhoto == true)
             }
-            .fullScreenCover(isPresented: scannerPresented) {
+            .fullScreenCover(isPresented: scannerPresented, onDismiss: { logger?.scannerDismissed() }) {
                 BarcodeScannerView(
+                    status: logger?.scanStatus ?? .scanning,
                     onCode: { code in
                         Task { await logger?.handleScannedCode(code) }
                     },
+                    onRescan: { logger?.rescan() },
+                    onType: { logger?.typeInsteadOfScanning() },
                     onCancel: {
                         logger?.showScanner = false
                         logger?.mode = .type

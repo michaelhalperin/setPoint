@@ -83,8 +83,19 @@ final class LogMealViewModel {
     }
     var mode: Mode = .type
     var showScanner = false
+    var scanStatus: ScanStatus = .scanning
     var showPhotoPicker = false
+    var showCamera = false
     var product: BarcodeProduct?
+    /// Found while the scanner was up; becomes `product` in `scannerDismissed()`.
+    private var scannedProduct: BarcodeProduct?
+
+    enum ScanStatus: Equatable {
+        case scanning
+        case lookingUp
+        case notFound
+        case failed(String)
+    }
     var catalogPick: CatalogPick?
     var catalogHits: [CatalogFood] = []
     var editor: SavedMealDraft?
@@ -448,27 +459,65 @@ final class LogMealViewModel {
 
     func openScanner() {
         mode = .scan
+        scanStatus = .scanning
         showScanner = true
     }
 
+    /// The scanner stays up while the code is looked up, so a miss can be shown
+    /// there with a way forward instead of the screen just closing.
     func handleScannedCode(_ code: String) async {
-        showScanner = false
+        guard scanStatus == .scanning else { return }
+        scanStatus = .lookingUp
         do {
             let res: BarcodeFoodResponse = try await api.get("/api/foods/barcode/\(code)")
-            product = BarcodeProduct(food: res.food, servings: 1)
+            scannedProduct = BarcodeProduct(food: res.food, servings: 1)
             actionError = nil
+            showScanner = false
         } catch let error as APIError {
             if case let .http(status, _) = error, status == 404 {
-                mode = .type
-                actionError = "Not in the database. Type it instead."
+                scanStatus = .notFound
             } else {
-                actionError = UserFacingError.message(for: error, fallback: L10n( "Couldn't look that up. Type it instead."))
-                mode = .type
+                scanStatus = .failed(UserFacingError.message(for: error, fallback: L10n( "Couldn't look that up.")))
             }
         } catch {
-            actionError = UserFacingError.message(for: error, fallback: L10n( "Couldn't look that up. Type it instead."))
+            scanStatus = .failed(UserFacingError.message(for: error, fallback: L10n( "Couldn't look that up.")))
+        }
+    }
+
+    func rescan() {
+        scanStatus = .scanning
+    }
+
+    func typeInsteadOfScanning() {
+        showScanner = false
+        mode = .type
+    }
+
+    /// Runs once the full-screen scanner has finished closing — a sheet asked for
+    /// while it is still animating away never appears.
+    func scannerDismissed() {
+        scanStatus = .scanning
+        if let scannedProduct {
+            product = scannedProduct
+            self.scannedProduct = nil
+        } else if mode == .scan {
             mode = .type
         }
+    }
+
+    /// Camera when the device has one, the library otherwise (simulator).
+    func openCamera() {
+        mode = .photo
+        if CameraCapture.isAvailable {
+            showCamera = true
+        } else {
+            showPhotoPicker = true
+        }
+    }
+
+    func openPhotoLibrary() {
+        mode = .photo
+        showPhotoPicker = true
     }
 
     func logBarcode() async {

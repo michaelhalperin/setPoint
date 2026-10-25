@@ -534,10 +534,12 @@ struct LogDock: View {
 
     private var modeTiles: some View {
         HStack(spacing: 10) {
-            tile("Photo", "camera") {
-                logger.mode = .photo
-                logger.showPhotoPicker = true
+            Menu {
+                PhotoSourceButtons(model: logger)
+            } label: {
+                tileLabel("Photo", "camera")
             }
+            .disabled(logger.phase == .parsing)
             tile("Barcode", "barcode.viewfinder") {
                 focused.wrappedValue = false
                 logger.mode = .scan
@@ -556,24 +558,28 @@ struct LogDock: View {
         _ title: String, _ symbol: String, lit: Bool = false, action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            HStack(spacing: 8) {
-                Image(systemName: symbol)
-                    .font(.system(size: 16, weight: .regular))
-                    .foregroundStyle(lit ? Palette.hazeSoft : Palette.ink)
-                Text(LocalizedStringKey(title))
-                    .font(Typography.data(14, weight: .regular))
-                    .lineLimit(1)
-                Spacer(minLength: 0)
-            }
-            .foregroundStyle(Palette.ink)
-            .padding(.horizontal, 12)
-            .frame(height: 48)
-            .glass(
-                radius: 16, fill: lit ? Palette.haze.opacity(0.10) : Palette.glass,
-                stroke: lit ? Palette.haze.opacity(0.5) : Palette.hairline)
+            tileLabel(title, symbol, lit: lit)
         }
         .buttonStyle(PressableCard())
         .disabled(logger.phase == .parsing)
+    }
+
+    private func tileLabel(_ title: String, _ symbol: String, lit: Bool = false) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: symbol)
+                .font(.system(size: 16, weight: .regular))
+                .foregroundStyle(lit ? Palette.hazeSoft : Palette.ink)
+            Text(LocalizedStringKey(title))
+                .font(Typography.data(14, weight: .regular))
+                .lineLimit(1)
+            Spacer(minLength: 0)
+        }
+        .foregroundStyle(Palette.ink)
+        .padding(.horizontal, 12)
+        .frame(height: 48)
+        .glass(
+            radius: 16, fill: lit ? Palette.haze.opacity(0.10) : Palette.glass,
+            stroke: lit ? Palette.haze.opacity(0.5) : Palette.hairline)
     }
 
     /// The two most recently used saved plates, then recents — full list is on You.

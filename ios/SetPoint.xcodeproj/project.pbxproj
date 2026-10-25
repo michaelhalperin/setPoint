@@ -75,6 +75,7 @@
 		6D9DD0557112AE6BC94F23B8 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFAFAB70735B9ADE9DCADFA8 /* MainTabView.swift */; };
 		6E7BC8BC19FD5B1D1DFA1F7E /* TodayTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69CD7B5DF412B5A16F78BDDE /* TodayTests.swift */; };
 		6EAD91C1AD796B9C265398D6 /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = B57AC17EF1067B3CA5D592DB /* InfoPlist.xcstrings */; };
+		6FDBDE499948720370F8CE58 /* BarcodeScanTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08F9D7EC02855CD0E2E2B18D /* BarcodeScanTests.swift */; };
 		7208B8BA780CC1686F09C978 /* HealthyWeightTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 164B6BA9F86C99092FEC618E /* HealthyWeightTests.swift */; };
 		7561CB75F82F5F0BACE5B54B /* DTOs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A5329FB3FC5CBA4889FD372 /* DTOs.swift */; };
 		7642392CAF4029FD00B8F1E3 /* TodayWidgetViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99EDC533BAB8E6329BDB5A96 /* TodayWidgetViews.swift */; };
@@ -119,6 +120,7 @@
 		B34F74442FE761C505CF1E1F /* SignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D05051B152A3F34D639B5E9 /* SignInView.swift */; };
 		B34F7F3928C138D83B538026 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAD1C0245E5FF739BB28DB58 /* SettingsView.swift */; };
 		B4B0ADB19420BAAB4941E580 /* HealthKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D30AE53D7C45CA2C47D23C96 /* HealthKit.framework */; };
+		BA80B6788070F78FDFCE68E4 /* CameraCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79DD2C658BA9E528857CE849 /* CameraCapture.swift */; };
 		BBDBB810DCF5117BF7DA355C /* HealthDataSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC0C1818DA4EAB84F0FD8EB3 /* HealthDataSource.swift */; };
 		BBE8017B8523475AEC566B26 /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD9BC7612AD72C12B458596D /* WelcomeView.swift */; };
 		BC1B045B45916AAAC4921489 /* SavedMealEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00492385276DCD4BF736B46F /* SavedMealEditorView.swift */; };
@@ -204,6 +206,7 @@
 		0502A37CD529AFC3FD7679CE /* AppetiteTodayLine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppetiteTodayLine.swift; sourceTree = "<group>"; };
 		05C15A4F8ED895D36CC26A74 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		070A464A92701140C31CB05B /* MealFixView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealFixView.swift; sourceTree = "<group>"; };
+		08F9D7EC02855CD0E2E2B18D /* BarcodeScanTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BarcodeScanTests.swift; sourceTree = "<group>"; };
 		0A5329FB3FC5CBA4889FD372 /* DTOs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DTOs.swift; sourceTree = "<group>"; };
 		0D059857EA5ACFC913EC5A43 /* OnboardingFlow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingFlow.swift; sourceTree = "<group>"; };
 		0EFB517EFB36132E4ED9E74E /* HomeViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeViewModel.swift; sourceTree = "<group>"; };
@@ -271,6 +274,7 @@
 		75E6AAF6106EF78152D6BCB7 /* OnboardingSteps.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingSteps.swift; sourceTree = "<group>"; };
 		77CC24E27F4C73628B9222FB /* AppEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppEnvironment.swift; sourceTree = "<group>"; };
 		7936684A077EC94FC463DA02 /* OnboardingComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingComponents.swift; sourceTree = "<group>"; };
+		79DD2C658BA9E528857CE849 /* CameraCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraCapture.swift; sourceTree = "<group>"; };
 		7A26D061E064C6A231772624 /* AppIntents.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppIntents.framework; path = System/Library/Frameworks/AppIntents.framework; sourceTree = SDKROOT; };
 		7DC3BBFB79553307E1CA912B /* AccountLocalState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountLocalState.swift; sourceTree = "<group>"; };
 		810A93EE79A7E473253E6BF2 /* SettingsScreensTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsScreensTests.swift; sourceTree = "<group>"; };
@@ -457,6 +461,7 @@
 			isa = PBXGroup;
 			children = (
 				229F87D031BDD792B3C98A80 /* APIClientTests.swift */,
+				08F9D7EC02855CD0E2E2B18D /* BarcodeScanTests.swift */,
 				1445D836A22672FF8571409D /* BiosignalStatsTests.swift */,
 				2CE425D9949F2C629FC21ADB /* CalendarBusyTests.swift */,
 				308193DF41DAF6B5772A35C3 /* CalendarWeekTests.swift */,
@@ -516,6 +521,7 @@
 			isa = PBXGroup;
 			children = (
 				3BB436B32C601D78062589D6 /* BarcodeLogViews.swift */,
+				79DD2C658BA9E528857CE849 /* CameraCapture.swift */,
 				CA25A32CB6EE0D5D7341FC74 /* HomePreview.swift */,
 				4C8DCB1E7E97ED4A55B7FEAE /* HomeScreen.swift */,
 				0EFB517EFB36132E4ED9E74E /* HomeViewModel.swift */,
@@ -966,6 +972,7 @@
 				BE4C27C2C7F0CE90DC3658C3 /* CalendarScreens.swift in Sources */,
 				CAC007323963F4E1B4BF8A57 /* CalendarWeekScreen.swift in Sources */,
 				198D153E32ACA71B15E35F43 /* CalendarsScreen.swift in Sources */,
+				BA80B6788070F78FDFCE68E4 /* CameraCapture.swift in Sources */,
 				46B7AC3FE3A277CDA5D42897 /* CheckInActivityAttributes.swift in Sources */,
 				248F71AF6CBF269F32B6F2DC /* Components.swift in Sources */,
 				A9CF52A7862CFCC5B4349050 /* ConversationView.swift in Sources */,
@@ -1073,6 +1080,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				4F70AD6F8F35DF388CEABDEE /* APIClientTests.swift in Sources */,
+				6FDBDE499948720370F8CE58 /* BarcodeScanTests.swift in Sources */,
 				90EC59D1929AB926863E3FEA /* BiosignalStatsTests.swift in Sources */,
 				61C31B28C3ED19D2068E2977 /* CalendarBusyTests.swift in Sources */,
 				AEC8846A443F5CDAD79C203A /* CalendarWeekTests.swift in Sources */,
@@ -1172,7 +1180,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = "$(SETPOINT_TEAM_ID)";
 				ENABLE_NS_ASSERTIONS = NO;
@@ -1254,7 +1262,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = "$(SETPOINT_TEAM_ID)";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;

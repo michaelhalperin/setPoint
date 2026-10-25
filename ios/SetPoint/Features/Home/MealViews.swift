@@ -92,6 +92,18 @@ struct SearchComposer: View {
             }
         }
         .photosPicker(isPresented: $model.showPhotoPicker, selection: $pickerItem, matching: .images)
+        .fullScreenCover(isPresented: $model.showCamera) {
+            CameraCapture(
+                onPhoto: { data in
+                    model.attach(data)
+                    model.mode = .type
+                    model.showCamera = false
+                    focused.wrappedValue = true
+                },
+                onCancel: { model.showCamera = false }
+            )
+            .ignoresSafeArea()
+        }
     }
 
     private func photoChip(_ photo: MealPhoto) -> some View {
@@ -123,7 +135,9 @@ struct SearchComposer: View {
     }
 
     private var cameraButton: some View {
-        PhotosPicker(selection: $pickerItem, matching: .images, photoLibrary: .shared()) {
+        Menu {
+            PhotoSourceButtons(model: model)
+        } label: {
             Image(systemName: "camera")
                 .font(.system(size: 17, weight: .regular))
                 .foregroundStyle(Palette.ink)

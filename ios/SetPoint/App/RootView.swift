@@ -77,6 +77,7 @@ enum DebugPreviewStub {
     case logMeal(LogMealStubState)
     case savedMeal
     case fixMeal
+    case scanner(LogMealViewModel.ScanStatus)
     case snooze
     case settings
     case settingsGoal
@@ -148,6 +149,8 @@ enum DebugPreviewStub {
             LogMealStubHost(state: state)
         case .fixMeal:
             FixMealStubHost()
+        case let .scanner(status):
+            BarcodeScannerView(status: status, previewAiming: true, onCode: { _ in }, onRescan: {}, onType: {}, onCancel: {})
         case .snooze:
             ZStack(alignment: .bottom) {
                 PrescriptionStubHost()
@@ -301,6 +304,9 @@ enum DebugPreviewStub {
         case "log-meal-result": return .logMeal(.result)
         case "log-quick": return .logMeal(.quick)
         case "log-scan": return .logMeal(.scan)
+        case "scanner": return .scanner(.scanning)
+        case "scanner-looking": return .scanner(.lookingUp)
+        case "scanner-miss": return .scanner(.notFound)
         case "log-typing": return .logMeal(.typing)
         case "log-working": return .logMeal(.working)
         case "log-offline": return .logMeal(.offline)

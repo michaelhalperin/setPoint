@@ -1277,6 +1277,19 @@ HE: dict[str, str] = {
     "P": "ח",
     "C": "פ",
     "F": "ש",
+    "Take photo": "צלם תמונה",
+    "Choose from library": "בחר מהגלריה",
+    "Camera access is off": "הגישה למצלמה כבויה",
+    "Turn on Camera for SetPoint in Settings to scan barcodes.": "הפעל את המצלמה עבור SetPoint בהגדרות כדי לסרוק ברקודים.",
+    "Type it instead": "הקלד במקום",
+    "Line up the barcode inside the frame": "מקם את הברקוד בתוך המסגרת",
+    "It scans on its own — no button to press.": "הסריקה אוטומטית — אין צורך ללחוץ על כלום.",
+    "Looking it up…": "מחפש…",
+    "Not in the food database": "לא נמצא במאגר המזון",
+    "Some products aren’t listed yet. Type what it is and I’ll work it out.": "חלק מהמוצרים עוד לא במאגר. כתוב מה זה ואני אחשב את השאר.",
+    "Couldn't look that up.": "לא הצלחתי לחפש את זה.",
+    "Couldn't look that up": "לא הצלחתי לחפש את זה",
+    "Scan again": "סרוק שוב",
 }
 
 
@@ -1434,6 +1447,19 @@ def apply() -> None:
         "Ask about today’s food…", "Ask the nutrition assistant",
         "This is paused.",
         "Too many requests right now. Try again in a bit.",
+        "Take photo",
+        "Choose from library",
+        "Camera access is off",
+        "Turn on Camera for SetPoint in Settings to scan barcodes.",
+        "Type it instead",
+        "Line up the barcode inside the frame",
+        "It scans on its own — no button to press.",
+        "Looking it up…",
+        "Not in the food database",
+        "Some products aren’t listed yet. Type what it is and I’ll work it out.",
+        "Couldn't look that up.",
+        "Couldn't look that up",
+        "Scan again",
     ):
         strings.setdefault(extra, {})
     applied = 0

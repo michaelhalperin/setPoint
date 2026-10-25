@@ -175,11 +175,14 @@ struct HomeContent: View {
                 onFixed: { Task { await model.load(showSpinner: false) } }
             )
         }
-        .fullScreenCover(isPresented: scannerPresented) {
+        .fullScreenCover(isPresented: scannerPresented, onDismiss: { logger?.scannerDismissed() }) {
             BarcodeScannerView(
+                status: logger?.scanStatus ?? .scanning,
                 onCode: { code in
                     Task { await logger?.handleScannedCode(code) }
                 },
+                onRescan: { logger?.rescan() },
+                onType: { logger?.typeInsteadOfScanning() },
                 onCancel: {
                     logger?.showScanner = false
                     logger?.mode = .type
@@ -297,8 +300,7 @@ struct HomeContent: View {
             guard pending else { return }
             env.changes.pendingLogPhoto = false
             openLog()
-            logger?.mode = .photo
-            logger?.showPhotoPicker = true
+            logger?.openCamera()
         }
         .onChange(of: scenePhase) { _, phase in
             guard phase == .active, isLoaded else { return }
