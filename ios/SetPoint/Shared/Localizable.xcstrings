@@ -11840,6 +11840,126 @@
           }
         }
       }
+    },
+    "Discard this meal?": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "למחוק את הארוחה הזו?"
+          }
+        }
+      }
+    },
+    "Discard meal": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מחק ארוחה"
+          }
+        }
+      }
+    },
+    "It comes off today’s total.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "היא תרד מהסך של היום."
+          }
+        }
+      }
+    },
+    "Delete this meal?": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "למחוק את הארוחה הזו?"
+          }
+        }
+      }
+    },
+    "Delete meal": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מחק ארוחה"
+          }
+        }
+      }
+    },
+    "%lld kcal comes off today’s total.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld קלוריות ירדו מהסך של היום."
+          }
+        }
+      }
+    },
+    "%lld%% of today": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld%% מהיום"
+          }
+        }
+      }
+    },
+    "What’s in it": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מה יש בה"
+          }
+        }
+      }
+    },
+    "Not right? Fix it": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "לא מדויק? תקן"
+          }
+        }
+      }
+    },
+    "Log it again · %lld": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "רשום שוב · %lld"
+          }
+        }
+      }
+    },
+    "%lld%% of kcal": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld%% מהקלוריות"
+          }
+        }
+      }
+    },
+    "Discard this meal": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מחק את הארוחה הזו"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

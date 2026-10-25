@@ -328,6 +328,7 @@ struct PhotoParseConfirm: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var editing = false
+    @State private var confirmingDiscard = false
 
     private var logged: LogMealViewModel.Logged? {
         if case let .logged(value) = model.phase { return value }
@@ -364,6 +365,17 @@ struct PhotoParseConfirm: View {
         }
         .toolbar(.hidden, for: .tabBar)
         .animation(Motion.adaptive(Motion.morph, reduceMotion: reduceMotion), value: parsing)
+        .overlay(alignment: .topLeading) {
+            if !editing { closeButton }
+        }
+        .confirmationDialog("Discard this meal?", isPresented: $confirmingDiscard, titleVisibility: .visible) {
+            Button("Discard meal", role: .destructive) {
+                Task { await model.discardPhotoLog() }
+            }
+            Button("Keep it", role: .cancel) {}
+        } message: {
+            Text("It comes off today’s total.")
+        }
         .overlay {
             if editing, let logged {
                 MealCorrectionEditor(
@@ -387,6 +399,28 @@ struct PhotoParseConfirm: View {
         }
         .animation(Motion.adaptive(Motion.sheet, reduceMotion: reduceMotion), value: editing)
         .onAppear { if startEditing { editing = true } }
+    }
+
+    /// Out of the screen at any point: while reading it cancels (and drops the
+    /// meal if it lands anyway); once read it asks before removing the log.
+    private var closeButton: some View {
+        Button {
+            if parsing {
+                model.cancelPhotoLog()
+            } else {
+                confirmingDiscard = true
+            }
+        } label: {
+            Image(systemName: "xmark")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(Palette.lockScreenText)
+                .frame(width: 40, height: 40)
+                .background(.black.opacity(0.4), in: Circle())
+        }
+        .padding(.horizontal, Space.gutter)
+        .padding(.top, Space.xs)
+        .disabled(model.removing)
+        .accessibilityLabel(parsing ? Text("Cancel") : Text("Discard this meal"))
     }
 
     // MARK: Photo

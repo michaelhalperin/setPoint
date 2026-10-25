@@ -191,6 +191,14 @@ struct MealDetailSheet: View {
     var onSaveAsMeal: (() -> Void)? = nil
     /// After a fix is saved, so the presenter can reload its list.
     var onFixed: (() -> Void)? = nil
+    /// Today's calorie target, for "x% of today". Nil off Today.
+    var dayKcalTarget: Int? = nil
+    /// Log the same plate again, now.
+    var onLogAgain: (() -> Void)? = nil
+    /// Save as my meal right here, over this sheet (instead of after it closes).
+    var onSaveDraft: ((SavedMealDraft) async -> Bool)? = nil
+    var editorSaving = false
+    var editorError: String? = nil
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -200,147 +208,95 @@ struct MealDetailSheet: View {
     /// The meal as shown — replaced by the corrected one after a fix.
     @State private var meal: MealSummary
     @State private var fixing = false
+    @State private var confirmingDelete = false
+    @State private var draft: SavedMealDraft?
+    @State private var saved = false
 
     init(
         meal: MealSummary,
         onRemove: (() async throws -> Void)? = nil,
         onSaveAsMeal: (() -> Void)? = nil,
-        onFixed: (() -> Void)? = nil
+        onFixed: (() -> Void)? = nil,
+        dayKcalTarget: Int? = nil,
+        onLogAgain: (() -> Void)? = nil,
+        onSaveDraft: ((SavedMealDraft) async -> Bool)? = nil,
+        editorSaving: Bool = false,
+        editorError: String? = nil
     ) {
         _meal = State(initialValue: meal)
         self.onRemove = onRemove
         self.onSaveAsMeal = onSaveAsMeal
         self.onFixed = onFixed
+        self.dayKcalTarget = dayKcalTarget
+        self.onLogAgain = onLogAgain
+        self.onSaveDraft = onSaveDraft
+        self.editorSaving = editorSaving
+        self.editorError = editorError
     }
 
     var body: some View {
         screenBody.trackScreen("meal_detail")
     }
 
+    private var canSave: Bool { onSaveDraft != nil || onSaveAsMeal != nil }
+
     @ViewBuilder
     private var screenBody: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
-                Text(L10n("Logged \(MealFormat.time(meal.loggedAt)) · \(meal.sourceLabel)"))
-                    .sectionLabelStyle()
-                    .frame(maxWidth: .infinity)
-                    .padding(.top, 8)
-
-                if let photo {
-                    Image(uiImage: photo)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 170)
-                        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-                        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Palette.hairline))
-                }
-
-                VStack(alignment: .leading, spacing: 6) {
-                    Headline(meal.title, size: 32)
-                    HStack(alignment: .firstTextBaseline, spacing: 6) {
-                        Text(meal.kcal.formatted())
-                            .font(.system(size: 52, weight: .light))
-                            .tracking(-2)
-                            .foregroundStyle(Palette.ink)
-                            .contentTransition(.numericText(value: Double(meal.kcal)))
-                        Text("kcal")
-                            .font(Typography.data(16, weight: .regular))
-                            .foregroundStyle(Palette.inkSoft)
-                        Spacer()
-                        if let confidence = meal.parseConfidence {
-                            Text(confidenceLine(confidence))
-                                .font(Typography.data(12, weight: .regular))
-                                .foregroundStyle(confidence >= 0.7 ? Palette.positive : Palette.amber)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 5)
-                                .background((confidence >= 0.7 ? Palette.positive : Palette.amber).opacity(0.12), in: Capsule())
-                        }
-                    }
-                }
-                .appearIn(0, rise: 14)
-
-                HStack(spacing: 8) {
-                    macroTile("Protein", meal.proteinG)
-                    macroTile("Carbs", meal.carbsG)
-                    macroTile("Fat", meal.fatG)
-                }
-                .appearIn(1, rise: 14)
-
-                let items = meal.items ?? []
-                if !items.isEmpty {
-                    GlassList {
-                        ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
-                            if index > 0 { ListDivider() }
-                            HStack(alignment: .firstTextBaseline) {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(item.name)
-                                        .font(Typography.data(15, weight: .regular))
-                                        .foregroundStyle(Palette.ink)
-                                    if !item.quantity.isEmpty {
-                                        Text(item.quantity)
-                                            .font(Typography.data(12, weight: .regular))
-                                            .foregroundStyle(Palette.inkFaint)
-                                    }
-                                }
-                                Spacer(minLength: 8)
-                                Text("\(item.kcal)")
-                                    .font(Typography.mono(13))
-                                    .foregroundStyle(Palette.inkSoft)
-                            }
-                            .padding(.vertical, 12)
-                        }
-                    }
-                    .appearIn(2, rise: 14)
-                }
-
-                if let notes = meal.notes, !notes.isEmpty {
-                    Text(notes)
-                        .font(Typography.data(13, weight: .regular))
-                        .foregroundStyle(Palette.inkFaint)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                VStack(spacing: 4) {
-                    HStack(spacing: 10) {
-                        ActionButton(title: "Fix", kind: .secondary) { fixing = true }
-                            .disabled(removing)
-                        if onSaveAsMeal != nil {
-                            ActionButton(title: "Save as my meal", kind: .secondary) { onSaveAsMeal?() }
-                        }
-                    }
-                    if onRemove != nil {
-                        Button(action: beginRemoval) {
-                            HStack(spacing: 8) {
-                                if removing { BusyDots(tint: Palette.danger) }
-                                Text(removing ? "Removing · updating totals" : "Delete this meal")
-                            }
-                            .font(Typography.data(14, weight: .regular))
-                            .foregroundStyle(Palette.danger)
-                            .frame(maxWidth: .infinity, minHeight: 44)
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(removing)
-                    }
-                    if let error {
-                        Text(error)
-                            .font(Typography.data(13, weight: .regular))
-                            .foregroundStyle(Palette.danger)
-                    }
-                }
-                .appearIn(3, rise: 14)
+            VStack(alignment: .leading, spacing: Space.md) {
+                topBar
+                if let photo { hero(photo) }
+                header.appearIn(0, rise: 14)
+                composition.appearIn(1, rise: 14)
+                breakdown.appearIn(2, rise: 14)
+                assumptions
+                deleteRow
             }
             .padding(.horizontal, Space.gutter)
+            .padding(.top, Space.sm)
             .padding(.bottom, Space.lg)
         }
         .scrollBounceBehavior(.basedOnSize)
         .scrollIndicators(.hidden)
+        // What you came to do stays in reach however long the breakdown is.
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            actions
+                .padding(.horizontal, Space.gutter)
+                .padding(.top, Space.sm)
+                .padding(.bottom, Space.xs)
+                .background {
+                    LinearGradient(colors: [Palette.sheet.opacity(0), Palette.sheet, Palette.sheet], startPoint: .top, endPoint: .bottom)
+                        .padding(.top, -Space.md)
+                        .ignoresSafeArea()
+                }
+        }
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
         .presentationBackground(Palette.sheet)
         .presentationCornerRadius(32)
         .animation(Motion.adaptive(Motion.snappy, reduceMotion: reduceMotion), value: removing)
         .task { photo = await MealPhotoCache.shared.image(for: meal) }
+        .confirmationDialog("Delete this meal?", isPresented: $confirmingDelete, titleVisibility: .visible) {
+            Button("Delete meal", role: .destructive, action: beginRemoval)
+            Button("Keep it", role: .cancel) {}
+        } message: {
+            Text(L10n("\(meal.kcal) kcal comes off today’s total."))
+        }
+        .sheet(item: $draft) { draft in
+            SavedMealEditorView(
+                draft: draft,
+                saving: editorSaving,
+                error: editorError,
+                onSave: { draft in
+                    let ok = await onSaveDraft?(draft) ?? false
+                    if ok {
+                        saved = true
+                        Haptics.landed()
+                    }
+                    return ok
+                }
+            )
+        }
         .fullScreenCover(isPresented: $fixing) {
             MealFixView(
                 meal: meal,
@@ -357,20 +313,257 @@ struct MealDetailSheet: View {
         }
     }
 
-    private func macroTile(_ label: String, _ grams: Double) -> some View {
+    // MARK: Sections
+
+    private var topBar: some View {
+        HStack(spacing: 8) {
+            chip(L10n("\(MealFormat.time(meal.loggedAt)) · \(meal.sourceLabel)"), symbol: sourceSymbol)
+            if let confidence = meal.parseConfidence {
+                let tint = confidence >= 0.7 ? Palette.positive : Palette.amber
+                Text(confidenceLine(confidence))
+                    .font(Typography.data(12, weight: .regular))
+                    .foregroundStyle(tint)
+                    .padding(.horizontal, 10)
+                    .frame(height: 28)
+                    .background(tint.opacity(0.12), in: Capsule())
+            } else if meal.isScanned {
+                chip(L10n("Label values"), symbol: "checkmark.seal", tint: Palette.positive)
+            }
+            Spacer(minLength: 8)
+            Button { dismiss() } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Palette.inkSoft)
+                    .frame(width: 32, height: 32)
+                    .background(Color.white.opacity(0.07), in: Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Close")
+        }
+        .padding(.top, Space.sm)
+    }
+
+    private func hero(_ photo: UIImage) -> some View {
+        Image(uiImage: photo)
+            .resizable()
+            .scaledToFill()
+            .frame(maxWidth: .infinity)
+            .frame(height: 200)
+            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(Palette.hairline))
+            .accessibilityHidden(true)
+    }
+
+    private var header: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(label)
-                .font(Typography.mono(9))
-                .tracking(1.1)
-                .textCase(.uppercase)
-                .foregroundStyle(Palette.inkFaint)
-            Text("\(Int(grams.rounded())) g")
+            Headline(meal.title, size: 30)
+                .lineLimit(3)
+                .minimumScaleFactor(0.8)
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text(meal.kcal.formatted())
+                    .font(.system(size: 52, weight: .light))
+                    .tracking(-2)
+                    .foregroundStyle(Palette.ink)
+                    .contentTransition(.numericText(value: Double(meal.kcal)))
+                Text("kcal")
+                    .font(Typography.data(16, weight: .regular))
+                    .foregroundStyle(Palette.inkSoft)
+                Spacer()
+                if let target = dayKcalTarget, target > 0 {
+                    Text(L10n("\(Int((Double(meal.kcal) / Double(target) * 100).rounded()))% of today"))
+                        .font(Typography.mono(12))
+                        .foregroundStyle(Palette.amber)
+                }
+            }
+        }
+    }
+
+    /// Where the calories come from: one split bar, then grams and share per macro.
+    private var composition: some View {
+        let p = meal.proteinG * 4, c = meal.carbsG * 4, f = meal.fatG * 9
+        let total = max(p + c + f, 1)
+        return VStack(alignment: .leading, spacing: 10) {
+            GeometryReader { box in
+                HStack(spacing: 3) {
+                    Capsule().fill(Palette.amber).frame(width: max(4, (box.size.width - 6) * p / total))
+                    Capsule().fill(Palette.ink).frame(width: max(4, (box.size.width - 6) * c / total))
+                    Capsule().fill(Palette.inkFaint).frame(width: max(4, (box.size.width - 6) * f / total))
+                }
+            }
+            .frame(height: 8)
+            .accessibilityHidden(true)
+            HStack(spacing: 8) {
+                macroTile("Protein", meal.proteinG, share: p / total, color: Palette.amber)
+                macroTile("Carbs", meal.carbsG, share: c / total, color: Palette.ink)
+                macroTile("Fat", meal.fatG, share: f / total, color: Palette.inkFaint)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var breakdown: some View {
+        let items = meal.items ?? []
+        if !items.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("What’s in it").sectionLabelStyle()
+                GlassList {
+                    ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+                        if index > 0 { ListDivider() }
+                        HStack(alignment: .firstTextBaseline, spacing: 10) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(item.name)
+                                    .font(Typography.data(15, weight: .regular))
+                                    .foregroundStyle(Palette.ink)
+                                Text(itemDetail(item))
+                                    .font(Typography.data(12, weight: .regular))
+                                    .foregroundStyle(Palette.inkFaint)
+                            }
+                            Spacer(minLength: 8)
+                            Text("\(item.kcal)")
+                                .font(Typography.mono(13))
+                                .foregroundStyle(Palette.inkSoft)
+                        }
+                        .padding(.vertical, 12)
+                        .accessibilityElement(children: .combine)
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var assumptions: some View {
+        if let notes = meal.notes, !notes.isEmpty {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "info.circle")
+                    .font(.system(size: 14))
+                    .foregroundStyle(Palette.inkSoft)
+                    .padding(.top, 1)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(notes)
+                        .font(Typography.data(13, weight: .regular))
+                        .foregroundStyle(Palette.inkSoft)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Button("Not right? Fix it") { fixing = true }
+                        .font(Typography.data(13, weight: .medium))
+                        .foregroundStyle(Palette.amber)
+                        .buttonStyle(.plain)
+                }
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .glass(radius: 16)
+        }
+    }
+
+    private var actions: some View {
+        VStack(spacing: 8) {
+            if let onLogAgain {
+                ActionButton(title: L10n("Log it again · \(meal.kcal)"), symbol: "arrow.clockwise") {
+                    Haptics.select()
+                    onLogAgain()
+                }
+                .disabled(removing)
+            }
+            HStack(spacing: 8) {
+                actionTile("Fix", symbol: "slider.horizontal.3") { fixing = true }
+                if canSave {
+                    actionTile(saved ? "Saved" : "Save", symbol: saved ? "star.fill" : "star", tint: saved ? Palette.amber : Palette.ink) {
+                        if onSaveDraft != nil {
+                            draft = SavedMealDraft(from: meal)
+                        } else {
+                            onSaveAsMeal?()
+                        }
+                    }
+                    .disabled(saved)
+                }
+            }
+            if let error {
+                Text(error)
+                    .font(Typography.data(13, weight: .regular))
+                    .foregroundStyle(Palette.danger)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var deleteRow: some View {
+        if onRemove != nil {
+            Button { confirmingDelete = true } label: {
+                HStack(spacing: 8) {
+                    if removing { BusyDots(tint: Palette.danger) }
+                    Text(removing ? "Removing · updating totals" : "Delete meal")
+                }
+                .font(Typography.data(14, weight: .regular))
+                .foregroundStyle(Palette.danger)
+                .frame(maxWidth: .infinity, minHeight: 44)
+            }
+            .buttonStyle(.plain)
+            .disabled(removing)
+        }
+    }
+
+    // MARK: Pieces
+
+    private var sourceSymbol: String {
+        switch meal.source {
+        case "PHOTO": return "camera"
+        case "BARCODE": return "barcode.viewfinder"
+        case "SAVED": return "star"
+        case "PRESCRIPTION": return "bell"
+        default: return "text.alignleft"
+        }
+    }
+
+    private func chip(_ text: String, symbol: String, tint: Color = Palette.inkSoft) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: symbol).font(.system(size: 11, weight: .medium))
+            Text(text).font(Typography.data(12, weight: .regular))
+        }
+        .foregroundStyle(tint)
+        .padding(.horizontal, 10)
+        .frame(height: 28)
+        .background(Color.white.opacity(0.06), in: Capsule())
+    }
+
+    private func itemDetail(_ item: MealSummary.Item) -> String {
+        let protein = L10n("\(Int(item.proteinG.rounded())) g protein")
+        return item.quantity.isEmpty ? protein : "\(item.quantity) · \(protein)"
+    }
+
+    private func macroTile(_ label: String, _ grams: Double, share: Double, color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 5) {
+                Circle().fill(color).frame(width: 6, height: 6)
+                Text(LocalizedStringKey(label))
+                    .font(Typography.mono(9))
+                    .tracking(1.1)
+                    .textCase(.uppercase)
+                    .foregroundStyle(Palette.inkFaint)
+            }
+            Text(L10n("\(Int(grams.rounded())) g"))
                 .font(Typography.data(18, weight: .regular))
                 .foregroundStyle(Palette.ink)
+            Text(L10n("\(Int((share * 100).rounded()))% of kcal"))
+                .font(Typography.data(11))
+                .foregroundStyle(Palette.inkFaint)
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
         .glass(radius: 14)
+        .accessibilityElement(children: .combine)
+    }
+
+    private func actionTile(_ title: LocalizedStringKey, symbol: String, tint: Color = Palette.ink, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Label(title, systemImage: symbol)
+                .font(Typography.data(15, weight: .regular))
+                .foregroundStyle(tint)
+                .frame(maxWidth: .infinity, minHeight: 52)
+                .glassCapsule(fill: Color.white.opacity(0.06), stroke: Color.white.opacity(0.10))
+                .contentTransition(.symbolEffect(.replace))
+        }
+        .buttonStyle(PressableCard())
     }
 
     private func confidenceLine(_ value: Double) -> String {

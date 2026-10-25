@@ -47,6 +47,10 @@ final class LogMealViewModel {
     private(set) var submittedPrompt = ""
     /// Photo logs wait here until the user confirms the parse.
     private(set) var confirmingPhoto = false
+    /// The log attempt in flight, and one the person closed before it came back —
+    /// a meal that attempt still creates is deleted instead of shown.
+    private var currentAttempt: UUID?
+    private var cancelledAttempt: UUID?
     private(set) var submittedPhoto: MealPhoto?
     var text = ""
     var photo: MealPhoto?
@@ -164,6 +168,8 @@ final class LogMealViewModel {
             clientId: clientId
         )
         let fromPhoto = snapshotPhoto != nil
+        let attempt = UUID()
+        currentAttempt = attempt
         heldText = text
         submittedPhoto = snapshotPhoto
         confirmingPhoto = fromPhoto
@@ -176,6 +182,12 @@ final class LogMealViewModel {
         phase = .parsing
         do {
             let res: LogMealResponse = try await api.logMeal(body)
+            if attempt == cancelledAttempt {
+                cancelledAttempt = nil
+                try? await api.delete("/api/meals/\(res.meal.id)")
+                onMealChanged()
+                return
+            }
             phase = .logged(
                 Logged(
                     mealId: res.meal.id,
@@ -192,6 +204,8 @@ final class LogMealViewModel {
             )
             onMealChanged()
             await writeLoggedMealToHealth()
+        } catch _ where attempt == cancelledAttempt {
+            cancelledAttempt = nil
         } catch let error where snapshotPhoto == nil && !prompt.isEmpty && OfflineMealQueue.isOffline(error) {
             OfflineMealQueue.enqueue(.init(id: clientId, text: prompt, loggedAt: eatenAt))
             Analytics.send(.mealQueuedOffline, props: ["source": "TEXT"], api: api)
@@ -742,6 +756,23 @@ final class LogMealViewModel {
     /// Drop the confirm overlay but keep the logged meal so it can morph into the timeline.
     func endConfirm() {
         confirmingPhoto = false
+    }
+
+    /// X while the photo is still being read: close, and drop whatever it logs.
+    func cancelPhotoLog() {
+        guard confirmingPhoto, phase == .parsing else { return }
+        cancelledAttempt = currentAttempt
+        clearAfterSuccess()
+    }
+
+    /// X on a read photo: the meal was logged, so remove it and start clean.
+    func discardPhotoLog() async {
+        guard confirmingPhoto, case .logged = phase else { return }
+        await undo()
+        guard phase == .compose else { return }
+        text = ""
+        photo = nil
+        heldText = ""
     }
 
     func reset() {

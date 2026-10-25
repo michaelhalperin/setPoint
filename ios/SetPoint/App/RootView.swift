@@ -78,6 +78,7 @@ enum DebugPreviewStub {
     case savedMeal
     case fixMeal
     case scanner(LogMealViewModel.ScanStatus)
+    case mealDetail
     case snooze
     case settings
     case settingsGoal
@@ -151,6 +152,11 @@ enum DebugPreviewStub {
             FixMealStubHost()
         case let .scanner(status):
             ScannerStubHost(status: status)
+        case .mealDetail:
+            HomeContent(model: .previewed(.loaded(.sampleOnPace)))
+                .sheet(isPresented: .constant(true)) {
+                    MealDetailSheet(meal: .detailSample, onRemove: {}, dayKcalTarget: 3100, onLogAgain: {}, onSaveDraft: { _ in true })
+                }
         case .snooze:
             ZStack(alignment: .bottom) {
                 PrescriptionStubHost()
@@ -309,6 +315,7 @@ enum DebugPreviewStub {
         case "scanner-miss": return .scanner(.notFound)
         case "scanner-label": return .scanner(.readingLabel)
         case "scanner-found": return .scanner(.found)
+        case "meal-detail": return .mealDetail
         case "log-typing": return .logMeal(.typing)
         case "log-working": return .logMeal(.working)
         case "log-offline": return .logMeal(.offline)

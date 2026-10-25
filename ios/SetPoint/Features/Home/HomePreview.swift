@@ -38,6 +38,31 @@ extension MealSummary {
     }
 }
 
+extension MealSummary {
+    /// A photo-logged plate with a breakdown, for the meal sheet stub.
+    static let detailSample = MealSummary(
+        id: "meal_bowl",
+        loggedAt: "2026-10-25T12:40:00.000Z",
+        kcal: 742,
+        proteinG: 48,
+        carbsG: 78,
+        fatG: 24,
+        source: "PHOTO",
+        summary: "Chicken burrito bowl",
+        photoUrl: nil,
+        notes: "Assumed a regular bowl with one scoop of rice and about 1 tbsp of oil in the chicken.",
+        items: [
+            .init(name: "Grilled chicken thigh", quantity: "1 portion · ~150 g", kcal: 290, proteinG: 36, carbsG: 0, fatG: 15),
+            .init(name: "Cilantro-lime rice", quantity: "1 cup · ~160 g", kcal: 210, proteinG: 4, carbsG: 45, fatG: 2),
+            .init(name: "Black beans", quantity: "½ cup · ~90 g", kcal: 120, proteinG: 8, carbsG: 21, fatG: 0.5),
+            .init(name: "Pico de gallo", quantity: "3 tbsp · ~50 g", kcal: 12, proteinG: 0.5, carbsG: 2.5, fatG: 0),
+            .init(name: "Sour cream", quantity: "1 tbsp · ~15 g", kcal: 30, proteinG: 0.4, carbsG: 0.7, fatG: 3),
+            .init(name: "Olive oil (cooking)", quantity: "1 tsp · ~5 g", kcal: 80, proteinG: 0, carbsG: 0, fatG: 9),
+        ],
+        parseConfidence: 0.78
+    )
+}
+
 extension HomeResponse {
     // MARK: Lunch running late (13:30) — shared by the check-in samples
 

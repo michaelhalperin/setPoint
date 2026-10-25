@@ -168,11 +168,15 @@ struct HomeContent: View {
             MealDetailSheet(
                 meal: meal,
                 onRemove: { deleteMeal(meal) },
-                onSaveAsMeal: {
-                    logger?.openEditor(from: meal)
+                onFixed: { Task { await model.load(showSpinner: false) } },
+                dayKcalTarget: loadedHome?.ledger.targetKcal,
+                onLogAgain: {
                     selectedMeal = nil
+                    Task { await logger?.logAgain(meal) }
                 },
-                onFixed: { Task { await model.load(showSpinner: false) } }
+                onSaveDraft: { await logger?.saveEditor($0) ?? false },
+                editorSaving: logger?.editorSaving ?? false,
+                editorError: logger?.editorError
             )
         }
         .fullScreenCover(isPresented: scannerPresented, onDismiss: { logger?.scannerDismissed() }) {
@@ -284,6 +288,11 @@ struct HomeContent: View {
         .onChange(of: deepLinkCheckInID.wrappedValue) { _, id in
             guard id != nil else { return }
             Task { await openDeepLinkedCheckIn() }
+        }
+        // A meal removed or fixed anywhere (photo confirm, log panel, Fix) must
+        // leave Today too, not linger until the next pull.
+        .onChange(of: env.changes.mealRevision) { _, _ in
+            Task { await model.load(showSpinner: false) }
         }
         .onChange(of: env.changes.pendingLogPhoto) { _, pending in
             guard pending else { return }
