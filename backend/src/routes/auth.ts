@@ -49,7 +49,10 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     try {
       identity = await verifyAppleIdentityToken(identityToken, env.APPLE_CLIENT_ID);
     } catch (err) {
-      if (err instanceof AppleAuthError) throw app.httpErrors.unauthorized(err.message);
+      if (err instanceof AppleAuthError) {
+        req.log.warn({ reason: err.message }, 'apple identity token rejected');
+        throw app.httpErrors.unauthorized(err.message);
+      }
       throw err;
     }
 
