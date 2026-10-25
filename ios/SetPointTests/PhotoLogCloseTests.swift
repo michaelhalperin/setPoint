@@ -72,4 +72,19 @@ final class PhotoLogCloseTests: XCTestCase {
         XCTAssertFalse(vm.confirmingPhoto)
         XCTAssertNil(vm.photo, "a discarded photo doesn't come back into the composer")
     }
+
+    func testATakenPhotoIsReadRightAwayWithWhatWasTyped() async {
+        let requests = LockedBox<[String]>([])
+        stub(requests: requests)
+        let vm = makeVM()
+        vm.text = "large portion"
+
+        await vm.logPhoto(Self.photo)
+
+        XCTAssertEqual(requests.get().first, "POST /api/meals")
+        XCTAssertTrue(vm.confirmingPhoto, "goes straight to the photo screen")
+        guard case let .logged(logged) = vm.phase else { return XCTFail("expected the photo to be logged") }
+        XCTAssertTrue(logged.fromPhoto)
+        XCTAssertEqual(vm.text, "", "the typed description went with the photo")
+    }
 }

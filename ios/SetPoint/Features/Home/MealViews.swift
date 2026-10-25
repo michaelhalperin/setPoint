@@ -95,10 +95,9 @@ struct SearchComposer: View {
         .fullScreenCover(isPresented: $model.showCamera) {
             CameraCapture(
                 onPhoto: { data in
-                    model.attach(data)
-                    model.mode = .type
                     model.showCamera = false
-                    focused.wrappedValue = true
+                    focused.wrappedValue = false
+                    Task { await model.logPhoto(data) }
                 },
                 onCancel: { model.showCamera = false }
             )

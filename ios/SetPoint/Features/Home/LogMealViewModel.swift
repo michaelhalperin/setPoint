@@ -146,6 +146,15 @@ final class LogMealViewModel {
         photo = MealPhoto.make(from: data)
     }
 
+    /// A photo just taken goes straight to being read — taking it was the intent
+    /// to log it. Anything already typed goes along as its description.
+    func logPhoto(_ data: Data) async {
+        attach(data)
+        guard photo != nil else { return }
+        mode = .type
+        await submit()
+    }
+
     func removePhoto() {
         photo = nil
     }
