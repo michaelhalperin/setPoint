@@ -58,5 +58,5 @@ Apple requires in-app account deletion for any app with account creation.
 
 - [x] Production schema changes use versioned Prisma migrations
       (`prisma migrate deploy`). `db push` is local-only.
-- [x] Payload size cap (1 MB), future `loggedAt` rejected, auth rate limit.
+- [x] Payload size cap (1 MB; 4 MB on the two photo routes — meal log and label read), future `loggedAt` rejected, auth rate limit.
 - [x] Developer login is off in production unless `ENABLE_DEV_LOGIN=true`.

@@ -7,6 +7,8 @@
  * silently migrate. The nutrition assistant uses the current 5.5 IDs.
  */
 export const MEAL_PARSE_MODEL = 'claude-haiku-4-5';
+/** Photos need real food recognition and portion judgement; text stays on the fast pin. */
+export const MEAL_PHOTO_MODEL = 'claude-sonnet-5-5';
 export const MANAGER_VOICE_MODEL = 'claude-sonnet-5';
 export const EXPERT_NUTRITION_MODEL = 'claude-sonnet-5-5';
 export const EXPERT_VALIDATOR_MODEL = 'claude-haiku-5-5';

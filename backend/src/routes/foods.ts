@@ -8,6 +8,7 @@ import { fetchOpenFoodFacts, lookupBarcode, normalizeBarcode, saveBarcodeFood, t
 import { searchCatalog } from '../foods/catalog.js';
 import { createLabelReader } from '../foods/label.js';
 import { fetchUsdaBranded } from '../foods/usdaBranded.js';
+import { PHOTO_BODY_LIMIT } from '../http/limits.js';
 
 const params = z.object({
   code: z.string().min(1).max(32),
@@ -55,7 +56,7 @@ export async function foodRoutes(app: FastifyInstance): Promise<void> {
 
   // A barcode no database knows: read the photographed label and keep it under
   // that code, so the next scan — anyone's — finds it.
-  app.post('/barcode/:code/label', async (req, reply) => {
+  app.post('/barcode/:code/label', { bodyLimit: PHOTO_BODY_LIMIT }, async (req, reply) => {
     const userId = (req as AuthedRequest).userId;
     const { code: raw } = params.parse(req.params);
     const code = normalizeBarcode(raw);

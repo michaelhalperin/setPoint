@@ -1,9 +1,15 @@
 import type Anthropic from '@anthropic-ai/sdk';
 import { describe, expect, it, vi } from 'vitest';
-import { MealParseError, createMealParser, reconcileMealTotals } from './parseMeal.js';
+import { MealParseError, createMealParser, itemFromRecord, mealPhotoRequest, mealTextRequest, reconcileMealTotals } from './parseMeal.js';
 
 function fakeClient(content: unknown[]): Anthropic {
-  return { messages: { create: vi.fn(async () => ({ content })) } } as unknown as Anthropic;
+  const create = vi.fn(async () => ({ content }));
+  return { messages: { create }, beta: { messages: { create } } } as unknown as Anthropic;
+}
+
+/** A photo answer arrives as structured JSON text, not a tool call. */
+function photoAnswer(record: unknown) {
+  return { type: 'text', text: JSON.stringify(record) };
 }
 
 const goodToolUse = {
@@ -55,7 +61,7 @@ describe('createMealParser', () => {
   });
 
   it('sends the image as a base64 block when a photo is provided', async () => {
-    const client = fakeClient([goodToolUse]);
+    const client = fakeClient([photoAnswer(goodToolUse.input)]);
     const parse = createMealParser(client);
     await parse({ image: { data: 'AAAA', mediaType: 'image/jpeg' } });
 
@@ -92,5 +98,54 @@ describe('createMealParser', () => {
     );
     expect(r.usedItemSum).toBe(true);
     expect(r.totals.kcal).toBe(500);
+  });
+
+  it('works portion macros out from grams and per-100 g values, and totals from the items', async () => {
+    const parse = createMealParser(
+      fakeClient([
+        {
+          type: 'text',
+          text: JSON.stringify({
+            observations: 'Dinner plate, one breast, rice heap the size of a fist, oil sheen.',
+            items: [
+              { name: 'Grilled chicken breast', quantity: '1 breast', grams: 180, kcalPer100g: 165, proteinPer100g: 31, carbsPer100g: 0, fatPer100g: 3.6 },
+              { name: 'White rice, cooked', quantity: '1 cup', grams: 160, kcalPer100g: 130, proteinPer100g: 2.7, carbsPer100g: 28, fatPer100g: 0.3 },
+              { name: 'Olive oil', quantity: '1 tbsp', grams: 14, kcalPer100g: 884, proteinPer100g: 0, carbsPer100g: 0, fatPer100g: 100 },
+            ],
+            confidence: 0.8,
+            summary: 'Chicken, rice and oil',
+            notes: '',
+          }),
+        },
+      ]),
+    );
+    const meal = await parse({ image: { data: 'AAAA', mediaType: 'image/jpeg' } });
+    expect(meal.items.map((i) => i.kcal)).toEqual([297, 208, 124]);
+    expect(meal.items[0]?.quantity).toBe('1 breast · ~180 g');
+    expect(meal.kcal).toBe(629);
+    expect(meal.proteinG).toBe(60.1);
+    expect(meal.quality).toBe('high');
+  });
+
+  it('keeps a quantity that already states its weight', () => {
+    const item = itemFromRecord({ name: 'Juice', quantity: '250 ml', grams: 250, kcalPer100g: 45, proteinPer100g: 0.7, carbsPer100g: 10, fatPer100g: 0.2 });
+    expect(item?.quantity).toBe('250 ml');
+    expect(item?.kcal).toBe(113);
+  });
+
+  it('sends photos to the photo model as structured output, text to the fast tool call', () => {
+    const photo = mealPhotoRequest({ image: { data: 'AAAA', mediaType: 'image/jpeg' }, text: 'large fries' });
+    const text = mealTextRequest({ text: 'two eggs' });
+    expect(photo.model).not.toBe(text.model);
+    expect(photo.tool_choice).toBeUndefined();
+    expect(photo.output_config?.format?.type).toBe('json_schema');
+    expect(String(photo.system)).toMatch(/size reference/i);
+    expect(JSON.stringify(photo.messages)).toContain('The person says: large fries');
+  });
+
+  it('turns a declined photo into a parse error', async () => {
+    const create = vi.fn(async () => ({ content: [], stop_reason: 'refusal' }));
+    const client = { messages: { create }, beta: { messages: { create } } } as unknown as Anthropic;
+    await expect(createMealParser(client)({ image: { data: 'AAAA', mediaType: 'image/jpeg' } })).rejects.toBeInstanceOf(MealParseError);
   });
 });

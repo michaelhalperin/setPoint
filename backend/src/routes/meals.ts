@@ -8,6 +8,7 @@ import { getPrisma } from '../db/client.js';
 import { failReason, mealSourceFromBody } from '../analytics/failures.js';
 import { EmptyMealError, MealParsingUnavailableError, logMeal } from '../meals/logMeal.js';
 import { fetchOpenFoodFacts } from '../foods/barcode.js';
+import { PHOTO_BODY_LIMIT } from '../http/limits.js';
 import { listMealsForDate } from '../meals/listMeals.js';
 import { MealNotFoundError, updateMeal } from '../meals/updateMeal.js';
 import { captureError } from '../observability/sentry.js';
@@ -88,7 +89,9 @@ export async function mealRoutes(app: FastifyInstance): Promise<void> {
   // Log a meal (§5.5). Free text or photo is AI-parsed into macros (counted
   // against the user's AI quota); explicit macros skip the model. Resolves any
   // open check-in.
-  app.post('/', async (req) => {
+  // Photos are sent sharp enough to read a plate (~1536 px), so this route takes
+  // more than the 1 MB default; Vercel's own cap is 4.5 MB.
+  app.post('/', { bodyLimit: PHOTO_BODY_LIMIT }, async (req) => {
     const userId = (req as AuthedRequest).userId;
     const prisma = getPrisma();
     const client = getAnthropic();

@@ -9,12 +9,14 @@ struct MealPhoto: Equatable {
 
     static func == (lhs: MealPhoto, rhs: MealPhoto) -> Bool { lhs.base64 == rhs.base64 }
 
-    /// Resize to ~1024px on the long edge and compress. Returns nil if the data
+    /// Resize to ~1536px on the long edge and compress. Returns nil if the data
     /// isn't a decodable image.
     static func make(from data: Data) -> MealPhoto? {
         guard let image = UIImage(data: data) else { return nil }
 
-        let maxEdge: CGFloat = 1024
+        // About the most detail the model reads (it scales anything over ~1568 px
+        // down): enough to tell fried from grilled and to read a label's small print.
+        let maxEdge: CGFloat = 1536
         let longest = max(image.size.width, image.size.height)
         let ratio = longest > maxEdge ? maxEdge / longest : 1
         let target = CGSize(width: image.size.width * ratio, height: image.size.height * ratio)
@@ -25,7 +27,7 @@ struct MealPhoto: Equatable {
             image.draw(in: CGRect(origin: .zero, size: target))
         }
 
-        guard let jpeg = resized.jpegData(compressionQuality: 0.7) else { return nil }
+        guard let jpeg = resized.jpegData(compressionQuality: 0.8) else { return nil }
         return MealPhoto(base64: jpeg.base64EncodedString(), mediaType: "image/jpeg", preview: resized)
     }
 
