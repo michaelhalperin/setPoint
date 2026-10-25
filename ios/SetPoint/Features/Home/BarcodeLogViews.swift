@@ -21,6 +21,13 @@ struct BarcodeScannerView: View {
     var onLabelPhoto: (Data) -> Void
     var onLog: () -> Void
     var onSave: () -> Void
+    /// The product has been saved as a meal (the card's Save turns into Saved).
+    var saved = false
+    /// "Save as my meal" opens over the scanner, so the card is still there after.
+    var editor: Binding<SavedMealDraft?> = .constant(nil)
+    var editorSaving = false
+    var editorError: String?
+    var onSaveEditor: (SavedMealDraft) async -> Bool = { _ in false }
     var onCancel: () -> Void
 
     @Environment(\.openURL) private var openURL
@@ -92,6 +99,7 @@ struct BarcodeScannerView: View {
                     ScannedProductCard(
                         product: Binding(get: { product ?? current }, set: { product = $0 }),
                         slotTitle: slotTitle,
+                        saved: saved,
                         onLog: onLog,
                         onSave: onSave,
                         onRescan: onRescan
@@ -129,6 +137,9 @@ struct BarcodeScannerView: View {
             .ignoresSafeArea()
         }
         .photosPicker(isPresented: $showLabelLibrary, selection: $labelPickerItem, matching: .images)
+        .sheet(item: editor) { draft in
+            SavedMealEditorView(draft: draft, saving: editorSaving, error: editorError, onSave: onSaveEditor)
+        }
         .onChange(of: labelPickerItem) { _, item in
             guard let item else { return }
             Task {
@@ -349,6 +360,7 @@ private struct DataScannerRepresentable: UIViewControllerRepresentable {
 struct ScannedProductCard: View {
     @Binding var product: LogMealViewModel.BarcodeProduct
     var slotTitle: String
+    var saved = false
     var onLog: () -> Void
     var onSave: () -> Void
     var onRescan: () -> Void
@@ -409,15 +421,20 @@ struct ScannedProductCard: View {
 
             HStack(spacing: 10) {
                 ActionButton(title: L10n("Log \(portion.kcal) kcal"), symbol: "plus", action: onLog)
-                Button(action: onSave) {
-                    Label("Save", systemImage: "star")
+                Button {
+                    Haptics.select()
+                    onSave()
+                } label: {
+                    Label(saved ? "Saved" : "Save", systemImage: saved ? "star.fill" : "star")
                         .font(Typography.data(15, weight: .regular))
-                        .foregroundStyle(Palette.ink)
+                        .foregroundStyle(saved ? Palette.amber : Palette.ink)
                         .frame(width: 96, height: 58)
                         .glassCapsule(fill: Color.white.opacity(0.06), stroke: Color.white.opacity(0.10))
+                        .contentTransition(.symbolEffect(.replace))
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Save as my meal")
+                .buttonStyle(PressableCard())
+                .disabled(saved)
+                .accessibilityLabel(saved ? "Saved as my meal" : "Save as my meal")
             }
 
             Button("Not this — scan again", action: onRescan)

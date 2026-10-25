@@ -1304,6 +1304,8 @@ HE: dict[str, str] = {
     "Less": "פחות",
     "More": "יותר",
     "Barcode found": "הברקוד נמצא",
+    "Saved": "נשמר",
+    "Saved as my meal": "נשמר כמנה שלי",
 }
 
 
@@ -1471,6 +1473,8 @@ def apply() -> None:
         "Looking it up…",
         "Couldn't look that up.",
         "Scan again",
+        "Saved",
+        "Saved as my meal",
         "Label values",
         "Barcode · %@",
         "1 serving = %lld g",

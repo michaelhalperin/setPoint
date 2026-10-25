@@ -517,6 +517,8 @@ private struct LogScanStubHost: View {
 private struct ScannerStubHost: View {
     let status: LogMealViewModel.ScanStatus
     @State private var product: LogMealViewModel.BarcodeProduct? = .init(food: .sampleYogurt, servings: 1)
+    @State private var editor: SavedMealDraft?
+    @State private var saved = false
 
     var body: some View {
         BarcodeScannerView(
@@ -529,7 +531,13 @@ private struct ScannerStubHost: View {
             onType: {},
             onLabelPhoto: { _ in },
             onLog: {},
-            onSave: {},
+            onSave: { editor = product.map(SavedMealDraft.init(from:)) },
+            saved: saved,
+            editor: $editor,
+            onSaveEditor: { _ in
+                saved = true
+                return true
+            },
             onCancel: {}
         )
     }

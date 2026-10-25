@@ -11820,6 +11820,26 @@
           }
         }
       }
+    },
+    "Saved": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "נשמר"
+          }
+        }
+      }
+    },
+    "Saved as my meal": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "נשמר כמנה שלי"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

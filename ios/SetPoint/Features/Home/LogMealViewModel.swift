@@ -87,8 +87,10 @@ final class LogMealViewModel {
     var showPhotoPicker = false
     var showCamera = false
     var product: BarcodeProduct?
-    /// "Save as my meal" from the scanner; opens once the scanner has closed.
-    private var pendingEditor: SavedMealDraft?
+    /// "Save as my meal" from the scanner, shown over it so it opens at once.
+    var scannerEditor: SavedMealDraft?
+    /// The product on the scanner has been saved as a meal.
+    var scannedProductSaved = false
 
     /// The code being looked up, kept so a label photo can be filed under it.
     private var lastScannedCode: String?
@@ -465,6 +467,7 @@ final class LogMealViewModel {
     func openScanner() {
         mode = .scan
         product = nil
+        scannedProductSaved = false
         scanStatus = .scanning
         showScanner = true
     }
@@ -493,6 +496,7 @@ final class LogMealViewModel {
 
     func rescan() {
         product = nil
+        scannedProductSaved = false
         scanStatus = .scanning
     }
 
@@ -505,8 +509,14 @@ final class LogMealViewModel {
 
     func saveScannedProduct() {
         guard let product else { return }
-        pendingEditor = SavedMealDraft(from: product)
-        showScanner = false
+        editorError = nil
+        scannerEditor = SavedMealDraft(from: product)
+    }
+
+    func saveScannerEditor(_ draft: SavedMealDraft) async -> Bool {
+        let saved = await saveEditor(draft)
+        if saved { scannedProductSaved = true }
+        return saved
     }
 
     /// Reads the pack's nutrition label and files it under the scanned code, so
@@ -547,10 +557,7 @@ final class LogMealViewModel {
     func scannerDismissed() {
         scanStatus = .scanning
         if phase != .parsing { product = nil }
-        if let pendingEditor {
-            editor = pendingEditor
-            self.pendingEditor = nil
-        }
+        scannerEditor = nil
         if mode == .scan { mode = .type }
     }
 

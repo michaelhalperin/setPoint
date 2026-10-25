@@ -2,8 +2,8 @@ import XCTest
 @testable import SetPoint
 
 /// Scan, confirm and log all happen on the scanner: a hit shows the product card
-/// there, a miss offers the label photo or typing, and only "Save as my meal"
-/// waits for the scanner to close before opening its editor.
+/// there, a miss offers the label photo or typing, and "Save as my meal" opens
+/// its editor over the scanner.
 @MainActor
 final class BarcodeScanTests: XCTestCase {
     override func tearDown() {
@@ -58,20 +58,20 @@ final class BarcodeScanTests: XCTestCase {
         XCTAssertEqual(vm.scanStatus, .scanning)
     }
 
-    func testSavingFromTheScannerOpensTheEditorOnceItHasClosed() async {
+    func testSaveOpensTheEditorRightAwayOverTheScanner() async {
         StubURLProtocol.handler = { _ in (200, ["Content-Type": "application/json"], Self.yogurt) }
         let vm = makeVM()
         vm.openScanner()
         await vm.handleScannedCode("7290000000001")
 
         vm.saveScannedProduct()
-        XCTAssertFalse(vm.showScanner)
-        XCTAssertNil(vm.editor, "a sheet asked for while the scanner is still closing never appears")
 
-        vm.scannerDismissed()
-        XCTAssertNotNil(vm.editor)
-        XCTAssertNil(vm.product)
-        XCTAssertEqual(vm.mode, .type)
+        XCTAssertTrue(vm.showScanner, "the card stays so the product can still be logged")
+        XCTAssertNotNil(vm.scannerEditor)
+        XCTAssertNil(vm.editor, "the log panel's own editor isn't asked to present under the scanner")
+
+        vm.rescan()
+        XCTAssertFalse(vm.scannedProductSaved)
     }
 
     func testTypeInsteadClosesScannerIntoTyping() {

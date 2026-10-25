@@ -51,6 +51,11 @@ struct LogAnywhere: ViewModifier {
                     onLabelPhoto: { data in Task { await logger?.readLabel(data) } },
                     onLog: { Task { await logger?.logScannedProduct() } },
                     onSave: { logger?.saveScannedProduct() },
+                    saved: logger?.scannedProductSaved ?? false,
+                    editor: Binding(get: { logger?.scannerEditor }, set: { logger?.scannerEditor = $0 }),
+                    editorSaving: logger?.editorSaving ?? false,
+                    editorError: logger?.editorError,
+                    onSaveEditor: { await logger?.saveScannerEditor($0) ?? false },
                     onCancel: {
                         logger?.showScanner = false
                         logger?.mode = .type
