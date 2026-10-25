@@ -158,7 +158,9 @@ final class TrainingStore {
     /// Logged this process, or already on today's meals after a relaunch.
     func isSnackLogged(_ snack: TrainingWeekResponse.SnackBefore? = nil, meals: [MealSummary] = []) -> Bool {
         guard let snack = snack ?? snackBefore else { return false }
-        if loggedSnackId == snack.id { return true }
+        // Only today's log counts: a snack logged and then deleted, or remembered
+        // from earlier in the session, isn't shown as logged. A log in flight is.
+        if loggedSnackId == snack.id, loggingSnack || isPreview { return true }
         return TrainMath.ateToday(snack, meals: meals)
     }
 
