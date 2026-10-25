@@ -92,7 +92,8 @@ struct TodayHero: View {
         .overlay(alignment: .topTrailing) {
             if appetiteOpen {
                 ZStack(alignment: .topTrailing) {
-                    Color.black.opacity(0.55)
+                    Color.clear
+                        .contentShape(Rectangle())
                         .ignoresSafeArea()
                         .onTapGesture { appetiteOpen = false }
                     AppetiteDropdown(level: appetiteLevel) { level in
@@ -100,6 +101,7 @@ struct TodayHero: View {
                         pickAppetite(level)
                     }
                     .padding(.top, 44)
+                    .shadow(color: .black.opacity(0.55), radius: 24, y: 10)
                 }
                 .transition(.opacity)
             }

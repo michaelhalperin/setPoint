@@ -636,8 +636,8 @@ func enforcementNote(_ reason: String?) -> String {
     }
 }
 
-/// How check-ins run: the day's three meal moments as a lit ribbon, with a
-/// sliding On / Paused switch underneath.
+/// How check-ins run: a status row with a pulsing dot, the day's meal times,
+/// and a capsule toggle.
 private struct CheckInModeSwitch: View {
     let paused: Bool
     let mealMinutes: [Int]
@@ -645,14 +645,29 @@ private struct CheckInModeSwitch: View {
     let onChange: (Bool) -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Namespace private var segmentNS
 
     private var listening: Bool { !paused }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            dayRibbon
-            modeSwitch
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 14) {
+                statusDot
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(LocalizedStringKey(listening ? "Listening" : "Paused"))
+                        .font(Typography.data(17, weight: .medium))
+                        .foregroundStyle(Palette.ink)
+                        .contentTransition(.opacity)
+                    Text(mealMinutes.map { formatMinutes($0) }.joined(separator: " · "))
+                        .font(Typography.mono(11))
+                        .foregroundStyle(listening ? Palette.inkSoft : Palette.inkFaint)
+                        .contentTransition(.opacity)
+                }
+                Spacer(minLength: 8)
+                capsuleToggle
+            }
+            if listening {
+                mealTimeline
+            }
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -663,132 +678,84 @@ private struct CheckInModeSwitch: View {
         .accessibilityElement(children: .contain)
     }
 
-    /// Three meal check-ins on a day line — ember when listening, a quiet hush when paused.
-    private var dayRibbon: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(LocalizedStringKey(listening ? "Listening" : "Quiet"))
-                    .font(Typography.data(15, weight: .medium))
-                    .foregroundStyle(Palette.ink)
-                    .contentTransition(.opacity)
-                Spacer(minLength: 8)
-                Text(LocalizedStringKey(listening ? "After each meal" : "Plan still updates"))
-                    .font(Typography.data(12, weight: .regular))
-                    .foregroundStyle(Palette.inkSoft)
-                    .contentTransition(.opacity)
-            }
-
-            GeometryReader { geo in
-                let width = geo.size.width
-                let ys: CGFloat = 11
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(listening ? Palette.ember.opacity(0.22) : Color.white.opacity(0.06))
-                        .frame(height: 2)
-                        .frame(maxWidth: .infinity)
-                        .offset(y: ys - 1)
-
-                    if listening {
-                        Capsule()
-                            .fill(
-                                LinearGradient(
-                                    colors: [Palette.ember.opacity(0.15), Palette.ember.opacity(0.55), Palette.ember.opacity(0.15)],
-                                    startPoint: .leading,
-                                    endPoint: .trailing
-                                )
-                            )
-                            .frame(height: 2)
-                            .frame(maxWidth: .infinity)
-                            .offset(y: ys - 1)
-                    }
-
-                    HStack(spacing: 0) {
-                        ForEach(Array(mealMinutes.enumerated()), id: \.offset) { index, minute in
-                            mealNode(minute: minute)
-                            if index < mealMinutes.count - 1 { Spacer(minLength: 0) }
-                        }
-                    }
-                    .frame(width: width)
-                }
-            }
-            .frame(height: 36)
-        }
-        .accessibilityHidden(true)
-    }
-
-    private func mealNode(minute: Int) -> some View {
-        VStack(spacing: 6) {
-            ZStack {
-                if listening {
+    private var statusDot: some View {
+        ZStack {
+            if listening && !reduceMotion {
+                LoopingPhase(period: 2.4, still: 1) { t in
                     Circle()
-                        .fill(Palette.ember.opacity(0.28))
-                        .frame(width: 18, height: 18)
-                        .blur(radius: reduceMotion ? 0 : 2)
+                        .fill(Palette.ember.opacity(0.35))
+                        .scaleEffect(1 + 1.2 * Phase.ramp(t, 0, 0.7))
+                        .opacity(0.8 * (1 - Phase.ramp(t, 0, 0.7)))
                 }
+            }
+            Circle()
+                .fill(listening ? Palette.ember : Color.white.opacity(0.15))
+                .frame(width: 10, height: 10)
+                .shadow(color: Palette.ember.opacity(listening ? 0.7 : 0), radius: 6)
+        }
+        .frame(width: 24, height: 24)
+    }
+
+    private var capsuleToggle: some View {
+        Button {
+            Haptics.select()
+            onChange(!paused)
+        } label: {
+            ZStack(alignment: listening ? .trailing : .leading) {
+                Capsule()
+                    .fill(listening ? Palette.ember.opacity(0.28) : Color.white.opacity(0.08))
+                    .overlay(Capsule().strokeBorder(listening ? Palette.ember.opacity(0.5) : Color.white.opacity(0.10)))
                 Circle()
-                    .fill(listening ? Palette.ember : Color.white.opacity(0.06))
-                    .frame(width: listening ? 9 : 8, height: listening ? 9 : 8)
-                    .overlay {
-                        if !listening {
-                            Circle().strokeBorder(Color.white.opacity(0.22), lineWidth: 1.2)
-                        }
-                    }
-                    .shadow(color: Palette.ember.opacity(listening ? 0.7 : 0), radius: listening ? 5 : 0)
+                    .fill(listening ? Palette.ember : Color.white.opacity(0.35))
+                    .frame(width: 24, height: 24)
+                    .padding(3)
+                    .shadow(color: Palette.ember.opacity(listening ? 0.6 : 0), radius: 5)
             }
-            .frame(width: 18, height: 18)
-
-            Text(formatMinutes(minute))
-                .font(Typography.mono(9))
-                .foregroundStyle(listening ? Palette.inkSoft : Palette.inkFaint)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-        }
-    }
-
-    private var modeSwitch: some View {
-        HStack(spacing: 0) {
-            modeOption(title: "On", selected: listening) {
-                guard paused else { return }
-                Haptics.select()
-                onChange(false)
-            }
-            modeOption(title: "Paused", selected: paused) {
-                guard !paused else { return }
-                Haptics.select()
-                onChange(true)
-            }
-        }
-        .padding(4)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color.white.opacity(0.05))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .strokeBorder(Color.white.opacity(0.07))
-        )
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("Check-ins")
-    }
-
-    private func modeOption(title: String, selected: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(LocalizedStringKey(title))
-                .font(Typography.data(14, weight: selected ? .medium : .regular))
-                .foregroundStyle(selected ? Palette.onBone : Palette.inkSoft)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 11)
-                .background {
-                    if selected {
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(Palette.ink)
-                            .matchedGeometryEffect(id: "checkInMode", in: segmentNS)
-                    }
-                }
-                .contentShape(Rectangle())
+            .frame(width: 52, height: 30)
         }
         .buttonStyle(.plain)
-        .accessibilityAddTraits(selected ? .isSelected : [])
+        .accessibilityLabel("Check-ins")
+        .accessibilityValue(listening ? "On" : "Paused")
+        .accessibilityAddTraits(.isButton)
+    }
+
+    private var mealTimeline: some View {
+        GeometryReader { geo in
+            let w = geo.size.width
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(
+                        LinearGradient(
+                            colors: [Palette.ember.opacity(0.12), Palette.ember.opacity(0.4), Palette.ember.opacity(0.12)],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .frame(height: 2)
+                    .padding(.horizontal, 18)
+
+                HStack(spacing: 0) {
+                    ForEach(Array(mealMinutes.enumerated()), id: \.offset) { index, minute in
+                        VStack(spacing: 5) {
+                            Circle()
+                                .fill(Palette.ember)
+                                .frame(width: 8, height: 8)
+                                .shadow(color: Palette.ember.opacity(0.6), radius: 4)
+                            Text(formatMinutes(minute))
+                                .font(Typography.mono(9))
+                                .foregroundStyle(Palette.inkSoft)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
+                        }
+                        if index < mealMinutes.count - 1 { Spacer(minLength: 0) }
+                    }
+                }
+                .frame(width: w)
+            }
+        }
+        .frame(height: 30)
+        .transition(.opacity.combined(with: .move(edge: .top)))
+        .accessibilityHidden(true)
     }
 }
 

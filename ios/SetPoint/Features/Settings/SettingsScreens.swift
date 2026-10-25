@@ -494,6 +494,24 @@ struct RhythmSettingsView: View {
                 }
             }
 
+            HStack(spacing: 6) {
+                Text(editingWeekends ? "SAT · SUN" : "MON – FRI")
+                    .font(Typography.mono(10))
+                    .tracking(1.2)
+                    .foregroundStyle(editingWeekends ? Palette.hazeSoft : Palette.amber)
+                if model.hasWeekendMealOverrides {
+                    Text("·")
+                        .foregroundStyle(Palette.inkFaint)
+                    Text(L10n(editingWeekends
+                        ? "Weekdays \(formatMinutes(model.mealTimes.breakfastMin))–\(formatMinutes(model.mealTimes.dinnerMin))"
+                        : "Weekends \(formatMinutes(model.resolvedWeekendTimes.breakfastMin))–\(formatMinutes(model.resolvedWeekendTimes.dinnerMin))"))
+                        .font(Typography.mono(10))
+                        .foregroundStyle(Palette.inkFaint)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .contentTransition(.opacity)
+
             Headline(editingWeekends ? "Weekends run later." : "Three plates a day.", tail: tail, size: 34, persistTail: true)
                 .appearIn(0, rise: 16)
 
@@ -696,6 +714,7 @@ private struct MealClock: View {
     let onMove: (RhythmSettingsView.DialItem, Int) -> Void
 
     @State private var dragging: RhythmSettingsView.DialItem?
+    @State private var dragOrigin: CGPoint?
     private let radius: CGFloat = 128
 
     var body: some View {
@@ -780,14 +799,27 @@ private struct MealClock: View {
     private func drag(_ item: RhythmSettingsView.DialItem, center: CGPoint) -> some Gesture {
         DragGesture(minimumDistance: 0, coordinateSpace: .named("mealClock"))
             .onChanged { value in
-                dragging = item
-                selected = item
+                if dragging != item {
+                    dragging = item
+                    selected = item
+                    dragOrigin = value.startLocation
+                    return
+                }
+                if let origin = dragOrigin {
+                    let dx = value.location.x - origin.x
+                    let dy = value.location.y - origin.y
+                    guard dx * dx + dy * dy > 100 else { return }
+                    dragOrigin = nil
+                }
                 let next = snappedMinute(at: value.location, center: center, for: item)
                 guard next != minute(item) else { return }
                 UISelectionFeedbackGenerator().selectionChanged()
                 onMove(item, next)
             }
-            .onEnded { _ in dragging = nil }
+            .onEnded { _ in
+                dragging = nil
+                dragOrigin = nil
+            }
     }
 
     /// MealClock has noon at the top; `MealTimeEditing.minute` assumes midnight at the top.
