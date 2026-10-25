@@ -73,6 +73,7 @@ struct SettingsScreen<Content: View>: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .scrollDismissesKeyboard(.interactively)
+        .onTapGesture { UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil) }
         .pullToReload(onRefresh, covering: $reloading)
         #if DEBUG
         // Screenshots of the lower half of a stub: `-uiStub calendar-week -stubScrollBottom`.

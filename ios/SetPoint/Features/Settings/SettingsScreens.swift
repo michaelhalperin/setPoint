@@ -908,6 +908,12 @@ struct FoodsSettingsView: View {
     private static let dontEat = ["Pork", "Beef", "Vegetarian", "Vegan"]
     private static var known: [String] { allergies + intolerances + dontEat }
 
+    private static let pantrySuggestions = [
+        "Oats", "Milk", "Eggs", "Rice", "Chicken", "Bread",
+        "Peanut butter", "Bananas", "Greek yogurt", "Pasta",
+        "Olive oil", "Cheese",
+    ]
+
     /// Where pantry foods sit around the plate (centre x, y in a 350 × 290 box).
     private static let slots: [CGPoint] = [
         CGPoint(x: 0.5, y: 0.08), CGPoint(x: 0.82, y: 0.24), CGPoint(x: 0.18, y: 0.24), CGPoint(x: 0.85, y: 0.52),
@@ -959,11 +965,19 @@ struct FoodsSettingsView: View {
 
     // MARK: Plate
 
+    private var plateSuggestions: [String] {
+        let existing = Set(model.pantryTokens.map { $0.lowercased() })
+        let blocked = Set(model.restrictions.map { $0.lowercased() })
+        return Self.pantrySuggestions.filter { !existing.contains($0.lowercased()) && !blocked.contains($0.lowercased()) }
+    }
+
     /// What's in the kitchen, floating around a plate that glows brighter the more there is.
     private var plate: some View {
         GeometryReader { geo in
             let w = geo.size.width, h = geo.size.height
             let items = Array(model.pantryTokens.prefix(8))
+            let freeSlots = max(0, Self.slots.count - items.count)
+            let hints = Array(plateSuggestions.prefix(freeSlots))
             ZStack {
                 FuelOrb(size: 120, glow: 0.42)
                     .opacity(0.35 + 0.65 * min(1, Double(items.count) / 5))
@@ -1006,12 +1020,31 @@ struct FoodsSettingsView: View {
                     .position(x: slot.x * w, y: slot.y * h)
                     .accessibilityLabel(L10n("Remove \(item)"))
                 }
-                if items.isEmpty {
-                    Text("Add what you keep at home —\nmilk, oats, peanut butter…")
-                        .font(Typography.data(13, weight: .regular))
+
+                ForEach(Array(hints.enumerated()), id: \.element) { index, hint in
+                    let slot = Self.slots[items.count + index]
+                    Button {
+                        withAnimation(Motion.settle) {
+                            model.pantryTokens.append(hint)
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "plus")
+                                .font(.system(size: 9, weight: .semibold))
+                            Text(hint)
+                        }
+                        .font(Typography.data(12, weight: .regular))
                         .foregroundStyle(Palette.inkFaint)
-                        .multilineTextAlignment(.center)
-                        .position(x: w / 2, y: h - 20)
+                        .padding(.horizontal, 11)
+                        .frame(height: 30)
+                        .overlay(Capsule().strokeBorder(Color.white.opacity(0.14), style: StrokeStyle(lineWidth: 1, dash: [4, 3])))
+                        .fixedSize()
+                    }
+                    .buttonStyle(PressableCard())
+                    .floating(index + 3)
+                    .position(x: slot.x * w, y: slot.y * h)
+                    .transition(.opacity.combined(with: .scale(scale: 0.8)))
+                    .accessibilityLabel(L10n("Add \(hint)"))
                 }
             }
         }

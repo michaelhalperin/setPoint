@@ -55,6 +55,7 @@ struct InnerScreen<Content: View>: View {
                         .animation(Motion.adaptive(Motion.gentle, reduceMotion: reduceMotion), value: reloading)
                 }
                 .scrollDismissesKeyboard(.interactively)
+                .onTapGesture { UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil) }
                 .pullToReload(onRefresh, covering: $reloading)
             } else {
                 stack
