@@ -1641,6 +1641,11 @@ struct AccountSettingsView: View {
     }
 
     private func openNotificationSettings() {
+        // Never asked yet: iOS has no settings page for the app until it has asked.
+        if env.push.authorizationStatus == .notDetermined {
+            Task { await env.push.requestAuthorization() }
+            return
+        }
         if let url = URL(string: UIApplication.openNotificationSettingsURLString) {
             UIApplication.shared.open(url)
         }

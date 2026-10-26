@@ -96,6 +96,8 @@ struct MainTabView: View {
             )
             home = h
             await h.load()
+            // Onboarding asks for itself; everyone else is asked here, once.
+            if case .loaded = h.phase { await env.push.askIfNeeded() }
             Analytics.send(.appOpened, api: env.api)
             CrashReporting.flush(api: env.api)
             Analytics.screen(selection.screenName, api: env.api)

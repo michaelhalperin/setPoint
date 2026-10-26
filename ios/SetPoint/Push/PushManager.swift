@@ -85,6 +85,17 @@ final class PushManager {
         return granted
     }
 
+    /// For someone already onboarded (a new install, or signing in on a new phone):
+    /// ask once if the system never has, else make sure APNs has our token.
+    func askIfNeeded() async {
+        await syncAuthorizationStatus()
+        if authorizationStatus == .notDetermined {
+            await requestAuthorization()
+        } else {
+            await registerIfAuthorized()
+        }
+    }
+
     /// If we already have permission, make sure APNs has our token.
     func registerIfAuthorized() async {
         await syncAuthorizationStatus()
