@@ -47,7 +47,7 @@ final class HomeViewModel {
             phase = .loaded(home)
             loadedAt = Date()
             staleSince = nil
-            LiveActivityController.shared.sync(activeCheckIn: home.activeCheckIn)
+            LiveActivityController.shared.sync(activeCheckIn: home.activeCheckIn, ledger: home.ledger)
             TodaySnapshotSync.write(home: home)
             await HealthKitManager.shared.reconcileToday(home.meals)
         } catch APIError.unauthorized {

@@ -95,7 +95,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%@ %@/שבוע"
+            "value": "%@ %@/שבוע"
           }
         }
       }
@@ -105,7 +105,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%@ קלוריות"
+            "value": "%@ קלוריות"
           }
         }
       }
@@ -115,7 +115,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%@ ק״מ מכאן"
+            "value": "%@ ק״מ מכאן"
           }
         }
       }
@@ -125,7 +125,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%@ עכשיו"
+            "value": "%@ עכשיו"
           }
         }
       }
@@ -141,7 +141,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%@ ב-%@"
+            "value": "%@ ב-%@"
           }
         }
       }
@@ -151,7 +151,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%@ לא זז שום ארוחה."
+            "value": "%@ לא זז שום ארוחה."
           }
         }
       }
@@ -161,7 +161,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%@ למשך 8 שבועות"
+            "value": "%@ למשך 8 שבועות"
           }
         }
       }
@@ -177,7 +177,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%@ למשך 8 שבועות · עד %@"
+            "value": "%@ למשך 8 שבועות · עד %@"
           }
         }
       }
@@ -193,7 +193,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%@ מ-%@, %lld קלוריות"
+            "value": "%@ מ-%@, %lld קלוריות"
           }
         }
       }
@@ -203,7 +203,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%@ הוא אירוע לכל היום, ואירועים כאלה כבויים."
+            "value": "%@ הוא אירוע לכל היום, ואירועים כאלה כבויים."
           }
         }
       }
@@ -213,7 +213,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%@ בסוף השבוע, וארוחות סוף שבוע לא זזות."
+            "value": "%@ בסוף השבוע, וארוחות סוף שבוע לא זזות."
           }
         }
       }
@@ -223,7 +223,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%@ קצר מדי מכדי להיספר."
+            "value": "%@ קצר מדי מכדי להיספר."
           }
         }
       }
@@ -233,7 +233,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%@ קלוריות"
+            "value": "%@ קלוריות"
           }
         }
       }
@@ -243,7 +243,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%@/שבוע · %@"
+            "value": "%@/שבוע · %@"
           }
         }
       }
@@ -253,7 +253,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%@ קלוריות ביום"
+            "value": "%@ קלוריות ביום"
           }
         }
       }
@@ -269,7 +269,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%@ קלוריות ביום%@. חסר בערב? אעזור לסגור את זה."
+            "value": "%@ קלוריות ביום%@. חסר בערב? אעזור לסגור את זה."
           }
         }
       }
@@ -315,7 +315,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%@ נשאר ב-%@"
+            "value": "%@ נשאר ב-%@"
           }
         }
       }
@@ -347,7 +347,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%@ מתוך %@ קלוריות עד עכשיו."
+            "value": "%@ מתוך %@ קלוריות עד עכשיו."
           }
         }
       }
@@ -363,7 +363,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%@ מתוך %@ קלוריות · מאחורי הקצב"
+            "value": "%@ מתוך %@ קלוריות · מאחורי הקצב"
           }
         }
       }
@@ -373,7 +373,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%@ או יותר"
+            "value": "%@ או יותר"
           }
         }
       }
@@ -399,7 +399,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%@ התאחרה ב-%lld מתוך %lld ימי עבודה."
+            "value": "%@ התאחרה ב-%lld מתוך %lld ימי עבודה."
           }
         }
       }
@@ -425,7 +425,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%@ רץ %@. השארת את %@ ב-%@, אז כלום לא מגיע מוקדם."
+            "value": "%@ רץ %@. השארת את %@ ב-%@, אז כלום לא מגיע מוקדם."
           }
         }
       }
@@ -435,7 +435,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%@ התפספסה."
+            "value": "%@ התפספסה."
           }
         }
       }
@@ -451,7 +451,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%@ מתחיל ב-%@ ונמשך %@. %@ זה המוקדם ביותר — אף פעם לא פחות מ-90 דקות אחרי %@."
+            "value": "%@ מתחיל ב-%@ ונמשך %@. %@ זה המוקדם ביותר — אף פעם לא פחות מ-90 דקות אחרי %@."
           }
         }
       }
@@ -467,7 +467,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%@ מתחיל ב-%@ ונמשך %@. התזכורת %lld דקות לפני שהוא מתחיל, אז %@ זזה ל-%@."
+            "value": "%@ מתחיל ב-%@ ונמשך %@. התזכורת %lld דקות לפני שהוא מתחיל, אז %@ זזה ל-%@."
           }
         }
       }
@@ -483,7 +483,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%@ נשארת ב-%@."
+            "value": "%@ נשארת ב-%@."
           }
         }
       }
@@ -535,7 +535,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%@ · %@ קלוריות · אוכלים את זה?"
+            "value": "%@ · %@ קלוריות · אוכלים את זה?"
           }
         }
       }
@@ -551,7 +551,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%@ · %@ ק״מ"
+            "value": "%@ · %@ ק״מ"
           }
         }
       }
@@ -567,7 +567,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%@ · %@ השבוע"
+            "value": "%@ · %@ השבוע"
           }
         }
       }
@@ -583,7 +583,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%@ · %@ · הבריאות של Apple %@"
+            "value": "%@ · %@ · הבריאות של Apple %@"
           }
         }
       }
@@ -599,7 +599,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%@ · %lld דק׳"
+            "value": "%@ · %lld דק׳"
           }
         }
       }
@@ -615,7 +615,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%@ · תזכורת %@"
+            "value": "%@ · תזכורת %@"
           }
         }
       }
@@ -625,7 +625,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%@ · מצב שקט"
+            "value": "%@ · מצב שקט"
           }
         }
       }
@@ -641,7 +641,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%@ · אל %@"
+            "value": "%@ · אל %@"
           }
         }
       }
@@ -651,7 +651,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%@ · יום אימון"
+            "value": "%@ · יום אימון"
           }
         }
       }
@@ -661,7 +661,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%@ · מתחמם"
+            "value": "%@ · מתחמם"
           }
         }
       }
@@ -693,7 +693,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%@ · נשארו כ-%lld שבועות"
+            "value": "%@ · נשארו כ-%lld שבועות"
           }
         }
       }
@@ -735,7 +735,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%@%@ %@ מאז הפעם הקודמת"
+            "value": "%@%@ %@ מאז הפעם הקודמת"
           }
         }
       }
@@ -751,7 +751,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%@%@ / שבוע עכשיו"
+            "value": "%@%@ / שבוע עכשיו"
           }
         }
       }
@@ -767,7 +767,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%@%@ קלוריות"
+            "value": "%@%@ קלוריות"
           }
         }
       }
@@ -783,7 +783,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%@%@ ק״ג/שבוע"
+            "value": "%@%@ ק״ג/שבוע"
           }
         }
       }
@@ -799,7 +799,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%@%@ לכל %@, מחויב ל-Apple ID שלך. מתחדש אוטומטית אלא אם תבטל לפחות 24 שעות לפני סוף התקופה. אפשר לנהל או לבטל בהגדרות Apple ID."
+            "value": "%@%@ לכל %@, מחויב ל-Apple ID שלך. מתחדש אוטומטית אלא אם תבטל לפחות 24 שעות לפני סוף התקופה. אפשר לנהל או לבטל בהגדרות Apple ID."
           }
         }
       }
@@ -857,7 +857,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%@, %@ קלוריות. עריכה"
+            "value": "%@, %@ קלוריות. עריכה"
           }
         }
       }
@@ -889,7 +889,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%@, %lld קלוריות"
+            "value": "%@, %lld קלוריות"
           }
         }
       }
@@ -905,7 +905,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%@, %lld מתוך %lld קלוריות, %@"
+            "value": "%@, %lld מתוך %lld קלוריות, %@"
           }
         }
       }
@@ -915,7 +915,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%@, יום מנוחה"
+            "value": "%@, יום מנוחה"
           }
         }
       }
@@ -931,7 +931,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%@. %@. עריכת התוכנית"
+            "value": "%@. %@. עריכת התוכנית"
           }
         }
       }
@@ -941,7 +941,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%@. תזכורת מגיעה 45 דקות אחרי כל אחת אם היא לא נרשמת."
+            "value": "%@. תזכורת מגיעה 45 דקות אחרי כל אחת אם היא לא נרשמת."
           }
         }
       }
@@ -984,7 +984,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%lld תזכורת%@"
+            "value": "%lld תזכורת%@"
           }
         }
       }
@@ -994,7 +994,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%lld קלוריות"
+            "value": "%lld קלוריות"
           }
         }
       }
@@ -1004,7 +1004,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%lld קלוריות ביום. אפשר לקבוע בעצמך."
+            "value": "%lld קלוריות ביום. אפשר לקבוע בעצמך."
           }
         }
       }
@@ -1024,7 +1024,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%lld ימים בשבוע"
+            "value": "%lld ימים בשבוע"
           }
         }
       }
@@ -1034,7 +1034,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%lld מאכלים · חל על התזכורת הבאה"
+            "value": "%lld מאכלים · חל על התזכורת הבאה"
           }
         }
       }
@@ -1044,7 +1044,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%lld ג׳"
+            "value": "%lld ג׳"
           }
         }
       }
@@ -1054,7 +1054,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%lld ג׳ חלבון"
+            "value": "%lld ג׳ חלבון"
           }
         }
       }
@@ -1064,7 +1064,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%lld גרם חלבון. אפשר לקבוע בעצמך."
+            "value": "%lld גרם חלבון. אפשר לקבוע בעצמך."
           }
         }
       }
@@ -1074,7 +1074,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%lld שע׳"
+            "value": "%lld שע׳"
           }
         }
       }
@@ -1090,7 +1090,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%lld שע׳ %lld דק׳"
+            "value": "%lld שע׳ %lld דק׳"
           }
         }
       }
@@ -1100,7 +1100,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%lld קלוריות"
+            "value": "%lld קלוריות"
           }
         }
       }
@@ -1126,7 +1126,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%lld ימים רשומים ו-%lld שקילות ב-%lld ימים. מתעדכן בכל ראשון."
+            "value": "%lld ימים רשומים ו-%lld שקילות ב-%lld ימים. מתעדכן בכל ראשון."
           }
         }
       }
@@ -1136,7 +1136,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%lld ארוחות"
+            "value": "%lld ארוחות"
           }
         }
       }
@@ -1146,7 +1146,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%lld ארוחות זזו."
+            "value": "%lld ארוחות זזו."
           }
         }
       }
@@ -1156,7 +1156,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%lld דק׳"
+            "value": "%lld דק׳"
           }
         }
       }
@@ -1166,7 +1166,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%lld דקות אחרי שעת ארוחה, אם כלום לא תועד."
+            "value": "%lld דקות אחרי שעת ארוחה, אם כלום לא תועד."
           }
         }
       }
@@ -1186,7 +1186,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%lld זזו"
+            "value": "%lld זזו"
           }
         }
       }
@@ -1196,7 +1196,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%lld אף פעם"
+            "value": "%lld אף פעם"
           }
         }
       }
@@ -1212,7 +1212,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%lld מתוך %lld"
+            "value": "%lld מתוך %lld"
           }
         }
       }
@@ -1228,7 +1228,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%lld מתוך %lld ימים נסגרו."
+            "value": "%lld מתוך %lld ימים נסגרו."
           }
         }
       }
@@ -1244,7 +1244,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%lld מתוך %lld קלוריות"
+            "value": "%lld מתוך %lld קלוריות"
           }
         }
       }
@@ -1260,7 +1260,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%lld מתוך %lld קלוריות, %lld מעל"
+            "value": "%lld מתוך %lld קלוריות, %lld מעל"
           }
         }
       }
@@ -1276,7 +1276,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%lld מתוך %lld הקלוריות שעוד חסרות"
+            "value": "%lld מתוך %lld הקלוריות שעוד חסרות"
           }
         }
       }
@@ -1292,7 +1292,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%lld ביום רגיל, ועוד %lld לאימון, זה %lld היום"
+            "value": "%lld ביום רגיל, ועוד %lld לאימון, זה %lld היום"
           }
         }
       }
@@ -1302,7 +1302,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%lld מתוכננים"
+            "value": "%lld מתוכננים"
           }
         }
       }
@@ -1312,7 +1312,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%lld אימונים"
+            "value": "%lld אימונים"
           }
         }
       }
@@ -1322,7 +1322,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%lld שבועות"
+            "value": "%lld שבועות"
           }
         }
       }
@@ -1338,7 +1338,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%lld שבועות · %@ · %@"
+            "value": "%lld שבועות · %@ · %@"
           }
         }
       }
@@ -1348,7 +1348,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%lld שנים"
+            "value": "%lld שנים"
           }
         }
       }
@@ -1385,7 +1385,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%lld½ שעות"
+            "value": "%lld½ שעות"
           }
         }
       }
@@ -5265,7 +5265,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "עוד אין נתוני דופק. תלבש את ה-Apple Watch, או בדוק את הגישה של SetPoint בבריאות ← שיתוף ← אפליקציות."
+            "value": "עוד אין נתוני דופק. תלבש את ה-Apple Watch, או בדוק את הגישה של SetPoint בבריאות → שיתוף → אפליקציות."
           }
         }
       }
@@ -6594,7 +6594,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏SetPoint מיועד לבני %lld ומעלה."
+            "value": "SetPoint מיועד לבני %lld ומעלה."
           }
         }
       }
@@ -6604,7 +6604,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏SetPoint אף פעם לא מזמין, משלם או רואה את חשבון ה-Wolt שלך. הקלוריות הן הערכה שלנו מהתפריט. מנות עם מאכלים שאתה נמנע מהם כבר הוצאו."
+            "value": "SetPoint אף פעם לא מזמין, משלם או רואה את חשבון ה-Wolt שלך. הקלוריות הן הערכה שלנו מהתפריט. מנות עם מאכלים שאתה נמנע מהם כבר הוצאו."
           }
         }
       }
@@ -7894,7 +7894,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏Wolt נפתח על המנה. אתה לוחץ הוספה ומשלם שם."
+            "value": "Wolt נפתח על המנה. אתה לוחץ הוספה ומשלם שם."
           }
         }
       }
@@ -10126,7 +10126,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%lld תזכורות"
+            "value": "%lld תזכורות"
           }
         }
       }
@@ -10656,7 +10656,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "ערבים מאוחרים ← בוקרים חלשים"
+            "value": "ערבים מאוחרים → בוקרים חלשים"
           }
         }
       }
@@ -10686,7 +10686,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%lld מתוך %lld ימים רעבים היו למחרת אימון. כבר מוסיף את הקלוריות."
+            "value": "%lld מתוך %lld ימים רעבים היו למחרת אימון. כבר מוסיף את הקלוריות."
           }
         }
       }
@@ -10796,7 +10796,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%@ עד %@, שקט בלילה."
+            "value": "%@ עד %@, שקט בלילה."
           }
         }
       }
@@ -10826,7 +10826,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "בוקר %@ ← %@"
+            "value": "בוקר %@ → %@"
           }
         }
       }
@@ -10836,7 +10836,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "צהריים %@ ← %@"
+            "value": "צהריים %@ → %@"
           }
         }
       }
@@ -10846,7 +10846,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "ערב %@ ← %@"
+            "value": "ערב %@ → %@"
           }
         }
       }
@@ -10856,7 +10856,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "סופ״ש בוקר %@ ← %@"
+            "value": "סופ״ש בוקר %@ → %@"
           }
         }
       }
@@ -10866,7 +10866,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "סופ״ש צהריים %@ ← %@"
+            "value": "סופ״ש צהריים %@ → %@"
           }
         }
       }
@@ -10876,7 +10876,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "סופ״ש ערב %@ ← %@"
+            "value": "סופ״ש ערב %@ → %@"
           }
         }
       }
@@ -10886,7 +10886,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "שקט %@–%@ ← %@–%@"
+            "value": "שקט %@–%@ → %@–%@"
           }
         }
       }
@@ -11196,7 +11196,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%lld מתוך %lld פעילים"
+            "value": "%lld מתוך %lld פעילים"
           }
         }
       }
@@ -11206,7 +11206,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%@+ · %lld דק׳ מראש"
+            "value": "%@+ · %lld דק׳ מראש"
           }
         }
       }
@@ -11236,7 +11236,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%@ זז ל-%@"
+            "value": "%@ זז ל-%@"
           }
         }
       }
@@ -11336,7 +11336,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%lld שעות"
+            "value": "%lld שעות"
           }
         }
       }
@@ -11366,7 +11366,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%@ זז ל-%@"
+            "value": "%@ זז ל-%@"
           }
         }
       }
@@ -11496,7 +11496,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏AI — לא דיאטן."
+            "value": "AI — לא דיאטן."
           }
         }
       }
@@ -11506,7 +11506,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏SetPoint רשאית לקרוא את כל השיחה הזו כדי לבדוק שהיא בטוחה."
+            "value": "SetPoint רשאית לקרוא את כל השיחה הזו כדי לבדוק שהיא בטוחה."
           }
         }
       }
@@ -11896,7 +11896,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%lld קלוריות ירדו מהסך של היום."
+            "value": "%lld קלוריות ירדו מהסך של היום."
           }
         }
       }
@@ -11906,7 +11906,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%lld%% מהיום"
+            "value": "%lld%% מהיום"
           }
         }
       }
@@ -11946,7 +11946,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%lld%% מהקלוריות"
+            "value": "%lld%% מהקלוריות"
           }
         }
       }
@@ -12336,7 +12336,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "תזכורת %lld ← %lld דק׳ אחרי"
+            "value": "תזכורת %lld → %lld דק׳ אחרי"
           }
         }
       }
@@ -12626,7 +12626,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "הקל על היעד"
+            "value": "הקל את היעד"
           }
         }
       }
@@ -12656,7 +12656,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "השהיה לכמה ימים"
+            "value": "השהה לכמה ימים"
           }
         }
       }
@@ -12666,7 +12666,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "אחזור לזה אחר כך"
+            "value": "אחזור לזה"
           }
         }
       }
@@ -13616,7 +13616,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "הערב"
+            "value": "הלילה"
           }
         }
       }
@@ -13666,7 +13666,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%1$@ מתוך %2$@."
+            "value": "%@ מתוך %@."
           }
         }
       }
@@ -13726,7 +13726,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "עלייה של %@"
+            "value": "עלייה %@"
           }
         }
       }
@@ -13736,7 +13736,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "ירידה של %@"
+            "value": "ירידה %@"
           }
         }
       }
@@ -13766,7 +13766,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "נשנוש בסביבות %1$@, תדלוק עד %2$@, וארוחת ערב גדולה יותר. אזכיר לך לפני כן אם לא אכלת."
+            "value": "חטיף סביב %@, תדלוק עד %@, וערב גדול יותר. אדחוף אותך לפני אם לא אכלת."
           }
         }
       }
@@ -13776,7 +13776,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "היעד נשאר אותו דבר, אבל עדיין אתכנן נשנוש לפני ותדלוק עד %@."
+            "value": "היעד נשאר, אבל עדיין אתכנן חטיף לפני ותדלוק עד %@."
           }
         }
       }
@@ -13816,7 +13816,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%@ והלאה"
+            "value": "%@ ואחרי"
           }
         }
       }
@@ -13856,7 +13856,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "פספסת את התדלוק"
+            "value": "פספס את התדלוק"
           }
         }
       }
@@ -13866,7 +13866,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "לתדלק עכשיו"
+            "value": "תדלק עכשיו"
           }
         }
       }
@@ -13886,7 +13886,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "משהו קל — דלק בלי להרגיש שבע."
+            "value": "משהו קל — אנרגיה בלי להרגיש מלא."
           }
         }
       }
@@ -13926,7 +13926,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "לא תועד דבר לפני — זה בסדר. התדלוק חשוב יותר."
+            "value": "לא נרשם כלום לפני — בסדר. התדלוק חשוב יותר."
           }
         }
       }
@@ -13936,7 +13936,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "הבריאות של Apple מוסיפה את זה כשהשעון שומר אותו."
+            "value": "הבריאות של Apple מוסיפה כשהשעון שומר."
           }
         }
       }
@@ -13956,7 +13956,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "משהו עם חלבון תוך %lld דקות מסיום — שוקו או כריך. אזכיר לך."
+            "value": "משהו עם חלבון תוך %lld דק׳ מסיום — שוקו או כריך. אזכיר לך."
           }
         }
       }
@@ -13966,7 +13966,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "פספסת את החלון — עדיין כדאי לאכול משהו עם חלבון עכשיו."
+            "value": "פספסת את החלון — עדיין תאכל משהו עם חלבון עכשיו."
           }
         }
       }
@@ -13976,7 +13976,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "ארוחת הערב הרגילה שלך ועוד תוספת."
+            "value": "הערב הרגיל שלך ועוד תוספת."
           }
         }
       }
@@ -13986,7 +13986,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "ארוחת הערב הרגילה שלך."
+            "value": "הערב הרגיל שלך."
           }
         }
       }
@@ -14016,7 +14016,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%1$@ + עוד %2$lld"
+            "value": "%@ + עוד %lld"
           }
         }
       }
@@ -14026,7 +14026,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%1$lld קלוריות ב-%2$@ — בתוך החלון."
+            "value": "%lld קלוריות ב-%@ — בתוך החלון."
           }
         }
       }
@@ -14046,7 +14046,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "לא תועד דבר תוך %lld דקות מסיום. בפעם הבאה, גם שתייה נחשבת."
+            "value": "לא נרשם כלום תוך %lld דק׳ מסיום. בפעם הבאה, גם שתייה נחשבת."
           }
         }
       }
@@ -14056,7 +14056,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%1$@, %2$lld דק׳"
+            "value": "%@, %lld דק׳"
           }
         }
       }
@@ -14116,7 +14116,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%1$@ · כל %2$@"
+            "value": "%@ · כל %@"
           }
         }
       }
@@ -14126,7 +14126,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "‏%@ · פעם אחת"
+            "value": "%@ · פעם אחת"
           }
         }
       }
@@ -14136,7 +14136,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "ארוחת הערב ב-%@ מכסה את זה"
+            "value": "ערב ב-%@ מכסה את זה"
           }
         }
       }
@@ -14436,7 +14436,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "אמור שוב"
+            "value": "תגיד שוב"
           }
         }
       }
@@ -14906,7 +14906,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "תאכל לפני שאתה עסוק"
+            "value": "לאכול לפני שאתה עסוק"
           }
         }
       }
@@ -16847,6 +16847,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "פלאפל בפיתה עם חומוס"
+          }
+        }
+      }
+    },
+    "Refuel": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "תדלוק"
           }
         }
       }

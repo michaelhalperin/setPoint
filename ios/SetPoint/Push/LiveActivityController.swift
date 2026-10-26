@@ -12,7 +12,7 @@ final class LiveActivityController {
     private var current: Activity<CheckInActivityAttributes>?
     private var observing = false
 
-    func sync(activeCheckIn: HomeResponse.ActiveCheckIn?) {
+    func sync(activeCheckIn: HomeResponse.ActiveCheckIn?, ledger: HomeResponse.Ledger? = nil) {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
 
         guard let checkIn = activeCheckIn else {
@@ -23,7 +23,12 @@ final class LiveActivityController {
         let state = CheckInActivityAttributes.ContentState(
             title: checkIn.message ?? "Time to eat.",
             detail: checkIn.prescription?.summary ?? "",
-            deepLink: "setpoint://check-in/\(checkIn.id)"
+            deepLink: "setpoint://check-in/\(checkIn.id)",
+            label: Self.label(for: checkIn),
+            kcal: checkIn.prescription?.totalKcal,
+            isRefuel: checkIn.kind == "REFUEL",
+            dayKcal: ledger?.consumedKcal,
+            dayTarget: ledger?.targetKcal
         )
 
         if let current, current.attributes.checkInId == checkIn.id {
@@ -35,6 +40,18 @@ final class LiveActivityController {
                 content: ActivityContent(state: state, staleDate: nil),
                 pushType: .token
             )
+        }
+    }
+
+    /// "Lunch", "Refuel"… in the app's language; a plain line when it isn't about one meal.
+    static func label(for checkIn: HomeResponse.ActiveCheckIn) -> String {
+        if checkIn.kind == "REFUEL" { return L10n("Refuel") }
+        switch checkIn.slot {
+        case "breakfast": return L10n("Breakfast")
+        case "lunch": return L10n("Lunch")
+        case "dinner": return L10n("Dinner")
+        case .some: return L10n("Snack")
+        case nil: return L10n("Time to eat.")
         }
     }
 
