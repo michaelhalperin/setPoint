@@ -182,6 +182,17 @@ export class ApnsPushSender implements PushSender {
   }
 
   async send(deviceTokens: string[], payload: PushPayload): Promise<PushSendResult> {
+    try {
+      return await this.sendAll(deviceTokens, payload);
+    } catch (err) {
+      // A bad key or a dropped connection must read as a failed push, not crash the caller.
+      const message = err instanceof Error ? err.message : String(err);
+      console.error('[apns] send failed', message);
+      return { attempted: deviceTokens.length, sent: 0, failed: deviceTokens.length, invalidTokens: [], error: `apns_error: ${message}`.slice(0, 160) };
+    }
+  }
+
+  private async sendAll(deviceTokens: string[], payload: PushPayload): Promise<PushSendResult> {
     const expiration = Math.floor(Date.now() / 1000) + 3600;
     const invalidTokens: string[] = [];
     let sent = 0;

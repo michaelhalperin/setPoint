@@ -63,3 +63,20 @@ describe('buildLiveActivityPayload', () => {
     expect(p.aps).not.toHaveProperty('alert');
   });
 });
+
+describe('normalizePrivateKey', () => {
+  const { generateKeyPairSync, createPrivateKey } = require('node:crypto') as typeof import('node:crypto');
+  const pem = generateKeyPairSync('ec', { namedCurve: 'prime256v1' }).privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
+
+  it.each([
+    ['as is', (s: string) => s],
+    ['quoted', (s: string) => `"${s}"`],
+    ['literal \\n', (s: string) => s.trim().replace(/\n/g, '\\n')],
+    ['spaces for newlines', (s: string) => s.trim().replace(/\n/g, ' ')],
+    ['one line, no breaks', (s: string) => s.replace(/\n/g, '')],
+  ])('reads a key pasted %s', async (_name, mangle) => {
+    const { normalizePrivateKey } = await import('./factory.js');
+    const key = createPrivateKey(normalizePrivateKey(mangle(pem)));
+    expect(key.asymmetricKeyType).toBe('ec');
+  });
+});
