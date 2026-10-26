@@ -12100,6 +12100,56 @@
           }
         }
       }
+    },
+    "Undo · %@": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "החזר · %@"
+          }
+        }
+      }
+    },
+    "Removed %@": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "הוסר: %@"
+          }
+        }
+      }
+    },
+    "Back to what I saw": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "חזרה למה שראיתי"
+          }
+        }
+      }
+    },
+    "Nothing left on the plate.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "לא נשאר כלום בצלחת."
+          }
+        }
+      }
+    },
+    "Bring the food back, add one, or go back to what I saw.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אפשר להחזיר את המזון, להוסיף אחד, או לחזור למה שראיתי."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

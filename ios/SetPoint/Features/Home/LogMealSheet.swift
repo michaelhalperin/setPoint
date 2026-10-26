@@ -648,7 +648,7 @@ struct PhotoParseConfirm: View {
     }
 }
 
-struct EditableMealItem: Identifiable {
+struct EditableMealItem: Identifiable, Equatable {
     let id = UUID()
     var name: String
     var quantity: String
@@ -720,9 +720,14 @@ struct MealCorrectionEditor: View {
     let onCancel: () -> Void
     let onSave: (String, [MealCorrectionRequest.Item]) async -> Bool
     let onRemove: () -> Void
+    /// The plate as it was read, so every edit can be taken back.
+    private let originalSummary: String
+    private let originalItems: [EditableMealItem]
 
     @State private var summary: String
     @State private var items: [EditableMealItem]
+    /// The food just taken off and where it sat, until Undo or the next removal.
+    @State private var removed: (item: EditableMealItem, index: Int)?
     @State private var selected: UUID?
     @State private var showExact = false
     @State private var confirmingRemove = false
@@ -824,6 +829,8 @@ struct MealCorrectionEditor: View {
         self.onSave = onSave
         self.onRemove = onRemove
         let start = items.isEmpty ? [EditableMealItem()] : items
+        self.originalSummary = summary
+        self.originalItems = start
         _summary = State(initialValue: summary)
         _items = State(initialValue: start)
         _selected = State(initialValue: start.first?.id)
@@ -839,6 +846,8 @@ struct MealCorrectionEditor: View {
     }
 
     private var total: Int { items.reduce(0) { $0 + (Int($1.kcal) ?? 0) } }
+
+    private var edited: Bool { items != originalItems || summary != originalSummary }
 
     var body: some View {
         ScrollView {
@@ -857,8 +866,16 @@ struct MealCorrectionEditor: View {
                             Text("→").foregroundStyle(Palette.inkFaint)
                         }
                         Text(L10n("\(total.formatted()) kcal")).foregroundStyle(Palette.amber)
-                        if total == originalKcal {
+                        if !edited {
                             Text("· as I saw it").foregroundStyle(Palette.inkFaint)
+                        }
+                        Spacer(minLength: 8)
+                        if edited {
+                            Button("Back to what I saw", action: restoreOriginal)
+                                .font(Typography.data(13, weight: .regular))
+                                .foregroundStyle(Palette.inkSoft)
+                                .buttonStyle(.plain)
+                                .disabled(saving)
                         }
                     }
                     .font(Typography.mono(13))
@@ -870,6 +887,12 @@ struct MealCorrectionEditor: View {
                     selectedCard(index)
                         .id(items[index].id)
                         .transition(.opacity)
+                } else if items.isEmpty {
+                    emptyPlate.transition(.opacity)
+                }
+
+                if let removed, !items.isEmpty {
+                    undoRow(removed.item).transition(.opacity)
                 }
 
                 VStack(alignment: .leading, spacing: 10) {
@@ -1051,15 +1074,8 @@ struct MealCorrectionEditor: View {
             }
 
             HStack {
-                Button(items.count > 1 ? (photo == nil ? L10n("Not in it · remove") : L10n("Not in the photo · remove")) : L10n("Clear it")) {
-                    if items.count > 1 {
-                        let id = item.id
-                        items.removeAll { $0.id == id }
-                        selected = items.first?.id
-                    } else {
-                        items[index] = EditableMealItem()
-                        selected = items[index].id
-                    }
+                Button(photo == nil ? L10n("Not in it · remove") : L10n("Not in the photo · remove")) {
+                    removeItem(at: index)
                 }
                 .font(Typography.data(13, weight: .regular))
                 .foregroundStyle(Palette.danger)
@@ -1105,6 +1121,91 @@ struct MealCorrectionEditor: View {
                 bases[id] = base(of: items[index])
             }
         )
+    }
+
+    // MARK: Undo
+
+    /// Nothing left after a removal: say so, and offer the ways back.
+    private var emptyPlate: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Nothing left on the plate.")
+                .font(Typography.data(17, weight: .regular))
+                .foregroundStyle(Palette.ink)
+            Text("Bring the food back, add one, or go back to what I saw.")
+                .font(Typography.data(13, weight: .regular))
+                .foregroundStyle(Palette.inkSoft)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: Space.xs) {
+                if let removed {
+                    Button(L10n("Undo · \(displayName(removed.item))"), action: undoRemove)
+                        .font(Typography.data(13, weight: .medium))
+                        .foregroundStyle(Palette.onBone)
+                        .lineLimit(1)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 11)
+                        .background(Palette.ink, in: RoundedRectangle(cornerRadius: Radius.sm, style: .continuous))
+                }
+                Button("Back to what I saw", action: restoreOriginal)
+                    .font(Typography.data(13, weight: .medium))
+                    .foregroundStyle(Palette.ink)
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 11)
+                    .glass(radius: Radius.sm)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(16)
+        .glass(radius: 24)
+    }
+
+    private func undoRow(_ item: EditableMealItem) -> some View {
+        HStack(spacing: 10) {
+            Text(L10n("Removed \(displayName(item))"))
+                .font(Typography.data(13, weight: .regular))
+                .foregroundStyle(Palette.inkSoft)
+                .lineLimit(1)
+            Spacer(minLength: 8)
+            Button("Undo", action: undoRemove)
+                .font(Typography.data(13, weight: .medium))
+                .foregroundStyle(Palette.ink)
+                .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 16)
+        .frame(minHeight: 44)
+        .glass(radius: Radius.sm)
+    }
+
+    private func displayName(_ item: EditableMealItem) -> String {
+        item.name.isEmpty ? L10n("New food") : item.name
+    }
+
+    private func removeItem(at index: Int) {
+        guard items.indices.contains(index) else { return }
+        Haptics.select()
+        removed = (items[index], index)
+        items.remove(at: index)
+        selected = items.first?.id
+    }
+
+    private func undoRemove() {
+        guard let removed else { return }
+        Haptics.select()
+        items.insert(removed.item, at: min(removed.index, items.count))
+        selected = removed.item.id
+        self.removed = nil
+    }
+
+    /// Every food and number back to how the photo or text was read.
+    private func restoreOriginal() {
+        Haptics.select()
+        summary = originalSummary
+        items = originalItems
+        portions = [:]
+        for item in items { bases[item.id] = base(of: item) }
+        selected = items.first?.id
+        removed = nil
+        showExact = false
     }
 
     private func addFood() {

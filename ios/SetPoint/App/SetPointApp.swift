@@ -17,6 +17,8 @@ struct SetPointApp: App {
                 .modifier(HintCopyReader())
                 .modifier(AppLanguageReader())
                 .tint(Palette.accent)
+                // No scroll bar on any screen; flows down to sheets and covers too.
+                .scrollIndicators(.hidden)
                 .onOpenURL { url in
                     switch DeepLink(url: url) {
                     case let .checkIn(id):

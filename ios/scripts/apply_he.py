@@ -718,6 +718,11 @@ HE: dict[str, str] = {
     "Week %lld: %lld %@ your burn": "שבוע %lld: %lld %@ מהשריפה",
     "Week one.": "שבוע ראשון.",
     "Weekdays": "ימי חול",
+    "Undo · %@": "החזר · %@",
+    "Removed %@": "הוסר: %@",
+    "Back to what I saw": "חזרה למה שראיתי",
+    "Nothing left on the plate.": "לא נשאר כלום בצלחת.",
+    "Bring the food back, add one, or go back to what I saw.": "אפשר להחזיר את המזון, להוסיף אחד, או לחזור למה שראיתי.",
     "You had a meal before — that counts.": "אכלת ארוחה לפני — זה נחשב.",
     "Weekdays %@–%@": "ימי חול %@–%@",
     "Weekends %@–%@": "סופ״ש %@–%@",
@@ -1544,6 +1549,11 @@ def apply() -> None:
         "Pasta",
         "Olive oil",
         "Cheese",
+        "Undo · %@",
+        "Removed %@",
+        "Back to what I saw",
+        "Nothing left on the plate.",
+        "Bring the food back, add one, or go back to what I saw.",
     ):
         strings.setdefault(extra, {})
     applied = 0

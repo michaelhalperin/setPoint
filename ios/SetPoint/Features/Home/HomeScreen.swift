@@ -167,7 +167,10 @@ struct HomeContent: View {
         .sheet(item: $selectedMeal) { meal in
             MealDetailSheet(
                 meal: meal,
-                onRemove: { deleteMeal(meal) },
+                onRemove: {
+                    selectedMeal = nil
+                    deleteMeal(meal)
+                },
                 onFixed: { Task { await model.load(showSpinner: false) } },
                 dayKcalTarget: loadedHome?.ledger.targetKcal,
                 onLogAgain: {

@@ -420,8 +420,17 @@ private struct DayMealsSheet: View {
             MealDetailSheet(
                 meal: meal,
                 onRemove: {
-                    try await model.removeMeal(id: meal.id)
-                    meals = await model.meals(on: station.date)
+                    // Off the list and the sheet closed now; the server catches up.
+                    selectedMeal = nil
+                    meals.removeAll { $0.id == meal.id }
+                    Task {
+                        do {
+                            try await model.removeMeal(id: meal.id)
+                        } catch {
+                            Haptics.nudge()
+                            meals = await model.meals(on: station.date)
+                        }
+                    }
                 },
                 onFixed: { Task { meals = await model.meals(on: station.date) } }
             )

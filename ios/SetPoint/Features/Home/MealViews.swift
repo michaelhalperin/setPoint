@@ -305,10 +305,7 @@ struct MealDetailSheet: View {
                     meal = corrected
                     onFixed?()
                 },
-                onRemove: {
-                    fixing = false
-                    beginRemoval()
-                },
+                onRemove: beginRemoval,
                 onClose: { fixing = false }
             )
         }
