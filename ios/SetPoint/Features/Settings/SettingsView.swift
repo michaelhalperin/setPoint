@@ -92,8 +92,18 @@ struct SettingsView: View {
                 goalCard(model)
                     .appearIn(0)
 
-                checkInsSection(model)
-                    .appearIn(1)
+                if model.enforcementEnabled, model.checkInsPaused {
+                    pausedCheckIns(model)
+                        .appearIn(1)
+                } else if !model.enforcementEnabled {
+                    // Check-ins off for safety (screening, care team): keep saying why.
+                    Text(enforcementNote(model.enforcementDisabledReason))
+                        .font(Typography.data(13, weight: .regular))
+                        .foregroundStyle(Palette.inkSoft)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal, 4)
+                        .appearIn(1)
+                }
 
                 setupGrid(model)
                     .appearIn(2)
@@ -282,48 +292,28 @@ struct SettingsView: View {
         return first + "\n" + second
     }
 
-    /// On or paused — one card: the day's three meal check-ins, and a sliding switch.
-    private func checkInsSection(_ model: SettingsViewModel) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text("How I check in").sectionLabelStyle()
-                Spacer()
-                Text(L10n("Quiet \(formatMinutes(model.quietHours.startMin))–\(formatMinutes(model.quietHours.endMin))"))
-                    .font(Typography.mono(10))
-                    .textCase(.uppercase)
-                    .foregroundStyle(Palette.inkFaint)
+    /// Check-ins are on unless someone paused them earlier; the switch for that is
+    /// gone, so a paused account gets one row to turn them back on.
+    private func pausedCheckIns(_ model: SettingsViewModel) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: "pause.fill")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(Palette.inkSoft)
+            Text("Check-ins are paused")
+                .font(Typography.data(14, weight: .regular))
+                .foregroundStyle(Palette.ink)
+            Spacer(minLength: 8)
+            Button("Turn on") {
+                Haptics.select()
+                Task { await model.setCheckInsPaused(false) }
             }
-            .padding(.horizontal, 4)
-
-            if model.enforcementEnabled {
-                CheckInModeSwitch(
-                    paused: model.checkInsPaused,
-                    mealMinutes: [
-                        model.mealTimes.breakfastMin,
-                        model.mealTimes.lunchMin,
-                        model.mealTimes.dinnerMin,
-                    ],
-                    busy: model.saving
-                ) { paused in
-                    Task { await model.setCheckInsPaused(paused) }
-                }
-            }
-
-            if model.enforcementEnabled && !model.checkInsPaused {
-                Text(checkInsDetail(model))
-                    .font(Typography.data(13, weight: .regular))
-                    .foregroundStyle(Palette.inkSoft)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.horizontal, 4)
-                    .hintCopy()
-            } else {
-                Text(checkInsDetail(model))
-                    .font(Typography.data(13, weight: .regular))
-                    .foregroundStyle(Palette.inkSoft)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.horizontal, 4)
-            }
+            .font(Typography.data(14, weight: .medium))
+            .foregroundStyle(Palette.amber)
+            .disabled(model.saving)
         }
+        .padding(.horizontal, 16)
+        .frame(minHeight: 52)
+        .glass(radius: 18)
     }
 
     /// Each setting as a tile with a small picture of its current value.
@@ -514,12 +504,6 @@ struct SettingsView: View {
         .buttonStyle(PressableCard())
     }
 
-    private func checkInsDetail(_ model: SettingsViewModel) -> String {
-        if !model.enforcementEnabled { return enforcementNote(model.enforcementDisabledReason) }
-        if model.checkInsPaused { return L10n( "Paused. Your plan still updates.") }
-        return L10n( "\(CheckInSchedule.graceMin) min after a meal time, if nothing’s logged.")
-    }
-
     private func goalSubtitle(_ model: SettingsViewModel) -> String {
         model.goal.hasWeightTarget ? "\(model.goal.title) · \(model.pace.title.lowercased())" : L10n( "Hold steady")
     }
@@ -657,130 +641,7 @@ func enforcementNote(_ reason: String?) -> String {
     }
 }
 
-/// How check-ins run: a status row with a pulsing dot, the day's meal times,
-/// and a capsule toggle.
-private struct CheckInModeSwitch: View {
-    let paused: Bool
-    let mealMinutes: [Int]
-    var busy = false
-    let onChange: (Bool) -> Void
-
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    private var listening: Bool { !paused }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(spacing: 14) {
-                statusDot
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(LocalizedStringKey(listening ? "Listening" : "Paused"))
-                        .font(Typography.data(17, weight: .medium))
-                        .foregroundStyle(Palette.ink)
-                        .contentTransition(.opacity)
-                    Text(mealMinutes.map { formatMinutes($0) }.joined(separator: " · "))
-                        .font(Typography.mono(11))
-                        .foregroundStyle(listening ? Palette.inkSoft : Palette.inkFaint)
-                        .contentTransition(.opacity)
-                }
-                Spacer(minLength: 8)
-                capsuleToggle
-            }
-            if listening {
-                mealTimeline
-            }
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .glass(radius: 24, fill: Color.white.opacity(0.035))
-        .opacity(busy ? 0.55 : 1)
-        .disabled(busy)
-        .animation(Motion.adaptive(Motion.settle, reduceMotion: reduceMotion), value: paused)
-        .accessibilityElement(children: .contain)
-    }
-
-    private var statusDot: some View {
-        ZStack {
-            if listening && !reduceMotion {
-                LoopingPhase(period: 2.4, still: 1) { t in
-                    Circle()
-                        .fill(Palette.ember.opacity(0.35))
-                        .scaleEffect(1 + 1.2 * Phase.ramp(t, 0, 0.7))
-                        .opacity(0.8 * (1 - Phase.ramp(t, 0, 0.7)))
-                }
-            }
-            Circle()
-                .fill(listening ? Palette.ember : Color.white.opacity(0.15))
-                .frame(width: 10, height: 10)
-                .shadow(color: Palette.ember.opacity(listening ? 0.7 : 0), radius: 6)
-        }
-        .frame(width: 24, height: 24)
-    }
-
-    private var capsuleToggle: some View {
-        Button {
-            Haptics.select()
-            onChange(!paused)
-        } label: {
-            ZStack(alignment: listening ? .trailing : .leading) {
-                Capsule()
-                    .fill(listening ? Palette.ember.opacity(0.28) : Color.white.opacity(0.08))
-                    .overlay(Capsule().strokeBorder(listening ? Palette.ember.opacity(0.5) : Color.white.opacity(0.10)))
-                Circle()
-                    .fill(listening ? Palette.ember : Color.white.opacity(0.35))
-                    .frame(width: 24, height: 24)
-                    .padding(3)
-                    .shadow(color: Palette.ember.opacity(listening ? 0.6 : 0), radius: 5)
-            }
-            .frame(width: 52, height: 30)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Check-ins")
-        .accessibilityValue(listening ? "On" : "Paused")
-        .accessibilityAddTraits(.isButton)
-    }
-
-    private var mealTimeline: some View {
-        GeometryReader { geo in
-            let w = geo.size.width
-            ZStack(alignment: .leading) {
-                Capsule()
-                    .fill(
-                        LinearGradient(
-                            colors: [Palette.ember.opacity(0.12), Palette.ember.opacity(0.4), Palette.ember.opacity(0.12)],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
-                    .frame(height: 2)
-                    .padding(.horizontal, 18)
-
-                HStack(spacing: 0) {
-                    ForEach(Array(mealMinutes.enumerated()), id: \.offset) { index, minute in
-                        VStack(spacing: 5) {
-                            Circle()
-                                .fill(Palette.ember)
-                                .frame(width: 8, height: 8)
-                                .shadow(color: Palette.ember.opacity(0.6), radius: 4)
-                            Text(formatMinutes(minute))
-                                .font(Typography.mono(9))
-                                .foregroundStyle(Palette.inkSoft)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.8)
-                        }
-                        if index < mealMinutes.count - 1 { Spacer(minLength: 0) }
-                    }
-                }
-                .frame(width: w)
-            }
-        }
-        .frame(height: 30)
-        .transition(.opacity.combined(with: .move(edge: .top)))
-        .accessibilityHidden(true)
-    }
-}
-
-/// Matches the loaded You layout: Edit plan, goal orb card, check-in switch, setup grid.
+/// Matches the loaded You layout: Edit plan, goal orb card, setup grid.
 private struct SettingsSkeletonView: View {
     var showPro = false
     private let wash = Color.white.opacity(0.06)
@@ -796,7 +657,6 @@ private struct SettingsSkeletonView: View {
                 }
 
                 goalCard
-                checkIns
                 setupGrid
                 if showPro { proCard }
             }
@@ -838,65 +698,6 @@ private struct SettingsSkeletonView: View {
                 .fill(LinearGradient(colors: [Palette.ember.opacity(0.08), Color.white.opacity(0.02)], startPoint: .topLeading, endPoint: .bottomTrailing))
         }
         .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous).strokeBorder(Color(hex: 0xFF8A50, opacity: 0.18)))
-    }
-
-    private var checkIns: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                SkeletonBlock(width: 108, height: 10, tint: wash)
-                Spacer()
-                SkeletonBlock(width: 92, height: 10, tint: wash)
-            }
-            .padding(.horizontal, 4)
-
-            VStack(alignment: .leading, spacing: 16) {
-                HStack {
-                    SkeletonBlock(width: 72, height: 15, tint: washStrong)
-                    Spacer()
-                    SkeletonBlock(width: 96, height: 12, tint: wash)
-                }
-                ZStack(alignment: .top) {
-                    Capsule()
-                        .fill(wash)
-                        .frame(height: 2)
-                        .padding(.horizontal, 18)
-                        .padding(.top, 8)
-                    HStack {
-                        ForEach(0..<3, id: \.self) { _ in
-                            VStack(spacing: 6) {
-                                Circle()
-                                    .strokeBorder(washStrong, lineWidth: 1.5)
-                                    .frame(width: 9, height: 9)
-                                SkeletonBlock(width: 28, height: 8, tint: wash)
-                            }
-                            .frame(maxWidth: .infinity)
-                        }
-                    }
-                }
-                .frame(height: 36)
-
-                HStack(spacing: 4) {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(washStrong)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 38)
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(wash)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 38)
-                }
-                .padding(4)
-                .background(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(Color.white.opacity(0.05))
-                )
-            }
-            .padding(16)
-            .glass(radius: 24, fill: Color.white.opacity(0.035))
-
-            SkeletonBlock(width: 220, height: 12, tint: wash)
-                .padding(.horizontal, 4)
-        }
     }
 
     private var setupGrid: some View {

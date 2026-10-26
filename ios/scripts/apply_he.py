@@ -718,6 +718,9 @@ HE: dict[str, str] = {
     "Week %lld: %lld %@ your burn": "שבוע %lld: %lld %@ מהשריפה",
     "Week one.": "שבוע ראשון.",
     "Weekdays": "ימי חול",
+    "Check-ins are paused": "התזכורות מושהות",
+    "Don’t remember your %@? ": "לא זוכר בדיוק את %@? ",
+    "Log ~%@": "רשום ~%@",
     "Recent": "אחרונות",
     "Today · %@": "היום · %@",
     "Yesterday · %@": "אתמול · %@",
@@ -1570,6 +1573,10 @@ def apply() -> None:
         "Turn on Camera for SetPoint in Settings to snap a meal.",
         "No camera here",
         "Choose a photo from your library instead.",
+        "Don’t remember your %@? ",
+        "Log ~%@",
+        "Check-ins are paused",
+        "Turn on",
     ):
         strings.setdefault(extra, {})
     applied = 0

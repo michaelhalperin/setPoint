@@ -390,6 +390,9 @@ struct LogDock: View {
                 // Full width, so the sideways recent list runs to the screen edge;
                 // `browse` puts the margins back on everything else.
                 .padding(.horizontal, -Space.gutter)
+                // Pinned under the scrolling part, so its Log button never
+                // needs a scroll to reach.
+                if let kcal = estimateKcal { roughSize(base: kcal) }
             }
         }
         .padding(.horizontal, Space.gutter)
@@ -440,7 +443,6 @@ struct LogDock: View {
             modeTiles
             usuals
             recentList
-            if let kcal = estimateKcal { roughSize(base: kcal) }
         }
         .padding(.horizontal, Space.gutter)
     }
@@ -450,10 +452,12 @@ struct LogDock: View {
         !typing && logger.photo == nil && logger.phase != .parsing
     }
 
-    /// Leaves the header, the field and some of the screen above the sheet.
+    /// Leaves the header, the field, the pinned rough-size bar and some of the
+    /// screen above the sheet.
     private var browseMaxHeight: CGFloat {
         let screen = (UIApplication.shared.connectedScenes.first as? UIWindowScene)?.screen.bounds.height ?? 844
-        return max(280, screen * 0.86 - 190)
+        let pinned: CGFloat = estimateKcal == nil ? 0 : 96
+        return max(240, screen * 0.86 - 190 - pinned)
     }
 
     private var catalogHits: some View {
@@ -753,54 +757,57 @@ struct LogDock: View {
     }
 
     /// Ate but don't remember the details? A rough size keeps the day honest.
+    /// One compact row pinned to the bottom of the sheet: size, then Log.
     private func roughSize(base: Int) -> some View {
         let sizes = [("Small", 0.6), ("Normal", 1.0), ("Big", 1.5)]
         let kcal = Int((Double(base) * sizes[size].1 / 50).rounded()) * 50
-        return VStack(alignment: .leading, spacing: 10) {
-            (Text("Don’t remember exactly? ").foregroundColor(Palette.ink)
+        return VStack(alignment: .leading, spacing: 8) {
+            (Text(L10n("Don’t remember your \(slot.title.lowercased())? ")).foregroundColor(Palette.ink)
                 + Text("Pick a size.").foregroundColor(Palette.inkSoft))
-                .font(Typography.data(14, weight: .regular))
-            SegmentedPills(options: [0, 1, 2], selection: $size, title: { sizes[$0].0 })
-            // The one lit button on the panel: everything else is glass.
-            Button {
-                focused.wrappedValue = false
-                Task { await logger.logEstimate(slot: slot, kcal: kcal) }
-            } label: {
-                HStack(spacing: 10) {
-                    Text(L10n("Log a \(L10nKey(sizes[size].0)) \(slot.title)"))
-                        .font(Typography.data(15, weight: .semibold))
-                    Spacer(minLength: 8)
-                    Text(L10n("~\(kcal.formatted()) kcal"))
-                        .font(Typography.mono(13))
-                        .contentTransition(.numericText(value: Double(kcal)))
-                    Image(systemName: "plus")
-                        .font(.system(size: 13, weight: .bold))
-                        .frame(width: 30, height: 30)
-                        .background(Circle().fill(Color.black.opacity(0.14)))
+                .font(Typography.data(13, weight: .regular))
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
+            HStack(spacing: 8) {
+                SegmentedPills(options: [0, 1, 2], selection: $size, title: { sizes[$0].0 })
+                // The one lit button on the panel: everything else is glass.
+                Button {
+                    focused.wrappedValue = false
+                    Task { await logger.logEstimate(slot: slot, kcal: kcal) }
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "plus")
+                            .font(.system(size: 12, weight: .bold))
+                        Text(L10n("Log ~\(kcal.formatted())"))
+                            .font(Typography.data(15, weight: .semibold))
+                            .contentTransition(.numericText(value: Double(kcal)))
+                            .lineLimit(1)
+                    }
+                    .foregroundStyle(Color(hex: 0x1A0A04))
+                    .padding(.horizontal, 16)
+                    .frame(height: 48)
+                    .background {
+                        Capsule().fill(
+                            LinearGradient(
+                                colors: [Color(hex: 0xFFC48A), Palette.ember], startPoint: .topLeading,
+                                endPoint: .bottomTrailing))
+                    }
+                    .overlay(Capsule().strokeBorder(Color.white.opacity(0.25), lineWidth: 1))
+                    .shadow(color: Palette.ember.opacity(0.4), radius: 10, y: 3)
+                    .contentShape(Capsule())
+                    .fixedSize()
                 }
-                .foregroundStyle(Color(hex: 0x1A0A04))
-                .padding(.leading, 20)
-                .padding(.trailing, 10)
-                .frame(height: 52)
-                .background {
-                    Capsule().fill(
-                        LinearGradient(
-                            colors: [Color(hex: 0xFFC48A), Palette.ember], startPoint: .topLeading,
-                            endPoint: .bottomTrailing))
-                }
-                .overlay(Capsule().strokeBorder(Color.white.opacity(0.25), lineWidth: 1))
-                .shadow(color: Palette.ember.opacity(0.45), radius: 14, y: 4)
-                .contentShape(Capsule())
+                .buttonStyle(PressableCard())
+                .disabled(logger.phase == .parsing)
+                .opacity(logger.phase == .parsing ? 0.6 : 1)
+                .accessibilityLabel(
+                    "Log a \(sizes[size].0.lowercased()) \(slot.title.lowercased()), about \(kcal) kilocalories"
+                )
             }
-            .buttonStyle(PressableCard())
-            .disabled(logger.phase == .parsing)
-            .opacity(logger.phase == .parsing ? 0.6 : 1)
-            .accessibilityLabel(
-                "Log a \(sizes[size].0.lowercased()) \(slot.title.lowercased()), about \(kcal) kilocalories"
-            )
         }
-        .padding(14)
-        .glass(radius: 20, fill: Color.white.opacity(0.03))
+        .padding(.top, 12)
+        .overlay(alignment: .top) {
+            Rectangle().fill(Palette.hairline).frame(height: 1).padding(.horizontal, -Space.gutter)
+        }
     }
 }
 

@@ -12230,6 +12230,36 @@
           }
         }
       }
+    },
+    "Don’t remember your %@? ": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "לא זוכר בדיוק את %@? "
+          }
+        }
+      }
+    },
+    "Log ~%@": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "רשום ~%@"
+          }
+        }
+      }
+    },
+    "Check-ins are paused": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "התזכורות מושהות"
+          }
+        }
+      }
     }
   },
   "version": "1.0"
