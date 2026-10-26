@@ -2,6 +2,7 @@ import type { PushPayload } from './types.js';
 
 /** One sample per kind of notification the scoring job can send, for the admin test buttons. */
 export const TEST_PUSHES = [
+  { kind: 'plain', label: 'Plain alert (no extras)', tier: 1, category: undefined, plain: true, body: 'A bare notification, to tell a delivery problem from a settings one.' },
   { kind: 'meal_gentle', label: 'Meal · gentle', tier: 1, category: 'CHECK_IN', body: 'Lunch is up: rice and chicken covers about 700.' },
   { kind: 'meal_firm', label: 'Meal · firm', tier: 2, category: 'CHECK_IN', body: 'Nothing logged for lunch. Get 700 in now.' },
   { kind: 'conversation', label: 'Conversation', tier: 3, category: undefined, body: 'Change your target, timing, or pause check-ins?' },
@@ -15,6 +16,7 @@ export const TEST_PUSHES = [
   label: string;
   tier: number;
   category: PushPayload['category'];
+  plain?: boolean;
   body: string;
 }[];
 

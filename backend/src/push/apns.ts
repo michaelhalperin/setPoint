@@ -123,6 +123,9 @@ export class ApnsClient {
  * deep-links into the full-screen prescription view (plan §2, §5a). Pure.
  */
 export function buildCheckInAlertPayload(payload: PushPayload): Record<string, unknown> {
+  if (payload.plain) {
+    return { aps: { alert: { title: payload.title, body: payload.body }, sound: 'default' }, checkInId: payload.checkInId };
+  }
   return {
     aps: {
       alert: { title: payload.title, body: payload.body },

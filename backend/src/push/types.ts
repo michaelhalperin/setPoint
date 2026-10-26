@@ -7,6 +7,8 @@ export type PushPayload = {
   /** The suggested meal, so "I ate this" works straight from the notification. */
   prescriptionId?: string | null;
   category?: 'CHECK_IN' | 'HEADS_UP' | 'REFUEL';
+  /** Admin test only: a bare alert with no Time Sensitive level and no action buttons. */
+  plain?: boolean;
 };
 
 export type PushSendResult = {
