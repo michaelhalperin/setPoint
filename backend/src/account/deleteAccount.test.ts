@@ -1,6 +1,6 @@
 import type { PrismaClient } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
-import { AccountNotFoundError, deleteAccount } from './deleteAccount.js';
+import { AccountNotFoundError, deleteAccount, deleteAccounts } from './deleteAccount.js';
 
 const revokeMock = vi.hoisted(() => vi.fn());
 vi.mock('../auth/appleRevoke.js', () => ({ revokeAppleToken: revokeMock }));
@@ -55,5 +55,18 @@ describe('deleteAccount', () => {
 
   it('throws when the account does not exist', async () => {
     await expect(deleteAccount({ prisma: fakePrisma([]) }, 'ghost')).rejects.toBeInstanceOf(AccountNotFoundError);
+  });
+
+  it('deletes many accounts and counts ids that were already gone', async () => {
+    revokeMock.mockReset();
+    const prisma = fakePrisma([
+      { id: 'u1', appleRefreshToken: null },
+      { id: 'u2', appleRefreshToken: null },
+    ]);
+
+    const result = await deleteAccounts({ prisma }, ['u1', 'u2', 'ghost', 'u1']);
+
+    expect(result).toEqual({ deleted: 2, missing: 1 });
+    expect(prisma.__users).toHaveLength(0);
   });
 });

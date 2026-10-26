@@ -16,6 +16,8 @@ describe('GET /admin', () => {
     expect(res.body).toContain("['notifications', 'Notifications']");
     expect(res.body).toContain("h('h2', { text: 'Problems' })");
     expect(res.body).toContain("h('h2', { text: 'Meals by source' })");
+    expect(res.body).toContain("text: 'Delete listed'");
+    expect(res.body).toContain("method: 'DELETE'");
     // The page holds no data of its own.
     expect(res.body).not.toMatch(/@[a-z0-9-]+\.[a-z]{2,}/i);
   });

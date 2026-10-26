@@ -56,3 +56,31 @@ export async function deleteAccount(
 
   return { deleted: true, appleTokenRevoked };
 }
+
+export type DeleteAccountsResult = {
+  deleted: number;
+  missing: number;
+};
+
+/**
+ * Deletes many accounts, one at a time, so a missing id does not abort the rest.
+ * Used by the admin dashboard to clear test people.
+ */
+export async function deleteAccounts(
+  deps: { prisma: PrismaClient; photos?: PhotoStore | null },
+  userIds: string[],
+): Promise<DeleteAccountsResult> {
+  const unique = [...new Set(userIds)];
+  let deleted = 0;
+  let missing = 0;
+  for (const id of unique) {
+    try {
+      await deleteAccount(deps, id);
+      deleted += 1;
+    } catch (err) {
+      if (err instanceof AccountNotFoundError) missing += 1;
+      else throw err;
+    }
+  }
+  return { deleted, missing };
+}

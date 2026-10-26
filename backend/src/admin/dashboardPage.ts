@@ -663,13 +663,14 @@ td.copy { white-space: normal; max-width: 280px; color: var(--soft); font-size: 
         h('select', { 'aria-label': 'Cohort', onchange: function (e) { f.cohort = e.target.value; renderUsers(); } },
           h('option', { value: '', text: 'Any cohort' }),
           s.cohorts.map(function (c) { return h('option', { value: c.cohort, selected: f.cohort === c.cohort ? true : null, text: c.cohort }); })),
-        h('label', { class: 'soft', style: 'display:flex;align-items:center;gap:6px' }, h('input', { type: 'checkbox', checked: f.pending, onchange: function (e) { f.pending = e.target.checked; renderUsers(); } }), 'Waiting for an invite')));
+        h('label', { class: 'soft', style: 'display:flex;align-items:center;gap:6px' }, h('input', { type: 'checkbox', checked: f.pending, onchange: function (e) { f.pending = e.target.checked; renderUsers(); } }), 'Waiting for an invite'),
+        users.length ? h('button', { class: 'btn small danger isolate', type: 'button', text: 'Delete listed', onclick: function () { deleteListed(users); } }) : null));
 
       if (!users.length) { main.appendChild(h('div', { class: 'empty', text: 'Nobody matches. Clear the search or filters.' })); return; }
       var body = h('tbody');
       users.forEach(function (u) { body.appendChild(userRow(u)); });
       main.appendChild(h('div', { class: 'panel table-wrap', style: 'padding: 6px 8px' }, h('table', null,
-        h('thead', null, h('tr', null, h('th', { text: 'Email' }), h('th', { text: 'Role' }), h('th', { text: 'Cohort' }), h('th', { text: 'Access' }), h('th', { text: 'Setup' }), h('th', { class: 'num', text: 'Meals' }), h('th', { text: 'Invite' }), h('th', { text: 'Joined' }))),
+        h('thead', null, h('tr', null, h('th', { text: 'Email' }), h('th', { text: 'Role' }), h('th', { text: 'Cohort' }), h('th', { text: 'Access' }), h('th', { text: 'Setup' }), h('th', { class: 'num', text: 'Meals' }), h('th', { text: 'Invite' }), h('th', { text: 'Joined' }), h('th'))),
         body)));
     }).catch(fail);
   }
@@ -700,7 +701,30 @@ td.copy { white-space: normal; max-width: 280px; color: var(--soft); font-size: 
       h('td', null, u.onboarding && u.onboarding.completedAt ? h('span', { class: 'muted', text: 'Done' }) : h('span', { class: 'badge lit', text: 'Not yet' })),
       h('td', { class: 'num', text: fmtNum(u._count ? u._count.meals : 0) }),
       h('td', { class: 'mono soft', text: u.inviteCode ? u.inviteCode.code : '—' }),
-      h('td', { class: 'mono soft', text: fmtDate(u.createdAt) }));
+      h('td', { class: 'mono soft', text: fmtDate(u.createdAt) }),
+      h('td', null, h('button', { class: 'btn small danger', type: 'button', text: 'Delete', onclick: function () { deleteOne(u, renderUsers); } })));
+  }
+
+  function who(u) { return u.email || u.id; }
+  function deleteOne(u, after) {
+    if (!confirm('Delete ' + who(u) + ' and everything attached (meals, check-ins, photos)? This cannot be undone.')) return;
+    api('/users/' + encodeURIComponent(u.id), { method: 'DELETE' }).then(function () {
+      toast('Deleted ' + who(u) + '.');
+      state.status = null;
+      after();
+    }).catch(fail);
+  }
+  function deleteListed(users) {
+    var n = users.length;
+    if (!n) return;
+    if (!confirm('Delete ' + n + (n === 1 ? ' person' : ' people') + ' listed here, and everything attached (meals, check-ins, photos)? This cannot be undone.')) return;
+    api('/users/delete', { method: 'POST', body: { ids: users.map(function (u) { return u.id; }) } }).then(function (res) {
+      var msg = 'Deleted ' + res.deleted + (res.deleted === 1 ? ' person.' : ' people.');
+      if (res.missing) msg += ' ' + res.missing + ' already gone.';
+      toast(msg);
+      state.status = null;
+      renderUsers();
+    }).catch(fail);
   }
 
   var SOURCES = [['', 'Any way'], ['TEXT', 'Typed'], ['MANUAL', 'Typed'], ['PHOTO', 'Photo'], ['SAVED', 'Usual'], ['BARCODE', 'Barcode'], ['CATALOG', 'Foods'], ['PRESCRIPTION', 'Check-in plate']];
@@ -846,7 +870,10 @@ td.copy { white-space: normal; max-width: 280px; color: var(--soft); font-size: 
         h('h1', { style: 'font-size: 24px; font-weight: 650; letter-spacing: -0.03em; margin: 0', text: u.email || u.id }),
         h('span', { class: 'badge', text: u.role.toLowerCase() }),
         u.cohort ? h('span', { class: 'badge haze', text: u.cohort }) : null,
-        u.accessGrantedAt ? null : h('span', { class: 'badge lit', text: 'Waiting for an invite' })));
+        u.accessGrantedAt ? null : h('span', { class: 'badge lit', text: 'Waiting for an invite' }),
+        h('button', { class: 'btn small danger isolate', type: 'button', text: 'Delete person', onclick: function () {
+          deleteOne(u, function () { go('users'); });
+        } })));
 
       var weightNow = p.weights.length ? p.weights[p.weights.length - 1].weightKg : (o ? o.weightKg : null);
       var plan = h('div', { class: 'panel' }, h('h2', { text: 'Plan' }),

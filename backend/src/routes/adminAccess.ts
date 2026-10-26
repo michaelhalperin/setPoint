@@ -1,10 +1,12 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { generateInviteCode, normalizeInviteCode } from '../access/invites.js';
+import { AccountNotFoundError, deleteAccount, deleteAccounts } from '../account/deleteAccount.js';
 import { summarizeEvents } from '../analytics/events.js';
 import { getPrisma } from '../db/client.js';
 import { env, isProd } from '../env.js';
 import { FLAGS, isFlagKey } from '../flags/index.js';
+import { getPhotoStore } from '../photos/store.js';
 import { requireAdmin } from './admin.js';
 
 const role = z.enum(['USER', 'TRAINER', 'ADMIN']);
@@ -26,6 +28,10 @@ const updateUser = z.object({
   cohort: cohort.nullable().optional(),
   /** Let someone in without a code. Their pending session upgrades on its next request. */
   access: z.literal(true).optional(),
+});
+
+const deleteUsersBody = z.object({
+  ids: z.array(z.string().min(1)).min(1).max(500),
 });
 
 const updateFlag = z.object({
@@ -165,6 +171,23 @@ export async function adminAccessRoutes(app: FastifyInstance): Promise<void> {
       select: userFields,
     });
     return { user };
+  });
+
+  // Cascading delete — same path as Settings → Delete account. For clearing
+  // premade / test people from the operator page.
+  app.delete('/users/:id', async (req) => {
+    const { id } = z.object({ id: z.string().min(1) }).parse(req.params);
+    try {
+      return await deleteAccount({ prisma: getPrisma(), photos: getPhotoStore() }, id);
+    } catch (err) {
+      if (err instanceof AccountNotFoundError) throw app.httpErrors.notFound(err.message);
+      throw err;
+    }
+  });
+
+  app.post('/users/delete', async (req) => {
+    const { ids } = deleteUsersBody.parse(req.body ?? {});
+    return deleteAccounts({ prisma: getPrisma(), photos: getPhotoStore() }, ids);
   });
 
   // Every declared flag with its default and override, if any.
