@@ -108,6 +108,11 @@ struct SettingsView: View {
                 setupGrid(model)
                     .appearIn(2)
 
+                if model.isAdmin {
+                    AdminNotificationTools()
+                        .appearIn(3)
+                }
+
                 if env.flags.isOn(.paywall) {
                     proCard
                         .appearIn(3)
@@ -120,11 +125,6 @@ struct SettingsView: View {
                         .padding(Space.sm)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .glass(radius: Radius.sm, fill: Palette.danger.opacity(0.08))
-                }
-
-                if model.isAdmin {
-                    AdminNotificationTools()
-                        .appearIn(5)
                 }
 
                 #if DEBUG

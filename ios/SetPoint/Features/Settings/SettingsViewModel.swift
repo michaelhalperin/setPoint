@@ -65,6 +65,8 @@ final class SettingsViewModel {
     private(set) var enforcementEnabled = true
     /// Shows the notification test tools.
     private(set) var isAdmin = false
+    /// "User", "Trainer" or "Admin".
+    private(set) var roleTitle = "User"
     private(set) var enforcementDisabledReason: String?
 
     private var original: SettingsResponse?
@@ -464,6 +466,7 @@ final class SettingsViewModel {
         enforcementEnabled = s.enforcementEnabled
         enforcementDisabledReason = s.enforcementDisabledReason
         isAdmin = s.isAdmin ?? false
+        roleTitle = (s.role ?? "USER").capitalized
     }
 
     var resolvedWeekendTimes: MealTimesPayload {
@@ -509,7 +512,7 @@ final class SettingsViewModel {
             targetWeightKg: 84, paceKgPerWeek: 0.25, startWeightKg: 78, currentWeightKg: 79.6,
             mealTimes: .init(breakfastMin: 480, lunchMin: 780, dinnerMin: 1140),
             quietHours: .init(startMin: 1380, endMin: 420),
-            checkInsPaused: false,
+            checkInsPaused: false, isAdmin: true,
             restrictions: [.init(label: "Dairy", token: "dairy", source: "INTOLERANCE")],
             enforcementEnabled: true, enforcementDisabledReason: nil,
             heightCm: 182, minHealthyWeightKg: 61.3,

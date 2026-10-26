@@ -1466,6 +1466,8 @@ struct AccountSettingsView: View {
                 .buttonStyle(.plain)
                 ListDivider()
                 accountRow("Time zone", value: timezoneValue)
+                ListDivider()
+                accountRow("Role", value: model.roleTitle)
             }
             .appearIn(2, rise: 14)
 

@@ -12350,6 +12350,46 @@
           }
         }
       }
+    },
+    "Role": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "תפקיד"
+          }
+        }
+      }
+    },
+    "Admin": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מנהל"
+          }
+        }
+      }
+    },
+    "Trainer": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מאמן"
+          }
+        }
+      }
+    },
+    "User": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "משתמש"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

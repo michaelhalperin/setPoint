@@ -1026,6 +1026,8 @@ struct SettingsResponse: Decodable {
     let checkInsPaused: Bool
     /// Older servers leave it out: not an admin.
     var isAdmin: Bool? = nil
+    /// "USER", "TRAINER" or "ADMIN"; older servers leave it out.
+    var role: String? = nil
     let restrictions: [Restriction]
     let enforcementEnabled: Bool
     let enforcementDisabledReason: String?

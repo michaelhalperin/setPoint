@@ -36,7 +36,7 @@ export async function pushTokenRoutes(app: FastifyInstance): Promise<void> {
     return { ok: true };
   });
 
-  // Admin only: a sample of one kind of check-in notification to this account's
+  // Admin or trainer only: a sample of one kind of check-in notification to this account's
   // own devices, and what the server knows about them. Creates no check-in.
   app.get('/test', async (req) => {
     await requireAdmin(req);
@@ -69,7 +69,7 @@ export async function pushTokenRoutes(app: FastifyInstance): Promise<void> {
 
   async function requireAdmin(req: unknown): Promise<void> {
     const user = await getPrisma().user.findUnique({ where: { id: (req as AuthedRequest).userId }, select: { role: true } });
-    if (user?.role !== 'ADMIN') throw app.httpErrors.forbidden('admin only');
+    if (user?.role !== 'ADMIN' && user?.role !== 'TRAINER') throw app.httpErrors.forbidden('admin only');
   }
 
   async function tokensOf(userId: string) {
