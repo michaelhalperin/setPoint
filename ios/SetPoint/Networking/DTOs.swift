@@ -728,6 +728,23 @@ enum WeekendDays {
         return next == 0 ? mask : next
     }
 
+    /// The weekend days (or the rest of the week) for a label: "Mon – Fri", "Sat · Sun".
+    /// Runs of three or more days collapse to their ends.
+    static func span(_ mask: Int, weekends: Bool) -> String {
+        var runs: [[Int]] = []
+        for day in orderedBits where contains(mask, weekday: day) == weekends {
+            if let last = runs.last?.last, (last + 1) % 7 == day {
+                runs[runs.count - 1].append(day)
+            } else {
+                runs.append([day])
+            }
+        }
+        if runs.isEmpty { return L10n( "No days") }
+        return runs.map { run in
+            run.count >= 3 ? "\(name(run[0])) – \(name(run[run.count - 1]))" : run.map(name).joined(separator: " · ")
+        }.joined(separator: " · ")
+    }
+
     static func summary(_ mask: Int) -> String {
         let picked = orderedBits.compactMap { contains(mask, weekday: $0) ? name($0) : nil }
         if picked.isEmpty { return L10n( "No days") }

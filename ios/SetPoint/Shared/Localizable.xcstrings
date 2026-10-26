@@ -11960,6 +11960,146 @@
           }
         }
       }
+    },
+    "You had a meal before — that counts.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אכלת ארוחה לפני — זה נחשב."
+          }
+        }
+      }
+    },
+    "Weekdays %@–%@": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ימי חול %@–%@"
+          }
+        }
+      }
+    },
+    "Weekends %@–%@": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "סופ״ש %@–%@"
+          }
+        }
+      }
+    },
+    "Oats": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "שיבולת שועל"
+          }
+        }
+      }
+    },
+    "Milk": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "חלב"
+          }
+        }
+      }
+    },
+    "Rice": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אורז"
+          }
+        }
+      }
+    },
+    "Chicken": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "עוף"
+          }
+        }
+      }
+    },
+    "Bread": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "לחם"
+          }
+        }
+      }
+    },
+    "Peanut butter": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "חמאת בוטנים"
+          }
+        }
+      }
+    },
+    "Bananas": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "בננות"
+          }
+        }
+      }
+    },
+    "Greek yogurt": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "יוגורט יווני"
+          }
+        }
+      }
+    },
+    "Pasta": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "פסטה"
+          }
+        }
+      }
+    },
+    "Olive oil": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "שמן זית"
+          }
+        }
+      }
+    },
+    "Cheese": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "גבינה"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

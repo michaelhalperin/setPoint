@@ -495,7 +495,8 @@ struct RhythmSettingsView: View {
             }
 
             HStack(spacing: 6) {
-                Text(editingWeekends ? "SAT · SUN" : "MON – FRI")
+                Text(WeekendDays.span(model.weekendDays, weekends: editingWeekends))
+                    .textCase(.uppercase)
                     .font(Typography.mono(10))
                     .tracking(1.2)
                     .foregroundStyle(editingWeekends ? Palette.hazeSoft : Palette.amber)
@@ -965,10 +966,10 @@ struct FoodsSettingsView: View {
 
     // MARK: Plate
 
+    /// Starter foods in the app's language, minus what's already in the pantry or avoided.
     private var plateSuggestions: [String] {
-        let existing = Set(model.pantryTokens.map { $0.lowercased() })
-        let blocked = Set(model.restrictions.map { $0.lowercased() })
-        return Self.pantrySuggestions.filter { !existing.contains($0.lowercased()) && !blocked.contains($0.lowercased()) }
+        let taken = Set((model.pantryTokens + model.restrictions + model.restrictions.map(L10nKey)).map { $0.lowercased() })
+        return Self.pantrySuggestions.map(L10nKey).filter { !taken.contains($0.lowercased()) }
     }
 
     /// What's in the kitchen, floating around a plate that glows brighter the more there is.

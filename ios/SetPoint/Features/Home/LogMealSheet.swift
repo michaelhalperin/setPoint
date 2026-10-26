@@ -729,6 +729,8 @@ struct MealCorrectionEditor: View {
     /// Each food's numbers as the photo read them, so a portion is always relative to that.
     @State private var bases: [UUID: Base] = [:]
     @State private var portions: [UUID: Double] = [:]
+    /// Each photo tag's measured width, so it can be kept inside the photo.
+    @State private var chipWidths: [UUID: CGFloat] = [:]
 
     private struct Base { let kcal: Double, protein: Double, carbs: Double, fat: Double }
 
@@ -738,14 +740,17 @@ struct MealCorrectionEditor: View {
         (0.36, 0.38, true), (0.66, 0.46, true), (0.62, 0.70, true), (0.32, 0.66, false), (0.5, 0.24, true), (0.76, 0.30, true), (0.24, 0.48, false), (0.5, 0.84, false),
     ]
 
-    /// Horizontal nudge so a chip label doesn't get clipped by the screen edge.
-    private static func chipDx(spotX: CGFloat, containerWidth: CGFloat) -> CGFloat {
-        let margin: CGFloat = 12
-        let maxHalf: CGFloat = 100
+    /// Side margin a photo tag keeps from the screen edge.
+    static let chipMargin: CGFloat = 12
+
+    /// Horizontal nudge that keeps a tag of `chipWidth` inside the container.
+    /// Tags are capped at the container width minus both margins, so this always fits.
+    static func chipDx(spotX: CGFloat, chipWidth: CGFloat, containerWidth: CGFloat) -> CGFloat {
+        let half = chipWidth / 2
         let cx = spotX * containerWidth
-        let rightOver = cx + maxHalf - (containerWidth - margin)
+        let rightOver = cx + half - (containerWidth - chipMargin)
         if rightOver > 0 { return -rightOver }
-        let leftOver = margin - (cx - maxHalf)
+        let leftOver = chipMargin - (cx - half)
         if leftOver > 0 { return leftOver }
         return 0
     }
@@ -957,9 +962,13 @@ struct MealCorrectionEditor: View {
                                 .shadow(color: Palette.ember.opacity(on ? 0.8 : 0), radius: 8)
                             HStack(spacing: 6) {
                                 Text(item.name.isEmpty ? L10n("New food") : item.name)
+                                    .lineLimit(1)
+                                    .truncationMode(.tail)
                                 Text(item.kcal.isEmpty ? "—" : item.kcal)
                                     .font(Typography.mono(11))
                                     .foregroundStyle(on ? Color(hex: 0x7C2D12) : Palette.amber)
+                                    .fixedSize()
+                                    .layoutPriority(1)
                             }
                             .font(Typography.data(12, weight: on ? .medium : .regular))
                             .foregroundStyle(on ? Palette.onBone : Palette.ink)
@@ -967,8 +976,11 @@ struct MealCorrectionEditor: View {
                             .frame(height: 26)
                             .background(on ? AnyShapeStyle(Palette.ink) : AnyShapeStyle(.ultraThinMaterial), in: Capsule())
                             .overlay(Capsule().strokeBorder(on ? .clear : Color.white.opacity(0.18)))
-                            .fixedSize()
-                            .offset(x: Self.chipDx(spotX: spot.x, containerWidth: w), y: spot.up ? -25 : 25)
+                            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { chipWidths[item.id] = $0 }
+                            // Narrows what the tag is offered, so a long name truncates
+                            // instead of running past the screen edge.
+                            .padding(.horizontal, Self.chipMargin)
+                            .offset(x: Self.chipDx(spotX: spot.x, chipWidth: chipWidths[item.id] ?? 0, containerWidth: w), y: spot.up ? -25 : 25)
                         }
                         .contentShape(Rectangle())
                     }
