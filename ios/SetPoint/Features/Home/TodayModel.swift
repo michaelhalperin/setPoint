@@ -186,7 +186,7 @@ enum TodayCopy {
         case .conversation:
             return L10n( "Let’s change something.")
         case let .snoozed(until):
-            return until.map { L10n( "I’ll check again at \($0.formatted(date: .omitted, time: .shortened)).") }
+            return until.map { L10n( "I’ll check again at \($0.appClock).") }
         case let .watching(_, dueMin, overdue, light):
             if overdue { return L10n( "Checking in now.") }
             if light { return L10n( "A little more now keeps the day on pace. I’ll check back at \(formatMinutes(dueMin)).") }
@@ -242,7 +242,7 @@ enum TodayCopy {
               calendar.isDate(last, inSameDayAs: now) else {
             return L10n( "Nothing logged yet today.")
         }
-        return L10n( "Nothing since \(last.formatted(date: .omitted, time: .shortened)).")
+        return L10n( "Nothing since \(last.appClock).")
     }
 
     /// "Usually 13:00 · nothing since 8:05" — why the check-in came now.

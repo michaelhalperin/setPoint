@@ -1254,7 +1254,7 @@ struct ExpertStages: Decodable {
     let look: String
     let plate: String
     let check: String
-    static let defaults = ExpertStages(look: "Looking at today", plate: "Building a plate", check: "Checking")
+    static var defaults: ExpertStages { ExpertStages(look: L10n("Looking at today"), plate: L10n("Building a plate"), check: L10n("Checking")) }
 }
 
 struct ExpertMessage: Decodable, Equatable {

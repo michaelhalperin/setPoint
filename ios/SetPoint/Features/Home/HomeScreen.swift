@@ -659,7 +659,7 @@ struct HomeContent: View {
             carbsG: 0,
             fatG: 0,
             source: "PRESCRIPTION",
-            summary: prescription.items.map(\.name).joined(separator: ", "),
+            summary: prescription.items.map { FoodText.name($0.name) }.joined(separator: ", "),
             photoUrl: nil,
             notes: nil,
             items: nil,
@@ -777,7 +777,7 @@ struct HomeContent: View {
 
     private var logSlotTitle: String {
         if let backdate = logger?.backdate { return backdate.slot.title }
-        return loadedHome?.day?.slots.first { $0.slotState == .now }?.meal.title ?? "Now"
+        return loadedHome?.day?.slots.first { $0.slotState == .now }?.meal.title ?? L10n("Now")
     }
 
     private var springForCheckIn: Animation {
@@ -879,7 +879,7 @@ private struct RetryState: View {
 
                 Headline("Couldn’t load today.", tail: "You can still log.", size: 38)
 
-                Text(message)
+                Text(LocalizedStringKey(message))
                     .font(Typography.data(13, weight: .regular))
                     .foregroundStyle(Palette.inkSoft)
 
@@ -916,10 +916,10 @@ private struct RetryState: View {
                 .foregroundStyle(Palette.positive)
                 .frame(width: 18, height: 18)
                 .background(Palette.positive.opacity(0.14), in: Circle())
-            Text(title)
+            Text(LocalizedStringKey(title))
                 .font(Typography.data(13, weight: .regular))
                 .foregroundStyle(Palette.ink)
-            Text(note)
+            Text(LocalizedStringKey(note))
                 .font(Typography.data(11, weight: .regular))
                 .foregroundStyle(Palette.inkFaint)
                 .fixedSize(horizontal: false, vertical: true)
@@ -940,10 +940,10 @@ struct HomeSkeletonView: View {
         VStack(spacing: Space.md) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(Date.now.formatted(.dateTime.weekday(.wide)))
+                    Text(Date.now.formatted(.dateTime.weekday(.wide).locale(AppLanguage.current.locale)))
                         .font(Typography.data(20, weight: .regular))
                         .foregroundStyle(Palette.ink)
-                    Text("\(Date.now.formatted(.dateTime.day().month(.abbreviated))) · warming up")
+                    Text("\(Date.now.formatted(.dateTime.day().month(.abbreviated).locale(AppLanguage.current.locale))) · warming up")
                         .font(Typography.mono(11))
                         .tracking(1.2)
                         .textCase(.uppercase)

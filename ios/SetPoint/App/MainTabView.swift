@@ -131,8 +131,6 @@ struct MainTabView: View {
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 if !(tab == .today && env.chrome.navHidden) {
                     FloatingNav(selection: selection, onSelect: select, onLog: openLog)
-                        .environment(\.layoutDirection, .leftToRight)
-                        .flipsForRightToLeftLayoutDirection(false)
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }

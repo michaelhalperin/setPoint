@@ -1,3 +1,4 @@
+import { userLang } from '../i18n/user.js';
 import type { PrismaClient } from '@prisma/client';
 import type { MealImage, MealParser, ParsedMeal } from '../ai/parseMeal.js';
 import type { AiUsageKind } from '../ai/quota.js';
@@ -164,7 +165,7 @@ export async function logMeal(
       throw new MealParsingUnavailableError('AI meal parsing is not configured; send explicit macros');
     }
     await deps.quota?.('meal_parse');
-    parsed = await deps.parseMeal({ text: input.text, image: input.image });
+    parsed = await deps.parseMeal({ text: input.text, image: input.image, lang: await userLang(deps.prisma, userId) });
     macros = { kcal: parsed.kcal, proteinG: parsed.proteinG, carbsG: parsed.carbsG, fatG: parsed.fatG };
     source = input.image ? 'PHOTO' : 'TEXT';
     rawInput = input.text ?? parsed.summary;

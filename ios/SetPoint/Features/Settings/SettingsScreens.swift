@@ -21,7 +21,7 @@ struct GoalSettingsView: View {
             }
 
             if let message = model.targetWeightMessage ?? model.durationMessage {
-                Text(message)
+                Text(LocalizedStringKey(message))
                     .font(Typography.data(13, weight: .regular))
                     .foregroundStyle(Palette.amber)
                     .frame(maxWidth: .infinity)
@@ -201,7 +201,7 @@ struct GoalSettingsView: View {
             StepperRow(
                 name: "Timeframe",
                 note: timeframeStepperNote,
-                value: "\(weeks) wk",
+                value: L10n("\(weeks) wk"),
                 canDown: weeks > 1,
                 onDown: { withAnimation(Motion.settle) { model.setDurationWeeks(weeks - 1) } },
                 onUp: { withAnimation(Motion.settle) { model.setDurationWeeks(weeks + 1) } }
@@ -212,7 +212,7 @@ struct GoalSettingsView: View {
     }
 
     private func paceNote(_ pace: GoalPace) -> String {
-        let feel = pace == .gentle ? "easier to eat" : "faster, a bit more food"
+        let feel = pace == .gentle ? L10n("easier to eat") : L10n("faster, a bit more food")
         guard let w = paceWeeks(pace) else { return feel.capitalized }
         return L10n( "\(w) weeks · \(Self.monthYear(weeksFromNow: w)) · \(feel)")
     }
@@ -608,7 +608,7 @@ struct RhythmSettingsView: View {
                 selected = DialItem.order[(i + 1) % DialItem.order.count]
             } label: {
                 (Text(L10n("Next: \(DialItem.order[((DialItem.order.firstIndex(of: selected) ?? 0) + 1) % DialItem.order.count].title.lowercased()) "))
-                    + Text("›").foregroundColor(Palette.inkFaint))
+                    + Text(Image(systemName: "chevron.forward")).foregroundColor(Palette.inkFaint))
                     .font(Typography.data(13, weight: .regular))
                     .foregroundStyle(Palette.inkSoft)
                     .frame(maxWidth: .infinity, minHeight: 46)
@@ -1053,7 +1053,7 @@ struct FoodsSettingsView: View {
                         HStack(spacing: 4) {
                             Image(systemName: "plus")
                                 .font(.system(size: 9, weight: .semibold))
-                            Text(hint)
+                            Text(LocalizedStringKey(hint))
                         }
                         .font(Typography.data(12, weight: .regular))
                         .foregroundStyle(Palette.inkFaint)
@@ -1265,7 +1265,7 @@ struct HealthSettingsView: View {
             }
 
             if let message = env.health.lastError, !on {
-                Text(message)
+                Text(LocalizedStringKey(message))
                     .font(Typography.data(13, weight: .regular))
                     .foregroundStyle(Palette.danger)
                     .fixedSize(horizontal: false, vertical: true)

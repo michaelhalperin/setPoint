@@ -28,10 +28,10 @@ struct TopUpCard: View {
                             .font(.system(size: 11, weight: .bold))
                             .foregroundStyle(Palette.amber)
                         VStack(alignment: .leading, spacing: 0) {
-                            Text(item.quantity > 1 ? "\(item.quantity)× \(item.name)" : item.name)
+                            Text(item.quantity > 1 ? "\(item.quantity)× \(FoodText.name(item.name))" : FoodText.name(item.name))
                                 .font(Typography.data(14, weight: .regular))
                                 .foregroundStyle(Palette.ink)
-                            Text(item.servingDesc)
+                            Text(FoodText.serving(item.servingDesc))
                                 .font(Typography.data(11, weight: .regular))
                                 .foregroundStyle(Palette.inkFaint)
                         }
@@ -47,7 +47,7 @@ struct TopUpCard: View {
 
             VStack(spacing: 4) {
                 ActionButton(
-                    title: "Add \(topUp.totalKcal) kcal",
+                    title: L10n("Add \(topUp.totalKcal) kcal"),
                     busy: busy,
                     busyTitle: "Adding…",
                     symbol: "plus",
@@ -71,12 +71,12 @@ struct TopUpCard: View {
 
     private var mealName: String {
         let meal = TodayCopy.slotTitle(topUp.slot)
-        return meal == "Meal" ? "this meal" : meal.lowercased()
+        return meal == L10n("Meal") ? L10n("this meal") : meal.lowercased()
     }
 
     private var title: String {
         let meal = TodayCopy.slotTitle(topUp.slot)
-        return meal == "Meal" ? "Add this now." : "Add this to \(meal.lowercased())."
+        return meal == L10n("Meal") ? L10n("Add this now.") : L10n("Add this to \(meal.lowercased()).")
     }
 }
 

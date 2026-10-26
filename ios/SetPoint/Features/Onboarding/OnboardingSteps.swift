@@ -76,7 +76,7 @@ struct AboutStep: View {
             GlassList {
                 StepperRow(
                     name: "Height",
-                    value: model.draft.heightCm.map { "\(Int($0.rounded())) cm" } ?? "—",
+                    value: model.draft.heightCm.map { L10n("\(Int($0.rounded())) cm") } ?? "—",
                     valueWidth: 76,
                     onDown: { nudgeHeight(-1) },
                     onUp: { nudgeHeight(1) }
@@ -316,7 +316,7 @@ private struct TargetCard: View {
                     StepperRow(
                         name: "Timeframe",
                         note: timeframeStepperNote,
-                        value: "\(weeks) wk",
+                        value: L10n("\(weeks) wk"),
                         canDown: weeks > 1,
                         onDown: { model.setDurationWeeks(weeks - 1) },
                         onUp: { model.setDurationWeeks(weeks + 1) }

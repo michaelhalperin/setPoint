@@ -1,3 +1,4 @@
+import { clock24, slotNameHe, type Lang } from '../i18n/index.js';
 import { SLOT_ORDER, type MealTimes, type ScheduledCheckIn, type SlotName } from './mealSchedule.js';
 import { msSinceLocalMidnight } from './time.js';
 
@@ -159,7 +160,12 @@ export function movedSlotsToday(
 }
 
 /** "Meetings 12–3 today. Eat before noon — grab something now." */
-export function headsUpCopy(block: MinuteBlock, slot: SlotName): string {
+export function headsUpCopy(block: MinuteBlock, slot: SlotName, lang: Lang = 'en'): string {
+  if (lang === 'he') {
+    const range = `${clock24(block.startMin)}–${clock24(block.endMin)}`;
+    const before = block.startMin <= 12 * 60 ? 'הצהריים' : clock24(block.startMin);
+    return `פגישות ${range} היום. תאכל לפני ${before} — ${slotNameHe(slot)} תהיה קלה יותר אם היא כבר מאחוריך.`;
+  }
   const range = formatBusyRange(block.startMin, block.endMin);
   const before = block.startMin <= 12 * 60 ? 'noon' : formatClock(block.startMin);
   const meal = slot === 'breakfast' ? 'Breakfast' : slot === 'lunch' ? 'Lunch' : 'Dinner';

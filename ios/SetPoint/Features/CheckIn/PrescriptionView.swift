@@ -111,14 +111,14 @@ struct PrescriptionView: View {
                 Spacer(minLength: 0)
                 primaryActions
             } else if let message = checkIn.message {
-                Text(message)
+                Text(LocalizedStringKey(message))
                     .font(Typography.voice(20))
                     .foregroundStyle(Palette.ink)
                 ActionButton(title: "I already ate", kind: .secondary) { run(alreadyAte, then: onAlreadyAte) }
             }
 
             if let error {
-                Text(error)
+                Text(LocalizedStringKey(error))
                     .font(Typography.data(13, weight: .semibold))
                     .foregroundStyle(Palette.amber)
             }
@@ -176,7 +176,7 @@ struct PrescriptionView: View {
                 FlexWrap(spacing: 8, lineSpacing: 8) {
                     ForEach(plate.items) { item in
                         HStack(spacing: 8) {
-                            Text(item.quantity > 1 ? "\(Int(item.quantity))× \(item.name)" : item.name)
+                            Text(item.quantity > 1 ? "\(Int(item.quantity))× \(FoodText.name(item.name))" : FoodText.name(item.name))
                                 .font(Typography.data(13, weight: .regular))
                                 .foregroundStyle(Palette.ink)
                             Text("\(item.kcal)")
@@ -239,7 +239,7 @@ struct PrescriptionView: View {
         }
         .buttonStyle(.plain)
         .disabled(busy)
-        .accessibilityLabel((smaller ? "Easier to get down" : "Full plate") + (plate.map { ", \($0.totalKcal) calories" } ?? ""))
+        .accessibilityLabel((smaller ? L10n("Easier to get down") : L10n("Full plate")) + (plate.map { L10n(", \($0.totalKcal) calories") } ?? ""))
         .accessibilityAddTraits(on ? .isSelected : [])
     }
 
@@ -267,7 +267,7 @@ struct PrescriptionView: View {
                     Image(systemName: symbol)
                         .font(.system(size: 14, weight: .semibold))
                 }
-                Text(title)
+                Text(LocalizedStringKey(title))
                     .font(Typography.data(15, weight: .bold))
             }
             .foregroundStyle(Palette.ink)
@@ -303,7 +303,7 @@ struct PrescriptionView: View {
                 .frame(width: 44, height: 44)
         }
         .disabled(rated != nil)
-        .accessibilityLabel(positive ? "Good timing" : "Bad timing")
+        .accessibilityLabel(positive ? L10n("Good timing") : L10n("Bad timing"))
     }
 
     // MARK: Networking

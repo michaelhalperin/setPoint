@@ -149,6 +149,9 @@ model User {
   /// What they call themselves. From Sign in with Apple on first grant, or typed later.
   displayName String?
   timezone String  @default("UTC") // IANA, e.g. "America/New_York"
+  /// The language they chose in the app ("en" or "he"). Server-written copy —
+  /// push bodies, the manager's lines — follows it. Null means English.
+  language String?
 
   /// Sign in with Apple refresh token — stored so account deletion can call
   /// Apple's /auth/revoke (§4). Populated once the auth-code exchange ships.

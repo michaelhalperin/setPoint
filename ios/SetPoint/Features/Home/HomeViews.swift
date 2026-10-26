@@ -11,11 +11,11 @@ enum CheckInActions {
     /// Snooze lengths to offer. "After <next meal time>" only when that's far
     /// enough away to mean something; the backend caps a snooze at 6 hours.
     static func snoozeChoices(nextMealMinutes: Int?, now: Date = .now) -> [SnoozeChoice] {
-        var choices = [SnoozeChoice(title: "1 hour", minutes: 60), SnoozeChoice(title: "2 hours", minutes: 120)]
+        var choices = [SnoozeChoice(title: L10n("1 hour"), minutes: 60), SnoozeChoice(title: L10n("2 hours"), minutes: 120)]
         if let minutes = nextMealMinutes, minutes >= 45 {
             let capped = min(minutes, 360)
             let at = now.addingTimeInterval(TimeInterval(capped * 60))
-            choices.append(SnoozeChoice(title: "After \(at.formatted(date: .omitted, time: .shortened))", minutes: capped))
+            choices.append(SnoozeChoice(title: L10n("After \(at.appClock)"), minutes: capped))
         }
         return choices
     }
@@ -67,12 +67,12 @@ struct SnoozeSheet: View {
     }
 
     private func clock(_ minutes: Int) -> String {
-        now.addingTimeInterval(TimeInterval(minutes * 60)).formatted(date: .omitted, time: .shortened)
+        now.addingTimeInterval(TimeInterval(minutes * 60)).appClock
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Headline("Back at \(clock(choice?.minutes ?? 60)).", tail: "I’ll stay quiet till then.", size: 32)
+            Headline(L10n("Back at \(clock(choice?.minutes ?? 60))."), tail: "I’ll stay quiet till then.", size: 32)
                 .contentTransition(.numericText())
 
             track
@@ -165,7 +165,7 @@ struct SnoozeSheet: View {
                     .position(x: 6, y: 24)
                 EmberDot(size: 22, haze: true)
                     .position(x: x(choice?.minutes ?? 60), y: 24)
-                Text(L10n("NOW \(now.formatted(date: .omitted, time: .shortened))"))
+                Text(L10n("NOW \(now.appClock)"))
                     .font(Typography.mono(10))
                     .foregroundStyle(Palette.amber)
                     .position(x: 40, y: 50)

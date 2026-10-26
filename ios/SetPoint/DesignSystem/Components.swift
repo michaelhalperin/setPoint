@@ -147,7 +147,7 @@ struct ActionButton: View {
         .accessibilityElement(children: .ignore)
         .accessibilityAddTraits(.isButton)
         .accessibilityAddTraits(busy ? .updatesFrequently : [])
-        .accessibilityLabel(shownTitle)
+        .accessibilityLabel(LocalizedStringKey(shownTitle))
         .accessibilityAction { if !busy, !done { action() } }
     }
 }
@@ -164,7 +164,7 @@ struct PillButton: View {
     @GestureState private var pressed = false
 
     var body: some View {
-        Text(title)
+        Text(LocalizedStringKey(title))
             .font(Typography.data(15, weight: .medium))
             .foregroundStyle(kind == .primary ? Palette.onBone : Palette.ink)
             .padding(.horizontal, 20)
@@ -188,7 +188,7 @@ struct PillButton: View {
             )
             .accessibilityElement(children: .ignore)
             .accessibilityAddTraits(.isButton)
-            .accessibilityLabel(title)
+            .accessibilityLabel(LocalizedStringKey(title))
             .accessibilityAction { action() }
     }
 }
@@ -214,7 +214,7 @@ struct ManagerNote: View {
             Capsule()
                 .fill(emphasised ? Palette.ember : Palette.inkFaint.opacity(0.6))
                 .frame(width: 3)
-            Text(text)
+            Text(LocalizedStringKey(text))
                 .font(Typography.voice(16))
                 .foregroundStyle(Palette.ink)
                 .lineSpacing(3)
@@ -387,7 +387,7 @@ struct StaleBanner: View {
             Image(systemName: "wifi.slash")
                 .font(.system(size: 13, weight: .regular))
                 .foregroundStyle(Palette.hazeSoft)
-            (Text("As of ") + Text(since.formatted(date: .omitted, time: .shortened)).font(Typography.mono(13)).foregroundColor(Palette.hazeSoft))
+            (Text("As of ") + Text(since.appClock).font(Typography.mono(13)).foregroundColor(Palette.hazeSoft))
                 .font(Typography.data(13, weight: .regular))
                 .foregroundStyle(Palette.ink)
                 .lineLimit(1)
@@ -409,6 +409,6 @@ struct StaleBanner: View {
         .shadow(color: Palette.haze.opacity(0.18), radius: 12)
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Couldn’t refresh. Showing \(since.formatted(date: .omitted, time: .shortened)). Refresh")
+        .accessibilityLabel("Couldn’t refresh. Showing \(since.appClock). Refresh")
     }
 }

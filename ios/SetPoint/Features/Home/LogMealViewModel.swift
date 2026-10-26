@@ -182,7 +182,7 @@ final class LogMealViewModel {
         heldText = text
         submittedPhoto = snapshotPhoto
         confirmingPhoto = fromPhoto
-        submittedPrompt = prompt.isEmpty ? (fromPhoto ? "From your photo" : "Working it out…") : prompt
+        submittedPrompt = prompt.isEmpty ? (fromPhoto ? L10n("From your photo") : L10n("Working it out…")) : prompt
         submittedSlot = snapshotBackdate?.slot
         submittedLoggedAt = snapshotBackdate?.at ?? Date()
         text = ""
@@ -221,7 +221,7 @@ final class LogMealViewModel {
             heldText = ""
             submittedSlot = nil
             submittedLoggedAt = nil
-            phase = .queued("No connection. Saved on this phone — it sends when you’re back online.")
+            phase = .queued(L10n("No connection. Saved on this phone — it sends when you’re back online."))
         } catch {
             text = heldText
             photo = submittedPhoto
@@ -281,7 +281,7 @@ final class LogMealViewModel {
     /// "About a normal lunch": a rough, honest estimate for a meal eaten but
     /// not logged — better than nothing, and never AI-parsed.
     func logEstimate(slot: MealSlot, kcal: Int) async {
-        await logMacros(summary: "\(slot.title) (rough estimate)", kcal: kcal, proteinG: nil, carbsG: nil, fatG: nil)
+        await logMacros(summary: L10n("\(slot.title) (rough estimate)"), kcal: kcal, proteinG: nil, carbsG: nil, fatG: nil)
     }
 
     /// Logs known macros as-is (a repeat, a top-up, an estimate). Never AI-parsed.
@@ -461,7 +461,7 @@ final class LogMealViewModel {
                     items: [
                         .init(
                             name: food.name,
-                            quantity: "\(Int(portion.grams.rounded())) g",
+                            quantity: L10n("\(Int(portion.grams.rounded())) g"),
                             kcal: portion.kcal,
                             proteinG: portion.proteinG,
                             carbsG: portion.carbsG,
@@ -641,7 +641,7 @@ final class LogMealViewModel {
                     items: [
                         .init(
                             name: food.name,
-                            quantity: servings == 1 ? "1 serving" : "\(servings.formatted()) servings",
+                            quantity: servings == 1 ? L10n("1 serving") : L10n("\(servings.formatted()) servings"),
                             kcal: portion.kcal,
                             proteinG: portion.proteinG,
                             carbsG: portion.carbsG,

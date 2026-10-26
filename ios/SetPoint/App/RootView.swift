@@ -3,25 +3,39 @@ import SwiftUI
 struct RootView: View {
     @Environment(AppEnvironment.self) private var env
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @AppStorage(AppLanguage.storageKey) private var language = AppLanguage.localeDefault
 
     var body: some View {
         ZStack {
             Palette.background.ignoresSafeArea()
 
-            #if DEBUG
-            if let stub = DebugPreviewStub.fromLaunchArguments() {
-                stub.view
-            } else {
+            // `L10n` reads the stored language outside the view tree, so a
+            // switch rebuilds the screens (`id`) for every string to be read again.
+            Group {
+                #if DEBUG
+                if let stub = DebugPreviewStub.fromLaunchArguments() {
+                    stub.view
+                } else {
+                    authedContent
+                }
+                #else
                 authedContent
+                #endif
             }
-            #else
-            authedContent
-            #endif
+            .id(language)
         }
         .modifier(HintCopyReader())
         .modifier(AppLanguageReader())
+        .onChange(of: language) { _, _ in
+            // Notification action buttons are registered with the language of the moment.
+            PushManager.shared.registerCategories()
+            AppLanguage.publishToExtensions()
+            syncLanguage()
+        }
+        .onChange(of: env.auth.status) { _, _ in syncLanguage() }
         .animation(Motion.adaptive(Motion.gentle, reduceMotion: reduceMotion), value: env.auth.status)
         .task {
+            AppLanguage.publishToExtensions()
             env.auth.bootstrap()
             #if DEBUG
             if CommandLine.arguments.contains("-autoDevSignIn"), !env.auth.hasToken {
@@ -29,6 +43,14 @@ struct RootView: View {
             }
             #endif
         }
+    }
+
+    /// Tells the server the language, so notifications and the manager's lines match the app.
+    private func syncLanguage() {
+        guard case .signedIn = env.auth.status else { return }
+        struct Body: Encodable { let language: String }
+        let language = AppLanguage.current.rawValue
+        Task { try? await env.api.put("/api/language", Body(language: language)) }
     }
 
     @ViewBuilder
@@ -410,7 +432,7 @@ private struct WidgetsStubHost: View {
                         TodayLockInlineView(snapshot: .preview)
                             .font(.system(size: 15))
                             .foregroundStyle(Palette.ink.opacity(0.85))
-                        Text(Date.now.formatted(date: .omitted, time: .shortened))
+                        Text(Date.now.appClock)
                             .font(.system(size: 80, weight: .light))
                             .foregroundStyle(Palette.ink)
                         HStack(spacing: 10) {
@@ -443,7 +465,7 @@ private struct WidgetsStubHost: View {
 
     private func widgetCard<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: Space.sm) {
-            Text(title)
+            Text(LocalizedStringKey(title))
                 .font(Typography.data(13, weight: .bold))
                 .foregroundStyle(Palette.inkFaint)
             content()

@@ -118,7 +118,7 @@ struct SafetyStep: View {
             Haptics.select()
             model.answerSafety(value)
         } label: {
-            Text(title)
+            Text(LocalizedStringKey(title))
                 .font(Typography.data(title == "Not sure" ? 14 : 16, weight: .regular))
                 .foregroundStyle(chosen ? Palette.onBone : Palette.ink)
                 .frame(maxWidth: .infinity, minHeight: 54)

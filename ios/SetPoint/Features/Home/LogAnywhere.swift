@@ -251,7 +251,7 @@ struct LogAnywhere: ViewModifier {
 
     private var slotTitle: String {
         if let backdate = logger?.backdate { return backdate.slot.title }
-        return loadedHome?.day?.slots.first { $0.slotState == .now }?.meal.title ?? "Now"
+        return loadedHome?.day?.slots.first { $0.slotState == .now }?.meal.title ?? L10n("Now")
     }
 
     // MARK: Bindings

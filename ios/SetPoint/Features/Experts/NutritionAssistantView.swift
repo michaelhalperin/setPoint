@@ -146,12 +146,12 @@ struct NutritionAssistantView: View {
                     .frame(width: 52, height: 52)
                     .background(Palette.ember.opacity(0.14), in: Circle())
                     .accessibilityHidden(true)
-                Text(title)
+                Text(LocalizedStringKey(title))
                     .font(Typography.data(18, weight: .medium))
                     .foregroundStyle(Palette.ink)
                     .multilineTextAlignment(.center)
                 if !message.isEmpty {
-                    Text(message)
+                    Text(LocalizedStringKey(message))
                         .font(Typography.data(14, weight: .regular))
                         .foregroundStyle(Palette.inkSoft)
                         .multilineTextAlignment(.center)
@@ -230,7 +230,7 @@ struct NutritionAssistantView: View {
                 .frame(width: 28, height: 28)
                 .background(Palette.ember.opacity(0.14), in: Circle())
                 .accessibilityHidden(true)
-            Text(text)
+            Text(LocalizedStringKey(text))
                 .font(Typography.data(14, weight: .regular))
                 .foregroundStyle(Palette.ink)
                 .fixedSize(horizontal: false, vertical: true)
@@ -264,7 +264,7 @@ struct NutritionAssistantView: View {
                             Image(systemName: "exclamationmark.circle")
                                 .foregroundStyle(Palette.amber)
                                 .accessibilityHidden(true)
-                            Text(err)
+                            Text(LocalizedStringKey(err))
                                 .font(Typography.data(13, weight: .regular))
                                 .foregroundStyle(Palette.amber)
                                 .fixedSize(horizontal: false, vertical: true)
@@ -451,10 +451,10 @@ struct NutritionAssistantView: View {
                         if index > 0 { Rectangle().fill(Color.white.opacity(0.06)).frame(height: 1) }
                         HStack(alignment: .firstTextBaseline, spacing: 10) {
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(item.quantity > 1 ? "\(item.quantity) × \(item.name)" : item.name)
+                                Text(item.quantity > 1 ? "\(item.quantity) × \(FoodText.name(item.name))" : FoodText.name(item.name))
                                     .font(Typography.data(14, weight: .regular))
                                     .foregroundStyle(Palette.ink)
-                                Text(item.servingDesc)
+                                Text(FoodText.serving(item.servingDesc))
                                     .font(Typography.data(12, weight: .regular))
                                     .foregroundStyle(Palette.inkFaint)
                             }

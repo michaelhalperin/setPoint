@@ -15,11 +15,11 @@ struct ChoiceCard: View {
         Button(action: action) {
             HStack(alignment: blurb == nil ? .center : .top, spacing: Space.sm) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(title)
+                    Text(LocalizedStringKey(title))
                         .font(Typography.data(17, weight: .medium))
                         .foregroundStyle(Palette.ink)
                     if let blurb {
-                        Text(blurb)
+                        Text(LocalizedStringKey(blurb))
                             .font(Typography.data(13))
                             .foregroundStyle(Palette.inkSoft)
                             .fixedSize(horizontal: false, vertical: true)
@@ -97,7 +97,7 @@ struct RulerPicker: View {
                         .foregroundStyle(Palette.ink)
                         .monospacedDigit()
                         .contentTransition(.numericText(value: value))
-                    Text(unit)
+                    Text(LocalizedStringKey(unit))
                         .font(Typography.mono(15))
                         .foregroundStyle(Palette.inkFaint)
                 }
@@ -259,7 +259,7 @@ struct MinutesField: View {
 
     var body: some View {
         HStack {
-            Text(label)
+            Text(LocalizedStringKey(label))
                 .font(Typography.data(15))
                 .foregroundStyle(Palette.inkSoft)
             Spacer()
@@ -277,14 +277,14 @@ struct StepHeadline: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Space.xs) {
-            Text(text)
+            Text(LocalizedStringKey(text))
                 .font(Typography.display(38))
                 .displayTracking(38)
                 .foregroundStyle(Palette.ink)
                 .fixedSize(horizontal: false, vertical: true)
                 .appearIn(0, rise: 16)
             if let detail {
-                Text(detail)
+                Text(LocalizedStringKey(detail))
                     .font(Typography.data(15, weight: .regular))
                     .lineSpacing(3)
                     .foregroundStyle(Palette.inkSoft)
@@ -388,7 +388,7 @@ struct WeeksStepper: View {
                 .overlay(Circle().strokeBorder(Color.white.opacity(0.10)))
         }
         .buttonStyle(PressableCard())
-        .accessibilityLabel(delta > 0 ? "Increase duration" : "Decrease duration")
+        .accessibilityLabel(delta > 0 ? L10n("Increase duration") : L10n("Decrease duration"))
     }
 
     private func nudge(_ delta: Int) {

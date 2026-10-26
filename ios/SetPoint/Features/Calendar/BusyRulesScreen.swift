@@ -186,7 +186,7 @@ struct BusyRulesView: View {
                     calendar.countFree.toggle(); calendar.rulesChanged()
                 }
             }
-            Text(line)
+            Text(LocalizedStringKey(line))
                 .font(Typography.data(13, weight: .regular))
                 .foregroundStyle(Palette.inkSoft)
                 .fixedSize(horizontal: false, vertical: true)

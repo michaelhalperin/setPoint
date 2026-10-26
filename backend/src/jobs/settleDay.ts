@@ -1,3 +1,4 @@
+import { langOf } from '../i18n/index.js';
 import { captureError } from '../observability/sentry.js';
 import type { PrismaClient } from '@prisma/client';
 import { dateOnly, localDateISO, shiftDateISO, startOfLocalDay, type Goal } from '../engine/index.js';
@@ -70,6 +71,7 @@ export async function runSettleDayJob(deps: SettleDayDeps): Promise<SettleDaySum
         kind,
         kcalConsumed,
         kcalTarget,
+        lang: langOf(user.language),
       });
 
       await deps.prisma.dayOutcome.upsert({

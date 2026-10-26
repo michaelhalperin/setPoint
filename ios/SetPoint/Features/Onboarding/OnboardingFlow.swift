@@ -111,7 +111,7 @@ struct OnboardingFlow: View {
     private var navBar: some View {
         VStack(spacing: Space.xs) {
             if let error = model.error {
-                Text(error)
+                Text(LocalizedStringKey(error))
                     .font(Typography.data(13, weight: .regular))
                     .foregroundStyle(Palette.danger)
                     .transition(.opacity)

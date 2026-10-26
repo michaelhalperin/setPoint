@@ -136,7 +136,7 @@ struct SavedMealDraft: Identifiable, Equatable {
         items = [
             Item(
                 name: product.food.name,
-                quantity: product.servings == 1 ? "1 serving" : "\(product.servings.formatted()) servings",
+                quantity: product.servings == 1 ? L10n("1 serving") : L10n("\(product.servings.formatted()) servings"),
                 kcal: String(portion.kcal),
                 proteinG: String(format: "%.1f", portion.proteinG),
                 carbsG: String(format: "%.1f", portion.carbsG),
@@ -155,7 +155,7 @@ struct SavedMealDraft: Identifiable, Equatable {
         items = [
             Item(
                 name: pick.food.name,
-                quantity: "\(Int(portion.grams.rounded())) g",
+                quantity: L10n("\(Int(portion.grams.rounded())) g"),
                 kcal: String(portion.kcal),
                 proteinG: String(format: "%.1f", portion.proteinG),
                 carbsG: String(format: "%.1f", portion.carbsG),
@@ -268,7 +268,7 @@ struct SavedMealEditorView: View {
             checkInPreview.appearIn(4)
 
             if let error {
-                Text(error)
+                Text(LocalizedStringKey(error))
                     .font(Typography.data(13, weight: .regular))
                     .foregroundStyle(Palette.danger)
             }

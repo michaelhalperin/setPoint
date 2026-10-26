@@ -46,7 +46,7 @@ struct SignInSheet: View {
             }
 
             if let error = env.auth.lastError {
-                Text(error)
+                Text(LocalizedStringKey(error))
                     .font(Typography.data(13, weight: .regular))
                     .foregroundStyle(Palette.danger)
             }

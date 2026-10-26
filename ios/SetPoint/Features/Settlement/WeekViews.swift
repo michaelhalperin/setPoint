@@ -215,7 +215,7 @@ struct LandedCard: View {
                 .contentTransition(.numericText(value: Double(value)))
             HStack(spacing: 6) {
                 glyph().frame(width: 8, height: 8)
-                Text(label)
+                Text(LocalizedStringKey(label))
                     .font(Typography.data(11, weight: .regular))
                     .foregroundStyle(Palette.inkSoft)
                     .lineLimit(1)
@@ -298,7 +298,7 @@ struct WeightJourneyCard: View {
         Button(action: onWeighIn) {
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
-                    Text(label).sectionLabelStyle(Palette.amber)
+                    Text(LocalizedStringKey(label)).sectionLabelStyle(Palette.amber)
                     Spacer(minLength: 8)
                     Group {
                         if busy {
@@ -325,7 +325,7 @@ struct WeightJourneyCard: View {
                         .font(Typography.data(15, weight: .regular))
                         .foregroundStyle(Palette.inkSoft)
                     if let left = toGoLine {
-                        Text(left)
+                        Text(LocalizedStringKey(left))
                             .font(Typography.data(15, weight: .regular))
                             .foregroundStyle(Palette.inkFaint)
                             .padding(.leading, 4)
@@ -342,12 +342,12 @@ struct WeightJourneyCard: View {
 
                 HStack(spacing: 14) {
                     if let rate = rateLine {
-                        Text(rate)
+                        Text(LocalizedStringKey(rate))
                             .font(Typography.mono(11))
                             .foregroundStyle(Palette.amber)
                     }
                     if let status = statusLine {
-                        Text(status)
+                        Text(LocalizedStringKey(status))
                             .font(Typography.mono(11))
                             .foregroundStyle(goal.status == "behind" ? Palette.amber : Palette.inkFaint)
                     }
@@ -450,7 +450,7 @@ struct WeightJourneyCard: View {
                     .frame(width: w, alignment: .leading)
                     .position(x: w / 2, y: h + 6)
                 if let eta = etaCaption {
-                    Text(eta)
+                    Text(LocalizedStringKey(eta))
                         .font(Typography.mono(10))
                         .foregroundStyle(Palette.inkFaint)
                         .fixedSize()
@@ -465,7 +465,7 @@ struct WeightJourneyCard: View {
     private func startCaption(_ kg: Double) -> String {
         var text = massUnit.number(kg, digits: 1 ... 1)
         if let first = entries.compactMap({ MealFormat.parse($0.measuredAt) }).min() {
-            text += " · " + first.formatted(.dateTime.day().month(.abbreviated)).uppercased()
+            text += " · " + first.formatted(.dateTime.day().month(.abbreviated).locale(AppLanguage.current.locale)).uppercased()
         }
         return text
     }
@@ -512,7 +512,7 @@ struct WeightJourneyCard: View {
     }
 
     private var accessibility: String {
-        var parts = ["Weight \(goal.currentWeightKg.map { massUnit.number($0, digits: 1 ... 1) } ?? "unknown") \(massUnit.spokenName)"]
+        var parts = [L10n("Weight \(goal.currentWeightKg.map { massUnit.number($0, digits: 1 ... 1) } ?? L10n("unknown")) \(massUnit.spokenName)")]
         if let left = toGoLine { parts.append(left) }
         if let status = statusLine { parts.append(status.lowercased()) }
         parts.append(L10n("Log a weigh-in"))
@@ -534,7 +534,7 @@ struct TargetReviewCard: View {
     private var trendLine: String {
         let rate = massUnit.fromKg(abs(review.trendKgPerWeek))
         let digits = massUnit == .lb ? 1 : 2
-        let amount = "\(rate.formatted(.number.precision(.fractionLength(digits)))) \(massUnit.abbreviation) a week"
+        let amount = L10n("\(rate.formatted(.number.precision(.fractionLength(digits)))) \(massUnit.abbreviation) a week")
         if rate < 0.005 { return L10n( "weight holding steady") }
         return review.trendKgPerWeek > 0 ? L10n("gaining \(amount)") : L10n("losing \(amount)")
     }

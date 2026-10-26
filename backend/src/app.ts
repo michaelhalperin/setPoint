@@ -26,6 +26,7 @@ import { adminPageRoutes } from './routes/adminPage.js';
 import { mealRoutes } from './routes/meals.js';
 import { nearbyRoutes } from './routes/nearby.js';
 import { flagRoutes } from './routes/flags.js';
+import { languageRoutes } from './routes/language.js';
 import { eventRoutes } from './routes/events.js';
 import { foodRoutes } from './routes/foods.js';
 import { pushTokenRoutes } from './routes/pushTokens.js';
@@ -134,6 +135,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   await app.register(foodRoutes, { prefix: '/api/foods' });
   await app.register(nearbyRoutes, { prefix: '/api/nearby' });
   await app.register(flagRoutes, { prefix: '/api/flags' });
+  await app.register(languageRoutes, { prefix: '/api/language' });
   await app.register(eventRoutes, { prefix: '/api/events' });
   await app.register(calendarRoutes, { prefix: '/api/calendar' });
   await app.register(workoutRoutes, { prefix: '/api/workouts' });

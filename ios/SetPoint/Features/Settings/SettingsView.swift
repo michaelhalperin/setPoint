@@ -54,7 +54,7 @@ struct SettingsView: View {
             SettingsSkeletonView(showPro: env.flags.isOn(.paywall))
         case let .failed(message):
             VStack(spacing: 14) {
-                Text(message)
+                Text(LocalizedStringKey(message))
                     .font(Typography.data(15))
                     .foregroundStyle(Palette.inkSoft)
                     .multilineTextAlignment(.center)
@@ -119,7 +119,7 @@ struct SettingsView: View {
                 }
 
                 if let error = model.error {
-                    Text(error)
+                    Text(LocalizedStringKey(error))
                         .font(Typography.data(13, weight: .regular))
                         .foregroundStyle(Palette.danger)
                         .padding(Space.sm)
@@ -267,7 +267,7 @@ struct SettingsView: View {
             .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous).strokeBorder(Color(hex: 0xFF8A50, opacity: 0.30)))
         }
         .buttonStyle(PressableCard())
-        .accessibilityLabel("\(goalTitle(model)). \(goalLines(model)). Edit plan")
+        .accessibilityLabel(L10n("\(goalTitle(model)). \(goalLines(model)). Edit plan"))
     }
 
     private func goalLabel(_ model: SettingsViewModel, progress: Double) -> String {
@@ -460,16 +460,16 @@ struct SettingsView: View {
 
     private func identityAccessibilityLabel(_ model: SettingsViewModel) -> String {
         if let email = model.visibleEmail {
-            return "\(identityName(model)), \(email). Opens your details"
+            return L10n("\(identityName(model)), \(email). Opens your details")
         }
-        return "\(identityName(model)). Opens your details"
+        return L10n("\(identityName(model)). Opens your details")
     }
 
     private func identityInitial(_ model: SettingsViewModel) -> String {
         let name = model.displayName.trimmingCharacters(in: .whitespacesAndNewlines)
         if let first = name.first { return String(first).uppercased() }
         if let first = model.visibleEmail?.first { return String(first).uppercased() }
-        return "Y"
+        return L10n("Y")
     }
 
     private func appetiteValue(_ model: SettingsViewModel) -> String {
@@ -812,7 +812,7 @@ private struct DevCheckInTodayPreview: View {
                     HomeContent(model: model)
                 } else if let error {
                     VStack(spacing: 14) {
-                        Text(error)
+                        Text(LocalizedStringKey(error))
                             .font(Typography.data(15))
                             .foregroundStyle(Palette.inkSoft)
                             .multilineTextAlignment(.center)
@@ -893,7 +893,7 @@ private struct DevCheckInPreview: View {
                 }
             } else if let error {
                 VStack(spacing: 14) {
-                    Text(error)
+                    Text(LocalizedStringKey(error))
                         .font(Typography.data(15))
                         .foregroundStyle(Palette.inkSoft)
                         .multilineTextAlignment(.center)
@@ -961,7 +961,7 @@ private struct DevConversationPreview: View {
                 )
             } else if let error {
                 VStack(spacing: 14) {
-                    Text(error)
+                    Text(LocalizedStringKey(error))
                         .font(Typography.data(15))
                         .foregroundStyle(Palette.inkSoft)
                         .multilineTextAlignment(.center)

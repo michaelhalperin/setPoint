@@ -320,7 +320,7 @@ struct TrainingScreen: View {
 
     private func weekRange(_ days: [TrainDay]) -> String {
         guard let first = days.first?.date, let last = days.last?.date else { return "" }
-        return L10n( "\(first.formatted(.dateTime.day())) – \(last.formatted(.dateTime.day().month(.abbreviated)))")
+        return L10n( "\(first.formatted(.dateTime.day().locale(AppLanguage.current.locale))) – \(last.formatted(.dateTime.day().month(.abbreviated).locale(AppLanguage.current.locale)))")
     }
 
     private func weekSummary(_ days: [TrainDay]) -> String {
@@ -445,7 +445,7 @@ struct TrainSkeletonView: View {
                             Text(date.formatted(.dateTime.weekday(.narrow).locale(AppLanguage.current.locale)))
                                 .font(Typography.mono(10))
                                 .foregroundStyle(Palette.inkFaint)
-                            Text(date.formatted(.dateTime.day()))
+                            Text(date.formatted(.dateTime.day().locale(AppLanguage.current.locale)))
                                 .font(Typography.data(17, weight: .medium))
                                 .foregroundStyle(Palette.ink.opacity(0.55))
                             Circle()

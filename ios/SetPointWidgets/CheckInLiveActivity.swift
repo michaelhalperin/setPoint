@@ -11,7 +11,7 @@ private let bone = WidgetChrome.bone
 struct CheckInLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: CheckInActivityAttributes.self) { context in
-            LockScreenView(state: context.state)
+            LockScreenView(state: context.state).sharedLanguage()
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
@@ -31,6 +31,7 @@ struct CheckInLiveActivity: Widget {
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .sharedLanguage()
                 }
             } compactLeading: {
                 Bell(size: 22)
@@ -38,6 +39,7 @@ struct CheckInLiveActivity: Widget {
                 Text("Eat")
                     .font(.system(.caption, design: .monospaced).weight(.medium))
                     .foregroundStyle(WidgetChrome.amber)
+                    .sharedLanguage()
             } minimal: {
                 Bell(size: 22)
             }

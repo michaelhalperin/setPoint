@@ -1,4 +1,5 @@
 import SwiftUI
+import WidgetKit
 
 /// In-app language. English and Hebrew — the two catalogs we ship.
 enum AppLanguage: String, CaseIterable, Identifiable {
@@ -24,6 +25,11 @@ enum AppLanguage: String, CaseIterable, Identifiable {
 
     var locale: Locale {
         Locale(identifier: rawValue)
+    }
+
+    /// Hebrew reads right to left; the whole tree mirrors with it.
+    var layoutDirection: LayoutDirection {
+        self == .he ? .rightToLeft : .leftToRight
     }
 
     /// Gregorian calendar whose weekday names follow this language (Sunday-first in Hebrew).
@@ -52,6 +58,17 @@ enum AppLanguage: String, CaseIterable, Identifiable {
     }
 }
 
+extension AppLanguage {
+    /// Widgets, the Live Activity and Siri dialogs can't read the app's defaults;
+    /// hand them the language through the app group.
+    static func publishToExtensions() {
+        let code = current.rawValue
+        guard SharedLanguage.code != code || AppGroup.defaults.string(forKey: SharedLanguage.key) == nil else { return }
+        SharedLanguage.publish(code)
+        WidgetCenter.shared.reloadAllTimelines()
+    }
+}
+
 /// Looks up a catalog string in the in-app language.
 func L10n(_ value: String.LocalizationValue) -> String {
     String(localized: value, bundle: AppLanguage.current.stringsBundle, locale: AppLanguage.current.locale)
@@ -69,6 +86,20 @@ struct AppLanguageReader: ViewModifier {
 
     func body(content: Content) -> some View {
         let chosen = FeatureFlags.storedIsOn(.appLanguage) ? language : AppLanguage.localeDefault
-        content.environment(\.locale, chosen.locale)
+        content
+            .environment(\.locale, chosen.locale)
+            .environment(\.layoutDirection, chosen.layoutDirection)
+    }
+}
+
+extension Date {
+    /// "Mon" in English, "ב׳" in Hebrew (where the abbreviated form is "יום ב׳").
+    var appShortWeekday: String {
+        formatted(.dateTime.weekday(AppLanguage.current == .he ? .short : .abbreviated).locale(AppLanguage.current.locale))
+    }
+
+    /// Clock time in the in-app language — "2:30 PM" in English, "14:30" in Hebrew.
+    var appClock: String {
+        formatted(Date.FormatStyle(date: .omitted, time: .shortened).locale(AppLanguage.current.locale))
     }
 }

@@ -11,7 +11,8 @@ import { consumeAiQuota } from '../ai/quota.js';
 import { requireAuth, type AuthedRequest } from '../auth/index.js';
 import { getPrisma } from '../db/client.js';
 import { applyPlanProposal, ProposalNotApplicableError } from '../checkins/applyProposal.js';
-import { proposalFromOutcome } from '../checkins/proposals.js';
+import { localizedProposal, proposalFromOutcome } from '../checkins/proposals.js';
+import { userLang } from '../i18n/user.js';
 import { startCheckIn } from '../checkins/startCheckIn.js';
 import { startTalk } from '../checkins/startTalk.js';
 import { excludedTokensFor, loadStapleFoods } from '../solver/index.js';
@@ -329,8 +330,10 @@ export async function checkInRoutes(app: FastifyInstance): Promise<void> {
     if (!convo) throw app.httpErrors.notFound('no conversation for that check-in');
 
     let messages = readTranscript(convo.transcript);
+    const lang = await userLang(prisma, userId);
     if (messages.length === 0) {
       const opener = conversant().opener({
+        lang,
         goal: ((await getPrisma().onboardingProfile.findUnique({ where: { userId }, select: { goal: true } }))
           ?.goal as Goal) ?? 'MAINTAIN',
         recentMisses: ENGINE_CONFIG.missesBeforeTier3,
@@ -370,22 +373,24 @@ export async function checkInRoutes(app: FastifyInstance): Promise<void> {
     const history: (ConversationTurn & { at?: string })[] = readTranscript(convo.transcript);
     history.push({ role: 'user', content: message, at: now.toISOString() });
 
+    const lang = await userLang(prisma, userId);
     const result = await conversant().respond(
       history.map((t) => ({ role: t.role, content: t.content })),
-      { goal: (profile?.goal as Goal) ?? 'MAINTAIN', recentMisses: ENGINE_CONFIG.missesBeforeTier3 },
+      { goal: (profile?.goal as Goal) ?? 'MAINTAIN', recentMisses: ENGINE_CONFIG.missesBeforeTier3, lang },
     );
     history.push({ role: 'assistant', content: result.reply, at: new Date().toISOString() });
 
-    const proposal = proposalFromOutcome(result.outcome);
+    const baseProposal = proposalFromOutcome(result.outcome);
+    const proposal = baseProposal ? localizedProposal(baseProposal, lang) : null;
     // Pointing to professional support closes the talk and pauses check-ins
     // for safety. Everything else waits for an explicit confirm so model prose
     // never claims an unapplied action.
     const closeNow = result.outcome === 'SUGGEST_PROFESSIONAL' && result.done;
-    if (closeNow && !/paus/i.test(result.reply)) {
+    if (closeNow && !/paus|השה/i.test(result.reply)) {
       // Say what just changed — the model's line may not.
       history.push({
         role: 'assistant',
-        content: 'I’ve paused check-ins. Resume them in Settings whenever you want.',
+        content: lang === 'he' ? 'השהיתי את התזכורות. אפשר לחזור אליהן בהגדרות מתי שתרצה.' : 'I’ve paused check-ins. Resume them in Settings whenever you want.',
         at: new Date().toISOString(),
       });
     }

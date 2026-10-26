@@ -6,6 +6,7 @@ import type {
   ManagerVoice,
   ManagerVoiceContext,
 } from './types.js';
+import { languageInstruction } from '../i18n/index.js';
 
 /**
  * Tone guardrails per plan §6 and §3 (the ED screening means nothing here may
@@ -31,12 +32,12 @@ const SYSTEM = [
 ].join('\n');
 
 export function createAiManagerVoice(client: Anthropic, fallback: ManagerVoice): ManagerVoice {
-  async function line(surface: string, payload: unknown, fallbackFn: () => Promise<string>): Promise<string> {
+  async function line(surface: string, payload: unknown, fallbackFn: () => Promise<string>, lang?: 'en' | 'he'): Promise<string> {
     try {
       const message = await client.messages.create({
         model: MANAGER_VOICE_MODEL,
         max_tokens: 200,
-        system: SYSTEM,
+        system: lang === 'he' ? `${SYSTEM}\n${languageInstruction('he')}` : SYSTEM,
         messages: [{ role: 'user', content: JSON.stringify({ surface, ...(payload as object) }) }],
       });
       const text = message.content
@@ -64,6 +65,7 @@ export function createAiManagerVoice(client: Anthropic, fallback: ManagerVoice):
           suggestion: ctx.prescriptionSummary ?? null,
         },
         () => fallback.checkInMessage(ctx),
+        ctx.lang,
       ),
 
     homeNote: (ctx: HomeNoteContext) =>
@@ -80,6 +82,7 @@ export function createAiManagerVoice(client: Anthropic, fallback: ManagerVoice):
           hasOpenCheckIn: ctx.hasActiveCheckIn,
         },
         () => fallback.homeNote(ctx),
+        ctx.lang,
       ),
 
     daySummary: (ctx: DaySummaryContext) =>
@@ -92,6 +95,7 @@ export function createAiManagerVoice(client: Anthropic, fallback: ManagerVoice):
           targetKcal: Math.round(ctx.kcalTarget),
         },
         () => fallback.daySummary(ctx),
+        ctx.lang,
       ),
   };
 }

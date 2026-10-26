@@ -236,7 +236,7 @@ private struct LogMealBody: View {
             .font(Typography.voice(22))
             .foregroundStyle(Palette.ink)
         inputChip
-        Text(message)
+        Text(LocalizedStringKey(message))
             .font(Typography.data(14))
             .foregroundStyle(Palette.inkSoft)
         ActionButton(title: "Try again", kind: .secondary) { model.reset() }
@@ -263,7 +263,7 @@ struct ParsedBreakdown: View {
         Card {
             VStack(alignment: .leading, spacing: 12) {
                 if let summary {
-                    Text(summary)
+                    Text(LocalizedStringKey(summary))
                         .font(Typography.voice(17))
                         .foregroundStyle(Palette.ink)
                 }
@@ -283,10 +283,10 @@ struct ParsedBreakdown: View {
                     Divider().overlay(Palette.ink.opacity(0.06))
                     ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
                         HStack {
-                            Text(item.name)
+                            Text(FoodText.name(item.name))
                                 .font(Typography.data(14))
                                 .foregroundStyle(Palette.ink)
-                            Text(item.quantity)
+                            Text(FoodText.serving(item.quantity))
                                 .font(Typography.data(12))
                                 .foregroundStyle(Palette.inkFaint)
                             Spacer()
@@ -548,9 +548,9 @@ struct PhotoParseConfirm: View {
 
             HStack(spacing: 8) {
                 macro("kcal", value: "\(logged.kcal)", fraction: 1, color: Palette.amber)
-                macro("Protein", value: "\(Int(logged.proteinG.rounded())) g", fraction: logged.proteinG * 4 / Double(max(logged.kcal, 1)), color: Palette.amber)
-                macro("Carbs", value: "\(Int(items.reduce(0) { $0 + $1.carbsG }.rounded())) g", fraction: items.reduce(0) { $0 + $1.carbsG } * 4 / Double(max(logged.kcal, 1)), color: Palette.ink)
-                macro("Fat", value: "\(Int(items.reduce(0) { $0 + $1.fatG }.rounded())) g", fraction: items.reduce(0) { $0 + $1.fatG } * 9 / Double(max(logged.kcal, 1)), color: Palette.inkFaint)
+                macro("Protein", value: L10n("\(Int(logged.proteinG.rounded())) g"), fraction: logged.proteinG * 4 / Double(max(logged.kcal, 1)), color: Palette.amber)
+                macro("Carbs", value: L10n("\(Int(items.reduce(0) { $0 + $1.carbsG }.rounded())) g"), fraction: items.reduce(0) { $0 + $1.carbsG } * 4 / Double(max(logged.kcal, 1)), color: Palette.ink)
+                macro("Fat", value: L10n("\(Int(items.reduce(0) { $0 + $1.fatG }.rounded())) g"), fraction: items.reduce(0) { $0 + $1.fatG } * 9 / Double(max(logged.kcal, 1)), color: Palette.inkFaint)
             }
 
             ScrollView {
@@ -558,10 +558,10 @@ struct PhotoParseConfirm: View {
                     ForEach(items) { item in
                         HStack {
                             VStack(alignment: .leading, spacing: 1) {
-                                Text(item.name)
+                                Text(FoodText.name(item.name))
                                     .font(Typography.data(15, weight: .regular))
                                     .foregroundStyle(Palette.ink)
-                                Text(item.quantity)
+                                Text(FoodText.serving(item.quantity))
                                     .font(Typography.data(12))
                                     .foregroundStyle(Palette.inkFaint)
                             }
@@ -863,7 +863,7 @@ struct MealCorrectionEditor: View {
                     HStack(spacing: 6) {
                         if total != originalKcal {
                             Text(originalKcal.formatted()).strikethrough().foregroundStyle(Palette.inkFaint)
-                            Text("→").foregroundStyle(Palette.inkFaint)
+                            Image(systemName: "arrow.forward").font(.system(size: 11, weight: .semibold)).foregroundStyle(Palette.inkFaint)
                         }
                         Text(L10n("\(total.formatted()) kcal")).foregroundStyle(Palette.amber)
                         if !edited {
@@ -909,7 +909,7 @@ struct MealCorrectionEditor: View {
                 }
 
                 if let error {
-                    Text(error)
+                    Text(LocalizedStringKey(error))
                         .font(Typography.data(13))
                         .foregroundStyle(Palette.amber)
                         .padding(12)
@@ -1044,7 +1044,7 @@ struct MealCorrectionEditor: View {
                 ForEach(Self.portionSteps, id: \.0) { step, label in
                     let on = abs(portion - step) < 0.01
                     Button { setPortion(step, for: index) } label: {
-                        Text(label)
+                        Text(LocalizedStringKey(label))
                             .font(Typography.data(15, weight: on ? .medium : .regular))
                             .foregroundStyle(on ? Palette.onBone : Palette.inkSoft)
                             .frame(maxWidth: .infinity, minHeight: 40)
@@ -1268,7 +1268,7 @@ struct MealCorrectionEditor: View {
                     .font(Typography.mono(14))
                     .foregroundStyle(Palette.ink)
                 if !unit.isEmpty {
-                    Text(unit)
+                    Text(LocalizedStringKey(unit))
                         .font(Typography.data(10))
                         .foregroundStyle(Palette.inkFaint)
                 }

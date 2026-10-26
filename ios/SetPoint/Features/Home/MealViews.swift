@@ -37,7 +37,7 @@ struct SearchComposer: View {
 
             HStack(alignment: .bottom, spacing: 8) {
                 HStack(spacing: 8) {
-                    TextField(prompt, text: $model.text, axis: .vertical)
+                    TextField(LocalizedStringKey(prompt), text: $model.text, axis: .vertical)
                         .font(large ? Typography.display(26) : Typography.data(16))
                         .tracking(large ? -0.7 : 0)
                         .lineLimit(1 ... 4)
@@ -74,7 +74,7 @@ struct SearchComposer: View {
             }
 
             if case let .failed(message) = model.phase {
-                Text(message)
+                Text(LocalizedStringKey(message))
                     .font(Typography.data(13))
                     .foregroundStyle(Palette.danger)
                     .padding(.leading, 14)
@@ -411,7 +411,7 @@ struct MealDetailSheet: View {
                         if index > 0 { ListDivider() }
                         HStack(alignment: .firstTextBaseline, spacing: 10) {
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(item.name)
+                                Text(FoodText.name(item.name))
                                     .font(Typography.data(15, weight: .regular))
                                     .foregroundStyle(Palette.ink)
                                 Text(itemDetail(item))
@@ -479,7 +479,7 @@ struct MealDetailSheet: View {
                 }
             }
             if let error {
-                Text(error)
+                Text(LocalizedStringKey(error))
                     .font(Typography.data(13, weight: .regular))
                     .foregroundStyle(Palette.danger)
             }
@@ -518,7 +518,7 @@ struct MealDetailSheet: View {
     private func chip(_ text: String, symbol: String, tint: Color = Palette.inkSoft) -> some View {
         HStack(spacing: 6) {
             Image(systemName: symbol).font(.system(size: 11, weight: .medium))
-            Text(text).font(Typography.data(12, weight: .regular))
+            Text(LocalizedStringKey(text)).font(Typography.data(12, weight: .regular))
         }
         .foregroundStyle(tint)
         .padding(.horizontal, 10)
@@ -602,12 +602,12 @@ struct TimelineMealRow: View {
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: Space.sm) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(title)
+                Text(LocalizedStringKey(title))
                     .font(Typography.data(16, weight: .semibold))
                     .foregroundStyle(Palette.ink)
                     .lineLimit(2)
                 if !detail.isEmpty {
-                    Text(detail)
+                    Text(LocalizedStringKey(detail))
                         .font(Typography.data(12))
                         .foregroundStyle(Palette.inkFaint)
                 }
@@ -636,6 +636,7 @@ enum MealFormat {
     static func time(_ iso: String) -> String {
         guard let date = parse(iso) else { return "" }
         let f = DateFormatter()
+        f.locale = AppLanguage.current.locale
         f.timeStyle = .short
         return f.string(from: date)
     }
@@ -643,6 +644,7 @@ enum MealFormat {
     static func when(_ iso: String) -> String {
         guard let date = parse(iso) else { return time(iso) }
         let day = DateFormatter()
+        day.locale = AppLanguage.current.locale
         day.dateFormat = "EEE d MMM"
         return L10n( "\(day.string(from: date)) · \(time(iso))")
     }

@@ -275,7 +275,7 @@ struct AppetiteSettingsView: View {
                 Circle().fill(Palette.haze).frame(width: 7, height: 7).shadow(color: Palette.haze, radius: 4)
                 Text("What I noticed").sectionLabelStyle(Palette.hazeSoft)
             }
-            Headline(pattern.localizedTitle.replacingOccurrences(of: " → ", with: ", ") + ".", tail: pattern.localizedBody, size: 22)
+            Headline(pattern.localizedTitle.replacingOccurrences(of: " → ", with: ", ").replacingOccurrences(of: " ← ", with: ", ") + ".", tail: pattern.localizedBody, size: 22)
             if let action = pattern.action, let label = pattern.localizedActionLabel {
                 BonePill(title: label) {
                     Task { await moveDinner(action.dinnerMin ?? 1200) }
@@ -313,7 +313,7 @@ struct AppetiteSettingsView: View {
                 ForEach(foods) { food in
                     HStack(spacing: 12) {
                         VStack(alignment: .leading, spacing: 1) {
-                            Text(food.name)
+                            Text(FoodText.name(food.name))
                                 .font(Typography.data(14, weight: .regular))
                                 .foregroundStyle(Palette.ink)
                             Text(L10nKey(food.tag))

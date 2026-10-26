@@ -48,6 +48,7 @@ enum TodaySnapshotSync {
         c.minute = wrapped % 60
         let date = Calendar.current.date(from: c) ?? .now
         let f = DateFormatter()
+        f.locale = SharedLanguage.locale
         f.timeStyle = .short
         return f.string(from: date)
     }

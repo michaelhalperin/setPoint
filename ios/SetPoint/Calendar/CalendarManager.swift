@@ -471,7 +471,7 @@ struct CalendarChoice: Identifiable, Hashable {
     /// "Google · 14 events this week"
     var subtitle: String {
         if subscribed { return source }
-        let events = eventsThisWeek == 1 ? "1 event" : "\(eventsThisWeek) events"
+        let events = eventsThisWeek == 1 ? L10n("1 event") : L10n("\(eventsThisWeek) events")
         return L10n( "\(source) · \(events) this week")
     }
 }
@@ -628,6 +628,11 @@ enum CalendarDates {
 
     static func shortWeekday(_ weekday: Int) -> String {
         AppLanguage.current.calendar.shortStandaloneWeekdaySymbols[((weekday % 7) + 7) % 7]
+    }
+
+    /// One letter in English ("M"), the day letter in Hebrew ("ב׳").
+    static func narrowWeekday(_ weekday: Int) -> String {
+        AppLanguage.current.calendar.veryShortStandaloneWeekdaySymbols[((weekday % 7) + 7) % 7]
     }
 
     static func longWeekday(_ weekday: Int) -> String {

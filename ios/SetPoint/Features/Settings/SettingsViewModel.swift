@@ -66,7 +66,7 @@ final class SettingsViewModel {
     /// Shows the notification test tools.
     private(set) var isAdmin = false
     /// "User", "Trainer" or "Admin".
-    private(set) var roleTitle = "User"
+    private(set) var roleTitle = L10n("User")
     private(set) var enforcementDisabledReason: String?
 
     private var original: SettingsResponse?
@@ -249,15 +249,15 @@ final class SettingsViewModel {
         guard let o = original, goalDirty else { return nil }
         var parts: [String] = []
         if goal.hasWeightTarget, let oldT = o.targetWeightKg, let newT = targetWeightKg, oldT != newT {
-            parts.append("Target \(formatKg(oldT)) → \(formatKg(newT)) kg")
+            parts.append(L10n("Target \(formatKg(oldT)) → \(formatKg(newT)) kg"))
         }
         if goal.hasWeightTarget, let oldW = originalDurationWeeks, let newW = preferredDurationWeeks, oldW != newW {
-            parts.append("Timeframe \(oldW) → \(newW) weeks")
+            parts.append(L10n("Timeframe \(oldW) → \(newW) weeks"))
         }
         if displayedKcalTarget != o.dailyKcalTarget {
-            parts.append("Daily target \(o.dailyKcalTarget.formatted()) → \(displayedKcalTarget.formatted()) kcal")
+            parts.append(L10n("Daily target \(o.dailyKcalTarget.formatted()) → \(displayedKcalTarget.formatted()) kcal"))
         } else if weightGoalDirty {
-            parts.append("Your daily target will be recalculated.")
+            parts.append(L10n("Your daily target will be recalculated."))
         }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
@@ -466,7 +466,11 @@ final class SettingsViewModel {
         enforcementEnabled = s.enforcementEnabled
         enforcementDisabledReason = s.enforcementDisabledReason
         isAdmin = s.isAdmin ?? false
-        roleTitle = (s.role ?? "USER").capitalized
+        switch s.role {
+        case "ADMIN": roleTitle = L10n("Admin")
+        case "TRAINER": roleTitle = L10n("Trainer")
+        default: roleTitle = L10n("User")
+        }
     }
 
     var resolvedWeekendTimes: MealTimesPayload {

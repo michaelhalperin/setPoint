@@ -114,7 +114,7 @@ private func sessionTitle(_ s: TrainSession) -> String {
 }
 
 private func repeatText(_ s: TrainSession) -> String {
-    s.repeats ? L10n( "Every \(s.start.formatted(.dateTime.weekday(.wide)))") : L10n( "Once")
+    s.repeats ? L10n( "Every \(s.start.formatted(.dateTime.weekday(.wide).locale(AppLanguage.current.locale)))") : L10n( "Once")
 }
 
 // MARK: - The week strip
@@ -137,7 +137,7 @@ struct TrainWeekStrip: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 6) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
+                    Text(LocalizedStringKey(title))
                         .font(Typography.data(15, weight: .regular))
                         .foregroundStyle(Palette.ink)
                     Text(range.uppercased())
@@ -164,7 +164,7 @@ struct TrainWeekStrip: View {
                 }
             }
 
-            Text(summary)
+            Text(LocalizedStringKey(summary))
                 .font(Typography.data(12, weight: .regular))
                 .foregroundStyle(Palette.inkSoft)
                 .padding(.horizontal, 4)
@@ -185,7 +185,7 @@ struct TrainWeekStrip: View {
         }
         .buttonStyle(PressableCard())
         .disabled(!enabled)
-        .accessibilityLabel(label)
+        .accessibilityLabel(LocalizedStringKey(label))
     }
 
     private func dayButton(_ day: TrainDay) -> some View {
@@ -195,7 +195,7 @@ struct TrainWeekStrip: View {
                 Text(day.date.formatted(.dateTime.weekday(.narrow).locale(AppLanguage.current.locale)))
                     .font(Typography.mono(10))
                     .opacity(0.8)
-                Text(day.date.formatted(.dateTime.day()))
+                Text(day.date.formatted(.dateTime.day().locale(AppLanguage.current.locale)))
                     .font(Typography.data(17, weight: .medium))
                 mark(day, selected: selected)
             }
@@ -286,7 +286,7 @@ struct TrainTodayCard: View {
                     Text(sessionTitle(session))
                         .font(Typography.data(17, weight: .regular))
                         .foregroundStyle(Palette.ink)
-                    Text(status)
+                    Text(LocalizedStringKey(status))
                         .font(Typography.data(13, weight: .regular))
                         .foregroundStyle(Palette.inkSoft)
                 }
@@ -389,11 +389,11 @@ struct TrainTodayCard: View {
         }
         switch snack.source {
         case "history":
-            return L10n("\(snack.name) — you’ve had this before a session.")
+            return L10n("\(FoodText.name(snack.name)) — you’ve had this before a session.")
         case "usual":
-            return L10n("\(snack.name) — one of your plates.")
+            return L10n("\(FoodText.name(snack.name)) — one of your plates.")
         default:
-            return L10n("\(snack.name) — light, and it fits what you eat.")
+            return L10n("\(FoodText.name(snack.name)) — light, and it fits what you eat.")
         }
     }
 
@@ -543,7 +543,7 @@ struct TrainTodayCard: View {
     private func snackPreview(_ snack: TrainingWeekResponse.SnackBefore) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(snack.name)
+                Text(FoodText.name(snack.name))
                     .font(Typography.data(15, weight: .medium))
                     .foregroundStyle(Palette.ink)
                     .multilineTextAlignment(.leading)
@@ -556,11 +556,11 @@ struct TrainTodayCard: View {
                 VStack(alignment: .leading, spacing: 4) {
                     ForEach(Array(items.prefix(3))) { item in
                         HStack(alignment: .firstTextBaseline, spacing: 8) {
-                            Text(item.name)
+                            Text(FoodText.name(item.name))
                                 .font(Typography.data(13, weight: .regular))
                                 .foregroundStyle(Palette.inkSoft)
                             if let quantity = item.quantity, !quantity.isEmpty {
-                                Text(quantity)
+                                Text(FoodText.serving(quantity))
                                     .font(Typography.data(12, weight: .regular))
                                     .foregroundStyle(Palette.inkFaint)
                             }
@@ -631,7 +631,7 @@ struct SessionOutcomeRow: View {
                 Text("Did you train?")
                     .font(Typography.data(15, weight: .medium))
                     .foregroundStyle(Palette.ink)
-                Text(label)
+                Text(LocalizedStringKey(label))
                     .font(Typography.data(13, weight: .regular))
                     .foregroundStyle(Palette.inkSoft)
             }
@@ -672,7 +672,7 @@ struct SessionOutcomeRow: View {
                     .foregroundStyle(Palette.ink)
                     .lineLimit(1)
                     .minimumScaleFactor(0.85)
-                Text(detail)
+                Text(LocalizedStringKey(detail))
                     .font(Typography.data(12, weight: .regular))
                     .foregroundStyle(Palette.inkSoft)
             }
@@ -698,7 +698,7 @@ struct TrainPastCard: View {
             HStack(spacing: 12) {
                 KindTile(kind: first.kind, tint: Color(hex: 0xD4D4D8), fill: Color.white.opacity(0.06))
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
+                    Text(LocalizedStringKey(title))
                         .font(Typography.data(17, weight: .regular))
                         .foregroundStyle(Palette.ink)
                     Text(L10n("\(trainClock(first.start)) · \(first.isPlanned ? L10n("added by you") : L10n("from Apple Health"))"))
@@ -775,7 +775,7 @@ struct TrainPastCard: View {
     private func stat(_ value: String, _ caption: String) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(value).font(Typography.mono(15)).foregroundStyle(Palette.ink)
-            Text(caption).font(Typography.data(11, weight: .regular)).foregroundStyle(Palette.inkFaint)
+            Text(LocalizedStringKey(caption)).font(Typography.data(11, weight: .regular)).foregroundStyle(Palette.inkFaint)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
@@ -866,12 +866,12 @@ struct TrainPlannedCard: View {
                                 .font(.system(size: 11, weight: .semibold))
                                 .foregroundStyle(Palette.inkFaint)
                         }
-                        Text(L10n("\(snack.name) · \(snack.kcal) kcal"))
+                        Text(L10n("\(FoodText.name(snack.name)) · \(snack.kcal) kcal"))
                             .font(Typography.data(16, weight: .medium))
                             .foregroundStyle(Palette.ink)
                             .multilineTextAlignment(.leading)
                         if let items = snack.items, !items.isEmpty {
-                            Text(items.map(\.name).joined(separator: " · "))
+                            Text(items.map { FoodText.name($0.name) }.joined(separator: " · "))
                                 .font(Typography.data(13, weight: .regular))
                                 .foregroundStyle(Palette.inkSoft)
                                 .fixedSize(horizontal: false, vertical: true)
@@ -908,7 +908,7 @@ struct TrainPlannedCard: View {
                 .font(Typography.mono(11))
                 .foregroundStyle(Palette.inkFaint)
                 .frame(width: 60, alignment: .leading)
-            Text(text)
+            Text(LocalizedStringKey(text))
                 .font(Typography.data(13, weight: .regular))
                 .foregroundStyle(Color(hex: 0xD4D4D8))
         }
@@ -998,10 +998,10 @@ struct TrainComingUp: View {
     private func row(_ s: TrainSession) -> some View {
         HStack(spacing: 12) {
             VStack(spacing: 1) {
-                Text(s.start.formatted(.dateTime.weekday(.abbreviated).locale(AppLanguage.current.locale)).uppercased())
+                Text(s.start.appShortWeekday.uppercased())
                     .font(Typography.mono(10))
                     .foregroundStyle(Palette.hazeSoft)
-                Text(s.start.formatted(.dateTime.day()))
+                Text(s.start.formatted(.dateTime.day().locale(AppLanguage.current.locale)))
                     .font(Typography.data(16, weight: .medium))
                     .foregroundStyle(Palette.ink)
             }

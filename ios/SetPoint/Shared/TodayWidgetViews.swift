@@ -72,7 +72,7 @@ struct TodayWidgetSmallView: View {
                 .foregroundStyle(WidgetChrome.soft)
                 .lineLimit(1)
             if let line = snapshot.nextLine {
-                Text(line)
+                Text(LocalizedStringKey(line))
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(WidgetChrome.amber)
                     .lineLimit(1)
@@ -95,7 +95,7 @@ struct TodayWidgetMediumView: View {
                         .foregroundStyle(WidgetChrome.bone)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
-                    Text(snapshot.nextLine.map { "Next · \($0)" } ?? "Nothing due")
+                    Text(snapshot.nextLine.map { SharedLanguage.tr("Next · \($0)") } ?? SharedLanguage.tr("Nothing due"))
                         .font(.system(size: 11, design: .monospaced))
                         .foregroundStyle(snapshot.nextLine == nil ? WidgetChrome.soft : WidgetChrome.amber)
                         .lineLimit(1)
@@ -173,7 +173,7 @@ struct TodayLockRectangularView: View {
                 Text("\(slot) · check-in \(time)")
                     .font(.system(size: 13, weight: .semibold))
                     .lineLimit(1)
-                Text(usual.map { "\($0.name) · ~\($0.kcal)" } ?? "Only if nothing’s logged")
+                Text(usual.map { "\($0.name) · ~\($0.kcal)" } ?? SharedLanguage.tr("Only if nothing’s logged"))
                     .font(.system(size: 11, weight: .regular))
                     .opacity(0.75)
                     .lineLimit(1)
@@ -237,13 +237,19 @@ extension TodaySnapshot {
 
     var nextSlotTitle: String? {
         guard let nextSlot, !nextSlot.isEmpty else { return nil }
-        return nextSlot.replacingOccurrences(of: "_", with: " ").capitalized
+        switch nextSlot.lowercased() {
+        case "breakfast": return SharedLanguage.tr("Breakfast")
+        case "lunch": return SharedLanguage.tr("Lunch")
+        case "dinner": return SharedLanguage.tr("Dinner")
+        case let slot where slot.hasPrefix("snack"): return SharedLanguage.tr("Snack")
+        default: return nextSlot.replacingOccurrences(of: "_", with: " ").capitalized
+        }
     }
 
     var nextLine: String? {
         guard let nextSlotTitle else { return nil }
         if let nextCheckIn {
-            return String(localized: "\(nextSlotTitle) · \(nextCheckIn)")
+            return SharedLanguage.tr("\(nextSlotTitle) · \(nextCheckIn)")
         }
         return nextSlotTitle
     }

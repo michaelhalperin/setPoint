@@ -68,7 +68,7 @@ struct SettlementView: View {
                     }
                     .appearIn(1, rise: 14)
                     if let err = model.weighInError {
-                        Text(err)
+                        Text(LocalizedStringKey(err))
                             .font(Typography.data(13, weight: .regular))
                             .foregroundStyle(Palette.danger)
                     }
@@ -313,10 +313,10 @@ private struct WeekOneCard: View {
                     .font(Typography.mono(10))
                     .tracking(1)
                     .foregroundStyle(lit ? Palette.amber : Palette.inkFaint)
-                Text(title)
+                Text(LocalizedStringKey(title))
                     .font(Typography.data(15, weight: .regular))
                     .foregroundStyle(Palette.ink)
-                Text(note)
+                Text(LocalizedStringKey(note))
                     .font(Typography.data(12, weight: .regular))
                     .foregroundStyle(Palette.inkSoft)
                     .fixedSize(horizontal: false, vertical: true)
@@ -358,7 +358,7 @@ private struct DayMealsSheet: View {
                     }
                     .frame(height: 6)
                     if let line = station.summaryLine {
-                        Text(line)
+                        Text(ServerCopy.line(line))
                             .font(Typography.data(14, weight: .regular))
                             .foregroundStyle(Palette.inkSoft)
                             .lineSpacing(3)
@@ -440,7 +440,7 @@ private struct RetryState: View {
 
     var body: some View {
         VStack(spacing: 14) {
-            Text(message)
+            Text(LocalizedStringKey(message))
                 .font(Typography.data(15))
                 .foregroundStyle(Palette.inkSoft)
                 .multilineTextAlignment(.center)

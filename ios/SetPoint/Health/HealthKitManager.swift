@@ -513,7 +513,7 @@ final class HealthKitManager {
     }
 
     static func timeOnly(_ date: Date) -> String {
-        date.formatted(date: .omitted, time: .shortened)
+        date.appClock
     }
 
     static func message(forConnect error: Error) -> String {

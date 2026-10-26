@@ -272,7 +272,7 @@ struct DayDial<Center: View>: View {
                         .position(point(ghost.minute, radius: r, center: c))
                         .allowsHitTesting(false)
                     if let label = ghost.label {
-                        Text(label)
+                        Text(LocalizedStringKey(label))
                             .font(Typography.data(10, weight: .bold))
                             .foregroundStyle(Palette.inkSoft)
                             .padding(.horizontal, 6)
@@ -528,9 +528,9 @@ struct DayDial<Center: View>: View {
 
     private var accessibilitySummary: String {
         let times = meals.map { "\($0.0.title) \(formatMinutes($0.1))" }.joined(separator: ", ")
-        var summary = "Meal times: \(times). Quiet from \(formatMinutes(quietStartMin)) to \(formatMinutes(quietEndMin))."
+        var summary = L10n("Meal times: \(times). Quiet from \(formatMinutes(quietStartMin)) to \(formatMinutes(quietEndMin)).")
         if let now = today?.nowMin {
-            summary += " Now \(formatMinutes(now))."
+            summary += L10n(" Now \(formatMinutes(now)).")
         }
         return summary
     }

@@ -170,29 +170,29 @@ struct OrderNearbyView: View {
 
     private var headline: String {
         guard isLogged else { return L10n( "\(gapKcal.formatted()) kcal to go.") }
-        return leftKcal > 60 ? "\(leftKcal.formatted()) kcal to go." : "\(slotTitle) covered."
+        return leftKcal > 60 ? L10n("\(leftKcal.formatted()) kcal to go.") : L10n("\(slotTitle) covered.")
     }
 
     private var tail: String {
-        if isLogged { return leftKcal > 60 ? "A snack later covers it." : "That’s the gap closed." }
+        if isLogged { return leftKcal > 60 ? L10n("A snack later covers it.") : L10n("That’s the gap closed.") }
         guard currentHero != nil else { return L10n( "Let’s see what’s near you.") }
-        return swapped ? "Good swap." : "This one fills it."
+        return swapped ? L10n("Good swap.") : L10n("This one fills it.")
     }
 
     private var metaLine: String {
         var parts = [slotTitle.uppercased()]
         if case let .loaded(response) = phase {
-            parts.append(response.venues.isEmpty ? "NONE ON OUR LIST WITHIN 3 KM" : "\(response.venues.count) PLACES WITHIN 3 KM")
-            if response.sample { parts.append("SAMPLE PLACES") }
+            parts.append(response.venues.isEmpty ? L10n("NONE ON OUR LIST WITHIN 3 KM") : L10n("\(response.venues.count) PLACES WITHIN 3 KM"))
+            if response.sample { parts.append(L10n("SAMPLE PLACES")) }
         } else {
-            parts.append("WITHIN 3 KM")
+            parts.append(L10n("WITHIN 3 KM"))
         }
         return parts.joined(separator: " · ")
     }
 
     private func fitLabel(_ dish: NearbyResponse.Dish) -> String {
         let diff = dish.kcal - gapKcal
-        if abs(diff) <= 60 { return "FILLS IT" }
+        if abs(diff) <= 60 { return L10n("FILLS IT") }
         if diff < 0 { return L10n( "COVERS \(Int((Double(dish.kcal) / Double(max(gapKcal, 1)) * 100).rounded()))%") }
         return L10n( "FILLS IT · +\(diff.formatted())")
     }
@@ -295,7 +295,7 @@ struct OrderNearbyView: View {
             HStack(spacing: 18) {
                 fillRing(idea.kcal)
                 VStack(alignment: .leading, spacing: 8) {
-                    Text(idea.name)
+                    Text(L10nKey(idea.name))
                         .font(Typography.data(20, weight: .regular))
                         .tracking(-0.4)
                         .foregroundStyle(Palette.ink)
@@ -322,7 +322,7 @@ struct OrderNearbyView: View {
     private func ideaRow(_ idea: NearbyResponse.Dish) -> some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(idea.name)
+                Text(L10nKey(idea.name))
                     .font(Typography.data(14, weight: .regular))
                     .foregroundStyle(Palette.ink)
                 Text(L10n("About \(idea.kcal.formatted()) kcal · \(Int(idea.proteinG.rounded())) g protein"))
@@ -466,10 +466,10 @@ struct OrderNearbyView: View {
 
     private func macroTile(_ grams: Double?, _ label: String) -> some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text(grams.map { "\(Int($0.rounded())) g" } ?? "—")
+            Text(grams.map { L10n("\(Int($0.rounded())) g") } ?? "—")
                 .font(Typography.data(16, weight: .regular))
                 .foregroundStyle(Palette.ink)
-            Text(label)
+            Text(LocalizedStringKey(label))
                 .font(Typography.mono(9))
                 .tracking(1.2)
                 .foregroundStyle(Palette.inkFaint)
@@ -493,7 +493,7 @@ struct OrderNearbyView: View {
                         pickID = nil
                         hand = .browse
                     } label: {
-                        Text(option.rawValue)
+                        Text(LocalizedStringKey(option.rawValue))
                             .font(Typography.data(13, weight: on ? .medium : .regular))
                             .foregroundStyle(on ? Palette.onBone : Palette.inkSoft)
                             .padding(.horizontal, 16)
@@ -671,10 +671,10 @@ struct OrderNearbyView: View {
 
     private func notice(_ title: String, _ detail: String, @ViewBuilder action: () -> some View) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(title)
+            Text(LocalizedStringKey(title))
                 .font(Typography.data(16, weight: .regular))
                 .foregroundStyle(Palette.ink)
-            Text(detail)
+            Text(LocalizedStringKey(detail))
                 .font(Typography.data(14, weight: .regular))
                 .foregroundStyle(Palette.inkSoft)
                 .fixedSize(horizontal: false, vertical: true)
@@ -700,7 +700,7 @@ struct OrderNearbyView: View {
             }
             openURL(url)
         } else {
-            flash("Sample dish: the live list opens Wolt on \(hero.dish.name).")
+            flash(L10n("Sample dish: the live list opens Wolt on \(hero.dish.name)."))
         }
     }
 
@@ -708,7 +708,7 @@ struct OrderNearbyView: View {
         let dish = hero.dish
         if preview != nil {
             hand = .logged(mealID: "preview")
-            flash("\(dish.name) logged · \(dish.kcal.formatted()) kcal")
+            flash(L10n("\(dish.name) logged · \(dish.kcal.formatted()) kcal"))
             return
         }
         logging = true
@@ -723,7 +723,7 @@ struct OrderNearbyView: View {
             )
             Haptics.landed()
             hand = .logged(mealID: response.meal.id)
-            flash("\(dish.name) logged · \(dish.kcal.formatted()) kcal toward \(slotTitle.lowercased())")
+            flash(L10n("\(dish.name) logged · \(dish.kcal.formatted()) kcal toward \(slotTitle.lowercased())"))
             env.changes.mealsChanged()
             onLogged()
         } catch {
@@ -774,7 +774,7 @@ struct OrderNearbyView: View {
         } catch LocationOnce.Failure.denied {
             phase = .locationDenied
         } catch LocationOnce.Failure.unavailable {
-            phase = .failed("Couldn’t get your location. Check that Location Services are on.")
+            phase = .failed(L10n("Couldn’t get your location. Check that Location Services are on."))
         } catch {
             phase = .failed(UserFacingError.message(for: error, fallback: L10n( "Try again in a moment.")))
         }

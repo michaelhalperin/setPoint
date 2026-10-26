@@ -188,10 +188,10 @@ struct PlanSessionSheet: View {
         let today = Calendar.current.isDateInToday(day)
         return Button { setDay(day) } label: {
             VStack(spacing: 4) {
-                Text(today ? L10n("TODAY") : day.formatted(.dateTime.weekday(.abbreviated).locale(AppLanguage.current.locale)).uppercased())
+                Text(today ? L10n("TODAY") : day.appShortWeekday.uppercased())
                     .font(Typography.mono(10))
                     .opacity(0.8)
-                Text(day.formatted(.dateTime.day()))
+                Text(day.formatted(.dateTime.day().locale(AppLanguage.current.locale)))
                     .font(Typography.data(17, weight: .medium))
                 Circle()
                     .fill(busy ? (on ? Color(hex: 0x4F46E5) : Palette.hazeSoft) : .clear)
@@ -349,7 +349,7 @@ struct PlanSessionSheet: View {
             ? L10n( "Every \(names[draft.repeatDays.first! - 1])")
             : L10n( "\(draft.repeatDays.count) days a week")
         if let last = starts.last {
-            let until = last.formatted(.dateTime.day().month(.abbreviated))
+            let until = last.formatted(.dateTime.day().month(.abbreviated).locale(AppLanguage.current.locale))
             return L10n( "\(which) for 8 weeks · until \(until)")
         }
         return L10n( "\(which) for 8 weeks")
@@ -377,10 +377,10 @@ struct PlanSessionSheet: View {
                 .padding(.top, 5)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 4) {
-                Text(title)
+                Text(LocalizedStringKey(title))
                     .font(Typography.data(15, weight: .regular))
                     .foregroundStyle(Palette.ink)
-                Text(line)
+                Text(LocalizedStringKey(line))
                     .font(Typography.data(13, weight: .regular))
                     .foregroundStyle(Palette.inkSoft)
                     .fixedSize(horizontal: false, vertical: true)
@@ -426,7 +426,7 @@ struct EditSessionSheet: View {
         _draft = State(initialValue: SessionDraft(kind: session.kind, start: session.start, durationMin: session.durationMin))
     }
 
-    private var dayName: String { session.start.formatted(.dateTime.weekday(.abbreviated).day()) }
+    private var dayName: String { session.start.formatted(.dateTime.weekday(.abbreviated).day().locale(AppLanguage.current.locale)) }
     private var changed: Bool { draft.kind != session.kind || draft.start != session.start || draft.durationMin != session.durationMin }
     private var canSave: Bool { changed && draft.start > .now && draft.start < horizonEnd }
     private var count: Int { scope == .following ? followingCount : 1 }
@@ -559,10 +559,10 @@ struct EditSessionSheet: View {
             scope = value
         } label: {
             VStack(alignment: .leading, spacing: 3) {
-                Text(title)
+                Text(LocalizedStringKey(title))
                     .font(Typography.data(14, weight: .medium))
                     .foregroundStyle(Palette.ink)
-                Text(sub)
+                Text(LocalizedStringKey(sub))
                     .font(Typography.data(12, weight: .regular))
                     .foregroundStyle(on ? Palette.hazeSoft : Palette.inkFaint)
             }
@@ -738,7 +738,7 @@ struct TrainSnackSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Snack before").sectionLabelStyle()
-            Text(snack.name)
+            Text(FoodText.name(snack.name))
                 .font(Typography.display(28))
                 .tracking(-0.6)
                 .foregroundStyle(Palette.ink)
@@ -761,11 +761,11 @@ struct TrainSnackSheet: View {
                         if index > 0 { ListDivider() }
                         HStack(alignment: .firstTextBaseline) {
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(item.name)
+                                Text(FoodText.name(item.name))
                                     .font(Typography.data(15, weight: .regular))
                                     .foregroundStyle(Palette.ink)
                                 if let quantity = item.quantity, !quantity.isEmpty {
-                                    Text(quantity)
+                                    Text(FoodText.serving(quantity))
                                         .font(Typography.data(12, weight: .regular))
                                         .foregroundStyle(Palette.inkFaint)
                                 }
@@ -818,7 +818,7 @@ struct TrainSnackSheet: View {
             Text(value)
                 .font(Typography.mono(18))
                 .foregroundStyle(Palette.ink)
-            Text(caption)
+            Text(LocalizedStringKey(caption))
                 .font(Typography.data(12, weight: .regular))
                 .foregroundStyle(Palette.inkFaint)
         }

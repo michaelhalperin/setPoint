@@ -32,10 +32,10 @@ struct TrainingLockedView: View {
                 .frame(width: 38, height: 38)
                 .background(Palette.haze.opacity(0.14), in: Circle())
             VStack(alignment: .leading, spacing: 3) {
-                Text(title)
+                Text(LocalizedStringKey(title))
                     .font(Typography.data(15, weight: .medium))
                     .foregroundStyle(Palette.ink)
-                Text(detail)
+                Text(LocalizedStringKey(detail))
                     .font(Typography.data(14))
                     .foregroundStyle(Palette.inkSoft)
                     .fixedSize(horizontal: false, vertical: true)

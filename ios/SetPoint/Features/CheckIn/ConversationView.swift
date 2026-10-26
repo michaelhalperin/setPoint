@@ -70,7 +70,7 @@ struct ConversationView: View {
         case let .failed(message):
             Spacer()
             VStack(spacing: 14) {
-                Text(message)
+                Text(LocalizedStringKey(message))
                     .font(Typography.data(15))
                     .foregroundStyle(Palette.inkSoft)
                     .multilineTextAlignment(.center)
@@ -130,7 +130,7 @@ struct ConversationView: View {
                     }
 
                     if let err = model.sendError {
-                        Text(err)
+                        Text(LocalizedStringKey(err))
                             .font(Typography.data(13, weight: .regular))
                             .foregroundStyle(Palette.amber)
                     }
@@ -181,7 +181,7 @@ struct ConversationView: View {
                                 .font(Typography.display(22))
                                 .foregroundStyle(Palette.ink)
                                 .multilineTextAlignment(.center)
-                            Text(summary)
+                            Text(LocalizedStringKey(summary))
                                 .font(Typography.data(14, weight: .regular))
                                 .foregroundStyle(Palette.inkSoft)
                                 .multilineTextAlignment(.center)
@@ -256,7 +256,7 @@ struct ConversationView: View {
     @ViewBuilder
     private func composer(_ model: ConversationViewModel) -> some View {
         HStack(spacing: 10) {
-            TextField(model.messages.count == 1 ? "Or tell me what’s going on…" : "Reply…", text: Binding(get: { model.draft }, set: { model.draft = $0 }), axis: .vertical)
+            TextField(model.messages.count == 1 ? L10n("Or tell me what’s going on…") : L10n("Reply…"), text: Binding(get: { model.draft }, set: { model.draft = $0 }), axis: .vertical)
                 .font(Typography.data(15, weight: .regular))
                 .lineLimit(1 ... 4)
                 .focused($composerFocused)
@@ -371,14 +371,16 @@ private struct QuickFix {
     let detail: String
     let message: String
 
-    static let all = [
-        QuickFix(symbol: "clock", title: "Check in later", detail: "More time before a meal counts as slipped",
-                 message: "Can you check in later? I need more time around my meals."),
-        QuickFix(symbol: "slider.horizontal.3", title: "Ease the target", detail: "A lower number for a while",
-                 message: "Can we ease my target for a while?"),
-        QuickFix(symbol: "pause", title: "Pause for a few days", detail: "I’ll pick it back up",
-                 message: "Can we pause check-ins for a few days?"),
-    ]
+    static var all: [QuickFix] {
+        [
+            QuickFix(symbol: "clock", title: L10n("Check in later"), detail: L10n("More time before a meal counts as slipped"),
+                     message: L10n("Can you check in later? I need more time around my meals.")),
+            QuickFix(symbol: "slider.horizontal.3", title: L10n("Ease the target"), detail: L10n("A lower number for a while"),
+                     message: L10n("Can we ease my target for a while?")),
+            QuickFix(symbol: "pause", title: L10n("Pause for a few days"), detail: L10n("I’ll pick it back up"),
+                     message: L10n("Can we pause check-ins for a few days?")),
+        ]
+    }
 }
 
 private struct MessageBubble: View {

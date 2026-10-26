@@ -1,6 +1,7 @@
 import type Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
 import type { Goal } from '../engine/types.js';
+import { languageInstruction, type Lang } from '../i18n/index.js';
 import { MANAGER_VOICE_MODEL } from './models.js';
 
 export type ConversationTurn = { role: 'user' | 'assistant'; content: string };
@@ -20,7 +21,7 @@ export type TierThreeReply = {
   done: boolean;
 };
 
-export type TierThreeContext = { goal: Goal; recentMisses: number };
+export type TierThreeContext = { goal: Goal; recentMisses: number; lang?: Lang };
 
 export interface TierThreeConversant {
   opener(context: TierThreeContext): string;
@@ -69,11 +70,14 @@ const replySchema = z.object({
 
 export const fallbackTierThree: TierThreeConversant = {
   opener(context) {
-    return 'Change your target, timing, or pause check-ins?';
+    return context.lang === 'he'
+      ? 'לשנות את היעד, את התזמון, או להשהות את התזכורות?'
+      : 'Change your target, timing, or pause check-ins?';
   },
-  async respond(history) {
+  async respond(history, context) {
     const last = history.filter((t) => t.role === 'user').at(-1)?.content.toLowerCase() ?? '';
     const assistantTurns = history.filter((t) => t.role === 'assistant').length;
+    if (context?.lang === 'he') return respondHe(last, assistantTurns);
 
     if (/(struggl|hard time|can'?t eat|disorder|therap)/.test(last)) {
       return {
@@ -120,6 +124,30 @@ export const fallbackTierThree: TierThreeConversant = {
   },
 };
 
+/** The same decision tree in Hebrew — keywords are Hebrew and English, replies Hebrew. */
+function respondHe(last: string, assistantTurns: number): TierThreeReply {
+  if (/(קשה לי|לא מצליח לאכול|הפרעת אכילה|טיפול|struggl|hard time|disorder|therap)/.test(last)) {
+    return {
+      reply: 'השהיתי את התזכורות. איש מקצוע מוסמך יכול לתת תמיכה שאפליקציה לא יכולה.',
+      outcome: 'SUGGEST_PROFESSIONAL',
+      done: true,
+    };
+  }
+  if (/(להשהות|השהיה|תפסיק|הפסקה|יותר מדי|עזוב אותי|pause|stop|break|too much)/.test(last)) {
+    return { reply: 'אפשר להשהות את התזכורות. אשר למטה אם זה מתאים לך.', outcome: 'PAUSE_CHECKINS', done: false };
+  }
+  if (/(מאוחר|תזמון|יותר זמן|שעה לא נכונה|מוקדם מדי|later|timing|more time|too early)/.test(last)) {
+    return { reply: 'אפשר להזיז את זמני הארוחות ב-30 דקות אחורה. אשר למטה.', outcome: 'DELAY_CHECKINS', done: false };
+  }
+  if (/(להקל|להוריד|יעד נמוך|פחות אוכל|ease|lower|smaller target|less food)/.test(last)) {
+    return { reply: 'אפשר להוריד את היעד היומי ב-150 קלוריות. אשר למטה.', outcome: 'EASE_TARGET', done: false };
+  }
+  if (assistantTurns >= 2) {
+    return { reply: 'אפשר לשלוח תזכורת 30 דקות מאוחר יותר. אשר למטה אם זה עוזר.', outcome: 'DELAY_CHECKINS', done: false };
+  }
+  return { reply: 'יעד נמוך יותר, תזכורות מאוחרות יותר או השהיה — מה היה עוזר?', outcome: 'NONE', done: false };
+}
+
 export function createAiTierThree(
   client: Anthropic,
   fallback: TierThreeConversant = fallbackTierThree,
@@ -131,7 +159,7 @@ export function createAiTierThree(
         const message = await client.messages.create({
           model: MANAGER_VOICE_MODEL,
           max_tokens: 400,
-          system: SYSTEM,
+          system: context.lang === 'he' ? `${SYSTEM}\n${languageInstruction('he')}` : SYSTEM,
           tools: [replyTool],
           tool_choice: { type: 'tool', name: 'reply_to_user' },
           messages: [

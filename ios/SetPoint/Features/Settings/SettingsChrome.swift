@@ -179,7 +179,7 @@ struct SettingsErrorBanner: View {
     let message: String
 
     var body: some View {
-        Text(message)
+        Text(LocalizedStringKey(message))
             .font(Typography.data(13, weight: .regular))
             .foregroundStyle(Palette.danger)
             .padding(Space.sm)

@@ -51,7 +51,7 @@ struct InviteCodeView: View {
                         .accessibilityLabel("Invite code")
 
                     if let error {
-                        Text(error)
+                        Text(LocalizedStringKey(error))
                             .font(Typography.data(13, weight: .regular))
                             .foregroundStyle(Palette.danger)
                             .padding(.horizontal, 4)

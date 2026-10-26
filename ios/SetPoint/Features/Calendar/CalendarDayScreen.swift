@@ -69,7 +69,7 @@ struct CalendarDayView: View {
                 let lit = d.meals.contains(where: \.moved)
                 Button { date = d.date } label: {
                     VStack(spacing: 3) {
-                        Text(String(CalendarDates.shortWeekday(d.weekday).prefix(1)))
+                        Text(CalendarDates.narrowWeekday(d.weekday))
                             .font(Typography.mono(10))
                             .opacity(0.7)
                         Text(CalendarDates.dayOfMonth(d.date))
@@ -296,7 +296,7 @@ struct CalendarDayTimeline: View {
             if pill {
                 HStack(spacing: 6) {
                     Text(event.title).font(Typography.data(12, weight: .regular)).foregroundStyle(counts ? Palette.ink : Palette.inkSoft)
-                    Text(counts ? CalendarClock.hm(event.startMin) : (verdict == .tooShort ? "too short" : "off"))
+                    Text(counts ? CalendarClock.hm(event.startMin) : (verdict == .tooShort ? L10n("too short") : L10n("off")))
                         .font(Typography.mono(10))
                         .foregroundStyle(Palette.inkFaint)
                 }
@@ -311,7 +311,7 @@ struct CalendarDayTimeline: View {
                     .overlay(alignment: .topLeading) {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(event.title).font(Typography.data(12, weight: .regular)).foregroundStyle(counts ? Palette.ink : Palette.inkSoft)
-                            Text(sub).font(Typography.mono(10)).foregroundStyle(Palette.inkFaint)
+                            Text(LocalizedStringKey(sub)).font(Typography.mono(10)).foregroundStyle(Palette.inkFaint)
                         }
                         .lineLimit(1)
                         .padding(.horizontal, 10)
@@ -335,14 +335,14 @@ struct CalendarDayTimeline: View {
         } else if meal.moved {
             Rectangle().fill(Palette.amber.opacity(0.6)).frame(width: 1.5, height: max(0, y(meal.usualMin) - y(meal.atMin)))
                 .offset(x: spineX - 0.25, y: y(meal.atMin))
-            mark(at: meal.usualMin, time: CalendarClock.hm(meal.usualMin), name: "usual time", color: Color(hex: 0x71717A), timeColor: Color(hex: 0x52525B), width: labelWidth) {
+            mark(at: meal.usualMin, time: CalendarClock.hm(meal.usualMin), name: L10n("usual time"), color: Color(hex: 0x71717A), timeColor: Color(hex: 0x52525B), width: labelWidth) {
                 GhostRing(size: 12)
             }
-            mark(at: meal.atMin, time: CalendarClock.hm(meal.atMin), name: meal.status == "missed" ? "\(name) · missed" : name, color: Palette.amber, timeColor: Color(hex: 0xFDE6CF), width: labelWidth) {
+            mark(at: meal.atMin, time: CalendarClock.hm(meal.atMin), name: meal.status == "missed" ? L10n("\(name) · missed") : name, color: Palette.amber, timeColor: Color(hex: 0xFDE6CF), width: labelWidth) {
                 EmberDot(size: 18)
             }
         } else {
-            mark(at: meal.atMin, time: CalendarClock.hm(meal.atMin), name: name + (meal.kept ? " · kept" : meal.status == "missed" ? " · missed" : ""), color: meal.kept ? Palette.amber : Color(hex: 0xD4D4D8), timeColor: Palette.inkFaint, width: labelWidth) {
+            mark(at: meal.atMin, time: CalendarClock.hm(meal.atMin), name: name + (meal.kept ? L10n(" · kept") : meal.status == "missed" ? L10n(" · missed") : ""), color: meal.kept ? Palette.amber : Color(hex: 0xD4D4D8), timeColor: Palette.inkFaint, width: labelWidth) {
                 if meal.kept {
                     Circle().strokeBorder(Palette.amber, lineWidth: 1.5).background(Circle().fill(Palette.background)).frame(width: 10, height: 10)
                 } else {

@@ -153,7 +153,7 @@ enum SafetyQuestion: Int, CaseIterable {
         case .lostControl: return L10n( "Do you worry you have lost control over how much you eat?")
         case .lostOneStone:
             // SCOFF's "one stone": 6.35 kg / 14 lb.
-            let amount = MassUnit.current == .lb ? "14 lb" : "6 kg"
+            let amount = MassUnit.current == .lb ? L10n("14 lb") : L10n("6 kg")
             return L10n( "Have you recently lost more than \(amount) in a three-month period?")
         case .believesFat: return L10n( "Do you believe yourself to be fat when others say you are too thin?")
         case .foodDominates: return L10n( "Would you say that food dominates your life?")

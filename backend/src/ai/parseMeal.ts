@@ -1,5 +1,6 @@
 import type Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
+import { languageInstruction, type Lang } from '../i18n/index.js';
 import { MEAL_PARSE_MODEL, MEAL_PHOTO_MODEL } from './models.js';
 
 export type MealImage = { data: string; mediaType: 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif' };
@@ -7,6 +8,8 @@ export type MealImage = { data: string; mediaType: 'image/jpeg' | 'image/png' | 
 export type MealParseInput = {
   text?: string;
   image?: MealImage;
+  /** Names, summary and notes come back in this language. */
+  lang?: Lang;
 };
 
 export type ParsedMealItem = {
@@ -192,12 +195,17 @@ function buildContent(input: MealParseInput): Anthropic.MessageParam['content'] 
   return `Meal description: ${input.text}`;
 }
 
+function withLanguage(system: string, lang: Lang | undefined): string {
+  if (lang !== 'he') return system;
+  return `${system} ${languageInstruction('he')} Write each item name, the summary, the notes and the quantity wording in Hebrew.`;
+}
+
 /** Text: the fast pin with a forced record_meal call. */
 export function mealTextRequest(input: MealParseInput): Anthropic.MessageCreateParamsNonStreaming {
   return {
     model: MEAL_PARSE_MODEL,
     max_tokens: 1024,
-    system: SYSTEM_TEXT,
+    system: withLanguage(SYSTEM_TEXT, input.lang),
     tools: [RECORD_MEAL_TOOL],
     tool_choice: { type: 'tool', name: 'record_meal' },
     messages: [{ role: 'user', content: buildContent(input) }],
@@ -215,7 +223,7 @@ export function mealPhotoRequest(input: MealParseInput): Anthropic.Beta.MessageC
     max_tokens: 16000,
     betas: ['server-side-fallback-2026-07-01'],
     fallbacks: 'default',
-    system: SYSTEM_PHOTO,
+    system: withLanguage(SYSTEM_PHOTO, input.lang),
     output_config: { effort: 'medium', format: { type: 'json_schema', schema: MEAL_JSON_SCHEMA } },
     messages: [{ role: 'user', content: buildContent(input) as Anthropic.Beta.BetaMessageParam['content'] }],
   };

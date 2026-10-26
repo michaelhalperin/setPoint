@@ -29,7 +29,7 @@ struct CalendarWeekView: View {
                 Headline("Calendar.", tail: "Couldn’t read your week.", size: 38, persistTail: true)
                     .appearIn(0, rise: 16)
                 VStack(alignment: .leading, spacing: 14) {
-                    Text(error)
+                    Text(LocalizedStringKey(error))
                         .font(Typography.data(14, weight: .regular))
                         .foregroundStyle(Palette.inkSoft)
                         .fixedSize(horizontal: false, vertical: true)
@@ -155,7 +155,7 @@ struct CalendarWeekColumns: View {
             ForEach(week.days) { day in
                 Button { onPick(day.date) } label: {
                     VStack(spacing: 6) {
-                        Text("\(String(CalendarDates.shortWeekday(day.weekday).prefix(1))) \(CalendarDates.dayOfMonth(day.date))")
+                        Text("\(CalendarDates.narrowWeekday(day.weekday)) \(CalendarDates.dayOfMonth(day.date))")
                             .font(Typography.mono(10))
                             .foregroundStyle(day.date == week.today ? Palette.amber : Palette.inkFaint)
                             .frame(height: 16)
@@ -271,7 +271,7 @@ struct CalendarMovedStrip: View {
                                 .fill(lit ? Palette.amber : Color.white.opacity(0.12))
                                 .frame(width: 12, height: 12)
                                 .shadow(color: Palette.amber.opacity(lit ? 0.7 : 0), radius: 5)
-                            Text(String(CalendarDates.shortWeekday(day.weekday).prefix(1)))
+                            Text(CalendarDates.narrowWeekday(day.weekday))
                                 .font(Typography.mono(10))
                                 .foregroundStyle(Palette.inkFaint)
                         }
@@ -329,7 +329,7 @@ struct CalendarTiles: View {
                                         .font(Typography.data(15, weight: .medium))
                                         .lineLimit(2)
                                         .minimumScaleFactor(0.85)
-                                    Text(choice.subscribed ? choice.source : "\(choice.source) · \(choice.eventsThisWeek) this week")
+                                    Text(choice.subscribed ? choice.source : L10n("\(choice.source) · \(choice.eventsThisWeek) this week"))
                                         .font(Typography.data(11, weight: .regular))
                                         .foregroundStyle(Palette.inkSoft)
                                         .lineLimit(2)
@@ -389,10 +389,10 @@ struct CalendarLinkRow: View {
     var body: some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(title)
+                Text(LocalizedStringKey(title))
                     .font(Typography.data(15, weight: .regular))
                     .foregroundStyle(Palette.ink)
-                Text(detail)
+                Text(LocalizedStringKey(detail))
                     .font(Typography.data(12, weight: .regular))
                     .foregroundStyle(Palette.inkSoft)
                     .lineLimit(1)

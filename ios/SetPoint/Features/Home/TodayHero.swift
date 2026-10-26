@@ -117,7 +117,7 @@ struct TodayHero: View {
     private var header: some View {
         HStack(alignment: .center) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(date.formatted(.dateTime.weekday(.wide)))
+                Text(date.formatted(.dateTime.weekday(.wide).locale(AppLanguage.current.locale)))
                     .font(Typography.data(20, weight: .regular))
                     .tracking(-0.4)
                     .foregroundStyle(Palette.ink)
@@ -155,7 +155,7 @@ struct TodayHero: View {
     }
 
     private var subline: String {
-        let day = date.formatted(.dateTime.day().month(.abbreviated))
+        let day = date.formatted(.dateTime.day().month(.abbreviated).locale(AppLanguage.current.locale))
         if moment == .quiet { return L10n( "\(day) · quiet mode") }
         if let training = home.training, !training.workouts.isEmpty { return L10n( "\(day) · training day") }
         return day
@@ -173,8 +173,8 @@ struct TodayHero: View {
 
     private var orbCaption: String {
         overTarget
-            ? "+\(overBy.formatted()) over"
-            : "of \(home.ledger.targetKcal.formatted()) kcal"
+            ? L10n("+\(overBy.formatted()) over")
+            : L10n("of \(home.ledger.targetKcal.formatted()) kcal")
     }
 
     private var orbAccessibility: String {
@@ -367,7 +367,7 @@ struct TodayHero: View {
 
     private func somethingElse(_ title: String) -> some View {
         Button(action: onLog) {
-            Text("\(title) →")
+            (Text(LocalizedStringKey(title)) + Text(" ") + Text(Image(systemName: "arrow.forward")))
                 .font(Typography.data(14, weight: .regular))
                 .foregroundStyle(Palette.inkSoft)
                 .frame(maxWidth: .infinity)
@@ -460,7 +460,7 @@ private struct AppetiteChip: View {
         Button(action: action) {
             HStack(spacing: 7) {
                 AppetiteBars(level: level)
-                Text(label)
+                Text(LocalizedStringKey(label))
                     .font(Typography.data(12, weight: .regular))
                     .foregroundStyle(Palette.ink)
                     .lineLimit(1)
@@ -605,7 +605,7 @@ struct PlateStrip: View {
         }
         .animation(Motion.adaptive(Motion.settle, reduceMotion: reduceMotion), value: loading)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(loading ? "Updating meal times" : accessibilitySummary(stops))
+        .accessibilityLabel(loading ? L10n("Updating meal times") : accessibilitySummary(stops))
     }
 
     private func strip(_ stops: [Stop]) -> some View {
@@ -739,10 +739,10 @@ struct PlateStrip: View {
                 let name = TodayCopy.slotTitle(stop.id)
                 let word: String
                 switch state {
-                case .logged: word = "eaten"
-                case .now: word = "due now"
-                case .missed: word = "missed"
-                case .upcoming: word = "later"
+                case .logged: word = L10n("eaten")
+                case .now: word = L10n("due now")
+                case .missed: word = L10n("missed")
+                case .upcoming: word = L10n("later")
                 }
                 return L10n( "\(name) \(clock24(stop.atMin)), \(word)")
             }
@@ -799,7 +799,7 @@ struct CheckInTakeover: View {
                     Circle().fill(Palette.ember).frame(width: 7, height: 7)
                 }
                 .frame(width: 10, height: 10)
-                Text(label).sectionLabelStyle(Palette.amber)
+                Text(LocalizedStringKey(label)).sectionLabelStyle(Palette.amber)
             }
             .appearIn(0)
 
@@ -819,7 +819,7 @@ struct CheckInTakeover: View {
                 .appearIn(3, rise: 16)
 
             if let error {
-                Text(error)
+                Text(LocalizedStringKey(error))
                     .font(Typography.data(13, weight: .regular))
                     .foregroundStyle(Palette.danger)
             }
@@ -834,7 +834,7 @@ struct CheckInTakeover: View {
     }
 
     private var label: String {
-        let time = Date().formatted(date: .omitted, time: .shortened)
+        let time = Date().appClock
         switch CheckInFlavor(kind: checkIn.kind ?? "MEAL") {
         case .close: return L10n( "Closing the day · \(time)")
         case .light: return L10n( "Top-up · \(time)")
@@ -863,7 +863,7 @@ struct CheckInTakeover: View {
             VStack(spacing: 10) {
                 if let rx = checkIn.prescription {
                     ActionButton(
-                        title: "Eating it · \(rx.totalKcal.formatted()) kcal",
+                        title: L10n("Eating it · \(rx.totalKcal.formatted()) kcal"),
                         busy: busy,
                         busyTitle: "Logging",
                         symbol: "checkmark",
@@ -922,7 +922,7 @@ struct PrescriptionCard: View {
         VStack(alignment: .leading, spacing: 0) {
             ForEach(prescription.items) { item in
                 HStack(spacing: 12) {
-                    Text(item.quantity > 1 ? "\(Int(item.quantity))× \(item.name)" : item.name)
+                    Text(item.quantity > 1 ? "\(Int(item.quantity))× \(FoodText.name(item.name))" : FoodText.name(item.name))
                         .font(Typography.data(roomy ? 17 : 16, weight: .regular))
                         .foregroundStyle(Palette.ink)
                         .multilineTextAlignment(.leading)
@@ -988,7 +988,7 @@ struct FuelStrip: View {
                 Rectangle().fill(Palette.hairline).frame(width: 1, height: 40)
                 cell(
                     value: Int(ledger.consumedProteinG.rounded()),
-                    unit: "of \(Int(target.rounded())) g protein",
+                    unit: L10n("of \(Int(target.rounded())) g protein"),
                     fraction: ledger.consumedProteinG / target,
                     tint: Palette.ink
                 )
@@ -1005,7 +1005,7 @@ struct FuelStrip: View {
                     .font(Typography.data(22, weight: .light))
                     .foregroundStyle(Palette.ink)
                     .contentTransition(.numericText(value: Double(value)))
-                Text(unit)
+                Text(LocalizedStringKey(unit))
                     .font(Typography.mono(11))
                     .foregroundStyle(Palette.inkFaint)
                     .lineLimit(1)

@@ -19,7 +19,7 @@ struct StepTitle: View {
             Text(LocalizedStringKey(label)).sectionLabelStyle()
             Headline(text, tail: tail, size: size)
             if let detail {
-                Text(detail)
+                Text(LocalizedStringKey(detail))
                     .font(Typography.data(14, weight: .regular))
                     .foregroundStyle(Palette.inkSoft)
                     .lineSpacing(3)
@@ -143,7 +143,7 @@ struct StepperRow: View {
                 }
             }
             Spacer(minLength: 8)
-            StepCircle(symbol: "minus", label: "Less \(name.lowercased())", enabled: canDown, action: onDown)
+            StepCircle(symbol: "minus", label: L10n("Less \(L10nKey(name).lowercased())"), enabled: canDown, action: onDown)
             Text(value)
                 .font(Typography.mono(16))
                 .foregroundStyle(Palette.ink)
@@ -151,7 +151,7 @@ struct StepperRow: View {
                 .contentTransition(.numericText())
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
-            StepCircle(symbol: "plus", label: "More \(name.lowercased())", enabled: canUp, action: onUp)
+            StepCircle(symbol: "plus", label: L10n("More \(L10nKey(name).lowercased())"), enabled: canUp, action: onUp)
         }
         .padding(.vertical, 10)
         .accessibilityElement(children: .combine)
@@ -218,7 +218,7 @@ struct GlassField: View {
     @Binding var text: String
 
     var body: some View {
-        TextField(prompt, text: $text)
+        TextField(LocalizedStringKey(prompt), text: $text)
             .font(Typography.data(15, weight: .regular))
             .foregroundStyle(Palette.ink)
             .padding(.horizontal, 18)
@@ -237,7 +237,7 @@ struct DotLines: View {
             ForEach(lines, id: \.self) { line in
                 HStack(spacing: 10) {
                     Circle().fill(dot).frame(width: 6, height: 6)
-                    Text(line)
+                    Text(LocalizedStringKey(line))
                         .font(Typography.data(14, weight: .regular))
                         .foregroundStyle(Color(hex: 0xD4D4D8))
                 }

@@ -113,7 +113,7 @@ final class AppChrome {
     private(set) var failure: ActionFailure?
     @ObservationIgnored private var retryAction: (() -> Void)?
 
-    func reportFailure(_ message: String = "Didn’t save", retry: (() -> Void)?) {
+    func reportFailure(_ message: String = L10n("Didn’t save"), retry: (() -> Void)?) {
         retryAction = retry
         failure = ActionFailure(message: message)
     }

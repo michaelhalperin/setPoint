@@ -33,12 +33,12 @@ final class PushManager {
     static let coverDinnerAction = "COVER_DINNER"
 
     func registerCategories() {
-        let ate = UNNotificationAction(identifier: Self.ateThisAction, title: "I ate this", options: [.authenticationRequired])
-        let snooze = UNNotificationAction(identifier: Self.snoozeHourAction, title: "In 1 hour", options: [.authenticationRequired])
-        let remind = UNNotificationAction(identifier: Self.remindAction, title: "Remind me", options: [.authenticationRequired])
-        let after = UNNotificationAction(identifier: Self.afterBlockAction, title: "After this block", options: [.authenticationRequired])
-        let hadThis = UNNotificationAction(identifier: Self.ateThisAction, title: "I had this", options: [.authenticationRequired])
-        let coverDinner = UNNotificationAction(identifier: Self.coverDinnerAction, title: "Dinner covers it", options: [.authenticationRequired])
+        let ate = UNNotificationAction(identifier: Self.ateThisAction, title: L10n("I ate this"), options: [.authenticationRequired])
+        let snooze = UNNotificationAction(identifier: Self.snoozeHourAction, title: L10n("In 1 hour"), options: [.authenticationRequired])
+        let remind = UNNotificationAction(identifier: Self.remindAction, title: L10n("Remind me"), options: [.authenticationRequired])
+        let after = UNNotificationAction(identifier: Self.afterBlockAction, title: L10n("After this block"), options: [.authenticationRequired])
+        let hadThis = UNNotificationAction(identifier: Self.ateThisAction, title: L10n("I had this"), options: [.authenticationRequired])
+        let coverDinner = UNNotificationAction(identifier: Self.coverDinnerAction, title: L10n("Dinner covers it"), options: [.authenticationRequired])
         let meal = UNNotificationCategory(identifier: Self.checkInCategory, actions: [ate, snooze], intentIdentifiers: [])
         let headsUp = UNNotificationCategory(identifier: Self.headsUpCategory, actions: [remind, after], intentIdentifiers: [])
         let refuel = UNNotificationCategory(identifier: Self.refuelCategory, actions: [hadThis, coverDinner], intentIdentifiers: [])

@@ -178,7 +178,7 @@ struct BurnScreen: View {
             Text(value)
                 .font(Typography.mono(17))
                 .foregroundStyle(highlight ? Palette.amber : Palette.ink)
-            Text(label)
+            Text(LocalizedStringKey(label))
                 .font(Typography.data(11, weight: .regular))
                 .foregroundStyle(Palette.inkSoft)
                 .lineLimit(1)

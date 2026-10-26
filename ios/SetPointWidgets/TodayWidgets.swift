@@ -53,9 +53,9 @@ struct SetPointTodayWidgetView: View {
     var body: some View {
         switch family {
         case .systemMedium:
-            TodayWidgetMediumView(snapshot: entry.snapshot)
+            TodayWidgetMediumView(snapshot: entry.snapshot).sharedLanguage()
         default:
-            TodayWidgetSmallView(snapshot: entry.snapshot)
+            TodayWidgetSmallView(snapshot: entry.snapshot).sharedLanguage()
         }
     }
 }
@@ -67,11 +67,11 @@ struct SetPointLockWidgetView: View {
     var body: some View {
         switch family {
         case .accessoryRectangular:
-            TodayLockRectangularView(snapshot: entry.snapshot)
+            TodayLockRectangularView(snapshot: entry.snapshot).sharedLanguage()
         case .accessoryInline:
-            TodayLockInlineView(snapshot: entry.snapshot)
+            TodayLockInlineView(snapshot: entry.snapshot).sharedLanguage()
         default:
-            TodayLockCircularView(snapshot: entry.snapshot)
+            TodayLockCircularView(snapshot: entry.snapshot).sharedLanguage()
         }
     }
 }

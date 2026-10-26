@@ -116,9 +116,9 @@ struct MealLog: View {
         let slots = home.day?.slots ?? []
         let next = slots.first { $0.slotState == .now || $0.slotState == .upcoming }
         let tail =
-            next.map { "\($0.meal.title) is next at \(formatMinutes($0.atMin))." }
+            next.map { L10n("\($0.meal.title) is next at \(formatMinutes($0.atMin)).") }
             ?? TodayCopy.dayScheduleLine(home)
-            ?? "Meals you log land here, under their meal time."
+            ?? L10n("Meals you log land here, under their meal time.")
         return VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 16) {
                 ZStack {
@@ -271,7 +271,7 @@ struct TodayMealRow: View {
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                     .transition(.opacity)
             } else if !detail.isEmpty {
-                Text(detail)
+                Text(LocalizedStringKey(detail))
                     .font(Typography.mono(12))
                     .foregroundStyle(Palette.inkSoft)
                     .frame(width: 44, alignment: .leading)
@@ -279,12 +279,12 @@ struct TodayMealRow: View {
                     .minimumScaleFactor(0.7)
             }
             VStack(alignment: .leading, spacing: 2) {
-                Text(title)
+                Text(LocalizedStringKey(title))
                     .font(Typography.data(15, weight: .regular))
                     .foregroundStyle(Palette.ink)
                     .lineLimit(2)
                 if photo != nil, !detail.isEmpty {
-                    Text(detail)
+                    Text(LocalizedStringKey(detail))
                         .font(Typography.mono(11))
                         .foregroundStyle(Palette.inkFaint)
                 }
@@ -472,13 +472,13 @@ struct LogDock: View {
                     } label: {
                         HStack(alignment: .firstTextBaseline, spacing: 10) {
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(food.name)
+                                Text(FoodText.name(food.name))
                                     .font(Typography.data(14, weight: .regular))
                                     .foregroundStyle(Palette.ink)
                                     .lineLimit(2)
                                     .multilineTextAlignment(.leading)
                                 if let serving = food.servingDesc, !serving.isEmpty {
-                                    Text(serving)
+                                    Text(FoodText.serving(serving))
                                         .font(Typography.data(12, weight: .regular))
                                         .foregroundStyle(Palette.inkFaint)
                                         .lineLimit(1)
@@ -561,7 +561,7 @@ struct LogDock: View {
     private func backdateChip(_ backdate: LogMealViewModel.Backdate) -> some View {
         HStack(spacing: 6) {
             Text(
-                L10n("Adding to \(backdate.slot.title.lowercased()) · \(backdate.at.formatted(date: .omitted, time: .shortened))")
+                L10n("Adding to \(backdate.slot.title.lowercased()) · \(backdate.at.appClock)")
             )
             Button {
                 logger.backdate = nil
@@ -837,7 +837,7 @@ private struct RecentMealCard: View {
                         .foregroundStyle(Palette.ink)
                         .lineLimit(2, reservesSpace: true)
                         .multilineTextAlignment(.leading)
-                    Text(when)
+                    Text(LocalizedStringKey(when))
                         .font(Typography.mono(11))
                         .foregroundStyle(Palette.inkFaint)
                         .lineLimit(1)
@@ -922,7 +922,7 @@ struct LogStatusToast: View {
                             Text("No signal. Saved here.")
                                 .font(Typography.data(14, weight: .regular))
                                 .foregroundStyle(Palette.ink)
-                            Text(message)
+                            Text(LocalizedStringKey(message))
                                 .font(Typography.data(12, weight: .regular))
                                 .foregroundStyle(Palette.inkSoft)
                                 .fixedSize(horizontal: false, vertical: true)
@@ -944,7 +944,7 @@ struct LogStatusToast: View {
                                 .font(Typography.data(14, weight: .regular))
                                 .lineLimit(2)
                         }
-                        Text(message)
+                        Text(LocalizedStringKey(message))
                             .font(Typography.data(12, weight: .regular))
                             .foregroundStyle(Palette.inkSoft)
                         if onRetry != nil || onDelete != nil {
@@ -962,8 +962,8 @@ struct LogStatusToast: View {
             case let .logged(logged) where !logger.confirmingPhoto:
                 line(
                     symbol: "checkmark",
-                    text: "Logged · \(logged.kcal) kcal"
-                        + (logged.resolvedCheckIn ? " · check-in answered" : "")
+                    text: L10n("Logged · \(logged.kcal) kcal")
+                        + (logged.resolvedCheckIn ? L10n(" · check-in answered") : "")
                 )
             default:
                 EmptyView()
@@ -1043,7 +1043,7 @@ struct LogStatusToast: View {
             Image(systemName: symbol)
                 .font(.system(size: 11, weight: .bold))
                 .foregroundStyle(Palette.amber)
-            Text(text)
+            Text(LocalizedStringKey(text))
                 .font(Typography.data(13, weight: .regular))
                 .foregroundStyle(Palette.ink)
                 .lineLimit(1)

@@ -198,7 +198,7 @@ struct CalendarKeepButton: View {
         .buttonStyle(PressableCard())
         .allowsHitTesting(stage == .idle)
         .animation(Motion.adaptive(Motion.settle, reduceMotion: reduceMotion), value: stage)
-        .accessibilityLabel(title)
+        .accessibilityLabel(LocalizedStringKey(title))
         .accessibilityAddTraits(busy ? .updatesFrequently : [])
     }
 

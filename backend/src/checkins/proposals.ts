@@ -10,6 +10,17 @@ export type PlanProposal = {
   easeKcal?: number;
 };
 
+const PROPOSALS_HE: Record<PlanProposalKind, { title: string; summary: string }> = {
+  DELAY_CHECKINS: { title: 'תזכורת מאוחר יותר', summary: 'להזיז את ארוחת הבוקר, הצהריים והערב ב-30 דקות אחורה.' },
+  EASE_TARGET: { title: 'להקל על היעד', summary: 'להוריד את היעד היומי ב-150 קלוריות. אפשר להחזיר בכל עת במטרה.' },
+  PAUSE_CHECKINS: { title: 'להשהות תזכורות', summary: 'להפסיק את התזכורות עד שתחזור אליהן בהגדרות.' },
+};
+
+/** A proposal's wording in the user's language. */
+export function localizedProposal(proposal: PlanProposal, lang: 'en' | 'he'): PlanProposal {
+  return lang === 'he' ? { ...proposal, ...PROPOSALS_HE[proposal.kind] } : proposal;
+}
+
 export const PROPOSALS: Record<PlanProposalKind, PlanProposal> = {
   DELAY_CHECKINS: {
     kind: 'DELAY_CHECKINS',

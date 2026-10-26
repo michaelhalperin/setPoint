@@ -64,15 +64,15 @@ struct PaywallView: View {
                 if let days = trialDays {
                     VStack(alignment: .leading, spacing: 8) {
                         timelineRow("Today", "Trial starts")
-                        if days >= 3 { timelineRow("Day \(days - 2)", "Reminder") }
-                        timelineRow("Day \(days)", "Billed")
+                        if days >= 3 { timelineRow(L10n("Day \(days - 2)"), "Reminder") }
+                        timelineRow(L10n("Day \(days)"), "Billed")
                     }
                     .padding(16)
                     .glass(radius: 20)
                 }
 
                 if let error = store.error {
-                    Text(error)
+                    Text(LocalizedStringKey(error))
                         .font(Typography.data(13, weight: .regular))
                         .foregroundStyle(Palette.danger)
                 }
@@ -149,14 +149,22 @@ struct PaywallView: View {
         guard let product = store.selectedProduct else {
             return L10n( "Plans load from the App Store. Check your connection and try again.")
         }
-        let unit = store.selectedYearly ? "year" : "month"
-        let start = trialDays.map { "After the \($0)-day free trial, " } ?? ""
-        return L10n( "\(start)\(product.displayPrice) per \(unit), charged to your Apple ID. Renews automatically unless cancelled at least 24 hours before the period ends. Manage or cancel in Apple ID settings.")
+        let price = product.displayPrice
+        switch (trialDays, store.selectedYearly) {
+        case let (days?, true):
+            return L10n("After the \(days)-day free trial, \(price) per year, charged to your Apple ID. Renews automatically unless cancelled at least 24 hours before the period ends. Manage or cancel in Apple ID settings.")
+        case let (days?, false):
+            return L10n("After the \(days)-day free trial, \(price) per month, charged to your Apple ID. Renews automatically unless cancelled at least 24 hours before the period ends. Manage or cancel in Apple ID settings.")
+        case (nil, true):
+            return L10n("\(price) per year, charged to your Apple ID. Renews automatically unless cancelled at least 24 hours before the period ends. Manage or cancel in Apple ID settings.")
+        case (nil, false):
+            return L10n("\(price) per month, charged to your Apple ID. Renews automatically unless cancelled at least 24 hours before the period ends. Manage or cancel in Apple ID settings.")
+        }
     }
 
     private func priceLine(_ product: Product?, unit: String) -> String {
         guard let product else { return L10n( "…") }
-        return "\(product.displayPrice)/\(unit)"
+        return unit == "year" ? L10n("\(product.displayPrice)/year") : L10n("\(product.displayPrice)/month")
     }
 
     private func trialBadge(_ product: Product?) -> String? {
@@ -166,7 +174,7 @@ struct PaywallView: View {
               store.isTrialEligible(product.id)
         else { return nil }
         let days = offer.period.unit == .week ? offer.period.value * 7 : offer.period.value
-        return offer.period.unit == .day || offer.period.unit == .week ? "\(days) DAYS FREE" : "FREE TRIAL"
+        return offer.period.unit == .day || offer.period.unit == .week ? L10n("\(days) DAYS FREE") : L10n("FREE TRIAL")
     }
 
     private func feature(symbol: String, title: String) -> some View {
@@ -175,7 +183,7 @@ struct PaywallView: View {
                 .font(.system(size: 15, weight: .regular))
                 .foregroundStyle(Palette.hazeSoft)
                 .frame(width: 28)
-            Text(title)
+            Text(LocalizedStringKey(title))
                 .font(Typography.data(15, weight: .regular))
                 .foregroundStyle(Palette.ink)
         }
@@ -184,7 +192,7 @@ struct PaywallView: View {
     private func planCard(title: String, price: String, badge: String?, selected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: 6) {
-                Text(title)
+                Text(LocalizedStringKey(title))
                     .font(Typography.data(15, weight: .medium))
                     .foregroundStyle(Palette.ink)
                 Text(price)
@@ -211,7 +219,7 @@ struct PaywallView: View {
                 .font(Typography.mono(13))
                 .foregroundStyle(Palette.ink)
             Spacer()
-            Text(label)
+            Text(LocalizedStringKey(label))
                 .font(Typography.data(14))
                 .foregroundStyle(Palette.inkSoft)
         }

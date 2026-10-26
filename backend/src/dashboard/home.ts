@@ -1,3 +1,4 @@
+import { langOf } from '../i18n/index.js';
 import { AccountNotFoundError } from '../account/deleteAccount.js';
 import type { PrismaClient } from '@prisma/client';
 import {
@@ -157,6 +158,7 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
   if (!user.onboarding) throw new OnboardingIncompleteError('onboarding not complete');
 
   const profile = user.onboarding;
+  const lang = langOf(user.language);
   const dayStart = startOfLocalDay(now, user.timezone);
 
   const [todayMeals, lastMeal, activeCheckIn, todayCheckIns, lastWeighIn, busyRows, dayAppetite, smallerCount, keepRows] = await Promise.all([
@@ -368,6 +370,7 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
   });
 
   const managerNote = await deps.voice.homeNote({
+    lang,
     goal,
     state: framing.state,
     consumedKcal,
@@ -416,7 +419,7 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
             behindKcal: topUpNeed.behindKcal,
             totalKcal: topUpRx.totalKcal,
             totalProteinG: topUpRx.totalProteinG,
-            logText: `Top-up: ${namedSummary(topUpRx)}`,
+            logText: lang === 'he' ? `תוספת: ${namedSummary(topUpRx, 'he')}` : `Top-up: ${namedSummary(topUpRx)}`,
             items: topUpRx.items.map((i) => ({
               name: i.name,
               servingDesc: i.servingDesc,

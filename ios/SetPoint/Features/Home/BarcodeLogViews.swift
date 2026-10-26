@@ -241,7 +241,7 @@ struct BarcodeScannerView: View {
                         .font(Typography.data(16, weight: .semibold))
                         .foregroundStyle(Palette.ink)
                 }
-                Text(detail)
+                Text(LocalizedStringKey(detail))
                     .font(title == nil ? Typography.data(15, weight: .medium) : Typography.data(13))
                     .foregroundStyle(title == nil ? Palette.ink : Palette.inkSoft)
                     .multilineTextAlignment(.center)
@@ -432,7 +432,7 @@ struct ScannedProductCard: View {
                 }
                 .buttonStyle(PressableCard())
                 .disabled(saved)
-                .accessibilityLabel(saved ? "Saved as my meal" : "Save as my meal")
+                .accessibilityLabel(saved ? L10n("Saved as my meal") : L10n("Save as my meal"))
             }
 
             Button("Not this — scan again", action: onRescan)
@@ -610,7 +610,7 @@ struct CatalogFoodSheet: View {
                 StepperRow(
                     name: "Amount",
                     note: pick.food.servingDesc,
-                    value: "\(Int(pick.grams.rounded())) g",
+                    value: L10n("\(Int(pick.grams.rounded())) g"),
                     valueWidth: 80,
                     canDown: pick.grams > 25,
                     canUp: pick.grams < 2000,

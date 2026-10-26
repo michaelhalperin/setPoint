@@ -1,6 +1,7 @@
 import type { SlotName } from '../engine/mealSchedule.js';
 import type { Goal } from '../engine/types.js';
 import type { DayKind, FramingState } from '../dashboard/classify.js';
+import type { Lang } from '../i18n/index.js';
 
 export type ManagerVoiceContext = {
   tier: number;
@@ -12,6 +13,8 @@ export type ManagerVoiceContext = {
   prescriptionSummary?: string | null;
   /** The meal that slipped, when the check-in is for one. */
   slot?: SlotName | null;
+  /** The language the line is written in. English when absent. */
+  lang?: Lang;
 };
 
 export type HomeNoteContext = {
@@ -30,6 +33,7 @@ export type HomeNoteContext = {
   enforcementEnabled: boolean;
   /** Pace vs. the user's usual meal times, or null when there's nothing to pace against. */
   paceStatus: 'behind' | 'on_pace' | 'ahead' | null;
+  lang?: Lang;
 };
 
 export type DaySummaryContext = {
@@ -37,6 +41,7 @@ export type DaySummaryContext = {
   kind: DayKind;
   kcalConsumed: number;
   kcalTarget: number;
+  lang?: Lang;
 };
 
 /**

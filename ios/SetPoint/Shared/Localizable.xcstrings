@@ -95,7 +95,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ %@/שבוע"
+            "value": "‏%@ %@/שבוע"
           }
         }
       }
@@ -105,7 +105,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ קלוריות"
+            "value": "‏%@ קלוריות"
           }
         }
       }
@@ -115,7 +115,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ ק״מ מכאן"
+            "value": "‏%@ ק״מ מכאן"
           }
         }
       }
@@ -125,7 +125,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ עכשיו"
+            "value": "‏%@ עכשיו"
           }
         }
       }
@@ -141,7 +141,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ ב-%@"
+            "value": "‏%@ ב-%@"
           }
         }
       }
@@ -151,7 +151,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ לא זז שום ארוחה."
+            "value": "‏%@ לא זז שום ארוחה."
           }
         }
       }
@@ -161,7 +161,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ למשך 8 שבועות"
+            "value": "‏%@ למשך 8 שבועות"
           }
         }
       }
@@ -177,7 +177,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ למשך 8 שבועות · עד %@"
+            "value": "‏%@ למשך 8 שבועות · עד %@"
           }
         }
       }
@@ -193,7 +193,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ מ-%@, %lld קלוריות"
+            "value": "‏%@ מ-%@, %lld קלוריות"
           }
         }
       }
@@ -203,7 +203,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ הוא אירוע לכל היום, ואירועים כאלה כבויים."
+            "value": "‏%@ הוא אירוע לכל היום, ואירועים כאלה כבויים."
           }
         }
       }
@@ -213,7 +213,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ בסוף השבוע, וארוחות סוף שבוע לא זזות."
+            "value": "‏%@ בסוף השבוע, וארוחות סוף שבוע לא זזות."
           }
         }
       }
@@ -223,7 +223,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ קצר מדי מכדי להיספר."
+            "value": "‏%@ קצר מדי מכדי להיספר."
           }
         }
       }
@@ -233,7 +233,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ קלוריות"
+            "value": "‏%@ קלוריות"
           }
         }
       }
@@ -243,7 +243,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@/שבוע · %@"
+            "value": "‏%@/שבוע · %@"
           }
         }
       }
@@ -253,7 +253,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ קלוריות ביום"
+            "value": "‏%@ קלוריות ביום"
           }
         }
       }
@@ -269,7 +269,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ קלוריות ביום%@. חסר בערב? אעזור לסגור את זה."
+            "value": "‏%@ קלוריות ביום%@. חסר בערב? אעזור לסגור את זה."
           }
         }
       }
@@ -315,7 +315,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ נשאר ב-%@"
+            "value": "‏%@ נשאר ב-%@"
           }
         }
       }
@@ -347,7 +347,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ מתוך %@ קלוריות עד עכשיו."
+            "value": "‏%@ מתוך %@ קלוריות עד עכשיו."
           }
         }
       }
@@ -363,7 +363,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ מתוך %@ קלוריות · מאחורי הקצב"
+            "value": "‏%@ מתוך %@ קלוריות · מאחורי הקצב"
           }
         }
       }
@@ -373,7 +373,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ או יותר"
+            "value": "‏%@ או יותר"
           }
         }
       }
@@ -399,7 +399,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ התאחרה ב-%lld מתוך %lld ימי עבודה."
+            "value": "‏%@ התאחרה ב-%lld מתוך %lld ימי עבודה."
           }
         }
       }
@@ -425,7 +425,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ רץ %@. השארת את %@ ב-%@, אז כלום לא מגיע מוקדם."
+            "value": "‏%@ רץ %@. השארת את %@ ב-%@, אז כלום לא מגיע מוקדם."
           }
         }
       }
@@ -435,7 +435,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ התפספסה."
+            "value": "‏%@ התפספסה."
           }
         }
       }
@@ -451,7 +451,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ מתחיל ב-%@ ונמשך %@. %@ זה המוקדם ביותר — אף פעם לא פחות מ-90 דקות אחרי %@."
+            "value": "‏%@ מתחיל ב-%@ ונמשך %@. %@ זה המוקדם ביותר — אף פעם לא פחות מ-90 דקות אחרי %@."
           }
         }
       }
@@ -467,7 +467,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ מתחיל ב-%@ ונמשך %@. התזכורת %lld דקות לפני שהוא מתחיל, אז %@ זזה ל-%@."
+            "value": "‏%@ מתחיל ב-%@ ונמשך %@. התזכורת %lld דקות לפני שהוא מתחיל, אז %@ זזה ל-%@."
           }
         }
       }
@@ -483,7 +483,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ נשארת ב-%@."
+            "value": "‏%@ נשארת ב-%@."
           }
         }
       }
@@ -535,7 +535,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ · %@ קלוריות · אוכלים את זה?"
+            "value": "‏%@ · %@ קלוריות · אוכלים את זה?"
           }
         }
       }
@@ -551,7 +551,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ · %@ ק״מ"
+            "value": "‏%@ · %@ ק״מ"
           }
         }
       }
@@ -567,7 +567,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ · %@ השבוע"
+            "value": "‏%@ · %@ השבוע"
           }
         }
       }
@@ -583,7 +583,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ · %@ · הבריאות של Apple %@"
+            "value": "‏%@ · %@ · הבריאות של Apple %@"
           }
         }
       }
@@ -599,7 +599,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ · %lld דק׳"
+            "value": "‏%@ · %lld דק׳"
           }
         }
       }
@@ -615,7 +615,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ · תזכורת %@"
+            "value": "‏%@ · תזכורת %@"
           }
         }
       }
@@ -625,7 +625,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ · מצב שקט"
+            "value": "‏%@ · מצב שקט"
           }
         }
       }
@@ -641,7 +641,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ · אל %@"
+            "value": "‏%@ · אל %@"
           }
         }
       }
@@ -651,7 +651,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ · יום אימון"
+            "value": "‏%@ · יום אימון"
           }
         }
       }
@@ -661,7 +661,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ · מתחמם"
+            "value": "‏%@ · מתחמם"
           }
         }
       }
@@ -693,7 +693,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ · נשארו כ-%lld שבועות"
+            "value": "‏%@ · נשארו כ-%lld שבועות"
           }
         }
       }
@@ -735,7 +735,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@%@ %@ מאז הפעם הקודמת"
+            "value": "‏%@%@ %@ מאז הפעם הקודמת"
           }
         }
       }
@@ -751,7 +751,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@%@ / שבוע עכשיו"
+            "value": "‏%@%@ / שבוע עכשיו"
           }
         }
       }
@@ -767,7 +767,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@%@ קלוריות"
+            "value": "‏%@%@ קלוריות"
           }
         }
       }
@@ -783,7 +783,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@%@ ק״ג/שבוע"
+            "value": "‏%@%@ ק״ג/שבוע"
           }
         }
       }
@@ -799,7 +799,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@%@ לכל %@, מחויב ל-Apple ID שלך. מתחדש אוטומטית אלא אם תבטל לפחות 24 שעות לפני סוף התקופה. אפשר לנהל או לבטל בהגדרות Apple ID."
+            "value": "‏%@%@ לכל %@, מחויב ל-Apple ID שלך. מתחדש אוטומטית אלא אם תבטל לפחות 24 שעות לפני סוף התקופה. אפשר לנהל או לבטל בהגדרות Apple ID."
           }
         }
       }
@@ -857,7 +857,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@, %@ קלוריות. עריכה"
+            "value": "‏%@, %@ קלוריות. עריכה"
           }
         }
       }
@@ -889,7 +889,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@, %lld קלוריות"
+            "value": "‏%@, %lld קלוריות"
           }
         }
       }
@@ -905,7 +905,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@, %lld מתוך %lld קלוריות, %@"
+            "value": "‏%@, %lld מתוך %lld קלוריות, %@"
           }
         }
       }
@@ -915,7 +915,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@, יום מנוחה"
+            "value": "‏%@, יום מנוחה"
           }
         }
       }
@@ -931,7 +931,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@. %@. עריכת התוכנית"
+            "value": "‏%@. %@. עריכת התוכנית"
           }
         }
       }
@@ -941,7 +941,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@. תזכורת מגיעה 45 דקות אחרי כל אחת אם היא לא נרשמת."
+            "value": "‏%@. תזכורת מגיעה 45 דקות אחרי כל אחת אם היא לא נרשמת."
           }
         }
       }
@@ -984,7 +984,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld תזכורת%@"
+            "value": "‏%lld תזכורת%@"
           }
         }
       }
@@ -994,7 +994,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld קלוריות"
+            "value": "‏%lld קלוריות"
           }
         }
       }
@@ -1004,7 +1004,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld קלוריות ביום. אפשר לקבוע בעצמך."
+            "value": "‏%lld קלוריות ביום. אפשר לקבוע בעצמך."
           }
         }
       }
@@ -1024,7 +1024,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld ימים בשבוע"
+            "value": "‏%lld ימים בשבוע"
           }
         }
       }
@@ -1034,7 +1034,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld מאכלים · חל על התזכורת הבאה"
+            "value": "‏%lld מאכלים · חל על התזכורת הבאה"
           }
         }
       }
@@ -1044,7 +1044,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld ג׳"
+            "value": "‏%lld ג׳"
           }
         }
       }
@@ -1054,7 +1054,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld ג׳ חלבון"
+            "value": "‏%lld ג׳ חלבון"
           }
         }
       }
@@ -1064,7 +1064,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld גרם חלבון. אפשר לקבוע בעצמך."
+            "value": "‏%lld גרם חלבון. אפשר לקבוע בעצמך."
           }
         }
       }
@@ -1074,7 +1074,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld שע׳"
+            "value": "‏%lld שע׳"
           }
         }
       }
@@ -1090,7 +1090,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld שע׳ %lld דק׳"
+            "value": "‏%lld שע׳ %lld דק׳"
           }
         }
       }
@@ -1100,7 +1100,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld קלוריות"
+            "value": "‏%lld קלוריות"
           }
         }
       }
@@ -1126,7 +1126,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld ימים רשומים ו-%lld שקילות ב-%lld ימים. מתעדכן בכל ראשון."
+            "value": "‏%lld ימים רשומים ו-%lld שקילות ב-%lld ימים. מתעדכן בכל ראשון."
           }
         }
       }
@@ -1136,7 +1136,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld ארוחות"
+            "value": "‏%lld ארוחות"
           }
         }
       }
@@ -1146,7 +1146,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld ארוחות זזו."
+            "value": "‏%lld ארוחות זזו."
           }
         }
       }
@@ -1156,7 +1156,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld דק׳"
+            "value": "‏%lld דק׳"
           }
         }
       }
@@ -1166,7 +1166,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld דקות אחרי שעת ארוחה, אם כלום לא תועד."
+            "value": "‏%lld דקות אחרי שעת ארוחה, אם כלום לא תועד."
           }
         }
       }
@@ -1186,7 +1186,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld זזו"
+            "value": "‏%lld זזו"
           }
         }
       }
@@ -1196,7 +1196,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld אף פעם"
+            "value": "‏%lld אף פעם"
           }
         }
       }
@@ -1212,7 +1212,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld מתוך %lld"
+            "value": "‏%lld מתוך %lld"
           }
         }
       }
@@ -1228,7 +1228,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld מתוך %lld ימים נסגרו."
+            "value": "‏%lld מתוך %lld ימים נסגרו."
           }
         }
       }
@@ -1244,7 +1244,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld מתוך %lld קלוריות"
+            "value": "‏%lld מתוך %lld קלוריות"
           }
         }
       }
@@ -1260,7 +1260,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld מתוך %lld קלוריות, %lld מעל"
+            "value": "‏%lld מתוך %lld קלוריות, %lld מעל"
           }
         }
       }
@@ -1276,7 +1276,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld מתוך %lld הקלוריות שעוד חסרות"
+            "value": "‏%lld מתוך %lld הקלוריות שעוד חסרות"
           }
         }
       }
@@ -1292,7 +1292,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld ביום רגיל, ועוד %lld לאימון, זה %lld היום"
+            "value": "‏%lld ביום רגיל, ועוד %lld לאימון, זה %lld היום"
           }
         }
       }
@@ -1302,7 +1302,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld מתוכננים"
+            "value": "‏%lld מתוכננים"
           }
         }
       }
@@ -1312,7 +1312,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld אימונים"
+            "value": "‏%lld אימונים"
           }
         }
       }
@@ -1322,7 +1322,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld שבועות"
+            "value": "‏%lld שבועות"
           }
         }
       }
@@ -1338,7 +1338,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld שבועות · %@ · %@"
+            "value": "‏%lld שבועות · %@ · %@"
           }
         }
       }
@@ -1348,7 +1348,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld שנים"
+            "value": "‏%lld שנים"
           }
         }
       }
@@ -1385,7 +1385,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld½ שעות"
+            "value": "‏%lld½ שעות"
           }
         }
       }
@@ -5265,7 +5265,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "עוד אין נתוני דופק. תלבש את ה-Apple Watch, או בדוק את הגישה של SetPoint בבריאות → שיתוף → אפליקציות."
+            "value": "עוד אין נתוני דופק. תלבש את ה-Apple Watch, או בדוק את הגישה של SetPoint בבריאות ← שיתוף ← אפליקציות."
           }
         }
       }
@@ -6594,7 +6594,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "SetPoint מיועד לבני %lld ומעלה."
+            "value": "‏SetPoint מיועד לבני %lld ומעלה."
           }
         }
       }
@@ -6604,7 +6604,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "SetPoint אף פעם לא מזמין, משלם או רואה את חשבון ה-Wolt שלך. הקלוריות הן הערכה שלנו מהתפריט. מנות עם מאכלים שאתה נמנע מהם כבר הוצאו."
+            "value": "‏SetPoint אף פעם לא מזמין, משלם או רואה את חשבון ה-Wolt שלך. הקלוריות הן הערכה שלנו מהתפריט. מנות עם מאכלים שאתה נמנע מהם כבר הוצאו."
           }
         }
       }
@@ -7894,7 +7894,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "Wolt נפתח על המנה. אתה לוחץ הוספה ומשלם שם."
+            "value": "‏Wolt נפתח על המנה. אתה לוחץ הוספה ומשלם שם."
           }
         }
       }
@@ -10126,7 +10126,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld תזכורות"
+            "value": "‏%lld תזכורות"
           }
         }
       }
@@ -10656,7 +10656,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "ערבים מאוחרים → בוקרים חלשים"
+            "value": "ערבים מאוחרים ← בוקרים חלשים"
           }
         }
       }
@@ -10686,7 +10686,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld מתוך %lld ימים רעבים היו למחרת אימון. כבר מוסיף את הקלוריות."
+            "value": "‏%lld מתוך %lld ימים רעבים היו למחרת אימון. כבר מוסיף את הקלוריות."
           }
         }
       }
@@ -10796,7 +10796,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ עד %@, שקט בלילה."
+            "value": "‏%@ עד %@, שקט בלילה."
           }
         }
       }
@@ -10826,7 +10826,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "בוקר %@ → %@"
+            "value": "בוקר %@ ← %@"
           }
         }
       }
@@ -10836,7 +10836,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "צהריים %@ → %@"
+            "value": "צהריים %@ ← %@"
           }
         }
       }
@@ -10846,7 +10846,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "ערב %@ → %@"
+            "value": "ערב %@ ← %@"
           }
         }
       }
@@ -10856,7 +10856,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "סופ״ש בוקר %@ → %@"
+            "value": "סופ״ש בוקר %@ ← %@"
           }
         }
       }
@@ -10866,7 +10866,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "סופ״ש צהריים %@ → %@"
+            "value": "סופ״ש צהריים %@ ← %@"
           }
         }
       }
@@ -10876,7 +10876,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "סופ״ש ערב %@ → %@"
+            "value": "סופ״ש ערב %@ ← %@"
           }
         }
       }
@@ -10886,7 +10886,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "שקט %@–%@ → %@–%@"
+            "value": "שקט %@–%@ ← %@–%@"
           }
         }
       }
@@ -11196,7 +11196,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld מתוך %lld פעילים"
+            "value": "‏%lld מתוך %lld פעילים"
           }
         }
       }
@@ -11206,7 +11206,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@+ · %lld דק׳ מראש"
+            "value": "‏%@+ · %lld דק׳ מראש"
           }
         }
       }
@@ -11236,7 +11236,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ זז ל-%@"
+            "value": "‏%@ זז ל-%@"
           }
         }
       }
@@ -11336,7 +11336,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld שעות"
+            "value": "‏%lld שעות"
           }
         }
       }
@@ -11366,7 +11366,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ זז ל-%@"
+            "value": "‏%@ זז ל-%@"
           }
         }
       }
@@ -11496,7 +11496,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "AI — לא דיאטן."
+            "value": "‏AI — לא דיאטן."
           }
         }
       }
@@ -11506,7 +11506,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "SetPoint רשאית לקרוא את כל השיחה הזו כדי לבדוק שהיא בטוחה."
+            "value": "‏SetPoint רשאית לקרוא את כל השיחה הזו כדי לבדוק שהיא בטוחה."
           }
         }
       }
@@ -11896,7 +11896,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld קלוריות ירדו מהסך של היום."
+            "value": "‏%lld קלוריות ירדו מהסך של היום."
           }
         }
       }
@@ -11906,7 +11906,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld%% מהיום"
+            "value": "‏%lld%% מהיום"
           }
         }
       }
@@ -11946,7 +11946,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld%% מהקלוריות"
+            "value": "‏%lld%% מהקלוריות"
           }
         }
       }
@@ -12336,7 +12336,7 @@
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "תזכורת %lld → %lld דק׳ אחרי"
+            "value": "תזכורת %lld ← %lld דק׳ אחרי"
           }
         }
       }
@@ -12387,6 +12387,4466 @@
           "stringUnit": {
             "state": "translated",
             "value": "משתמש"
+          }
+        }
+      }
+    },
+    "Didn’t save": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "לא נשמר"
+          }
+        }
+      }
+    },
+    "Now": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "עכשיו"
+          }
+        }
+      }
+    },
+    "2 hours": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "שעתיים"
+          }
+        }
+      }
+    },
+    "After %@": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אחרי %@"
+          }
+        }
+      }
+    },
+    "Back at %@.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אחזור ב-%@."
+          }
+        }
+      }
+    },
+    "I’ll stay quiet till then.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אשאר בשקט עד אז."
+          }
+        }
+      }
+    },
+    "From your photo": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מהתמונה שלך"
+          }
+        }
+      }
+    },
+    "Working it out…": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מחשב…"
+          }
+        }
+      }
+    },
+    "No connection. Saved on this phone — it sends when you’re back online.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אין חיבור. נשמר בטלפון ויישלח כשתחזור לרשת."
+          }
+        }
+      }
+    },
+    "%@ (rough estimate)": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‏%@ (הערכה גסה)"
+          }
+        }
+      }
+    },
+    "1 event": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אירוע אחד"
+          }
+        }
+      }
+    },
+    "%lld events": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‏%lld אירועים"
+          }
+        }
+      }
+    },
+    "Less %@": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "פחות %@"
+          }
+        }
+      }
+    },
+    "More %@": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "יותר %@"
+          }
+        }
+      }
+    },
+    "Appetite over four weeks": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "התיאבון לאורך ארבעה שבועות"
+          }
+        }
+      }
+    },
+    "too short": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "קצר מדי"
+          }
+        }
+      }
+    },
+    "usual time": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "שעה רגילה"
+          }
+        }
+      }
+    },
+    "%@ · missed": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‏%@ · פוספס"
+          }
+        }
+      }
+    },
+    " · kept": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " · נשמר"
+          }
+        }
+      }
+    },
+    " · missed": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " · פוספס"
+          }
+        }
+      }
+    },
+    "Check in later": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "תזכורת מאוחר יותר"
+          }
+        }
+      }
+    },
+    "More time before a meal counts as slipped": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "יותר זמן לפני שארוחה נחשבת מפוספסת"
+          }
+        }
+      }
+    },
+    "Can you check in later? I need more time around my meals.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אפשר לשלוח תזכורת מאוחר יותר? אני צריך יותר זמן סביב הארוחות."
+          }
+        }
+      }
+    },
+    "Ease the target": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "הקל על היעד"
+          }
+        }
+      }
+    },
+    "A lower number for a while": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מספר נמוך יותר לזמן מה"
+          }
+        }
+      }
+    },
+    "Can we ease my target for a while?": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אפשר להקל על היעד שלי לזמן מה?"
+          }
+        }
+      }
+    },
+    "Pause for a few days": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "השהיה לכמה ימים"
+          }
+        }
+      }
+    },
+    "I’ll pick it back up": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אחזור לזה אחר כך"
+          }
+        }
+      }
+    },
+    "Can we pause check-ins for a few days?": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אפשר להשהות את התזכורות לכמה ימים?"
+          }
+        }
+      }
+    },
+    "Done.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "בוצע."
+          }
+        }
+      }
+    },
+    "Sorted": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "סודר"
+          }
+        }
+      }
+    },
+    ", %lld calories": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": ", %lld קלוריות"
+          }
+        }
+      }
+    },
+    "Clear this chat?": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "למחוק את השיחה?"
+          }
+        }
+      }
+    },
+    "Clear chat": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מחק שיחה"
+          }
+        }
+      }
+    },
+    "AI · not a dietitian": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‏AI · לא דיאטן"
+          }
+        }
+      }
+    },
+    "Couldn’t reach the assistant": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "לא הצלחתי להגיע לעוזר"
+          }
+        }
+      }
+    },
+    "The assistant is paused": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "העוזר מושהה"
+          }
+        }
+      }
+    },
+    "Not available for you yet": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "עדיין לא זמין עבורך"
+          }
+        }
+      }
+    },
+    "Part of Pro": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "חלק מ-Pro"
+          }
+        }
+      }
+    },
+    "It sees today’s meals and your targets.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "הוא רואה את הארוחות של היום ואת היעדים שלך."
+          }
+        }
+      }
+    },
+    "It suggests a plate. Nothing is logged until you tap Log it.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "הוא מציע מנה. שום דבר לא מתועד עד שתלחץ על \"תעד\"."
+          }
+        }
+      }
+    },
+    "It’s AI, not a dietitian. For medical questions, ask a professional.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "זה AI, לא דיאטן. לשאלות רפואיות, פנה לאיש מקצוע."
+          }
+        }
+      }
+    },
+    "Today’s target is met": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "היעד להיום הושג"
+          }
+        }
+      }
+    },
+    "What should I eat next?": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מה כדאי לי לאכול עכשיו?"
+          }
+        }
+      }
+    },
+    "%@ kcal left today. Ask about food, or start with one of these.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "נשארו %@ קלוריות להיום. שאל על אוכל, או התחל באחת מאלה."
+          }
+        }
+      }
+    },
+    "Today’s target is met. Ask about food, or start with one of these.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "היעד להיום הושג. שאל על אוכל, או התחל באחת מאלה."
+          }
+        }
+      }
+    },
+    "Ask about today’s food, or start with one of these.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "שאל על האוכל של היום, או התחל באחת מאלה."
+          }
+        }
+      }
+    },
+    "You: %@": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אתה: %@"
+          }
+        }
+      }
+    },
+    "Fits %@ of your %@ kcal left": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מתאים: %1$@ מתוך %2$@ קלוריות שנשארו"
+          }
+        }
+      }
+    },
+    "%lld grams protein, %lld carbs, %lld fat": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‏%lld גרם חלבון, %lld פחמימות, %lld שומן"
+          }
+        }
+      }
+    },
+    "Send": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "שלח"
+          }
+        }
+      }
+    },
+    "AI can be wrong. Not medical advice.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‏AI יכול לטעות. לא ייעוץ רפואי."
+          }
+        }
+      }
+    },
+    "%@ servings": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‏%@ מנות"
+          }
+        }
+      }
+    },
+    "1 serving": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מנה אחת"
+          }
+        }
+      }
+    },
+    "%@ eaten.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "נאכלו %@."
+          }
+        }
+      }
+    },
+    "+%@ over": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "+%@ מעל"
+          }
+        }
+      }
+    },
+    "Updating meal times": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מעדכן את זמני הארוחות"
+          }
+        }
+      }
+    },
+    "eaten": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "נאכל"
+          }
+        }
+      }
+    },
+    "due now": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מגיע עכשיו"
+          }
+        }
+      }
+    },
+    "Eating it · %@ kcal": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אוכל את זה · %@ קלוריות"
+          }
+        }
+      }
+    },
+    "of %lld g protein": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מתוך %lld גרם חלבון"
+          }
+        }
+      }
+    },
+    "%@ is next at %@.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‏%1$@ הבא ב-%2$@."
+          }
+        }
+      }
+    },
+    "Meals you log land here, under their meal time.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ארוחות שתתעד יופיעו כאן, תחת זמן הארוחה."
+          }
+        }
+      }
+    },
+    "%@, %lld calories": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‏%@, %lld קלוריות"
+          }
+        }
+      }
+    },
+    "Logged · %lld kcal": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "תועד · %lld קלוריות"
+          }
+        }
+      }
+    },
+    " · check-in answered": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " · התזכורת נענתה"
+          }
+        }
+      }
+    },
+    "Add %lld kcal": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "הוסף %lld קלוריות"
+          }
+        }
+      }
+    },
+    "this meal": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ארוחה הזו"
+          }
+        }
+      }
+    },
+    "Add this now.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "הוסף את זה עכשיו."
+          }
+        }
+      }
+    },
+    "Add this to %@.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "הוסף את זה ל%@."
+          }
+        }
+      }
+    },
+    "You burn %@.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אתה שורף %@."
+          }
+        }
+      }
+    },
+    "over": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מעל"
+          }
+        }
+      }
+    },
+    "under": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מתחת"
+          }
+        }
+      }
+    },
+    " · %lld g protein": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " · %lld גרם חלבון"
+          }
+        }
+      }
+    },
+    "14 lb": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "14 פאונד"
+          }
+        }
+      }
+    },
+    "6 kg": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "6 ק״ג"
+          }
+        }
+      }
+    },
+    "%lld cm": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‏%lld ס״מ"
+          }
+        }
+      }
+    },
+    "Shorter isn’t always safe": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "קצר יותר זה לא תמיד בטוח"
+          }
+        }
+      }
+    },
+    "%@ covered.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‏%@ מכוסה."
+          }
+        }
+      }
+    },
+    "A snack later covers it.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "נשנוש מאוחר יותר יסגור את זה."
+          }
+        }
+      }
+    },
+    "That’s the gap closed.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "הפער נסגר."
+          }
+        }
+      }
+    },
+    "Good swap.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "החלפה טובה."
+          }
+        }
+      }
+    },
+    "This one fills it.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "זה ימלא את זה."
+          }
+        }
+      }
+    },
+    "NONE ON OUR LIST WITHIN 3 KM": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אין ברשימה שלנו עד 3 ק״מ"
+          }
+        }
+      }
+    },
+    "%lld PLACES WITHIN 3 KM": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‏%lld מקומות עד 3 ק״מ"
+          }
+        }
+      }
+    },
+    "SAMPLE PLACES": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מקומות לדוגמה"
+          }
+        }
+      }
+    },
+    "WITHIN 3 KM": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "עד 3 ק״מ"
+          }
+        }
+      }
+    },
+    "FILLS IT": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ממלא את זה"
+          }
+        }
+      }
+    },
+    "Nothing on our list near you yet.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "עדיין אין ברשימה שלנו משהו לידך."
+          }
+        }
+      }
+    },
+    "Here’s what to look for. Wolt shows what’s open around you.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "הנה מה לחפש. Wolt מראה מה פתוח סביבך."
+          }
+        }
+      }
+    },
+    "Or look for": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "או חפש"
+          }
+        }
+      }
+    },
+    "Calories are a typical estimate for this kind of dish. SetPoint never orders, pays, or sees your Wolt account.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "הקלוריות הן הערכה טיפוסית למנה מהסוג הזה. SetPoint אף פעם לא מזמינה, לא משלמת ולא רואה את חשבון ה-Wolt שלך."
+          }
+        }
+      }
+    },
+    "LOOK FOR": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מה לחפש"
+          }
+        }
+      }
+    },
+    "Search": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "חיפוש"
+          }
+        }
+      }
+    },
+    "Search Wolt for %@": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "חפש ב-Wolt: %@"
+          }
+        }
+      }
+    },
+    "Sample dish: the live list opens Wolt on %@.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מנה לדוגמה: ברשימה החיה נפתח Wolt על %@."
+          }
+        }
+      }
+    },
+    "%@ logged · %@ kcal": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‏%1$@ תועד · %2$@ קלוריות"
+          }
+        }
+      }
+    },
+    "%@ logged · %@ kcal toward %@": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‏%1$@ תועד · %2$@ קלוריות לעבר %3$@"
+          }
+        }
+      }
+    },
+    "Couldn’t get your location. Check that Location Services are on.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "לא הצלחתי לקבל את המיקום שלך. בדוק ששירותי המיקום פועלים."
+          }
+        }
+      }
+    },
+    "Day %lld": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "יום %lld"
+          }
+        }
+      }
+    },
+    "After the %lld-day free trial, %@ per year, charged to your Apple ID. Renews automatically unless cancelled at least 24 hours before the period ends. Manage or cancel in Apple ID settings.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אחרי %lld ימי הניסיון בחינם, %@ לשנה, בחיוב ל-Apple ID שלך. מתחדש אוטומטית אלא אם בוטל לפחות 24 שעות לפני סוף התקופה. ניהול או ביטול בהגדרות Apple ID."
+          }
+        }
+      }
+    },
+    "After the %lld-day free trial, %@ per month, charged to your Apple ID. Renews automatically unless cancelled at least 24 hours before the period ends. Manage or cancel in Apple ID settings.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אחרי %lld ימי הניסיון בחינם, %@ לחודש, בחיוב ל-Apple ID שלך. מתחדש אוטומטית אלא אם בוטל לפחות 24 שעות לפני סוף התקופה. ניהול או ביטול בהגדרות Apple ID."
+          }
+        }
+      }
+    },
+    "%@ per year, charged to your Apple ID. Renews automatically unless cancelled at least 24 hours before the period ends. Manage or cancel in Apple ID settings.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‏%@ לשנה, בחיוב ל-Apple ID שלך. מתחדש אוטומטית אלא אם בוטל לפחות 24 שעות לפני סוף התקופה. ניהול או ביטול בהגדרות Apple ID."
+          }
+        }
+      }
+    },
+    "%@ per month, charged to your Apple ID. Renews automatically unless cancelled at least 24 hours before the period ends. Manage or cancel in Apple ID settings.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‏%@ לחודש, בחיוב ל-Apple ID שלך. מתחדש אוטומטית אלא אם בוטל לפחות 24 שעות לפני סוף התקופה. ניהול או ביטול בהגדרות Apple ID."
+          }
+        }
+      }
+    },
+    "%@/year": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‏%@/שנה"
+          }
+        }
+      }
+    },
+    "%@/month": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‏%@/חודש"
+          }
+        }
+      }
+    },
+    "%lld DAYS FREE": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‏%lld ימים חינם"
+          }
+        }
+      }
+    },
+    "FREE TRIAL": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ניסיון חינם"
+          }
+        }
+      }
+    },
+    "%lld wk": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‏%lld שב׳"
+          }
+        }
+      }
+    },
+    "easier to eat": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "קל יותר לאכול"
+          }
+        }
+      }
+    },
+    "faster, a bit more food": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מהר יותר, קצת יותר אוכל"
+          }
+        }
+      }
+    },
+    "or set the weeks yourself": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "או קבע את השבועות בעצמך"
+          }
+        }
+      }
+    },
+    "SetPoint %@": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SetPoint %@"
+          }
+        }
+      }
+    },
+    "Your name": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "השם שלך"
+          }
+        }
+      }
+    },
+    "%@, %@. Opens your details": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‏%1$@, %2$@. פותח את הפרטים שלך"
+          }
+        }
+      }
+    },
+    "%@. Opens your details": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‏%@. פותח את הפרטים שלך"
+          }
+        }
+      }
+    },
+    "Y": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "א"
+          }
+        }
+      }
+    },
+    "Target %@ → %@ kg": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "יעד %1$@ ← %2$@ ק״ג"
+          }
+        }
+      }
+    },
+    "Timeframe %lld → %lld weeks": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מסגרת זמן %1$lld ← %2$lld שבועות"
+          }
+        }
+      }
+    },
+    "Daily target %@ → %@ kcal": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "יעד יומי %1$@ ← %2$@ קלוריות"
+          }
+        }
+      }
+    },
+    "Your daily target will be recalculated.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "היעד היומי שלך יחושב מחדש."
+          }
+        }
+      }
+    },
+    "TODAY": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "היום"
+          }
+        }
+      }
+    },
+    "Tonight": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "הערב"
+          }
+        }
+      }
+    },
+    "Today closes": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "היום נסגר"
+          }
+        }
+      }
+    },
+    "Sunday": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "יום ראשון"
+          }
+        }
+      }
+    },
+    "After 7 days": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אחרי 7 ימים"
+          }
+        }
+      }
+    },
+    "One thing to fix": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "דבר אחד לתקן"
+          }
+        }
+      }
+    },
+    "%@ of %@.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‏%1$@ מתוך %2$@."
+          }
+        }
+      }
+    },
+    "%@.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@."
+          }
+        }
+      }
+    },
+    "Move to %@": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "העבר ל-%@"
+          }
+        }
+      }
+    },
+    "Weight %@ %@": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "משקל %1$@ %2$@"
+          }
+        }
+      }
+    },
+    "unknown": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "לא ידוע"
+          }
+        }
+      }
+    },
+    "%@ %@ a week": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‏%1$@ %2$@ בשבוע"
+          }
+        }
+      }
+    },
+    "gaining %@": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "עלייה של %@"
+          }
+        }
+      }
+    },
+    "losing %@": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ירידה של %@"
+          }
+        }
+      }
+    },
+    "Today, ": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "היום, "
+          }
+        }
+      }
+    },
+    ", has a session": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": ", יש אימון"
+          }
+        }
+      }
+    },
+    "A snack around %@, a refuel by %@, and a bigger dinner. I’ll nudge you before if you haven’t eaten.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "נשנוש בסביבות %1$@, תדלוק עד %2$@, וארוחת ערב גדולה יותר. אזכיר לך לפני כן אם לא אכלת."
+          }
+        }
+      }
+    },
+    "The target stays the same, but I’ll still plan a snack before and a refuel by %@.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "היעד נשאר אותו דבר, אבל עדיין אתכנן נשנוש לפני ותדלוק עד %@."
+          }
+        }
+      }
+    },
+    "%@s, from %@": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "בכל %1$@, מ-%2$@"
+          }
+        }
+      }
+    },
+    "Save · %lld sessions": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "שמור · %lld אימונים"
+          }
+        }
+      }
+    },
+    "Only %@": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "רק %@"
+          }
+        }
+      }
+    },
+    "%@ and after": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‏%@ והלאה"
+          }
+        }
+      }
+    },
+    "PULLING IN THIS WEEK": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "נכנס השבוע"
+          }
+        }
+      }
+    },
+    "Loading train": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "טוען את האימונים"
+          }
+        }
+      }
+    },
+    "refueled": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "תודלק"
+          }
+        }
+      }
+    },
+    "missed the refuel": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "פספסת את התדלוק"
+          }
+        }
+      }
+    },
+    "refuel now": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "לתדלק עכשיו"
+          }
+        }
+      }
+    },
+    "planned": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מתוכנן"
+          }
+        }
+      }
+    },
+    "Something light — fuel without feeling full.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "משהו קל — דלק בלי להרגיש שבע."
+          }
+        }
+      }
+    },
+    "%@ — you’ve had this before a session.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‏%@ — אכלת את זה לפני אימון."
+          }
+        }
+      }
+    },
+    "%@ — one of your plates.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‏%@ — אחת המנות שלך."
+          }
+        }
+      }
+    },
+    "%@ — light, and it fits what you eat.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‏%@ — קל, ומתאים למה שאתה אוכל."
+          }
+        }
+      }
+    },
+    "Nothing logged before — that’s fine. The refuel matters more.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "לא תועד דבר לפני — זה בסדר. התדלוק חשוב יותר."
+          }
+        }
+      }
+    },
+    "Apple Health adds it when your watch saves it.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "הבריאות של Apple מוסיפה את זה כשהשעון שומר אותו."
+          }
+        }
+      }
+    },
+    "From Apple Health.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מהבריאות של Apple."
+          }
+        }
+      }
+    },
+    "Something with protein within %lld min of finishing — chocolate milk or a sandwich. I’ll remind you.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "משהו עם חלבון תוך %lld דקות מסיום — שוקו או כריך. אזכיר לך."
+          }
+        }
+      }
+    },
+    "Missed the window — still eat something with protein now.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "פספסת את החלון — עדיין כדאי לאכול משהו עם חלבון עכשיו."
+          }
+        }
+      }
+    },
+    "Your usual dinner plus a side.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ארוחת הערב הרגילה שלך ועוד תוספת."
+          }
+        }
+      }
+    },
+    "Your usual dinner.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ארוחת הערב הרגילה שלך."
+          }
+        }
+      }
+    },
+    "Opens the snack": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "פותח את הנשנוש"
+          }
+        }
+      }
+    },
+    "Logging…": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מתעד…"
+          }
+        }
+      }
+    },
+    "%@ + %lld more": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‏%1$@ + עוד %2$lld"
+          }
+        }
+      }
+    },
+    "%lld kcal at %@ — within the window.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‏%1$lld קלוריות ב-%2$@ — בתוך החלון."
+          }
+        }
+      }
+    },
+    "You ate within the window.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אכלת בתוך החלון."
+          }
+        }
+      }
+    },
+    "Nothing logged within %lld min of finishing. Next time, a drink counts.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "לא תועד דבר תוך %lld דקות מסיום. בפעם הבאה, גם שתייה נחשבת."
+          }
+        }
+      }
+    },
+    "%@, %lld min": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‏%1$@, %2$lld דק׳"
+          }
+        }
+      }
+    },
+    "by %@": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "עד %@"
+          }
+        }
+      }
+    },
+    "%@ · %lld kcal": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‏%1$@ · %2$lld קלוריות"
+          }
+        }
+      }
+    },
+    "You’ve had this before a session.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אכלת את זה לפני אימון."
+          }
+        }
+      }
+    },
+    "One of your plates.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אחת המנות שלך."
+          }
+        }
+      }
+    },
+    "Light, and it fits what you eat.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "קל, ומתאים למה שאתה אוכל."
+          }
+        }
+      }
+    },
+    "%@ · every %@": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‏%1$@ · כל %2$@"
+          }
+        }
+      }
+    },
+    "%@ · once": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‏%@ · פעם אחת"
+          }
+        }
+      }
+    },
+    "Dinner at %@ covers it": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ארוחת הערב ב-%@ מכסה את זה"
+          }
+        }
+      }
+    },
+    "Looking at today": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מסתכל על היום"
+          }
+        }
+      }
+    },
+    "Building a plate": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מרכיב מנה"
+          }
+        }
+      }
+    },
+    "I ate this": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אכלתי את זה"
+          }
+        }
+      }
+    },
+    "In 1 hour": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "בעוד שעה"
+          }
+        }
+      }
+    },
+    "Remind me": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "הזכר לי"
+          }
+        }
+      }
+    },
+    "After this block": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אחרי הבלוק הזה"
+          }
+        }
+      }
+    },
+    "Dinner covers it": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ארוחת הערב מכסה את זה"
+          }
+        }
+      }
+    },
+    "Plans aren't available right now. Try again in a moment.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "התוכניות לא זמינות כרגע. נסה שוב בעוד רגע."
+          }
+        }
+      }
+    },
+    "No active subscription found for this Apple ID.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "לא נמצא מנוי פעיל ל-Apple ID הזה."
+          }
+        }
+      }
+    },
+    "The App Store couldn't confirm this purchase.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ה-App Store לא הצליח לאשר את הרכישה הזו."
+          }
+        }
+      }
+    },
+    "Two days left on your trial": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "נשארו יומיים לתקופת הניסיון"
+          }
+        }
+      }
+    },
+    "SetPoint bills on day %lld unless you cancel in Apple ID settings.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‏SetPoint מחייבת ביום %lld אלא אם תבטל בהגדרות Apple ID."
+          }
+        }
+      }
+    },
+    "One tap.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "לחיצה אחת."
+          }
+        }
+      }
+    },
+    "No password.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "בלי סיסמה."
+          }
+        }
+      }
+    },
+    "Let’s fix the plan, not you.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "בואו נתקן את התוכנית, לא אותך."
+          }
+        }
+      }
+    },
+    "Two ways to get it in.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "שתי דרכים להכניס את זה."
+          }
+        }
+      }
+    },
+    "Logging": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מתעד"
+          }
+        }
+      }
+    },
+    "Saved here, sent later": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "נשמר כאן, נשלח אחר כך"
+          }
+        }
+      }
+    },
+    "Run on this phone": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "רצות בטלפון הזה"
+          }
+        }
+      }
+    },
+    "Your plan": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "התוכנית שלך"
+          }
+        }
+      }
+    },
+    "From last time": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מהפעם הקודמת"
+          }
+        }
+      }
+    },
+    "Tap when it’s eaten.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "לחץ כשאכלת."
+          }
+        }
+      }
+    },
+    "Eat sooner and I’ll stay quiet.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "תאכל מוקדם יותר ואשאר בשקט."
+          }
+        }
+      }
+    },
+    "kcal logged": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "קלוריות תועדו"
+          }
+        }
+      }
+    },
+    "kcal left": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "קלוריות נשארו"
+          }
+        }
+      }
+    },
+    "kcal eaten": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "קלוריות נאכלו"
+          }
+        }
+      }
+    },
+    "Tap, snap or scan it.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "לחץ, צלם או סרוק."
+          }
+        }
+      }
+    },
+    "“Two eggs, toast and a latte”": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "״שתי ביצים, טוסט ולאטה״"
+          }
+        }
+      }
+    },
+    "Clean plate so far.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "צלחת נקייה עד עכשיו."
+          }
+        }
+      }
+    },
+    "Say it again": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אמור שוב"
+          }
+        }
+      }
+    },
+    "No second plate.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "בלי מנה שנייה."
+          }
+        }
+      }
+    },
+    "Adding…": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מוסיף…"
+          }
+        }
+      }
+    },
+    "Learned from you, not guessed.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "נלמד ממך, לא מנחש."
+          }
+        }
+      }
+    },
+    "Still learning your burn.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "עדיין לומד כמה אתה שורף."
+          }
+        }
+      }
+    },
+    "A few more weeks of meals and weigh-ins.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "עוד כמה שבועות של ארוחות ושקילות."
+          }
+        }
+      }
+    },
+    "Logged days": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ימים מתועדים"
+          }
+        }
+      }
+    },
+    "Weigh-ins": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "שקילות"
+          }
+        }
+      }
+    },
+    "At most 4 a day, and only if a plate slips": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "לכל היותר 4 ביום, ורק אם מנה מתפספסת"
+          }
+        }
+      }
+    },
+    "Answer from the lock screen in one tap": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ענה ממסך הנעילה בלחיצה אחת"
+          }
+        }
+      }
+    },
+    "Let me reach you.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "תן לי להגיע אליך."
+          }
+        }
+      }
+    },
+    "Only when a meal slips.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "רק כשארוחה מתפספסת."
+          }
+        }
+      }
+    },
+    "Three plates.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "שלוש מנות."
+          }
+        }
+      }
+    },
+    "A day": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ליום"
+          }
+        }
+      }
+    },
+    "Short at night? I’ll help close it.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "חסר בערב? אעזור לסגור את זה."
+          }
+        }
+      }
+    },
+    "Spread over the plates": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מתחלק בין המנות"
+          }
+        }
+      }
+    },
+    "No check-ins.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "בלי תזכורות."
+          }
+        }
+      }
+    },
+    "Log when you like.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "תעד מתי שנוח לך."
+          }
+        }
+      }
+    },
+    "Six yes-or-no questions.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "שש שאלות כן או לא."
+          }
+        }
+      }
+    },
+    "Quick, and only for you.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מהיר, ורק בשבילך."
+          }
+        }
+      }
+    },
+    "Pushing someone to eat isn’t always safe. If it isn’t for you, I stay quiet.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "לדחוף מישהו לאכול זה לא תמיד בטוח. אם זה לא מתאים לך, אשאר בשקט."
+          }
+        }
+      }
+    },
+    "No": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "לא"
+          }
+        }
+      }
+    },
+    "Not sure": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "לא בטוח"
+          }
+        }
+      }
+    },
+    "Yes": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "כן"
+          }
+        }
+      }
+    },
+    "Height": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "גובה"
+          }
+        }
+      }
+    },
+    "Activity": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "פעילות"
+          }
+        }
+      }
+    },
+    "Skip": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "דלג"
+          }
+        }
+      }
+    },
+    "Lower target": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "יעד נמוך יותר"
+          }
+        }
+      }
+    },
+    "Raise target": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "יעד גבוה יותר"
+          }
+        }
+      }
+    },
+    "Timeframe": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מסגרת זמן"
+          }
+        }
+      }
+    },
+    "Type it — I’ll skip it too": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "כתוב אותו — גם אותו אדלג"
+          }
+        }
+      }
+    },
+    "All": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "הכול"
+          }
+        }
+      }
+    },
+    "Bowls": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "קערות"
+          }
+        }
+      }
+    },
+    "Wraps": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "לפתות"
+          }
+        }
+      }
+    },
+    "Plates": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "צלחות"
+          }
+        }
+      }
+    },
+    "Drinks": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "שתייה"
+          }
+        }
+      }
+    },
+    "Location is off for SetPoint.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "המיקום כבוי עבור SetPoint."
+          }
+        }
+      }
+    },
+    "Turn it on in Settings to see places near you. It’s only used for this search.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "הפעל אותו בהגדרות כדי לראות מקומות לידך. הוא משמש רק לחיפוש הזה."
+          }
+        }
+      }
+    },
+    "Couldn’t find places.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "לא הצלחתי למצוא מקומות."
+          }
+        }
+      }
+    },
+    "No places near you yet.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "עדיין אין מקומות לידך."
+          }
+        }
+      }
+    },
+    "We’re adding places area by area. Until then, log something you have at home.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אנחנו מוסיפים מקומות אזור אחר אזור. עד אז, תעד משהו שיש לך בבית."
+          }
+        }
+      }
+    },
+    "Nothing of that kind fits nearby.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "שום דבר מהסוג הזה לא מתאים בסביבה."
+          }
+        }
+      }
+    },
+    "Try All, or log something you have at home.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "נסה \"הכול\", או תעד משהו שיש לך בבית."
+          }
+        }
+      }
+    },
+    "Fuel the training.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "תדלק את האימונים."
+          }
+        }
+      }
+    },
+    "Meal check-ins stay free.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "תזכורות הארוחות נשארות בחינם."
+          }
+        }
+      }
+    },
+    "Refuel check-ins after every workout": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "תזכורות תדלוק אחרי כל אימון"
+          }
+        }
+      }
+    },
+    "More food on training days": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "יותר אוכל בימי אימון"
+          }
+        }
+      }
+    },
+    "Eat before you’re busy": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "תאכל לפני שאתה עסוק"
+          }
+        }
+      }
+    },
+    "Yearly": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "שנתי"
+          }
+        }
+      }
+    },
+    "Monthly": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "חודשי"
+          }
+        }
+      }
+    },
+    "Trial starts": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "הניסיון מתחיל"
+          }
+        }
+      }
+    },
+    "Reminder": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "תזכורת"
+          }
+        }
+      }
+    },
+    "Billed": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "חיוב"
+          }
+        }
+      }
+    },
+    "Starting": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מתחיל"
+          }
+        }
+      }
+    },
+    "Add a plate": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "הוסף מנה"
+          }
+        }
+      }
+    },
+    "Set by you": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "נקבע על ידך"
+          }
+        }
+      }
+    },
+    "From your goal": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "לפי המטרה שלך"
+          }
+        }
+      }
+    },
+    "Deleting": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מוחק"
+          }
+        }
+      }
+    },
+    "Thirty minutes earlier": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "שלושים דקות מוקדם יותר"
+          }
+        }
+      }
+    },
+    "Thirty minutes later": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "שלושים דקות מאוחר יותר"
+          }
+        }
+      }
+    },
+    "Earlier week": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "שבוע קודם"
+          }
+        }
+      }
+    },
+    "Later week": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "שבוע הבא"
+          }
+        }
+      }
+    },
+    "Training days get more food": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "בימי אימון מקבלים יותר אוכל"
+          }
+        }
+      }
+    },
+    "Your target rises with the session, so the extra burn doesn’t widen the gap.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "היעד שלך עולה עם האימון, כך שהשריפה הנוספת לא מרחיבה את הפער."
+          }
+        }
+      }
+    },
+    "Refuel right after": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "תדלוק מיד אחרי"
+          }
+        }
+      }
+    },
+    "When Apple Health saves a workout, a refuel check-in follows within minutes.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "כשהבריאות של Apple שומרת אימון, תזכורת תדלוק מגיעה תוך דקות."
+          }
+        }
+      }
+    },
+    "Eat before you train": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "תאכל לפני האימון"
+          }
+        }
+      }
+    },
+    "A nudge before a planned session if you haven’t eaten.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "תזכורת לפני אימון מתוכנן אם לא אכלת."
+          }
+        }
+      }
+    },
+    "You trained.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "התאמנת."
+          }
+        }
+      }
+    },
+    "Eat something now.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "תאכל משהו עכשיו."
+          }
+        }
+      }
+    },
+    "SetPoint is invite-only for now.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‏SetPoint בהזמנה בלבד לעת עתה."
+          }
+        }
+      }
+    },
+    "Enter your code to get in.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "הזן את הקוד שלך כדי להיכנס."
+          }
+        }
+      }
+    },
+    "Eat enough to grow,": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "תאכל מספיק כדי לגדול,"
+          }
+        }
+      }
+    },
+    "without forcing it.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "בלי להכריח את עצמך."
+          }
+        }
+      }
+    },
+    "g": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ג׳"
+          }
+        }
+      }
+    },
+    "cm": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ס״מ"
+          }
+        }
+      }
+    },
+    "You can still log.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אפשר עדיין לתעד."
+          }
+        }
+      }
+    },
+    "Weigh-in.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "שקילה."
+          }
+        }
+      }
+    },
+    "Morning, before food.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "בבוקר, לפני האוכל."
+          }
+        }
+      }
+    },
+    "Search Wolt for it": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "חפש אותו ב-Wolt"
+          }
+        }
+      }
+    },
+    "The whole product — one deal": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "כל המוצר — במחיר אחד"
+          }
+        }
+      }
+    },
+    "Meal times: %@. Quiet from %@ to %@.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "זמני ארוחות: %1$@. שקט מ-%2$@ עד %3$@."
+          }
+        }
+      }
+    },
+    " Now %@.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " עכשיו %@."
+          }
+        }
+      }
+    },
+    "PROTEIN": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "חלבון"
+          }
+        }
+      }
+    },
+    "CARBS": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "פחמימות"
+          }
+        }
+      }
+    },
+    "FAT": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "שומן"
+          }
+        }
+      }
+    },
+    "%@ · %lld this week": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‏%1$@ · %2$lld השבוע"
+          }
+        }
+      }
+    },
+    "2 large eggs": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "2 ביצים גדולות"
+          }
+        }
+      }
+    },
+    "Hard-boiled eggs": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ביצים קשות"
+          }
+        }
+      }
+    },
+    "Plain nonfat Greek yogurt": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "יוגורט יווני רגיל 0%"
+          }
+        }
+      }
+    },
+    "2% cottage cheese": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "קוטג׳ 2%"
+          }
+        }
+      }
+    },
+    "Whole milk": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "חלב מלא"
+          }
+        }
+      }
+    },
+    "Cheddar cheese": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "גבינת צ׳דר"
+          }
+        }
+      }
+    },
+    "String cheese": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "גבינת חוטים"
+          }
+        }
+      }
+    },
+    "Chicken breast": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "חזה עוף"
+          }
+        }
+      }
+    },
+    "Rotisserie chicken": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "עוף צלוי"
+          }
+        }
+      }
+    },
+    "Ground beef (90% lean)": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "בשר בקר טחון (90% רזה)"
+          }
+        }
+      }
+    },
+    "Deli turkey slices": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "פרוסות הודו"
+          }
+        }
+      }
+    },
+    "Canned tuna in water": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "טונה משומרת במים"
+          }
+        }
+      }
+    },
+    "Salmon fillet": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "פילה סלמון"
+          }
+        }
+      }
+    },
+    "Firm tofu": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "טופו קשה"
+          }
+        }
+      }
+    },
+    "Shelled edamame": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אדממה קלופה"
+          }
+        }
+      }
+    },
+    "Black beans": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "שעועית שחורה"
+          }
+        }
+      }
+    },
+    "Lentils": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "עדשים"
+          }
+        }
+      }
+    },
+    "Chickpeas": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "גרגירי חומוס"
+          }
+        }
+      }
+    },
+    "Hummus": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "חומוס"
+          }
+        }
+      }
+    },
+    "Almonds": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "שקדים"
+          }
+        }
+      }
+    },
+    "Mixed nuts": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אגוזים מעורבים"
+          }
+        }
+      }
+    },
+    "Trail mix": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "תערובת אגוזים ופירות יבשים"
+          }
+        }
+      }
+    },
+    "White rice": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אורז לבן"
+          }
+        }
+      }
+    },
+    "Rolled oats": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "שיבולת שועל"
+          }
+        }
+      }
+    },
+    "Instant oatmeal packet": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "שקית דייסת שיבולת שועל מהירה"
+          }
+        }
+      }
+    },
+    "Whole wheat bread": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "לחם מחיטה מלאה"
+          }
+        }
+      }
+    },
+    "Plain bagel": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "בייגל רגיל"
+          }
+        }
+      }
+    },
+    "Banana": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "בננה"
+          }
+        }
+      }
+    },
+    "Baked potato": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "תפוח אדמה אפוי"
+          }
+        }
+      }
+    },
+    "Sweet potato": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "בטטה"
+          }
+        }
+      }
+    },
+    "Avocado": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אבוקדו"
+          }
+        }
+      }
+    },
+    "Whey protein shake": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "שייק חלבון מי גבינה"
+          }
+        }
+      }
+    },
+    "Protein bar": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "חטיף חלבון"
+          }
+        }
+      }
+    },
+    "Granola": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "גרנולה"
+          }
+        }
+      }
+    },
+    "Cereal with milk": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "דגני בוקר עם חלב"
+          }
+        }
+      }
+    },
+    "Greek yogurt with granola": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "יוגורט יווני עם גרנולה"
+          }
+        }
+      }
+    },
+    "Peanut butter & banana toast": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "טוסט חמאת בוטנים ובננה"
+          }
+        }
+      }
+    },
+    "Tuna with crackers": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "טונה עם קרקרים"
+          }
+        }
+      }
+    },
+    "Chicken burrito bowl": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "קערת בוריטו עוף"
+          }
+        }
+      }
+    },
+    "3 scrambled eggs": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "3 ביצים מקושקשות"
+          }
+        }
+      }
+    },
+    "Liquid egg whites": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "חלבוני ביצה נוזליים"
+          }
+        }
+      }
+    },
+    "Whole-milk Greek yogurt": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "יוגורט יווני מלא"
+          }
+        }
+      }
+    },
+    "Skyr": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "סקיר"
+          }
+        }
+      }
+    },
+    "Plain kefir": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "קפיר רגיל"
+          }
+        }
+      }
+    },
+    "2% milk": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "חלב 2%"
+          }
+        }
+      }
+    },
+    "Chocolate milk": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "שוקו"
+          }
+        }
+      }
+    },
+    "Part-skim ricotta": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ריקוטה דלת שומן"
+          }
+        }
+      }
+    },
+    "Mozzarella": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מוצרלה"
+          }
+        }
+      }
+    },
+    "Feta": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "גבינת פטה"
+          }
+        }
+      }
+    },
+    "Cream cheese": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "גבינת שמנת"
+          }
+        }
+      }
+    },
+    "Butter": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "חמאה"
+          }
+        }
+      }
+    },
+    "Heavy cream": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "שמנת מתוקה"
+          }
+        }
+      }
+    },
+    "Chicken thigh": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "שוק עוף"
+          }
+        }
+      }
+    },
+    "Ground turkey (93% lean)": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "הודו טחון (93% רזה)"
+          }
+        }
+      }
+    },
+    "Sirloin steak": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "סטייק סינטה"
+          }
+        }
+      }
+    },
+    "Pork tenderloin": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "פילה חזיר"
+          }
+        }
+      }
+    },
+    "Pork chop": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "קוטלט חזיר"
+          }
+        }
+      }
+    },
+    "Sliced ham": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "חזיר פרוס"
+          }
+        }
+      }
+    },
+    "Deli roast beef": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "רוסטביף פרוס"
+          }
+        }
+      }
+    },
+    "Chicken sausage": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "נקניקיית עוף"
+          }
+        }
+      }
+    },
+    "Beef jerky": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "בשר מיובש (ג׳רקי)"
+          }
+        }
+      }
+    },
+    "Canned salmon": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "סלמון משומר"
+          }
+        }
+      }
+    },
+    "Sardines in oil": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "סרדינים בשמן"
+          }
+        }
+      }
+    },
+    "Tilapia fillet": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "פילה אמנון"
+          }
+        }
+      }
+    },
+    "Cooked shrimp": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "שרימפס מבושל"
+          }
+        }
+      }
+    },
+    "Tempeh": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "טמפה"
+          }
+        }
+      }
+    },
+    "Seitan": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "סייטן"
+          }
+        }
+      }
+    },
+    "Soy milk": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "משקה סויה"
+          }
+        }
+      }
+    },
+    "Kidney beans": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "שעועית אדומה"
+          }
+        }
+      }
+    },
+    "Refried beans": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "שעועית מטוגנת"
+          }
+        }
+      }
+    },
+    "Split pea soup": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מרק אפונה"
+          }
+        }
+      }
+    },
+    "Falafel": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "פלאפל"
+          }
+        }
+      }
+    },
+    "Veggie burger patty": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "קציצת המבורגר צמחית"
+          }
+        }
+      }
+    },
+    "Roasted chickpeas": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "חומוס קלוי"
+          }
+        }
+      }
+    },
+    "Cashews": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "קשיו"
+          }
+        }
+      }
+    },
+    "Walnuts": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אגוזי מלך"
+          }
+        }
+      }
+    },
+    "Pistachios": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "פיסטוקים"
+          }
+        }
+      }
+    },
+    "Pumpkin seeds": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "גרעיני דלעת"
+          }
+        }
+      }
+    },
+    "Sunflower seeds": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "גרעיני חמניות"
+          }
+        }
+      }
+    },
+    "Almond butter": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "חמאת שקדים"
+          }
+        }
+      }
+    },
+    "Tahini": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "טחינה"
+          }
+        }
+      }
+    },
+    "Chia seeds": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "זרעי צ׳יה"
+          }
+        }
+      }
+    },
+    "Hemp hearts": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "גרעיני קנבוס"
+          }
+        }
+      }
+    },
+    "Brown rice": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אורז מלא"
+          }
+        }
+      }
+    },
+    "Quinoa": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "קינואה"
+          }
+        }
+      }
+    },
+    "Couscous": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "קוסקוס"
+          }
+        }
+      }
+    },
+    "Farro": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "פארו"
+          }
+        }
+      }
+    },
+    "White bread": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "לחם לבן"
+          }
+        }
+      }
+    },
+    "Sourdough bread": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "לחם שאור"
+          }
+        }
+      }
+    },
+    "English muffin": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מאפין אנגלי"
+          }
+        }
+      }
+    },
+    "Flour tortilla": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "טורטיית קמח"
+          }
+        }
+      }
+    },
+    "Corn tortillas": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "טורטיות תירס"
+          }
+        }
+      }
+    },
+    "Pita bread": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "פיתה"
+          }
+        }
+      }
+    },
+    "Whole-grain crackers": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "קרקרים מדגנים מלאים"
+          }
+        }
+      }
+    },
+    "Rice cakes": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "פריכיות אורז"
+          }
+        }
+      }
+    },
+    "Pretzels": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "פרצלים"
+          }
+        }
+      }
+    },
+    "Air-popped popcorn": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "פופקורן"
+          }
+        }
+      }
+    },
+    "Mashed potatoes": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "פירה"
+          }
+        }
+      }
+    },
+    "Corn": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "תירס"
+          }
+        }
+      }
+    },
+    "Green peas": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אפונה ירוקה"
+          }
+        }
+      }
+    },
+    "Dinner roll": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "לחמנייה"
+          }
+        }
+      }
+    },
+    "Pancakes": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "פנקייק"
+          }
+        }
+      }
+    },
+    "Frozen waffles": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "וופלים קפואים"
+          }
+        }
+      }
+    },
+    "Apple": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "תפוח"
+          }
+        }
+      }
+    },
+    "Orange": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "תפוז"
+          }
+        }
+      }
+    },
+    "Grapes": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ענבים"
+          }
+        }
+      }
+    },
+    "Blueberries": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אוכמניות"
+          }
+        }
+      }
+    },
+    "Raisins": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "צימוקים"
+          }
+        }
+      }
+    },
+    "Medjool dates": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "תמרי מג׳הול"
+          }
+        }
+      }
+    },
+    "Dried apricots": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "משמש מיובש"
+          }
+        }
+      }
+    },
+    "Applesauce cup": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "כוסית מחית תפוחים"
+          }
+        }
+      }
+    },
+    "Fruit & nut trail mix": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "תערובת פירות ואגוזים"
+          }
+        }
+      }
+    },
+    "Whole avocado": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אבוקדו שלם"
+          }
+        }
+      }
+    },
+    "Olives": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "זיתים"
+          }
+        }
+      }
+    },
+    "Canned coconut milk": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "חלב קוקוס משומר"
+          }
+        }
+      }
+    },
+    "Mayonnaise": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מיונז"
+          }
+        }
+      }
+    },
+    "Guacamole": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "גואקמולה"
+          }
+        }
+      }
+    },
+    "Turkey sandwich": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "כריך הודו"
+          }
+        }
+      }
+    },
+    "Peanut butter & jelly sandwich": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "כריך חמאת בוטנים וריבה"
+          }
+        }
+      }
+    },
+    "Grilled cheese": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "טוסט גבינה"
+          }
+        }
+      }
+    },
+    "Bean & cheese burrito": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "בוריטו שעועית וגבינה"
+          }
+        }
+      }
+    },
+    "Cheese pizza": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "פיצה גבינה"
+          }
+        }
+      }
+    },
+    "Macaroni & cheese": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מקרוני וגבינה"
+          }
+        }
+      }
+    },
+    "Instant ramen": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ראמן מהיר"
+          }
+        }
+      }
+    },
+    "Chicken noodle soup": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מרק עוף עם אטריות"
+          }
+        }
+      }
+    },
+    "Canned chili with beans": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "צ׳ילי עם שעועית משומר"
+          }
+        }
+      }
+    },
+    "Lentil soup": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מרק עדשים"
+          }
+        }
+      }
+    },
+    "Fruit smoothie": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "שייק פירות"
+          }
+        }
+      }
+    },
+    "Protein smoothie": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "שייק חלבון"
+          }
+        }
+      }
+    },
+    "Yogurt & fruit parfait": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "פרפה יוגורט ופירות"
+          }
+        }
+      }
+    },
+    "Apple with peanut butter": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "תפוח עם חמאת בוטנים"
+          }
+        }
+      }
+    },
+    "Cottage cheese with fruit": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "קוטג׳ עם פירות"
+          }
+        }
+      }
+    },
+    "Bagel with cream cheese": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "בייגל עם גבינת שמנת"
+          }
+        }
+      }
+    },
+    "Egg & cheese breakfast sandwich": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "כריך בוקר ביצה וגבינה"
+          }
+        }
+      }
+    },
+    "Egg salad sandwich": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "כריך סלט ביצים"
+          }
+        }
+      }
+    },
+    "Chicken Caesar salad": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "סלט קיסר עם עוף"
+          }
+        }
+      }
+    },
+    "Chicken & rice bowl": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "קערת עוף ואורז"
+          }
+        }
+      }
+    },
+    "Overnight oats": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "שיבולת שועל לילה"
+          }
+        }
+      }
+    },
+    "Ready-to-drink protein shake": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "שייק חלבון מוכן לשתייה"
+          }
+        }
+      }
+    },
+    "Nutrition shake": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "שייק תזונתי"
+          }
+        }
+      }
+    },
+    "Plant protein shake": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "שייק חלבון צמחי"
+          }
+        }
+      }
+    },
+    "Nothing logged.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "לא תועד כלום."
+          }
+        }
+      }
+    },
+    "%lld kcal under target.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "‏%lld קלוריות מתחת ליעד."
+          }
+        }
+      }
+    },
+    "Over target.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מעל היעד."
+          }
+        }
+      }
+    },
+    "On target.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "על היעד."
+          }
+        }
+      }
+    },
+    "A salmon or chicken poke bowl": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "קערת פוקי סלמון או עוף"
+          }
+        }
+      }
+    },
+    "A grilled chicken plate with two sides": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "צלחת עוף בגריל עם שתי תוספות"
+          }
+        }
+      }
+    },
+    "A shawarma plate with sides": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "צלחת שווארמה עם תוספות"
+          }
+        }
+      }
+    },
+    "Shawarma in a pita": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "שווארמה בפיתה"
+          }
+        }
+      }
+    },
+    "A schnitzel plate": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "צלחת שניצל"
+          }
+        }
+      }
+    },
+    "Pad thai with chicken": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "פאד תאי עם עוף"
+          }
+        }
+      }
+    },
+    "A big chicken salad": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "סלט עוף גדול"
+          }
+        }
+      }
+    },
+    "A chicken sandwich": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "כריך עוף"
+          }
+        }
+      }
+    },
+    "A tofu poke bowl": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "קערת פוקי טופו"
+          }
+        }
+      }
+    },
+    "Falafel in a pita with hummus": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "פלאפל בפיתה עם חומוס"
           }
         }
       }

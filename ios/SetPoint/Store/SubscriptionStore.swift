@@ -85,7 +85,7 @@ final class SubscriptionStore {
 
     func purchase(using api: APIClient) async -> Bool {
         guard let product = selectedProduct else {
-            error = "Plans aren't available right now. Try again in a moment."
+            error = L10n("Plans aren't available right now. Try again in a moment.")
             return false
         }
         purchasing = true
@@ -118,7 +118,7 @@ final class SubscriptionStore {
             try await AppStore.sync()
             await syncCurrentEntitlements(using: api)
             await refresh(using: api)
-            if !entitled { error = "No active subscription found for this Apple ID." }
+            if !entitled { error = L10n("No active subscription found for this Apple ID.") }
         } catch {
             self.error = UserFacingError.message(for: error, fallback: L10n( "Couldn't restore."))
         }
@@ -152,7 +152,7 @@ final class SubscriptionStore {
     /// The server verifies Apple's signature and stores the subscription; only then is the transaction finished.
     private func verifyAndFinish(_ verification: VerificationResult<Transaction>, api: APIClient) async throws -> Bool {
         guard case let .verified(transaction) = verification else {
-            error = "The App Store couldn't confirm this purchase."
+            error = L10n("The App Store couldn't confirm this purchase.")
             return false
         }
         let status: SubscriptionStatusPayload = try await api.post(
@@ -188,8 +188,8 @@ final class SubscriptionStore {
         let settings = await center.notificationSettings()
         guard settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional else { return }
         let content = UNMutableNotificationContent()
-        content.title = "Two days left on your trial"
-        content.body = "SetPoint bills on day \(trialDays) unless you cancel in Apple ID settings."
+        content.title = L10n("Two days left on your trial")
+        content.body = L10n("SetPoint bills on day \(trialDays) unless you cancel in Apple ID settings.")
         content.sound = .default
         let fire = Calendar.current.date(byAdding: .day, value: trialDays - 2, to: Date()) ?? Date()
         var comps = Calendar.current.dateComponents([.year, .month, .day], from: fire)

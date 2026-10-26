@@ -18,7 +18,7 @@ struct TodayDayView: View {
     private var screenBody: some View {
         let moment = TodayMoment.resolve(home)
         InnerScreen(spacing: 18) {
-            ScreenHeader(label: "Today · \(date.formatted(.dateTime.day().month(.abbreviated)))")
+            ScreenHeader(label: "Today · \(date.formatted(.dateTime.day().month(.abbreviated).locale(AppLanguage.current.locale)))")
 
             VStack(alignment: .leading, spacing: 10) {
                 Headline(title, tail: tail, size: 38, persistTail: !home.enforcementEnabled || home.framing.state == "under")
@@ -45,7 +45,7 @@ struct TodayDayView: View {
     }
 
     private var title: String {
-        "\(home.ledger.consumedKcal.formatted()) eaten."
+        L10n("\(home.ledger.consumedKcal.formatted()) eaten.")
     }
 
     private var tail: String {

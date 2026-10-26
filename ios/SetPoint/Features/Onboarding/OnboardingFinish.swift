@@ -22,7 +22,7 @@ struct ReachStep: View {
 
             DotLines(lines: [
                 "At most 4 a day, and only if a plate slips",
-                "Never between \(formatMinutes(model.draft.quietStartMin)) and \(formatMinutes(model.draft.quietEndMin))",
+                L10n("Never between \(formatMinutes(model.draft.quietStartMin)) and \(formatMinutes(model.draft.quietEndMin))"),
                 "Answer from the lock screen in one tap",
             ])
             .appearIn(2, rise: 16)
@@ -66,7 +66,7 @@ private struct LockScreenPreview: View {
 
     private var dateLine: String {
         let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: .now) ?? .now
-        return tomorrow.formatted(.dateTime.weekday(.wide).day().month(.wide))
+        return tomorrow.formatted(.dateTime.weekday(.wide).day().month(.wide).locale(AppLanguage.current.locale))
     }
 
     var body: some View {
@@ -155,7 +155,7 @@ struct CoveredStep: View {
     /// wall to someone who struggles to eat. The total stays, small.
     private var covered: some View {
         let d = model.draft
-        let meals = [("Breakfast", d.breakfastMin), ("Lunch", d.lunchMin), ("Dinner", d.dinnerMin)]
+        let meals = [(L10n("Breakfast"), d.breakfastMin), (L10n("Lunch"), d.lunchMin), (L10n("Dinner"), d.dinnerMin)]
         let plate = model.result.map { plateKcal($0.dailyKcalTarget) }
         return VStack(alignment: .leading, spacing: Space.md) {
             VStack(alignment: .leading, spacing: 10) {
@@ -230,12 +230,12 @@ struct CoveredStep: View {
 
     private func stat(_ label: String, value: String, unit: String, note: String) -> some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text(label).font(Typography.mono(10)).tracking(1.2).textCase(.uppercase).foregroundStyle(Palette.inkFaint)
+            Text(LocalizedStringKey(label)).font(Typography.mono(10)).tracking(1.2).textCase(.uppercase).foregroundStyle(Palette.inkFaint)
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text(value).font(Typography.data(21, weight: .light)).foregroundStyle(Palette.ink)
-                Text(unit).font(Typography.data(12, weight: .regular)).foregroundStyle(Palette.inkSoft)
+                Text(LocalizedStringKey(unit)).font(Typography.data(12, weight: .regular)).foregroundStyle(Palette.inkSoft)
             }
-            Text(note)
+            Text(LocalizedStringKey(note))
                 .font(Typography.data(12, weight: .regular))
                 .foregroundStyle(Palette.inkSoft)
                 .fixedSize(horizontal: false, vertical: true)
@@ -251,12 +251,12 @@ struct CoveredStep: View {
     }
 
     private func totalLine(_ total: Int) -> String {
-        let protein = model.result?.dailyProteinTargetG.map { " · \($0) g protein" } ?? ""
+        let protein = model.result?.dailyProteinTargetG.map { L10n(" · \($0) g protein") } ?? ""
         return L10n( "\(total.formatted()) kcal a day\(protein). Short in the evening? I’ll help close it.")
     }
 
     private func planAccessibilityLabel(_ meals: [(String, Int)]) -> String {
-        let list = meals.map { "\($0.0) at \(formatMinutes($0.1))" }.joined(separator: ", ")
+        let list = meals.map { L10n("\($0.0) at \(formatMinutes($0.1))") }.joined(separator: ", ")
         return L10n( "\(list). A check-in comes 45 minutes after each if it doesn’t show.")
     }
 

@@ -1,3 +1,4 @@
+import { foodNameIn, type Lang } from '../i18n/index.js';
 import { clamp } from '../engine/types.js';
 import { CALORIE_DENSE_SLUGS, DRINKABLE_SLUGS } from '../engine/appetite.js';
 import { SOLVER_CONFIG, type SolverConfig } from './config.js';
@@ -230,12 +231,18 @@ export function prescribe(
 }
 
 /** A short "eat this" line with edible quantities, e.g. "2 × 1 cup cooked white rice". */
-export function prescriptionSummary(result: PrescriptionResult): string {
+export function prescriptionSummary(result: PrescriptionResult, lang: Lang = 'en'): string {
+  if (lang === 'he') return namedSummary(result, 'he');
   return result.items.map(formatPrescriptionItem).join(' + ');
 }
 
 /** "2 × whole milk + peanut butter" — names, not serving sizes, for copy and log text. */
-export function namedSummary(result: { items: { name: string; quantity: number }[] }): string {
+export function namedSummary(result: { items: { name: string; quantity: number }[] }, lang: Lang = 'en'): string {
+  if (lang === 'he') {
+    return result.items
+      .map((i) => (i.quantity > 1 ? `${i.quantity} × ${foodNameIn(i.name, 'he')}` : foodNameIn(i.name, 'he')))
+      .join(' + ');
+  }
   return result.items
     .map((i, idx) => {
       const name = idx === 0 ? i.name : i.name[0]!.toLowerCase() + i.name.slice(1);

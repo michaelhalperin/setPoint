@@ -1,5 +1,6 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { fallbackTierThree } from '../ai/tierThree.js';
+import { clock24, langOf, slotNameHe, type Lang } from '../i18n/index.js';
 import { env } from '../env.js';
 import {
   checkEligibility,
@@ -186,6 +187,7 @@ async function processUser(
 ): Promise<void> {
   const profile = user.onboarding;
   if (!profile) return;
+  const lang = langOf(user.language);
 
   const { prisma } = deps;
   const dayStart = startOfLocalDay(now, user.timezone);
@@ -508,13 +510,13 @@ async function processUser(
           preferDrinkable: shape === 'SMALL' && (profile.drinkableOk ?? true),
         })
       : null;
-  const summaryLine = rx ? prescriptionSummary(rx) : null;
-  const namedLine = rx ? namedSummary(rx) : null;
+  const summaryLine = rx ? prescriptionSummary(rx, lang) : null;
+  const namedLine = rx ? namedSummary(rx, lang) : null;
   const isHeadsUp = due.movedFromMin != null && due.busy != null;
   const message = isHeadsUp && due.busy
-    ? headsUpCopy(due.busy, due.slot)
+    ? headsUpCopy(due.busy, due.slot, lang)
     : isLight
-    ? lightMealCopy(due.slot, namedLine)
+    ? lightMealCopy(due.slot, namedLine, lang)
     : await checkInCopy(deps.voice, {
         tier,
         goal: profile.goal as Goal,
@@ -522,6 +524,7 @@ async function processUser(
         kcalGap: target.targetKcal,
         prescriptionSummary: summaryLine,
         slot: due.slot,
+        lang,
       });
 
   const busyUntil =
@@ -586,15 +589,27 @@ async function processUser(
 }
 
 /** Deterministic: the numbers in it must match the plate exactly. */
-export function lightMealCopy(slot: SlotName, summaryLine: string | null): string {
+export function lightMealCopy(slot: SlotName, summaryLine: string | null, lang: Lang = 'en'): string {
+  if (lang === 'he') {
+    const meal = slotNameHe(slot);
+    const was = meal === 'הנשנוש' ? 'היה קל' : 'הייתה קלה';
+    return summaryLine
+      ? `${meal} ${was}. הוסף ${summaryLine} כדי להישאר בקצב.`
+      : `${meal} ${was}. עוד קצת עכשיו שומר על הקצב של היום.`;
+  }
   const meal = slot === 'snack_am' || slot === 'snack_pm' ? 'That snack' : slot[0]!.toUpperCase() + slot.slice(1);
   return summaryLine
     ? `${meal} was light. Add ${summaryLine[0]!.toLowerCase()}${summaryLine.slice(1)} to stay on pace.`
     : `${meal} was light. A little more now keeps the day on pace.`;
 }
 
-export function closeCopy(gapKcal: number, summaryLine: string | null): string {
+export function closeCopy(gapKcal: number, summaryLine: string | null, lang: Lang = 'en'): string {
   const gap = Math.round(gapKcal / 10) * 10;
+  if (lang === 'he') {
+    return summaryLine
+      ? `חסרות לך ${gap} קלוריות היום. ${summaryLine} סוגר את רוב זה.`
+      : `חסרות לך ${gap} קלוריות היום. משהו קל לפני השינה יסגור את זה.`;
+  }
   return summaryLine
     ? `You're ${gap} kcal short today. ${summaryLine[0]!.toUpperCase()}${summaryLine.slice(1)} closes most of it.`
     : `You're ${gap} kcal short today. Something easy before bed closes it.`;
@@ -653,7 +668,7 @@ async function maybeFireCloseCheckIn(
           pantryTokens: profile.pantryTokens ?? [],
         })
       : null;
-  const message = closeCopy(close.gapKcal, rx ? namedSummary(rx) : null);
+  const message = closeCopy(close.gapKcal, rx ? namedSummary(rx, langOf(user.language)) : null, langOf(user.language));
   const checkIn = await deps.prisma.checkIn.create({
     data: {
       userId: user.id,
@@ -754,14 +769,18 @@ async function maybeFireTrainingCheckIn(
     }
     const episodeKey = `${localDateISO(ctx.now, user.timezone)}:refuel:${workout.id}`;
     if (ctx.todayCheckIns.some((c) => c.episodeKey === episodeKey)) continue;
-    const dinner = formatClock(ctx.dinnerMin);
+    const lang = langOf(user.language);
+    const dinner = lang === 'he' ? clock24(ctx.dinnerMin) : formatClock(ctx.dinnerMin);
     await createTrainingCheckIn(deps, user, {
       now: ctx.now,
       episodeKey,
       kind: 'REFUEL',
       slot: 'refuel',
       workoutId: workout.id,
-      message: `You trained. Eat something now — dinner at ${dinner} can cover it.`,
+      message:
+        lang === 'he'
+          ? `התאמנת. תאכל משהו עכשיו — ארוחת הערב ב-${dinner} יכולה לכסות את זה.`
+          : `You trained. Eat something now — dinner at ${dinner} can cover it.`,
       category: 'REFUEL',
       rx: refuelPrescription(ctx.solverFoods, excludedTokens),
       foodIdBySlug: ctx.foodIdBySlug,
@@ -791,7 +810,7 @@ async function maybeFireTrainingCheckIn(
       kind: 'PRE_WORKOUT',
       slot: 'preworkout',
       workoutId: workout.id,
-      message: 'Training soon. Eat something first.',
+      message: langOf(user.language) === 'he' ? 'אימון בקרוב. תאכל משהו קודם.' : 'Training soon. Eat something first.',
       category: 'CHECK_IN',
       rx: refuelPrescription(ctx.solverFoods, excludedTokens),
       foodIdBySlug: ctx.foodIdBySlug,

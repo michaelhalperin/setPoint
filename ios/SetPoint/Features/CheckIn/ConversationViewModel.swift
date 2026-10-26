@@ -118,7 +118,7 @@ final class ConversationViewModel {
         case "DELAY_CHECKINS": return L10n( "Meal times shifted 30 minutes later.")
         case "PAUSE_CHECKINS": return L10n( "Resume anytime in Settings.")
         case "SUGGEST_PROFESSIONAL": return L10n( "Check-ins paused. Resume anytime in Settings.")
-        default: return resolved ? "Done." : nil
+        default: return resolved ? L10n("Done.") : nil
         }
     }
 
@@ -128,7 +128,7 @@ final class ConversationViewModel {
         case "DELAY_CHECKINS": return L10n( "Check-ins moved later")
         case "PAUSE_CHECKINS": return L10n( "Check-ins paused")
         case "SUGGEST_PROFESSIONAL": return L10n( "Extra support")
-        default: return "Sorted"
+        default: return L10n("Sorted")
         }
     }
 
