@@ -312,9 +312,10 @@ struct TodayMealRow: View {
 
 // MARK: - Log panel
 
-/// Logging: a sheet that rises from the nav's "+". Type it, snap it, scan it,
-/// tap a usual, or — when you don't remember — pick a rough size. While the
-/// keyboard is up, it shrinks to the field and recents so it fits above it.
+/// Logging: a sheet that rises from the nav's "+". Type it, snap it with the
+/// live camera, scan it, tap a usual or a recent meal, or — when you don't
+/// remember — pick a rough size. While the keyboard is up, it shrinks to the
+/// field and recents so it fits above it.
 struct LogDock: View {
     @Bindable var logger: LogMealViewModel
     var focused: FocusState<Bool>.Binding
@@ -363,7 +364,8 @@ struct LogDock: View {
                 photoNamespace: photoNamespace,
                 photoGeometryID: photoGeometryID,
                 prompt: "“Two eggs, toast and a latte”",
-                large: typing && logger.photo == nil
+                large: typing && logger.photo == nil,
+                showsCamera: !showsLiveCamera
             )
             .onChange(of: logger.text) { _, _ in
                 logger.onComposerTextChanged()
@@ -377,9 +379,17 @@ struct LogDock: View {
                 }
                 if logger.text.isEmpty, !logger.recents.isEmpty { recentsRow }
             } else {
-                modeTiles
-                usuals
-                if let kcal = estimateKcal { roughSize(base: kcal) }
+                // Short enough to fit: no scrolling. Taller (camera + a long
+                // recent list): the part under the field scrolls.
+                ViewThatFits(in: .vertical) {
+                    browse
+                    ScrollView { browse }
+                        .scrollBounceBehavior(.basedOnSize)
+                }
+                .frame(maxHeight: browseMaxHeight)
+                // Full width, so the sideways recent list runs to the screen edge;
+                // `browse` puts the margins back on everything else.
+                .padding(.horizontal, -Space.gutter)
             }
         }
         .padding(.horizontal, Space.gutter)
@@ -412,6 +422,38 @@ struct LogDock: View {
         ) { _ in
             keyboardUp = false
         }
+    }
+
+    /// Everything under the field while the keyboard is down.
+    private var browse: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            if showsLiveCamera {
+                LiveMealCamera(
+                    onPhoto: { data in
+                        focused.wrappedValue = false
+                        Task { await logger.logPhoto(data) }
+                    },
+                    onLibrary: { logger.openPhotoLibrary() },
+                    disabled: logger.phase == .parsing
+                )
+            }
+            modeTiles
+            usuals
+            recentList
+            if let kcal = estimateKcal { roughSize(base: kcal) }
+        }
+        .padding(.horizontal, Space.gutter)
+    }
+
+    /// The live camera, until there's a photo or one is being read.
+    private var showsLiveCamera: Bool {
+        !typing && logger.photo == nil && logger.phase != .parsing
+    }
+
+    /// Leaves the header, the field and some of the screen above the sheet.
+    private var browseMaxHeight: CGFloat {
+        let screen = (UIApplication.shared.connectedScenes.first as? UIWindowScene)?.screen.bounds.height ?? 844
+        return max(280, screen * 0.86 - 190)
     }
 
     private var catalogHits: some View {
@@ -534,12 +576,14 @@ struct LogDock: View {
 
     private var modeTiles: some View {
         HStack(spacing: 10) {
-            Menu {
-                PhotoSourceButtons(model: logger)
-            } label: {
-                tileLabel("Photo", "camera")
+            if !showsLiveCamera {
+                Menu {
+                    PhotoSourceButtons(model: logger)
+                } label: {
+                    tileLabel("Photo", "camera")
+                }
+                .disabled(logger.phase == .parsing)
             }
-            .disabled(logger.phase == .parsing)
             tile("Barcode", "barcode.viewfinder") {
                 focused.wrappedValue = false
                 logger.mode = .scan
@@ -582,18 +626,11 @@ struct LogDock: View {
             stroke: lit ? Palette.haze.opacity(0.5) : Palette.hairline)
     }
 
-    /// The two most recently used saved plates, then recents — full list is on You.
+    /// The two most recently used saved plates — full list is on You.
     @ViewBuilder
     private var usuals: some View {
         let saved = SavedMealShortcuts.logSheet(from: logger.savedMeals)
-        // A recent that's just a saved meal again would show twice.
-        let savedNames = Set(saved.map { $0.name.lowercased() })
-        let recents = Array(
-            logger.recents
-                .filter { !savedNames.contains(($0.summary ?? "").lowercased()) }
-                .prefix(max(0, 4 - saved.count))
-        )
-        if !saved.isEmpty || !recents.isEmpty {
+        if !saved.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Text("Your usuals").sectionLabelStyle()
@@ -610,13 +647,33 @@ struct LogDock: View {
                             Task { await logger.logSaved(meal) }
                         }
                     }
-                    ForEach(recents) { meal in
-                        usual(meal.summary ?? "Logged", kcal: meal.kcal, suggested: false) {
-                            focused.wrappedValue = false
-                            Task { await logger.logAgain(meal) }
+                }
+            }
+        }
+    }
+
+    /// Recent meals, one per name, newest first — tap one to log it again.
+    /// A saved plate already on a tile above isn't listed twice.
+    @ViewBuilder
+    private var recentList: some View {
+        let savedNames = Set(SavedMealShortcuts.logSheet(from: logger.savedMeals).map { $0.name.lowercased() })
+        let meals = logger.recents.filter { !savedNames.contains(($0.summary ?? "").lowercased()) }
+        if !meals.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Recent").sectionLabelStyle()
+                ScrollView(.horizontal) {
+                    HStack(spacing: 8) {
+                        ForEach(meals) { meal in
+                            RecentMealCard(meal: meal) {
+                                focused.wrappedValue = false
+                                Task { await logger.logAgain(meal) }
+                            }
+                            .disabled(logger.phase == .parsing)
                         }
                     }
                 }
+                .contentMargins(.horizontal, Space.gutter, for: .scrollContent)
+                .padding(.horizontal, -Space.gutter)
             }
         }
     }
@@ -744,6 +801,93 @@ struct LogDock: View {
         }
         .padding(14)
         .glass(radius: 20, fill: Color.white.opacity(0.03))
+    }
+}
+
+/// One recent meal as a card in the sideways list: what it was, when, and its
+/// calories, with a + to log it again.
+private struct RecentMealCard: View {
+    let meal: MealSummary
+    let action: () -> Void
+
+    @State private var thumb: UIImage?
+
+    var body: some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .top) {
+                    icon
+                    Spacer(minLength: 8)
+                    Image(systemName: "plus")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(Palette.ink)
+                        .frame(width: 28, height: 28)
+                        .background(Circle().fill(Color.white.opacity(0.06)))
+                }
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(meal.summary ?? "")
+                        .font(Typography.data(14, weight: .regular))
+                        .foregroundStyle(Palette.ink)
+                        .lineLimit(2, reservesSpace: true)
+                        .multilineTextAlignment(.leading)
+                    Text(when)
+                        .font(Typography.mono(11))
+                        .foregroundStyle(Palette.inkFaint)
+                        .lineLimit(1)
+                }
+                Text(L10n("\(meal.kcal.formatted()) kcal"))
+                    .font(Typography.mono(12))
+                    .foregroundStyle(Palette.amber)
+            }
+            .padding(12)
+            .frame(width: 156, alignment: .leading)
+            .glass(radius: 18)
+            .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        }
+        .buttonStyle(PressableCard())
+        .task(id: meal.id) {
+            if meal.photoUrl != nil { thumb = await MealPhotoCache.shared.image(for: meal) }
+        }
+        .accessibilityLabel("Log \(meal.summary ?? "this") again, \(meal.kcal) calories")
+    }
+
+    private var icon: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 11, style: .continuous)
+                .fill(Color.white.opacity(0.05))
+            if let thumb {
+                Image(uiImage: thumb)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                Image(systemName: symbol)
+                    .font(.system(size: 14, weight: .regular))
+                    .foregroundStyle(Palette.inkSoft)
+            }
+        }
+        .frame(width: 40, height: 40)
+        .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+    }
+
+    private var symbol: String {
+        switch meal.source {
+        case "PHOTO": return "camera"
+        case "BARCODE": return "barcode"
+        case "CATALOG": return "leaf"
+        case "SAVED": return "star"
+        default: return "text.alignleft"
+        }
+    }
+
+    /// "Today · 8:05", "Yesterday · 13:10", or "Mon 19 Oct".
+    private var when: String {
+        guard let date = MealFormat.parse(meal.loggedAt) else { return "" }
+        let locale = AppLanguage.current.locale
+        let calendar = Calendar.current
+        let time = date.formatted(Date.FormatStyle(date: .omitted, time: .shortened).locale(locale))
+        if calendar.isDateInToday(date) { return L10n("Today · \(time)") }
+        if calendar.isDateInYesterday(date) { return L10n("Yesterday · \(time)") }
+        return date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated).locale(locale))
     }
 }
 

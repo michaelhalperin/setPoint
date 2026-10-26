@@ -153,6 +153,7 @@
 		DE466F43CB9ED0817AB292D5 /* CalendarSamples.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5E63844186AB1D0640274A4 /* CalendarSamples.swift */; };
 		E24AAC6BB063241D3E3A0D79 /* DTOTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF7E9A8FF4A34FCEA8BD592A /* DTOTests.swift */; };
 		E360F702346592971113420B /* HomeViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0016FF03A93707A587F7E3 /* HomeViews.swift */; };
+		E4E626F696D91C15EA6D1B5B /* LiveMealCamera.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7A82F65C853B1FEFC513BB6 /* LiveMealCamera.swift */; };
 		E696712411D5085DB4BF7A86 /* WeekStation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14219540B9F9117D76AF9B3A /* WeekStation.swift */; };
 		E7F6EB7D6DC0184E22D7C714 /* OnboardingFinish.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AC0F512FD86BD03490F144B /* OnboardingFinish.swift */; };
 		E9BE1261A4D3B02ADCA6C6C4 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6FBF6B25E85349394163FF0 /* AppDelegate.swift */; };
@@ -346,6 +347,7 @@
 		E3F407E159A63AA5EC2F9EDE /* OfflineMealQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineMealQueue.swift; sourceTree = "<group>"; };
 		E6FBF6B25E85349394163FF0 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		E73FA80DA7E099B267EAFEB5 /* CheckInActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckInActivityAttributes.swift; sourceTree = "<group>"; };
+		E7A82F65C853B1FEFC513BB6 /* LiveMealCamera.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveMealCamera.swift; sourceTree = "<group>"; };
 		E85A015AA801411A6D4F2026 /* LocationOnce.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationOnce.swift; sourceTree = "<group>"; };
 		EBDF76CE6B64FD92287D0E0E /* MealViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealViews.swift; sourceTree = "<group>"; };
 		EC403257C8BD1A8974AE5F39 /* TodayHero.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayHero.swift; sourceTree = "<group>"; };
@@ -532,6 +534,7 @@
 				4C8DCB1E7E97ED4A55B7FEAE /* HomeScreen.swift */,
 				0EFB517EFB36132E4ED9E74E /* HomeViewModel.swift */,
 				CC0016FF03A93707A587F7E3 /* HomeViews.swift */,
+				E7A82F65C853B1FEFC513BB6 /* LiveMealCamera.swift */,
 				245CC81E5AF69552CEF83458 /* LogAnywhere.swift */,
 				ECFEB95DFB5402DA4E21CA85 /* LogMealSheet.swift */,
 				3DE0776BE27E3FB776B02BB7 /* LogMealViewModel.swift */,
@@ -1002,6 +1005,7 @@
 				E360F702346592971113420B /* HomeViews.swift in Sources */,
 				826F51B7F655C03918566643 /* InviteCodeView.swift in Sources */,
 				11884711F3FDBC917705FE66 /* LiveActivityController.swift in Sources */,
+				E4E626F696D91C15EA6D1B5B /* LiveMealCamera.swift in Sources */,
 				77E21931D6E359594D1D5387 /* LocationOnce.swift in Sources */,
 				F929AD1647D08F49923CED26 /* LogAnywhere.swift in Sources */,
 				18769C76A6F18DF8518BE734 /* LogMealSheet.swift in Sources */,
@@ -1188,7 +1192,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 16;
+				CURRENT_PROJECT_VERSION = 17;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = "$(SETPOINT_TEAM_ID)";
 				ENABLE_NS_ASSERTIONS = NO;
@@ -1270,7 +1274,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 16;
+				CURRENT_PROJECT_VERSION = 17;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = "$(SETPOINT_TEAM_ID)";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;

@@ -12150,6 +12150,86 @@
           }
         }
       }
+    },
+    "Recent": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אחרונות"
+          }
+        }
+      }
+    },
+    "Today · %@": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "היום · %@"
+          }
+        }
+      }
+    },
+    "Yesterday · %@": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אתמול · %@"
+          }
+        }
+      }
+    },
+    "Point at your plate": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "כוון אל הצלחת"
+          }
+        }
+      }
+    },
+    "Camera is off": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "המצלמה כבויה"
+          }
+        }
+      }
+    },
+    "Turn on Camera for SetPoint in Settings to snap a meal.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "הפעל את המצלמה עבור SetPoint בהגדרות כדי לצלם ארוחה."
+          }
+        }
+      }
+    },
+    "No camera here": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אין כאן מצלמה"
+          }
+        }
+      }
+    },
+    "Choose a photo from your library instead.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "בחר תמונה מהספרייה במקום."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

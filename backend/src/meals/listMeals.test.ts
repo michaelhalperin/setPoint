@@ -1,7 +1,7 @@
 import type { PrismaClient } from '@prisma/client';
 import { describe, expect, it } from 'vitest';
 import { localDayRange } from '../engine/index.js';
-import { listMealsForDate } from './listMeals.js';
+import { RECENT_TAKE, listMealsForDate, listRecentMeals } from './listMeals.js';
 
 const NOW = new Date('2026-09-01T18:00:00Z'); // 14:00 in New York
 
@@ -15,14 +15,17 @@ function fakePrisma(over: { user?: AnyRow | null; meals?: AnyRow[] } = {}) {
         over.user === undefined ? { timezone: 'America/New_York' } : over.user,
     },
     meal: {
-      findMany: async ({ where }: { where?: AnyRow }) => {
-        const range = where?.loggedAt as { gte?: Date; lt?: Date } | undefined;
-        return meals.filter((m) => {
+      findMany: async ({ where, orderBy, take }: { where?: AnyRow; orderBy?: AnyRow; take?: number }) => {
+        const range = where?.loggedAt as { gte?: Date; lt?: Date; lte?: Date } | undefined;
+        const rows = meals.filter((m) => {
           const t = (m.loggedAt as Date).getTime();
           if (range?.gte && t < range.gte.getTime()) return false;
           if (range?.lt && t >= range.lt.getTime()) return false;
+          if (range?.lte && t > range.lte.getTime()) return false;
           return true;
         });
+        if (orderBy?.loggedAt === 'desc') rows.sort((a, b) => (b.loggedAt as Date).getTime() - (a.loggedAt as Date).getTime());
+        return take === undefined ? rows : rows.slice(0, take);
       },
     },
   } as unknown as PrismaClient;
@@ -74,5 +77,32 @@ describe('listMealsForDate', () => {
     const view = await listMealsForDate({ prisma, now: NOW }, 'u1');
     expect(view.date).toBe('2026-09-01');
     expect(view.meals).toHaveLength(1);
+  });
+});
+
+describe('listRecentMeals', () => {
+  it('returns the last two weeks newest first, capped', async () => {
+    const day = 24 * 60 * 60 * 1000;
+    const prisma = fakePrisma({
+      meals: [
+        meal({ id: 'old', loggedAt: new Date(NOW.getTime() - 20 * day) }),
+        meal({ id: 'week', loggedAt: new Date(NOW.getTime() - 7 * day) }),
+        meal({ id: 'today', loggedAt: new Date(NOW.getTime() - 60 * 60 * 1000) }),
+        meal({ id: 'future', loggedAt: new Date(NOW.getTime() + day) }),
+      ],
+    });
+    const view = await listRecentMeals({ prisma, now: NOW }, 'u1');
+    expect(view.meals.map((m) => m.id)).toEqual(['today', 'week']);
+  });
+
+  it('stops at the take limit', async () => {
+    const prisma = fakePrisma({
+      meals: Array.from({ length: RECENT_TAKE + 5 }, (_, i) =>
+        meal({ id: `m${i}`, loggedAt: new Date(NOW.getTime() - (i + 1) * 60 * 1000) }),
+      ),
+    });
+    const view = await listRecentMeals({ prisma, now: NOW }, 'u1');
+    expect(view.meals).toHaveLength(RECENT_TAKE);
+    expect(view.meals[0]?.id).toBe('m0');
   });
 });

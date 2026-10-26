@@ -9,7 +9,7 @@ import { failReason, mealSourceFromBody } from '../analytics/failures.js';
 import { EmptyMealError, MealParsingUnavailableError, logMeal } from '../meals/logMeal.js';
 import { fetchOpenFoodFacts } from '../foods/barcode.js';
 import { PHOTO_BODY_LIMIT } from '../http/limits.js';
-import { listMealsForDate } from '../meals/listMeals.js';
+import { listMealsForDate, listRecentMeals } from '../meals/listMeals.js';
 import { MealNotFoundError, updateMeal } from '../meals/updateMeal.js';
 import { captureError } from '../observability/sentry.js';
 import { queuePhotoDeletion } from '../photos/cleanup.js';
@@ -85,6 +85,11 @@ export async function mealRoutes(app: FastifyInstance): Promise<void> {
       date,
     );
   });
+
+  // The last two weeks of meals, newest first — the log sheet's Recent list.
+  app.get('/recent', async (req) =>
+    listRecentMeals({ prisma: getPrisma(), photos: getPhotoStore() }, (req as AuthedRequest).userId),
+  );
 
   // Log a meal (§5.5). Free text or photo is AI-parsed into macros (counted
   // against the user's AI quota); explicit macros skip the model. Resolves any

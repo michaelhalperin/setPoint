@@ -234,15 +234,25 @@ final class LogMealViewModel {
         }
     }
 
-    /// Load recent meals from today and yesterday for the "Again?" chips.
+    /// How many meals the log sheet's Recent list shows.
+    static let recentLimit = 10
+
+    /// Load recent meals for the log sheet: the last two weeks, or today and
+    /// yesterday when the backend doesn't have the recent route yet.
     func loadRecents(today: [MealSummary], now: Date = .now) async {
+        if let recent: RecentMealsResponse = try? await api.get("/api/meals/recent") {
+            recents = Self.distinctRecents(today + recent.meals, limit: Self.recentLimit)
+            return
+        }
         let formatter = DateFormatter()
         formatter.calendar = Calendar(identifier: .gregorian)
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "yyyy-MM-dd"
         let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: now) ?? now
         let older: MealsListResponse? = try? await api.get("/api/meals", query: ["date": formatter.string(from: yesterday)])
-        recents = Self.distinctRecents(today + (older?.meals ?? []))
+        // Offline: keep the list from last time rather than emptying it.
+        guard older != nil || recents.isEmpty else { return }
+        recents = Self.distinctRecents(today + (older?.meals ?? []), limit: Self.recentLimit)
     }
 
     /// Newest first, one per (case-insensitive) name, only meals with a name.
@@ -958,6 +968,9 @@ final class LogMealViewModel {
         vm.recents = [
             .sample(id: "r1", kcal: 420, protein: 18, source: "SAVED", summary: "Usual oats"),
             .sample(id: "r2", kcal: 150, protein: 14, source: "BARCODE", summary: "Greek yogurt"),
+            .sample(id: "r3", kcal: 640, protein: 42, source: "PHOTO", summary: "Chicken burrito bowl"),
+            .sample(id: "r4", kcal: 310, protein: 12, source: "TEXT", summary: "Peanut butter toast"),
+            .sample(id: "r5", kcal: 520, protein: 30, source: "CATALOG", summary: "Pasta with tomato sauce"),
         ]
         return vm
     }

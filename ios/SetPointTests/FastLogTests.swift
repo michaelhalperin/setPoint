@@ -71,7 +71,7 @@ final class FastLogTests: XCTestCase {
         XCTAssertEqual(vm.savedMeals.count, 3)
         XCTAssertEqual(SavedMealShortcuts.logSheet(from: vm.savedMeals).map(\.id), ["sm_oats", "sm_lunch"])
         XCTAssertEqual(vm.savedMeals.first?.suggested, true)
-        XCTAssertEqual(vm.recents.count, 2)
+        XCTAssertEqual(vm.recents.count, 5)
         XCTAssertTrue(vm.recents.contains(where: \.isScanned))
     }
 

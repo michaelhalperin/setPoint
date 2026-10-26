@@ -53,3 +53,23 @@ export async function listMealsForDate(
 
   return { date, meals: await toMealSummaries(rows, deps.photos ?? null, now) };
 }
+
+/** How far back, and how many rows, the log sheet's Recent list looks. */
+export const RECENT_DAYS = 14;
+export const RECENT_TAKE = 40;
+
+/**
+ * The newest meals from the last two weeks, newest first — the log sheet's
+ * "Recent" list. The app keeps one per name; this returns enough rows for that.
+ */
+export async function listRecentMeals(deps: ListMealsDeps, userId: string): Promise<{ meals: MealSummary[] }> {
+  const now = deps.now ?? new Date();
+  const since = new Date(now.getTime() - RECENT_DAYS * 24 * 60 * 60 * 1000);
+  const rows = await deps.prisma.meal.findMany({
+    where: { userId, loggedAt: { gte: since, lte: now } },
+    orderBy: { loggedAt: 'desc' },
+    take: RECENT_TAKE,
+    select: mealSelect,
+  });
+  return { meals: await toMealSummaries(rows, deps.photos ?? null, now) };
+}

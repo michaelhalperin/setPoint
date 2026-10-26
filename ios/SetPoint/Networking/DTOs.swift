@@ -298,6 +298,11 @@ struct MealsListResponse: Decodable {
     let meals: [MealSummary]
 }
 
+/// `GET /api/meals/recent`: the last two weeks, newest first.
+struct RecentMealsResponse: Decodable {
+    let meals: [MealSummary]
+}
+
 /// `POST /api/settings/target-review`. Accept carries the target the user saw.
 struct TargetReviewDecision: Encodable {
     let action: String

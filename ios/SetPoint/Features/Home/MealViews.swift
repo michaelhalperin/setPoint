@@ -12,6 +12,8 @@ struct SearchComposer: View {
     var prompt = "What did you eat?"
     /// Typing on its own: the words are the big text on the sheet.
     var large = false
+    /// Off while the log sheet shows its own live camera.
+    var showsCamera = true
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var pickerItem: PhotosPickerItem?
@@ -61,7 +63,9 @@ struct SearchComposer: View {
                 .padding(.vertical, 14)
                 .glass(radius: 25, fill: Color.white.opacity(0.05), stroke: Color.white.opacity(0.10))
 
-                cameraButton
+                if showsCamera {
+                    cameraButton
+                }
 
                 if model.canSubmit {
                     sendButton
