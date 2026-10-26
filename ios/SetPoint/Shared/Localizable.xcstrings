@@ -12340,6 +12340,16 @@
           }
         }
       }
+    },
+    "Skipped · you didn’t train": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "דילגת · לא התאמנת"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

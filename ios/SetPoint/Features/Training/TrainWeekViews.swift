@@ -326,6 +326,7 @@ struct TrainTodayCard: View {
 
     private var status: String {
         let origin = session.isPlanned ? L10n( "added by you") : L10n( "from Apple Health")
+        if session.isSkipped { return L10n("Skipped · you didn’t train") }
         if nowMin >= end { return L10n( "Done · \(origin)") }
         if nowMin >= start { return L10n( "Under way · until \(trainClock(end))") }
         return L10n( "\(repeatText(session)) · \(origin)")
@@ -403,10 +404,12 @@ struct TrainTodayCard: View {
             (L10n("Snack before"), trainClock(max(0, start - 90)), snackHint, snackDetail, L10n("Nothing logged before — that’s fine. The refuel matters more."), (steps?.before ?? false) || snackLogged, nowMin >= start, true),
             (TrainKind.title(session.kind), trainClock(start), L10n("\(session.durationMin) min"), session.isPlanned ? L10n("Apple Health adds it when your watch saves it.") : L10n("From Apple Health."), "", (steps?.workout ?? false) || nowMin >= end, false, false),
             (L10n("Refuel after"), trainClock(refuelBy), "~\(refuelKcal)", L10n("Something with protein within \(window) min of finishing — chocolate milk or a sandwich. I’ll remind you."), L10n("Missed the window — still eat something with protein now."), steps?.refuel ?? false, nowMin > refuelBy, true),
-            (bumpKcal > 0 ? L10n("Dinner, a bit bigger") : L10n("Dinner"), trainClock(dinnerMin), "", bumpKcal > 0 ? L10n("Your usual dinner plus a side.") : L10n("Your usual dinner."), "", steps?.dinner ?? false, false, true),
+            (bumpKcal > 0 && !session.isSkipped ? L10n("Dinner, a bit bigger") : L10n("Dinner"), trainClock(dinnerMin), "", bumpKcal > 0 && !session.isSkipped ? L10n("Your usual dinner plus a side.") : L10n("Your usual dinner."), "", steps?.dinner ?? false, false, true),
         ]
         var foundNext = false
-        return raw.map { r in
+        // Skipped: no snack, session or refuel to chase — only dinner is left.
+        let shown = session.isSkipped ? Array(raw.suffix(1)) : raw
+        return shown.map { r in
             let state: StepState
             if r.done { state = .done }
             else if r.over && !r.missed.isEmpty { state = .missed }
@@ -469,6 +472,19 @@ struct TrainTodayCard: View {
                         .font(Typography.data(13, weight: .regular))
                         .foregroundStyle(Palette.amber)
                         .fixedSize(horizontal: false, vertical: true)
+                }
+                if step.state == .missed, step.title == L10n("Snack before"), let snack = snackBefore {
+                    Button {
+                        onOpenSnack?(snack)
+                    } label: {
+                        snackPreview(snack)
+                    }
+                    .buttonStyle(PressableCard())
+                    .padding(.top, 4)
+                    .accessibilityHint(L10n("Opens the snack"))
+                    .accessibilityValue(snackLogged ? L10n("Logged") : "")
+                } else if step.state == .missed {
+                    EmptyView()
                 } else if step.title == L10n("Snack before"), step.state == .done, !snackLogged {
                     Text(L10n("You had a meal before — that counts."))
                         .font(Typography.data(13, weight: .regular))
@@ -490,7 +506,7 @@ struct TrainTodayCard: View {
                         .fixedSize(horizontal: false, vertical: true)
                         .hintCopy()
                 }
-                if step.state == .next && step.loggable {
+                if (step.state == .next || step.state == .missed) && step.loggable {
                     if step.title == L10n("Snack before"), let snack = snackBefore, !snackLogged {
                         Button {
                             onLogSnack?(snack)
