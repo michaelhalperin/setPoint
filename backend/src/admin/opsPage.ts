@@ -153,6 +153,22 @@ a.grid:hover{background:var(--fill)}
 .ci{display:grid;grid-template-columns:8px minmax(0,1fr);gap:12px;padding:15px 0;border-top:1px solid var(--line);align-items:start}
 .ci .dot{margin-top:7px}.ci h4{margin:0;font-size:15px;font-weight:600}.ci p{margin:2px 0 0;color:var(--soft);font-size:13px}
 .empty{color:var(--faint);padding:24px 0}
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{text-align:left;font:400 12px var(--mono);color:var(--faint);padding:0 12px 10px 0}
+.tbl td{padding:12px 12px 12px 0;border-top:1px solid var(--line);color:var(--soft);vertical-align:middle}
+.tbl td:first-child{color:var(--ink)}
+.form{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:0 0 28px}
+.form input,.form select{height:36px;border-radius:18px;border:1px solid var(--line-hi);background:var(--fill);padding:0 14px;font-size:13px;min-width:0}
+.form input.w{width:200px}.form input.s{width:110px}
+.flag input{height:36px;border-radius:18px;border:1px solid var(--line-hi);background:var(--fill);padding:0 14px;font-size:13px;min-width:0;width:100%}
+.flag input::placeholder,.form input::placeholder{color:var(--faint)}
+.flag{display:grid;grid-template-columns:minmax(0,1fr) auto 230px auto;gap:20px;align-items:center;padding:16px 0;border-top:1px solid var(--line)}
+.flag b{font-weight:600;font-family:var(--mono);font-size:13px}.flag p{margin:2px 0 0;color:var(--soft);font-size:13px}
+.seg{display:flex;border:1px solid var(--line);border-radius:18px;padding:3px}
+.seg button{height:28px;padding:0 13px;border:0;border-radius:14px;background:transparent;color:var(--soft);cursor:pointer;font-size:13px}
+.seg button[aria-pressed=true]{background:var(--fill);color:var(--ink)}
+.sw{display:flex;gap:28px;flex-wrap:wrap;margin:26px 0 8px;color:var(--soft);font-size:14px}
+.sw span{display:flex;align-items:center;gap:8px}
 .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:var(--ink);color:#0A0A0B;padding:10px 18px;border-radius:20px;font-weight:600;font-size:14px;z-index:20}
 @media (max-width:1000px){
   .bar{padding:0 16px;gap:16px;overflow-x:auto}.find{display:none}.wrap{padding:24px 16px 60px}
@@ -235,21 +251,21 @@ a.grid:hover{background:var(--fill)}
   function route() {
     var raw = (location.hash || '#now').slice(1);
     if (raw.indexOf('person/') === 0) return { name: 'person', id: raw.slice(7) };
-    if (['now', 'people', 'delivery', 'machine'].indexOf(raw) >= 0) return { name: raw };
+    if (['now', 'people', 'delivery', 'machine', 'access'].indexOf(raw) >= 0) return { name: raw };
     return { name: 'now' };
   }
   window.addEventListener('hashchange', function () { if (state.secret) render(); window.scrollTo(0, 0); });
 
   // ----- shell -----
   function shell(active, loose, body) {
-    var tabs = [['now', 'Now'], ['people', 'People'], ['delivery', 'Delivery'], ['machine', 'Machine']];
+    var tabs = [['now', 'Now'], ['people', 'People'], ['delivery', 'Delivery'], ['machine', 'Machine'], ['access', 'Access']];
     var bar = h('header', { class: 'bar' }, [
       h('div', { class: 'word' }, ['SetPoint', h('span', { text: 'ops' })]),
       h('nav', { class: 'tabs', 'aria-label': 'Sections' }, tabs.map(function (t) {
         var kids = [t[1]];
         if (t[0] === 'now' && loose) kids.push(h('i', { text: String(loose) }));
         return h('a', { href: '#' + t[0], 'aria-current': active === t[0] ? 'page' : null }, kids);
-      }).concat([h('a', { href: '/admin' }, ['Access'])])),
+      })),
       h('span', { class: 'sp' }),
       h('input', { class: 'find', placeholder: 'Find a person', 'aria-label': 'Find a person', value: state.query, oninput: function (e) {
         state.query = e.target.value;
@@ -552,6 +568,69 @@ a.grid:hover{background:var(--fill)}
     ]);
   }
 
+  // ----- Access: invites and feature flags -----
+  function accessScreen() {
+    var loose = state.data.now ? state.data.now.looseEnds.length : 0;
+    var st = state.data.status, inv = state.data.invites, fl = state.data.flags;
+    if (!st || !inv || !fl) {
+      if (!st) load('status', '/api/admin/status');
+      if (!inv) load('invites', '/api/admin/invites');
+      if (!fl) load('flags', '/api/admin/flags');
+      return shell('access', loose, [h('p', { class: 'empty', text: 'Loading\u2026' })]);
+    }
+    var sw = st.switches;
+    var onoff = function (label, v, good) { return h('span', null, [h('span', { class: 'dot ' + (v === good ? 'd-good' : 'd-off') }), label + ': ' + (v ? 'on' : 'off')]); };
+    var refresh = function (key) { delete state.data[key]; render(); };
+    var fail = function (e) { toast(e.message); };
+
+    // invites
+    var f = { code: h('input', { class: 'w', placeholder: 'Code, or leave empty', 'aria-label': 'Code' }), cohort: h('input', { class: 's', placeholder: 'Cohort', 'aria-label': 'Cohort' }),
+      role: h('select', { 'aria-label': 'Role' }, [h('option', { value: 'USER', text: 'Person' }), h('option', { value: 'TRAINER', text: 'Trainer' }), h('option', { value: 'ADMIN', text: 'Admin' })]),
+      max: h('input', { class: 's', type: 'number', min: '1', placeholder: 'Max uses', 'aria-label': 'Max uses' }), note: h('input', { class: 'w', placeholder: 'Note', 'aria-label': 'Note' }) };
+    var create = h('button', { class: 'btn pri', type: 'button', text: 'Create invite', onclick: function () {
+      var body = {};
+      if (f.code.value.trim()) body.code = f.code.value.trim();
+      if (f.cohort.value.trim()) body.cohort = f.cohort.value.trim();
+      body.role = f.role.value;
+      if (f.max.value) body.maxUses = Number(f.max.value);
+      if (f.note.value.trim()) body.note = f.note.value.trim();
+      api('/api/admin/invites', { method: 'POST', body: body }).then(function (r) { toast('Created ' + r.invite.code); refresh('invites'); }).catch(fail);
+    } });
+    var rows = inv.invites.map(function (i) {
+      var off = !!i.disabledAt, used = i.maxUses ? i.uses + ' of ' + i.maxUses : i.uses + ' used';
+      return h('tr', null, [
+        h('td', { class: 'mono', text: i.code }), h('td', { text: i.cohort || '\u2013' }), h('td', { text: i.role.toLowerCase() }), h('td', { class: 'mono', text: used }),
+        h('td', { text: i.expiresAt ? new Date(i.expiresAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'No expiry' }), h('td', { text: i.note || '' }),
+        h('td', null, [off ? h('span', { class: 't-faint', text: 'Disabled' }) : h('button', { class: 'btn', type: 'button', text: 'Disable', onclick: function () {
+          api('/api/admin/invites/' + encodeURIComponent(i.code) + '/disable', { method: 'POST', body: {} }).then(function () { toast('Disabled ' + i.code); refresh('invites'); }).catch(fail);
+        } })])
+      ]);
+    });
+    var table = inv.invites.length ? h('table', { class: 'tbl' }, [h('thead', null, [h('tr', null, ['Code', 'Cohort', 'Gives', 'Uses', 'Expires', 'Note', ''].map(function (t) { return h('th', { text: t }); }))]), h('tbody', null, rows)]) : h('p', { class: 'empty', text: 'No invite codes yet.' });
+
+    // flags
+    var flags = fl.flags.map(function (flag) {
+      var ov = flag.override, mode = !ov ? 'default' : ov.enabled ? 'on' : 'off';
+      var cohorts = h('input', { class: 'w', placeholder: 'Off, except cohorts: beta, friends', 'aria-label': 'Cohorts for ' + flag.key, value: ov && ov.cohorts ? ov.cohorts.join(', ') : '' });
+      var pick = function (m) {
+        var req = m === 'default' ? api('/api/admin/flags/' + flag.key, { method: 'DELETE' })
+          : api('/api/admin/flags/' + flag.key, { method: 'PUT', body: m === 'on' ? { enabled: true } : { enabled: false, cohorts: cohorts.value.split(',').map(function (c) { return c.trim(); }).filter(Boolean) } });
+        req.then(function () { toast('Saved ' + flag.key); refresh('flags'); }).catch(fail);
+      };
+      var seg = h('div', { class: 'seg' }, [['default', 'Default ' + (flag.default ? 'on' : 'off')], ['on', 'On for all'], ['off', 'Off']].map(function (m) {
+        return h('button', { type: 'button', 'aria-pressed': mode === m[0] ? 'true' : 'false', text: m[1], onclick: function () { pick(m[0]); } });
+      }));
+      return h('div', { class: 'flag' }, [h('div', null, [h('b', { text: flag.key }), h('p', { text: flag.description })]), seg, cohorts, h('button', { class: 'btn', type: 'button', text: 'Save cohorts', onclick: function () { pick('off'); } })]);
+    });
+
+    var body = [h('div', { class: 'kick', text: 'Access' }), h('h1', { class: 'h1' }, [st.users.total + ' people. ', h('em', { text: st.users.pending + ' waiting for an invite.' })]),
+      h('div', { class: 'sw' }, [onoff('Invite only', sw.inviteOnly, true), onoff('Subscription gate', sw.subscriptionGate, true), onoff('Dev login', sw.devLogin, false), onoff('Wearable modifier', sw.wearableModifier, true), h('span', { class: 't-faint', text: 'These switches are set in Vercel.' })]),
+      h('div', { class: 'h3', style: 'margin-top:44px' }, ['Invite codes', h('span', { text: String(inv.invites.length) })]),
+      h('div', { class: 'form' }, [f.code, f.cohort, f.role, f.max, f.note, create]), table,
+      h('div', { class: 'h3', style: 'margin-top:56px' }, ['Feature flags', h('span', { text: 'who gets what, without a new build' })])].concat(flags);
+    return shell('access', loose, body);
+  }
+
   // ----- loading + render -----
   function load(key, path) {
     if (state.data['_loading:' + key]) return;
@@ -564,7 +643,7 @@ a.grid:hover{background:var(--fill)}
     if (!state.secret) { root.appendChild(signIn()); return; }
     var r = route();
     if (!state.data.now && !state.data['_loading:now']) load('now', '/api/admin/ops/now?since=' + encodeURIComponent(midnight().toISOString()));
-    var view = r.name === 'now' ? nowScreen() : r.name === 'people' ? peopleScreen() : r.name === 'person' ? personScreen(r.id) : r.name === 'delivery' ? deliveryScreen() : machineScreen();
+    var view = r.name === 'now' ? nowScreen() : r.name === 'people' ? peopleScreen() : r.name === 'person' ? personScreen(r.id) : r.name === 'delivery' ? deliveryScreen() : r.name === 'access' ? accessScreen() : machineScreen();
     root.appendChild(view);
   }
 
