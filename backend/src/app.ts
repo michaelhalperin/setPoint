@@ -15,6 +15,7 @@ import { adminRoutes } from './routes/admin.js';
 import { adminAccessRoutes } from './routes/adminAccess.js';
 import { adminInsightRoutes } from './routes/adminInsights.js';
 import { adminOpsRoutes } from './routes/adminOps.js';
+import { adminTourRoutes } from './routes/adminTour.js';
 import { authRoutes } from './routes/auth.js';
 import { biosignalRoutes } from './routes/biosignals.js';
 import { calendarRoutes } from './routes/calendar.js';
@@ -27,6 +28,7 @@ import { adminPageRoutes } from './routes/adminPage.js';
 import { mealRoutes } from './routes/meals.js';
 import { nearbyRoutes } from './routes/nearby.js';
 import { flagRoutes } from './routes/flags.js';
+import { tourRoutes } from './routes/tour.js';
 import { languageRoutes } from './routes/language.js';
 import { eventRoutes } from './routes/events.js';
 import { foodRoutes } from './routes/foods.js';
@@ -136,6 +138,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   await app.register(foodRoutes, { prefix: '/api/foods' });
   await app.register(nearbyRoutes, { prefix: '/api/nearby' });
   await app.register(flagRoutes, { prefix: '/api/flags' });
+  await app.register(tourRoutes, { prefix: '/api/tour' });
   await app.register(languageRoutes, { prefix: '/api/language' });
   await app.register(eventRoutes, { prefix: '/api/events' });
   await app.register(calendarRoutes, { prefix: '/api/calendar' });
@@ -154,6 +157,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   await app.register(adminAccessRoutes, { prefix: '/api/admin' });
   await app.register(adminInsightRoutes, { prefix: '/api/admin' });
   await app.register(adminOpsRoutes, { prefix: '/api/admin' });
+  await app.register(adminTourRoutes, { prefix: '/api/admin' });
   await app.register(cronRoutes, { prefix: '/api/cron' });
 
   return app;

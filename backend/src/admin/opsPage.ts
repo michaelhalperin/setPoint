@@ -26,7 +26,7 @@ export const OPS_PAGE_HTML = String.raw`<!doctype html>
 }
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--sans);-webkit-font-smoothing:antialiased}
-button,input,select{font:inherit;color:inherit}
+button,input,select,textarea{font:inherit;color:inherit}
 a{color:inherit}
 :focus-visible{outline:2px solid var(--ember);outline-offset:2px}
 .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
@@ -170,6 +170,37 @@ a.grid:hover{background:var(--fill)}
 .sw{display:flex;gap:28px;flex-wrap:wrap;margin:26px 0 8px;color:var(--soft);font-size:14px}
 .sw span{display:flex;align-items:center;gap:8px}
 .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:var(--ink);color:#0A0A0B;padding:10px 18px;border-radius:20px;font-weight:600;font-size:14px;z-index:20}
+.tr{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:56px;margin-top:36px;align-items:start}
+.tr-list{display:flex;flex-direction:column;gap:12px}
+.tc{border:1px solid var(--line);border-radius:18px;padding:16px 18px;display:grid;gap:10px;cursor:default}
+.tc.sel{border-color:rgba(255,184,107,.6);background:rgba(255,184,107,.05)}
+.tc-h{display:flex;align-items:center;gap:8px;min-width:0}
+.tc-h .n{font:500 12px var(--mono);color:var(--faint);width:22px;flex:none}
+.tc-h .sp{flex:1}
+.tc select,.tc input[type=text],.tc textarea{width:100%;min-width:0;border-radius:12px;border:1px solid var(--line-hi);background:var(--fill);padding:0 12px;font-size:14px;height:38px}
+.tc textarea{height:auto;min-height:62px;padding:9px 12px;resize:vertical;line-height:1.4}
+.tc input.ti{font-weight:600}
+.tc-2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+.tc label.l{display:block;font:400 11px var(--mono);color:var(--faint);margin:0 0 4px}
+.tc .he input,.tc .he textarea{direction:rtl;text-align:right}
+.tc .ck{display:flex;align-items:center;gap:8px;color:var(--soft);font-size:13px}
+.mini{height:28px;min-width:28px;padding:0 10px;border-radius:14px;border:1px solid var(--line);background:transparent;cursor:pointer;font-size:12px}
+.mini:hover{background:var(--fill)}.mini:disabled{opacity:.3;cursor:default}.mini.dng{color:var(--bad)}
+.tr-side{position:sticky;top:84px;display:flex;flex-direction:column;gap:14px}
+.tr-tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tr-phone{position:relative;width:100%;max-width:300px;aspect-ratio:370/792;border-radius:34px;border:1px solid var(--line-hi);background:linear-gradient(#111113,#0b0b0c);overflow:hidden;margin:0 auto}
+.tr-phone:before{content:"";position:absolute;left:50%;top:10px;width:30%;height:12px;margin-left:-15%;border-radius:8px;background:#000;border:1px solid var(--line)}
+.rg{position:absolute;border:1.5px dashed rgba(244,242,238,.3);border-radius:14px;background:rgba(244,242,238,.04);cursor:pointer;display:flex;align-items:flex-start;justify-content:flex-start;padding:4px 6px;font:500 10px var(--mono);color:var(--soft);overflow:hidden;text-align:left}
+.rg:hover{border-color:var(--warn);background:rgba(255,184,107,.1)}
+.rg.on{border-style:solid;border-color:rgba(255,122,61,.8);background:rgba(255,122,61,.14);color:var(--ink)}
+.rg.cur{border-color:var(--warn);box-shadow:0 0 0 3px rgba(255,184,107,.25);background:rgba(255,184,107,.18)}
+.rg b{background:var(--ember);color:#1A0A04;border-radius:8px;padding:0 5px;margin-right:3px;font-weight:600}
+.tip{background:#F4F2EE;color:#0A0A0B;border-radius:18px;padding:14px 16px;box-shadow:0 14px 40px rgba(0,0,0,.4)}
+.tip h4{margin:0 0 4px;font-size:16px;font-weight:600;letter-spacing:-.01em}.tip p{margin:0;font-size:13px;line-height:1.45;color:#3f3f46}
+.tip small{display:block;margin-top:10px;font:400 11px var(--mono);color:#71717a}
+.tr-bar{position:sticky;bottom:0;display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:28px -40px -80px;padding:14px 40px;background:rgba(10,10,11,.92);border-top:1px solid var(--line);backdrop-filter:blur(10px)}
+.tr-bar .ck{display:flex;align-items:center;gap:8px;color:var(--soft);font-size:13px}
+@media (max-width:1000px){.tr{grid-template-columns:minmax(0,1fr);gap:28px}.tr-side{position:static}.tr-bar{margin:24px -16px -60px;padding:12px 16px}.tc-2{grid-template-columns:minmax(0,1fr)}}
 @media (max-width:1000px){
   .bar{padding:0 16px;gap:16px;overflow-x:auto}.find{display:none}.wrap{padding:24px 16px 60px}
   .h1{font-size:36px}.nums{grid-template-columns:repeat(2,minmax(0,1fr))}.nums div{padding-left:0!important;border-left:0!important}
@@ -243,7 +274,7 @@ a.grid:hover{background:var(--fill)}
   }
   function signOut() {
     try { sessionStorage.removeItem(KEY); } catch (e) {}
-    state.secret = null; state.data = {};
+    state.secret = null; state.data = {}; state.tw = null;
     render();
   }
 
@@ -251,14 +282,14 @@ a.grid:hover{background:var(--fill)}
   function route() {
     var raw = (location.hash || '#now').slice(1);
     if (raw.indexOf('person/') === 0) return { name: 'person', id: raw.slice(7) };
-    if (['now', 'people', 'delivery', 'machine', 'access'].indexOf(raw) >= 0) return { name: raw };
+    if (['now', 'people', 'delivery', 'machine', 'access', 'tour'].indexOf(raw) >= 0) return { name: raw };
     return { name: 'now' };
   }
   window.addEventListener('hashchange', function () { if (state.secret) render(); window.scrollTo(0, 0); });
 
   // ----- shell -----
   function shell(active, loose, body) {
-    var tabs = [['now', 'Now'], ['people', 'People'], ['delivery', 'Delivery'], ['machine', 'Machine'], ['access', 'Access']];
+    var tabs = [['now', 'Now'], ['people', 'People'], ['delivery', 'Delivery'], ['machine', 'Machine'], ['access', 'Access'], ['tour', 'Tour']];
     var bar = h('header', { class: 'bar' }, [
       h('div', { class: 'word' }, ['SetPoint', h('span', { text: 'ops' })]),
       h('nav', { class: 'tabs', 'aria-label': 'Sections' }, tabs.map(function (t) {
@@ -631,6 +662,109 @@ a.grid:hover{background:var(--fill)}
     return shell('access', loose, body);
   }
 
+  // ----- Tour: edit the in-app guided tour -----
+  var TOUR_TABS = [['today', 'Today'], ['train', 'Train'], ['progress', 'Progress'], ['you', 'You']];
+  function tourScreen() {
+    var loose = state.data.now ? state.data.now.looseEnds.length : 0;
+    var d = state.data.tour;
+    if (!d) { load('tour', '/api/admin/tour'); return shell('tour', loose, [h('p', { class: 'empty', text: 'Loading…' })]); }
+    if (!state.tw) state.tw = { steps: JSON.parse(JSON.stringify(d.tour.steps)), revision: d.tour.revision, sel: 0, tab: 'today', dirty: false, bump: false };
+    var tw = state.tw, anchors = d.anchors, byId = {};
+    anchors.forEach(function (a) { byId[a.id] = a; });
+    var redo = function () { var y = window.scrollY; render(); window.scrollTo(0, y); };
+    var touch = function () { tw.dirty = true; if (saveBtn) saveBtn.disabled = false; };
+    var saveBtn = null, tipHost = null;
+    var fail = function (e) { toast(e.message); };
+
+    function tip() {
+      var s = tw.steps[tw.sel];
+      if (!s) return h('div', { class: 'tip' }, [h('h4', { text: 'No steps yet' }), h('p', { text: 'Add a step to see how it looks.' })]);
+      var real = tw.steps.filter(function (x) { return !x.welcome; }).length, at = tw.steps.slice(0, tw.sel + 1).filter(function (x) { return !x.welcome; }).length;
+      return h('div', { class: 'tip' }, [h('h4', { text: s.title || '…' }), h('p', { text: s.body || '' }), h('small', { text: s.welcome ? 'Opening prompt' : at + ' of ' + real })]);
+    }
+    function retip() { if (!tipHost) return; clear(tipHost); tipHost.appendChild(tip()); }
+
+    function select(i) { tw.sel = i; var a = tw.steps[i] && tw.steps[i].anchor; if (a && byId[a]) tw.tab = byId[a].tab; redo(); }
+    function move(i, dir) { var j = i + dir; if (j < 0 || j >= tw.steps.length) return; var t = tw.steps[i]; tw.steps[i] = tw.steps[j]; tw.steps[j] = t; tw.sel = j; touch(); redo(); }
+    function remove(i) { tw.steps.splice(i, 1); tw.sel = Math.max(0, Math.min(tw.sel, tw.steps.length - 1)); touch(); redo(); }
+    function add() {
+      var first = anchors.filter(function (a) { return a.tab === tw.tab; })[0];
+      tw.steps.push({ id: 's' + Date.now().toString(36) + Math.floor(Math.random() * 1000).toString(36), anchor: first ? first.id : null, welcome: false, title: 'New step', body: 'Say what this does in one line.', he: null });
+      tw.sel = tw.steps.length - 1; touch(); redo();
+    }
+    function setAnchor(i, id) { tw.steps[i].anchor = id || null; if (id) tw.steps[i].welcome = false; if (id && byId[id]) tw.tab = byId[id].tab; touch(); redo(); }
+
+    var cards = tw.steps.map(function (s, i) {
+      var groups = TOUR_TABS.map(function (t) {
+        return h('optgroup', { label: t[1] }, anchors.filter(function (a) { return a.tab === t[0]; }).map(function (a) { return h('option', { value: a.id, text: a.label }); }));
+      });
+      var sel = h('select', { 'aria-label': 'Element for step ' + (i + 1), onchange: function (e) { setAnchor(i, e.target.value); } }, [h('option', { value: '', text: 'Nothing, show in the middle' })].concat(groups));
+      sel.value = s.anchor || '';
+      var title = h('input', { type: 'text', class: 'ti', maxlength: '60', 'aria-label': 'Title of step ' + (i + 1), value: s.title, oninput: function (e) { s.title = e.target.value; touch(); retip(); } });
+      var body = h('textarea', { maxlength: '260', 'aria-label': 'Text of step ' + (i + 1), oninput: function (e) { s.body = e.target.value; touch(); retip(); } }); body.value = s.body;
+      var he = function () { if (!s.he) s.he = { title: '', body: '' }; return s.he; };
+      var hTitle = h('input', { type: 'text', maxlength: '60', 'aria-label': 'Hebrew title of step ' + (i + 1), value: s.he ? s.he.title : '', oninput: function (e) { he().title = e.target.value; touch(); } });
+      var hBody = h('textarea', { maxlength: '260', 'aria-label': 'Hebrew text of step ' + (i + 1), oninput: function (e) { he().body = e.target.value; touch(); } }); hBody.value = s.he ? s.he.body : '';
+      var ck = h('input', { type: 'checkbox', 'aria-label': 'Opening prompt', onchange: function (e) {
+        tw.steps.forEach(function (x) { x.welcome = false; }); s.welcome = e.target.checked; if (s.welcome) s.anchor = null; touch(); redo();
+      } }); ck.checked = !!s.welcome;
+      return h('div', { class: 'tc' + (tw.sel === i ? ' sel' : ''), onclick: function (e) { if (tw.sel !== i && !/^(SELECT|INPUT|TEXTAREA|BUTTON|OPTION)$/.test(e.target.tagName)) select(i); }, onfocusin: function () { if (tw.sel !== i) { tw.sel = i; var a = s.anchor; if (a && byId[a]) tw.tab = byId[a].tab; Array.prototype.forEach.call(document.querySelectorAll('.tc'), function (c, k) { c.classList.toggle('sel', k === i); }); retip(); reRegions(); } } }, [
+        h('div', { class: 'tc-h' }, [h('span', { class: 'n', text: s.welcome ? '·' : String(i + 1) }), s.welcome ? h('span', { class: 't-warn', style: 'font-size:12px', text: 'Opening prompt' }) : h('span', { class: 't-faint', style: 'font-size:12px', text: s.anchor ? byId[s.anchor].tab : 'middle' }), h('span', { class: 'sp' }),
+          h('button', { class: 'mini', type: 'button', 'aria-label': 'Move up', disabled: i === 0, onclick: function () { move(i, -1); }, text: '↑' }),
+          h('button', { class: 'mini', type: 'button', 'aria-label': 'Move down', disabled: i === tw.steps.length - 1, onclick: function () { move(i, 1); }, text: '↓' }),
+          h('button', { class: 'mini dng', type: 'button', onclick: function () { remove(i); }, text: 'Remove' })]),
+        h('div', null, [h('label', { class: 'l', text: 'POINTS AT' }), sel]),
+        h('div', null, [h('label', { class: 'l', text: 'TITLE' }), title]),
+        h('div', null, [h('label', { class: 'l', text: 'TEXT' }), body]),
+        h('div', { class: 'he' }, [h('label', { class: 'l', style: 'direction:ltr;text-align:left', text: 'HEBREW (leave empty to show English)' }), hTitle, h('div', { style: 'height:8px' }), hBody]),
+        h('label', { class: 'ck' }, [ck, 'Opening prompt (asks “Show me / Not now” first, no element)'])
+      ]);
+    });
+
+    // the sketch of the app: click a box to point the selected step at it
+    var phone = h('div', { class: 'tr-phone', role: 'group', 'aria-label': 'Sketch of the ' + tw.tab + ' screen' });
+    function reRegions() {
+      clear(phone);
+      var cur = tw.steps[tw.sel] ? tw.steps[tw.sel].anchor : null;
+      anchors.filter(function (a) { return a.tab === tw.tab; }).forEach(function (a) {
+        var used = [];
+        tw.steps.forEach(function (st, k) { if (st.anchor === a.id) used.push(k + 1); });
+        phone.appendChild(h('button', { type: 'button', class: 'rg' + (used.length ? ' on' : '') + (cur === a.id ? ' cur' : ''), title: a.label,
+          style: 'left:' + a.box[0] + '%;top:' + a.box[1] + '%;width:' + a.box[2] + '%;height:' + a.box[3] + '%',
+          onclick: function () { if (!tw.steps[tw.sel]) { toast('Add a step first'); return; } setAnchor(tw.sel, a.id); } },
+          used.map(function (n) { return h('b', { text: String(n) }); }).concat([a.label])));
+      });
+    }
+    reRegions();
+    var tabs = h('div', { class: 'tr-tabs' }, TOUR_TABS.map(function (t) {
+      return h('button', { class: 'chip', type: 'button', 'aria-pressed': tw.tab === t[0] ? 'true' : 'false', text: t[1], onclick: function () { tw.tab = t[0]; redo(); } });
+    }));
+    tipHost = h('div'); retip();
+
+    saveBtn = h('button', { class: 'btn pri', type: 'button', text: 'Save tour', disabled: !tw.dirty, onclick: function () {
+      saveBtn.disabled = true;
+      api('/api/admin/tour', { method: 'PUT', body: { steps: tw.steps, bumpRevision: tw.bump } }).then(function () {
+        toast('Saved. The app picks it up on next launch.'); delete state.data.tour; state.tw = null; render();
+      }).catch(function (e) { saveBtn.disabled = false; fail(e); });
+    } });
+    var bump = h('input', { type: 'checkbox', 'aria-label': 'Show again to everyone', onchange: function (e) { tw.bump = e.target.checked; touch(); } }); bump.checked = tw.bump;
+    var armed = false;
+    var resetBtn = h('button', { class: 'btn dng', type: 'button', text: 'Reset to defaults', onclick: function () {
+      if (!armed) { armed = true; resetBtn.textContent = 'Tap again to reset'; setTimeout(function () { armed = false; resetBtn.textContent = 'Reset to defaults'; }, 3500); return; }
+      api('/api/admin/tour', { method: 'DELETE' }).then(function () { toast('Back to the built-in tour'); delete state.data.tour; state.tw = null; render(); }).catch(fail);
+    } });
+
+    var body = [h('div', { class: 'kick', text: 'Tour' }),
+      h('h1', { class: 'h1' }, ['The guided tour. ', h('em', { text: tw.steps.length + ' steps, ' + (tw.revision > 1 ? 'shown again ' + (tw.revision - 1) + ' time' + (tw.revision > 2 ? 's' : '') : 'never re-shown') + '.' })]),
+      h('p', { class: 't-soft', style: 'max-width:640px;margin:14px 0 0', text: 'What a new person sees once, after setup, and again from You, How SetPoint works. Point each step at an element, write what it does, and add the Hebrew. Changes reach the app on its next launch, no build needed.' }),
+      h('div', { class: 'tr' }, [
+        h('div', { class: 'tr-list' }, cards.concat([h('div', null, [h('button', { class: 'btn', type: 'button', text: '+ Add a step', onclick: add })])])),
+        h('aside', { class: 'tr-side' }, [h('div', { class: 'h3', text: 'Click an element to point the selected step at it' }), tabs, phone, tipHost])
+      ]),
+      h('div', { class: 'tr-bar' }, [saveBtn, h('label', { class: 'ck' }, [bump, 'Show again to everyone who has seen it']), h('span', { class: 'sp' }), resetBtn])];
+    return shell('tour', loose, body);
+  }
+
   // ----- loading + render -----
   function load(key, path) {
     if (state.data['_loading:' + key]) return;
@@ -643,7 +777,7 @@ a.grid:hover{background:var(--fill)}
     if (!state.secret) { root.appendChild(signIn()); return; }
     var r = route();
     if (!state.data.now && !state.data['_loading:now']) load('now', '/api/admin/ops/now?since=' + encodeURIComponent(midnight().toISOString()));
-    var view = r.name === 'now' ? nowScreen() : r.name === 'people' ? peopleScreen() : r.name === 'person' ? personScreen(r.id) : r.name === 'delivery' ? deliveryScreen() : r.name === 'access' ? accessScreen() : machineScreen();
+    var view = r.name === 'now' ? nowScreen() : r.name === 'people' ? peopleScreen() : r.name === 'person' ? personScreen(r.id) : r.name === 'delivery' ? deliveryScreen() : r.name === 'access' ? accessScreen() : r.name === 'tour' ? tourScreen() : machineScreen();
     root.appendChild(view);
   }
 

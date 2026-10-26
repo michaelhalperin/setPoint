@@ -1049,6 +1049,15 @@ model FeatureFlag {
   updatedAt   DateTime   @updatedAt
 }
 
+/// Small bits of app content the owner edits from /admin without a new build
+/// (today: the guided tour). One row per key; the shape of `value` belongs to
+/// whatever reads it (src/tour).
+model AppConfig {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
 /// Product analytics, kept in our own database: what people do (signed up,
 /// logged a meal, answered a check-in), never what they ate — props hold only
 /// short codes like a meal's source. Deleted with the account.
