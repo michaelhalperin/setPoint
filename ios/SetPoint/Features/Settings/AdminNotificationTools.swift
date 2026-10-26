@@ -69,6 +69,15 @@ struct AdminNotificationTools: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .glass(radius: Radius.lg)
 
+            if let result {
+                Text(verbatim: result)
+                    .font(Typography.data(13))
+                    .foregroundStyle(Palette.inkSoft)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 4)
+                    .id("admin-result")
+            }
+
             Button {
                 Task {
                     await env.push.reregister()
@@ -90,6 +99,36 @@ struct AdminNotificationTools: View {
                 .disabled(sending != nil)
             }
 
+            Text(verbatim: "Live Activity")
+                .sectionLabelStyle()
+                .padding(.top, Space.xs)
+
+            Button {
+                start(refuel: false)
+            } label: {
+                DestinationRow(title: "Live Activity · a meal is late", subtitle: "The lock screen card and the Dynamic Island")
+            }
+            .buttonStyle(PressableCard())
+
+            Button {
+                start(refuel: true)
+            } label: {
+                DestinationRow(title: "Live Activity · refuel after training", subtitle: "The same card in its training colours")
+            }
+            .buttonStyle(PressableCard())
+
+            Button {
+                LiveActivityController.shared.end()
+                result = "Ended the test Live Activity."
+            } label: {
+                DestinationRow(title: "End the test Live Activity")
+            }
+            .buttonStyle(PressableCard())
+
+            Text(verbatim: "Notifications")
+                .sectionLabelStyle()
+                .padding(.top, Space.xs)
+
             if let info {
                 ForEach(info.kinds) { kind in
                     Button {
@@ -105,17 +144,18 @@ struct AdminNotificationTools: View {
                 }
             }
 
-            if let result {
-                Text(verbatim: result)
-                    .font(Typography.data(13))
-                    .foregroundStyle(Palette.inkSoft)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.horizontal, 4)
-            }
         }
         .task {
             await refreshPermission()
             await reload()
+        }
+    }
+
+    private func start(refuel: Bool) {
+        if let problem = LiveActivityController.shared.startTest(refuel: refuel) {
+            result = problem
+        } else {
+            result = "Started. Lock the phone to see the card, or press Home to see the Dynamic Island."
         }
     }
 

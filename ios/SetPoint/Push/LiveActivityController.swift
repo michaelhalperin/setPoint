@@ -11,14 +11,17 @@ final class LiveActivityController {
 
     private var current: Activity<CheckInActivityAttributes>?
     private var observing = false
+    /// An admin test card is up: Today reloading with no real check-in must not end it.
+    private var testing = false
 
     func sync(activeCheckIn: HomeResponse.ActiveCheckIn?, ledger: HomeResponse.Ledger? = nil) {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
 
         guard let checkIn = activeCheckIn else {
-            end()
+            if !testing { end() }
             return
         }
+        testing = false
 
         let state = CheckInActivityAttributes.ContentState(
             title: checkIn.message ?? "Time to eat.",
@@ -55,7 +58,38 @@ final class LiveActivityController {
         }
     }
 
+    /// Admin tool: a sample card on the lock screen and in the Dynamic Island.
+    /// Returns a message when it can't start.
+    func startTest(refuel: Bool) -> String? {
+        guard ActivityAuthorizationInfo().areActivitiesEnabled else {
+            return "Live Activities are off. Turn them on in iPhone Settings → SetPoint."
+        }
+        end()
+        let state = CheckInActivityAttributes.ContentState(
+            title: refuel ? "You trained. Eat something now." : "Lunch is 2 hours late.",
+            detail: refuel ? "Chocolate milk + a sandwich" : "Rice, chicken and a banana",
+            deepLink: "setpoint://home",
+            label: refuel ? L10n("Refuel") : L10n("Lunch"),
+            kcal: refuel ? 450 : 700,
+            isRefuel: refuel,
+            dayKcal: refuel ? 1840 : 0,
+            dayTarget: 2910
+        )
+        do {
+            current = try Activity.request(
+                attributes: CheckInActivityAttributes(checkInId: "test"),
+                content: ActivityContent(state: state, staleDate: nil),
+                pushType: nil
+            )
+            testing = true
+            return nil
+        } catch {
+            return "Couldn’t start it: \(error.localizedDescription)"
+        }
+    }
+
     func end() {
+        testing = false
         let activity = current
         current = nil
         Task { await activity?.end(nil, dismissalPolicy: .immediate) }
