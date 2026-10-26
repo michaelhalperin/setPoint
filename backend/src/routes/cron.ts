@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { pruneAiUsage } from '../ai/quota.js';
 import { getPrisma } from '../db/client.js';
 import { pruneRateLimitBuckets } from '../http/rateLimit.js';
-import { recordHeartbeat } from '../jobs/heartbeat.js';
+import { ranTooRecently, recordHeartbeat } from '../jobs/heartbeat.js';
 import { retryPhotoDeletions, type PhotoCleanupSummary } from '../photos/cleanup.js';
 import { getPhotoStore } from '../photos/store.js';
 import { runScoreConfidenceJob } from '../jobs/scoreConfidence.js';
@@ -13,9 +13,10 @@ import { createPushSender } from '../push/factory.js';
 import { env } from '../env.js';
 
 /**
- * Two schedulers call these:
- *   - /score every 15 minutes from GitHub Actions (.github/workflows/score-checkins.yml),
- *     with `x-cron-secret: <secret>` — Vercel's Hobby plan only allows daily crons.
+ * Schedulers that call these:
+ *   - /score every few minutes from an external pinger (and every 15 from GitHub Actions as a
+ *     backup), with `x-cron-secret: <secret>`. Vercel's Hobby plan only allows daily crons.
+ *     A call within 2 minutes of the last run is skipped, so two schedulers can't double-send.
  *   - /settle daily from Vercel Cron, with `Authorization: Bearer <CRON_SECRET>`.
  * Either header is accepted on both routes, so manual triggering works too.
  */
@@ -39,6 +40,8 @@ export async function cronRoutes(app: FastifyInstance): Promise<void> {
     url: '/score',
     handler: async (req) => {
       const started = new Date();
+      const last = await getPrisma().schedulerHeartbeat.findUnique({ where: { job: 'score' }, select: { lastRunAt: true } });
+      if (ranTooRecently(last?.lastRunAt)) return { skipped: 'ran_recently', lastRunAt: last!.lastRunAt };
       try {
         const summary = await runScoreConfidenceJob({
           prisma: getPrisma(),

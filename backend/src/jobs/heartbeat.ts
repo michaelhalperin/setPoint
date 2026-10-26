@@ -3,6 +3,13 @@ import type { PrismaClient } from '@prisma/client';
 /** Run times kept on the heartbeat row, so the ops dashboard can draw gaps. */
 const KEEP_MS = 48 * 3_600_000;
 
+/** A second scheduler calling right after one finished is skipped, so two of them never double-send. */
+export const MIN_GAP_MS = 120_000;
+
+export function ranTooRecently(lastRunAt: Date | null | undefined, now: number = Date.now()): boolean {
+  return !!lastRunAt && now - lastRunAt.getTime() < MIN_GAP_MS;
+}
+
 export async function recordHeartbeat(
   prisma: PrismaClient,
   job: string,
