@@ -221,18 +221,6 @@ struct OrderNearbyView: View {
             }
             .appearIn(1, rise: 14)
 
-            HStack(alignment: .firstTextBaseline) {
-                Text("More that fit").sectionLabelStyle()
-                Spacer(minLength: 8)
-                Text("Tap one to swap it in")
-                    .font(Typography.data(12, weight: .regular))
-                    .foregroundStyle(Palette.inkFaint)
-                    .hintCopy()
-            }
-            .padding(.horizontal, 4)
-            .padding(.top, 4)
-            .appearIn(2)
-
             filters.appearIn(2)
 
             list(pool.filter { $0 != hero }.prefix(10).map { $0 })
@@ -370,20 +358,12 @@ struct OrderNearbyView: View {
 
     private func heroCard(_ hero: Candidate, canShuffle: Bool, shuffle: @escaping () -> Void) -> some View {
         let dish = hero.dish
-        let label = isLogged ? "LOGGED" : swapped ? "YOUR SWAP" : "MY PICK"
-        let labelTint = isLogged ? Palette.positive : Palette.hazeSoft
         return VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                HStack(spacing: 6) {
-                    Circle().fill(labelTint).frame(width: 6, height: 6)
-                    Text(label).font(Typography.mono(10)).tracking(1.2).foregroundStyle(labelTint)
-                }
-                Spacer(minLength: 8)
-                Text("\(hero.venue.distanceKm.formatted(.number.precision(.fractionLength(1)))) KM AWAY")
-                    .font(Typography.mono(10))
-                    .tracking(1)
-                    .foregroundStyle(Palette.inkFaint)
-            }
+            Text("\(hero.venue.distanceKm.formatted(.number.precision(.fractionLength(1)))) KM AWAY")
+                .font(Typography.mono(10))
+                .tracking(1)
+                .foregroundStyle(Palette.inkFaint)
+                .frame(maxWidth: .infinity, alignment: .trailing)
 
             HStack(spacing: 18) {
                 fillRing(dish.kcal)
@@ -618,9 +598,6 @@ struct OrderNearbyView: View {
                     }
                     .buttonStyle(PressableCard())
                     .accessibilityLabel("Open \(hero.dish.name) from \(hero.venue.name) in Wolt")
-                    Text("Wolt opens on the dish. You tap Add and pay there.")
-                        .font(Typography.data(11, weight: .regular))
-                        .foregroundStyle(Palette.inkFaint)
                 }
             case .back:
                 VStack(alignment: .leading, spacing: 12) {

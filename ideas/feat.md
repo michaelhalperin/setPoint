@@ -22,6 +22,13 @@ all the helper text should be a prefernce if to show. v
 
 user screen. v
 
+an option for the user to activate blocking apps.
+
+i want to add a new feature , which will be off by the feature flag
+high and smart description of the training itself ,and help with that.
+
+there should be an option to confirm the training has been done if its a premake training session.
+
 
                 ------------------------------------
 
