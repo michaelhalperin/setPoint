@@ -62,6 +62,7 @@
 		54EF3A75022188B9CAAEC8B6 /* BurnScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DDF6D20FDE090349E1C4C86 /* BurnScreen.swift */; };
 		575DD175972927D12F1338C7 /* PhotoChipTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28AC3B6BB7777D4F5EC4380A /* PhotoChipTests.swift */; };
 		586BDDEC0C7EB4C69C5AACFB /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D62FF53313C40A8B338DA28A /* StoreKit.framework */; };
+		5A084CE04BE50AC646043D67 /* AdminNotificationTools.swift in Sources */ = {isa = PBXBuildFile; fileRef = 852420F8B6C80943AACEF489 /* AdminNotificationTools.swift */; };
 		5A9C0E2C4922472B74B9C958 /* TodayModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D76F69253293040BDD400099 /* TodayModel.swift */; };
 		5BDD75C4C4F37BE56005ECF6 /* OnboardingFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D059857EA5ACFC913EC5A43 /* OnboardingFlow.swift */; };
 		5C2C73BA6DBBD160F71960E6 /* TokenStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87A7B143B2CF06863A727EC5 /* TokenStore.swift */; };
@@ -284,6 +285,7 @@
 		7DC3BBFB79553307E1CA912B /* AccountLocalState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountLocalState.swift; sourceTree = "<group>"; };
 		810A93EE79A7E473253E6BF2 /* SettingsScreensTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsScreensTests.swift; sourceTree = "<group>"; };
 		84B5787B516857871D6B64BF /* LiveActivityController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityController.swift; sourceTree = "<group>"; };
+		852420F8B6C80943AACEF489 /* AdminNotificationTools.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminNotificationTools.swift; sourceTree = "<group>"; };
 		86D8304C476B77D8C38E8772 /* UserFacingError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserFacingError.swift; sourceTree = "<group>"; };
 		8769B24EB4ED270A0E607AFC /* AppetiteScreens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppetiteScreens.swift; sourceTree = "<group>"; };
 		87A7B143B2CF06863A727EC5 /* TokenStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenStore.swift; sourceTree = "<group>"; };
@@ -396,6 +398,7 @@
 		0A06E3DC38D2B0DE24526D13 /* Settings */ = {
 			isa = PBXGroup;
 			children = (
+				852420F8B6C80943AACEF489 /* AdminNotificationTools.swift */,
 				12383B21C3EE575115988709 /* SavedMealsSettingsView.swift */,
 				A04FB85DEFCCCAE9E2F79DB1 /* SettingsChrome.swift */,
 				B0BB19DB69ED8A47AA90FCA8 /* SettingsScreens.swift */,
@@ -962,6 +965,7 @@
 				35142C85254E15433E247985 /* APIClient.swift in Sources */,
 				9B0C59C6A3F3D67DA3DD2DB7 /* APIConfig.swift in Sources */,
 				52B629F4C2A4C9FA8C00B54E /* AccountLocalState.swift in Sources */,
+				5A084CE04BE50AC646043D67 /* AdminNotificationTools.swift in Sources */,
 				0D26C725D05378638A6A862D /* Analytics.swift in Sources */,
 				E9BE1261A4D3B02ADCA6C6C4 /* AppDelegate.swift in Sources */,
 				21B611B9BD8199A8E7D5BBE5 /* AppEnvironment.swift in Sources */,
@@ -1192,7 +1196,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 19;
+				CURRENT_PROJECT_VERSION = 20;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = "$(SETPOINT_TEAM_ID)";
 				ENABLE_NS_ASSERTIONS = NO;
@@ -1274,7 +1278,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 19;
+				CURRENT_PROJECT_VERSION = 20;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = "$(SETPOINT_TEAM_ID)";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;

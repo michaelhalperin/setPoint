@@ -63,6 +63,8 @@ final class SettingsViewModel {
     private(set) var minHealthyWeightKg: Double?
     private(set) var weekendSuggestion: WeekendSuggestion?
     private(set) var enforcementEnabled = true
+    /// Shows the notification test tools.
+    private(set) var isAdmin = false
     private(set) var enforcementDisabledReason: String?
 
     private var original: SettingsResponse?
@@ -461,6 +463,7 @@ final class SettingsViewModel {
         savedDisplayName = displayName
         enforcementEnabled = s.enforcementEnabled
         enforcementDisabledReason = s.enforcementDisabledReason
+        isAdmin = s.isAdmin ?? false
     }
 
     var resolvedWeekendTimes: MealTimesPayload {

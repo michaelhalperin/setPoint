@@ -97,7 +97,11 @@ final class PushManager {
         let hex = data.map { String(format: "%02x", $0) }.joined()
         guard hex != deviceTokenHex else { return }
         deviceTokenHex = hex
-        Task { await uploadToken(hex, kind: "alert") }
+        Task {
+            // Forget it if the server didn't take it (not signed in yet, offline),
+            // so the next launch or sign-in sends it again.
+            if await !uploadToken(hex, kind: "alert"), deviceTokenHex == hex { deviceTokenHex = nil }
+        }
     }
 
     func setLiveActivityStartToken(_ hex: String) {
@@ -125,7 +129,17 @@ final class PushManager {
         }
     }
 
-    private func uploadToken(_ token: String, kind: String) async {
+    /// This phone's token as the system gave it; nil until iOS has handed one over.
+    var hasDeviceToken: Bool { deviceTokenHex != nil }
+
+    /// Admin tool: ask iOS for the token again and send it to the server.
+    func reregister() async {
+        deviceTokenHex = nil
+        await requestAuthorization()
+    }
+
+    @discardableResult
+    private func uploadToken(_ token: String, kind: String) async -> Bool {
         struct Body: Encodable {
             let token: String
             let kind: String
@@ -135,6 +149,11 @@ final class PushManager {
             let environment = "production"
             #endif
         }
-        try? await api?.post("/api/push-tokens", Body(token: token, kind: kind))
+        do {
+            try await api?.post("/api/push-tokens", Body(token: token, kind: kind))
+            return api != nil
+        } catch {
+            return false
+        }
     }
 }

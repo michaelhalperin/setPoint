@@ -1024,6 +1024,8 @@ struct SettingsResponse: Decodable {
     /// Older servers leave it out: the default 45.
     var checkInGraceMin: Int? = nil
     let checkInsPaused: Bool
+    /// Older servers leave it out: not an admin.
+    var isAdmin: Bool? = nil
     let restrictions: [Restriction]
     let enforcementEnabled: Bool
     let enforcementDisabledReason: String?

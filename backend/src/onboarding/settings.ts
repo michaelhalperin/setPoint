@@ -32,6 +32,8 @@ export type SettingsView = {
   /** Minutes after a meal time, with nothing logged, before a check-in. */
   checkInGraceMin: number;
   checkInsPaused: boolean;
+  /** Shows the notification test tools on the You screen. */
+  isAdmin: boolean;
   restrictions: { label: string; token: string; source: string }[];
   pantryTokens: string[];
   dislikedFoods: string[];
@@ -366,6 +368,7 @@ function toView(user: UserWithSettings, weekendSuggestion: WeekendBreakfastSugge
     quietHours: { startMin: p.quietHoursStartMin, endMin: p.quietHoursEndMin },
     checkInGraceMin: p.checkInGraceMin ?? SCHEDULE_CONFIG.graceMin,
     checkInsPaused: user.escalationState?.checkInsPaused ?? false,
+    isAdmin: user.role === 'ADMIN',
     restrictions: user.restrictions.map((r) => ({ label: r.label, token: r.token, source: r.source })),
     pantryTokens: p.pantryTokens ?? [],
     dislikedFoods: p.dislikedFoods ?? [],

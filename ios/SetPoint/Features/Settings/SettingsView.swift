@@ -122,6 +122,11 @@ struct SettingsView: View {
                         .glass(radius: Radius.sm, fill: Palette.danger.opacity(0.08))
                 }
 
+                if model.isAdmin {
+                    AdminNotificationTools()
+                        .appearIn(5)
+                }
+
                 #if DEBUG
                 developerTools
                 #endif
