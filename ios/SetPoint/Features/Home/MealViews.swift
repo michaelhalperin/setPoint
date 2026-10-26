@@ -209,7 +209,7 @@ struct MealDetailSheet: View {
     @State private var fixing = false
     @State private var confirmingDelete = false
     @State private var draft: SavedMealDraft?
-    @State private var saved = false
+    @State private var saved: Bool
 
     init(
         meal: MealSummary,
@@ -220,9 +220,11 @@ struct MealDetailSheet: View {
         onLogAgain: (() -> Void)? = nil,
         onSaveDraft: ((SavedMealDraft) async -> Bool)? = nil,
         editorSaving: Bool = false,
-        editorError: String? = nil
+        editorError: String? = nil,
+        alreadySaved: Bool = false
     ) {
         _meal = State(initialValue: meal)
+        _saved = State(initialValue: alreadySaved)
         self.onRemove = onRemove
         self.onSaveAsMeal = onSaveAsMeal
         self.onFixed = onFixed

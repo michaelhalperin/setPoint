@@ -188,8 +188,6 @@ struct RulerPicker: View {
                     lastTick = value
                     tickFeedback.prepare()
                 }
-                // 1:1 with the finger — no step quantization while moving.
-                // Read continuous from the gesture directly; @State may lag one frame.
                 dragPixels = g.translation.width
                 let continuous = clamp(start - Double(g.translation.width / pxPerStep) * step)
                 let snapped = snap(continuous)
@@ -208,20 +206,18 @@ struct RulerPicker: View {
             }
             .onEnded { g in
                 let start = dragStartValue ?? value
-                // Project a little past the finger so a flick keeps rolling.
-                let projected = clamp(start - Double(g.predictedEndTranslation.width / pxPerStep) * step)
+                // Cap momentum so a jitter at lift doesn't fling the tape back.
+                let momentum = g.predictedEndTranslation.width - g.translation.width
+                let capped = max(-160, min(160, momentum))
+                let projected = clamp(start - Double((g.translation.width + capped) / pxPerStep) * step)
                 let target = snap(projected)
-                // Animate the tape to the snap while still in drag coords, then
-                // clear — so the fractional remainder settles instead of jumping.
-                let targetPixels = CGFloat((start - target) / step) * pxPerStep
-                withAnimation(Motion.adaptive(Motion.settle, reduceMotion: reduceMotion)) {
-                    dragPixels = targetPixels
-                    value = target
-                } completion: {
-                    dragPixels = 0
-                    dragStartValue = nil
-                    lastTick = nil
-                }
+                // Set the final value, then clear drag state in one update.
+                // The tape's own .animation (active once dragStartValue is nil)
+                // springs displayValue from the finger position to target.
+                value = target
+                dragPixels = 0
+                dragStartValue = nil
+                lastTick = nil
             }
     }
 

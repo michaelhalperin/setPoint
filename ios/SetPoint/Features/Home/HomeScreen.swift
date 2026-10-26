@@ -176,7 +176,8 @@ struct HomeContent: View {
                 },
                 onSaveDraft: { await logger?.saveEditor($0) ?? false },
                 editorSaving: logger?.editorSaving ?? false,
-                editorError: logger?.editorError
+                editorError: logger?.editorError,
+                alreadySaved: isMealSaved(meal)
             )
         }
         .fullScreenCover(isPresented: scannerPresented, onDismiss: { logger?.scannerDismissed() }) {
@@ -484,6 +485,15 @@ struct HomeContent: View {
     private func openOrder() {
         Haptics.nudge()
         showingOrder = true
+    }
+
+    // MARK: Saved check
+
+    /// True when a logged meal matches a plate in My Meals (by name + kcal).
+    private func isMealSaved(_ meal: MealSummary) -> Bool {
+        guard let saved = logger?.savedMeals, !saved.isEmpty else { return false }
+        let title = meal.title.lowercased()
+        return saved.contains { $0.name.lowercased() == title && $0.kcal == meal.kcal }
     }
 
     // MARK: Picks
