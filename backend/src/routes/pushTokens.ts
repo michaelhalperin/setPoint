@@ -46,11 +46,26 @@ export async function pushTokenRoutes(app: FastifyInstance): Promise<void> {
 
   app.post('/test', async (req) => {
     await requireAdmin(req);
-    const { kind } = z.object({ kind: z.enum(TEST_PUSHES.map((t) => t.kind) as [TestPushKind, ...TestPushKind[]]) }).parse(req.body);
+    const { kind, token: phoneToken } = z
+      .object({
+        kind: z.enum(TEST_PUSHES.map((t) => t.kind) as [TestPushKind, ...TestPushKind[]]),
+        // The token this phone holds right now: saved for this account, then the only one sent to.
+        token: z.string().min(1).max(400).optional(),
+      })
+      .parse(req.body);
     const userId = (req as AuthedRequest).userId;
     const sample = TEST_PUSHES.find((t) => t.kind === kind)!;
+    if (phoneToken) {
+      await getPrisma().pushToken.upsert({
+        where: { token: phoneToken },
+        create: { userId, token: phoneToken, kind: 'alert', environment: 'production', platform: 'ios' },
+        update: { userId, kind: 'alert', environment: 'production', lastSeenAt: new Date() },
+      });
+    }
     const tokens = await tokensOf(userId);
-    const alerts = await getPrisma().pushToken.findMany({ where: { userId, kind: 'alert' }, select: { token: true } });
+    const alerts = phoneToken
+      ? [{ token: phoneToken }]
+      : await getPrisma().pushToken.findMany({ where: { userId, kind: 'alert' }, select: { token: true } });
     if (alerts.length === 0) return { sent: 0, attempted: 0, error: 'no_push_token', tokens };
 
     const result = await createPushSender().send(alerts.map((t) => t.token), {
@@ -76,9 +91,9 @@ export async function pushTokenRoutes(app: FastifyInstance): Promise<void> {
   async function tokensOf(userId: string) {
     const rows = await getPrisma().pushToken.findMany({
       where: { userId, kind: 'alert' },
-      select: { environment: true, lastSeenAt: true },
+      select: { token: true, environment: true, lastSeenAt: true },
       orderBy: { lastSeenAt: 'desc' },
     });
-    return rows.map((r) => ({ environment: r.environment, lastSeenAt: r.lastSeenAt.toISOString() }));
+    return rows.map((r) => ({ tail: r.token.slice(-6), environment: r.environment, lastSeenAt: r.lastSeenAt.toISOString() }));
   }
 }

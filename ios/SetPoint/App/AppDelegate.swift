@@ -50,6 +50,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         didFailToRegisterForRemoteNotificationsWithError error: Error
     ) {
         print("[push] remote registration failed: \(error.localizedDescription)")
+        Task { @MainActor in PushManager.shared.setRegistrationError(error.localizedDescription) }
     }
 
     // Show the banner even when the app is foregrounded.

@@ -142,6 +142,11 @@ final class PushManager {
 
     /// This phone's token as the system gave it; nil until iOS has handed one over.
     var hasDeviceToken: Bool { deviceTokenHex != nil }
+    var currentDeviceToken: String? { deviceTokenHex }
+    /// What iOS said when it couldn't register for remote notifications.
+    private(set) var registrationError: String?
+
+    func setRegistrationError(_ message: String) { registrationError = message }
 
     /// Admin tool: ask iOS for the token again and send it to the server.
     func reregister() async {

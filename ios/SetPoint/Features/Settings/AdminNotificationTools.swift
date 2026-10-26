@@ -18,6 +18,7 @@ struct AdminNotificationTools: View {
             var id: String { kind }
         }
         struct Token: Decodable {
+            let tail: String
             let environment: String
             let lastSeenAt: String
         }
@@ -34,7 +35,10 @@ struct AdminNotificationTools: View {
         let tokens: [Info.Token]
     }
 
-    private struct TestBody: Encodable { let kind: String }
+    private struct TestBody: Encodable {
+        let kind: String
+        var token: String? = nil
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: Space.sm) {
@@ -46,6 +50,16 @@ struct AdminNotificationTools: View {
                 statusLine("iPhone permission", permission)
                 statusLine("iOS gave this phone a token", env.push.hasDeviceToken ? "yes" : "no")
                 statusLine("Server has tokens", info.map(tokenSummary) ?? "…")
+                statusLine("This phone’s token ends", env.push.currentDeviceToken.map { "…" + $0.suffix(6) } ?? "none")
+                if let tokens = info?.tokens, !tokens.isEmpty {
+                    statusLine("Server tokens end", tokens.map { "…" + $0.tail }.joined(separator: " "))
+                }
+                if let error = env.push.registrationError {
+                    Text(verbatim: "iOS registration error: \(error)")
+                        .font(Typography.data(12))
+                        .foregroundStyle(Palette.danger)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 Text(verbatim: "TestFlight and App Store builds must show “production”. A “sandbox” token only works for Xcode builds.")
                     .font(Typography.data(12))
                     .foregroundStyle(Palette.inkFaint)
@@ -65,6 +79,16 @@ struct AdminNotificationTools: View {
                 DestinationRow(title: "Re-register this iPhone", subtitle: "Gets a fresh token and sends it to the server")
             }
             .buttonStyle(PressableCard())
+
+            if let phoneToken = env.push.currentDeviceToken, let plain = info?.kinds.first(where: { $0.kind == "plain" }) {
+                Button {
+                    Task { await send(plain, token: phoneToken) }
+                } label: {
+                    DestinationRow(title: "Plain alert to this phone’s token", subtitle: "Saves this phone’s token, then sends only to it")
+                }
+                .buttonStyle(PressableCard())
+                .disabled(sending != nil)
+            }
 
             if let info {
                 ForEach(info.kinds) { kind in
@@ -126,11 +150,11 @@ struct AdminNotificationTools: View {
         info = try? await env.api.get("/api/push-tokens/test")
     }
 
-    private func send(_ kind: Info.Kind) async {
+    private func send(_ kind: Info.Kind, token: String? = nil) async {
         sending = kind.kind
         defer { sending = nil }
         do {
-            let sent: Sent = try await env.api.post("/api/push-tokens/test", TestBody(kind: kind.kind))
+            let sent: Sent = try await env.api.post("/api/push-tokens/test", TestBody(kind: kind.kind, token: token))
             if let error = sent.error {
                 result = error == "no_push_token"
                     ? "\(kind.label): the server has no token for this account, so nothing was sent."
