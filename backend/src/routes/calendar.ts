@@ -164,6 +164,7 @@ export async function calendarRoutes(app: FastifyInstance): Promise<void> {
       today,
       nowMin: Math.floor(msSinceLocalMidnight(now, tz) / 60_000),
       prefs,
+      graceMin: profile.checkInGraceMin,
     });
     return {
       enabled: prefs.enabled,

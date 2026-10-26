@@ -109,7 +109,8 @@ struct RefuelSheet: View {
 
 #if DEBUG
 extension TrainingWeekResponse {
-    /// A week for previews: lifts and runs behind, a run today at 17:00, and
+    /// A week for previews: lifts and runs behind, a planned lift yesterday
+    /// morning still waiting for Done / Skipped, a run today at 17:00, and
     /// weekly lifts planned ahead.
     static var sample: TrainingWeekResponse {
         let calendar = Calendar.current
@@ -122,6 +123,7 @@ extension TrainingWeekResponse {
         var entries: [Entry] = past.enumerated().map { i, p in
             Entry(id: "hk\(i)", kind: p.1, source: "HEALTHKIT", start: iso.string(from: at(p.0, p.2)), durationMin: p.3, activeKcal: p.4)
         }
+        entries.append(Entry(id: "yesterday", kind: "STRENGTH", source: "PLANNED", start: iso.string(from: at(-1, 420)), durationMin: 60))
         entries.append(Entry(id: "today", kind: "CARDIO", source: "PLANNED", start: iso.string(from: at(0, 1020)), durationMin: 60))
         for week in 0..<6 {
             entries.append(Entry(id: "lift\(week)", seriesId: "lifts", kind: "STRENGTH", source: "PLANNED", start: iso.string(from: at(2 + week * 7, 1080)), durationMin: 60))

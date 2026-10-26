@@ -13,13 +13,23 @@ struct TrainSession: Identifiable, Equatable {
     var start: Date
     var durationMin: Int
     var activeKcal: Int?
+    /// Planned sessions, once answered: DONE or SKIPPED.
+    var outcome: String? = nil
 
     var end: Date { start.addingTimeInterval(Double(durationMin) * 60) }
     var isPlanned: Bool { source == "PLANNED" }
     var repeats: Bool { seriesId != nil }
+    var isDone: Bool { outcome == "DONE" }
+    /// Said it didn't happen: adds nothing and needs no refuel.
+    var isSkipped: Bool { outcome == "SKIPPED" }
 
     /// Only sessions the person added, and only before they start.
     func canEdit(now: Date) -> Bool { isPlanned && start > now }
+
+    /// A planned session can be marked done or skipped once it has started, for two weeks.
+    func canAnswer(now: Date) -> Bool {
+        isPlanned && start <= now && now.timeIntervalSince(start) < Double(TrainMath.outcomeDays) * 86_400
+    }
 }
 
 /// What the plan sheet produces.
@@ -48,6 +58,8 @@ enum TrainMath {
     static let bumpCap = 800
     static let bumpRound = 50
     static let minDailyKcal = 1200
+    /// How far back a planned session can still be marked done or skipped (the server's limit).
+    static let outcomeDays = 14
 
     struct Meal: Equatable {
         let at: Date
@@ -120,7 +132,7 @@ enum TrainMath {
 
     /// What a day's training adds to the target, rounded to 50 and capped at 800.
     static func bump(_ sessions: [TrainSession], weightKg: Double) -> Int {
-        let raw = effective(sessions).reduce(0) { $0 + sessionKcal($1, weightKg: weightKg) }
+        let raw = effective(sessions).filter { !$0.isSkipped }.reduce(0) { $0 + sessionKcal($1, weightKg: weightKg) }
         let rounded = Int((raw / Double(bumpRound)).rounded()) * bumpRound
         return min(bumpCap, max(0, rounded))
     }
@@ -139,6 +151,7 @@ enum TrainMath {
 
     /// The day's status from its sessions in time order; nil on a rest day.
     static func refuel(_ day: [TrainSession], meals: [Meal], now: Date) -> Refuel? {
+        let day = day.filter { !$0.isSkipped }
         guard !day.isEmpty else { return nil }
         let finished = day.filter { $0.end <= now }
         guard let last = finished.last else { return .planned }
@@ -158,7 +171,7 @@ enum TrainMath {
         let refuelBy = s.end.addingTimeInterval(Double(refuelWindowMin) * 60)
         return Steps(
             before: ate(from: s.start.addingTimeInterval(-Double(preWorkoutLookbackMin) * 60), to: s.start, atLeast: snackMinKcal),
-            workout: s.end <= now,
+            workout: s.end <= now && !s.isSkipped,
             refuel: refuelled(s, meals),
             dinner: ate(from: max(refuelBy, dinnerFrom), to: .distantFuture, atLeast: refuelMinKcal)
         )

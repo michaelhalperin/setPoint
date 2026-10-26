@@ -586,6 +586,93 @@ struct TrainTodayCard: View {
 
 // MARK: - A day that's happened
 
+/// A planned session once its time has come: "Did you train?" with Done and
+/// Skipped, then the answer with a way to take it back.
+struct SessionOutcomeRow: View {
+    let session: TrainSession
+    let onAnswer: (String?) -> Void
+
+    var body: some View {
+        Group {
+            if session.isDone {
+                answered(symbol: "checkmark", title: L10n("Done"), detail: L10n("Counted in today’s target"), tint: Palette.positive)
+            } else if session.isSkipped {
+                answered(symbol: "minus", title: L10n("Skipped"), detail: L10n("It adds nothing to the day"), tint: Palette.inkSoft)
+            } else {
+                question
+            }
+        }
+        .animation(Motion.settle, value: session.outcome)
+    }
+
+    private var label: String {
+        L10n("\(TrainKind.title(session.kind)) · \(trainClock(session.start))")
+    }
+
+    private var question: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Did you train?")
+                    .font(Typography.data(15, weight: .medium))
+                    .foregroundStyle(Palette.ink)
+                Text(label)
+                    .font(Typography.data(13, weight: .regular))
+                    .foregroundStyle(Palette.inkSoft)
+            }
+            HStack(spacing: 8) {
+                Button { onAnswer("DONE") } label: {
+                    Label("Done", systemImage: "checkmark")
+                        .font(Typography.data(14, weight: .semibold))
+                        .foregroundStyle(Palette.onBone)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .background(Palette.ink, in: Capsule())
+                }
+                .buttonStyle(PressableCard())
+                Button { onAnswer("SKIPPED") } label: {
+                    Text("Skipped")
+                        .font(Typography.data(14, weight: .regular))
+                        .foregroundStyle(Palette.ink)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .glassCapsule()
+                }
+                .buttonStyle(PressableCard())
+            }
+        }
+        .padding(16)
+        .glass(radius: 22, fill: Palette.ember.opacity(0.06), stroke: Palette.ember.opacity(0.3))
+        .accessibilityElement(children: .contain)
+    }
+
+    private func answered(symbol: String, title: String, detail: String, tint: Color) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: symbol)
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(tint)
+                .frame(width: 28, height: 28)
+                .background(Circle().fill(tint.opacity(0.14)))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(L10n("\(title) · \(label)"))
+                    .font(Typography.data(14, weight: .regular))
+                    .foregroundStyle(Palette.ink)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+                Text(detail)
+                    .font(Typography.data(12, weight: .regular))
+                    .foregroundStyle(Palette.inkSoft)
+            }
+            Spacer(minLength: 8)
+            Button("Undo") { onAnswer(nil) }
+                .font(Typography.data(13, weight: .medium))
+                .foregroundStyle(Palette.inkSoft)
+                .frame(minHeight: 44)
+                .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 6)
+        .glass(radius: 18)
+    }
+}
+
 struct TrainPastCard: View {
     let day: TrainDay
     let weightKg: Double
@@ -654,13 +741,20 @@ struct TrainPastCard: View {
         return values.isEmpty ? nil : values.reduce(0, +)
     }
 
+    /// Sessions that happened (or might have): a skipped one burned nothing.
+    private var trained: [TrainSession] { day.sessions.filter { !$0.isSkipped } }
+
     private var burned: String {
         if let recorded { return L10n( "\(recorded.formatted()) kcal") }
-        let estimate = day.sessions.reduce(0) { $0 + TrainMath.sessionKcal($1, weightKg: weightKg) }
+        if trained.isEmpty { return "—" }
+        let estimate = trained.reduce(0) { $0 + TrainMath.sessionKcal($1, weightKg: weightKg) }
         return L10n( "~\(Int(estimate.rounded()).formatted()) kcal")
     }
 
-    private var burnedCaption: String { recorded == nil ? L10n("burned · estimate") : L10n("burned · Apple Health") }
+    private var burnedCaption: String {
+        if recorded != nil { return L10n("burned · Apple Health") }
+        return trained.isEmpty ? L10n("skipped") : L10n("burned · estimate")
+    }
 
     private func stat(_ value: String, _ caption: String) -> some View {
         VStack(alignment: .leading, spacing: 2) {

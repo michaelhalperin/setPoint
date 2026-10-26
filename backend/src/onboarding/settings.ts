@@ -1,7 +1,7 @@
 import type { PrismaClient } from '@prisma/client';
 import { weekendBreakfastSuggestion, type WeekendBreakfastSuggestion } from '../dashboard/record.js';
 import { OnboardingIncompleteError } from '../dashboard/home.js';
-import { DEFAULT_WEEKEND_DAYS, type WeekendMealTimes } from '../engine/mealSchedule.js';
+import { DEFAULT_WEEKEND_DAYS, SCHEDULE_CONFIG, type WeekendMealTimes } from '../engine/mealSchedule.js';
 import { localDateISO, msSinceLocalMidnight, shiftDateISO } from '../engine/time.js';
 import type { Goal } from '../engine/types.js';
 import { normalizeToken } from '../solver/exclusions.js';
@@ -29,6 +29,8 @@ export type SettingsView = {
   weekendDays: number;
   weekendSuggestion: WeekendBreakfastSuggestion | null;
   quietHours: { startMin: number; endMin: number };
+  /** Minutes after a meal time, with nothing logged, before a check-in. */
+  checkInGraceMin: number;
   checkInsPaused: boolean;
   restrictions: { label: string; token: string; source: string }[];
   pantryTokens: string[];
@@ -74,6 +76,7 @@ export type SettingsPatch = {
   weekendMealTimes?: WeekendMealTimes;
   weekendDays?: number;
   quietHours?: { startMin: number; endMin: number };
+  checkInGraceMin?: number;
   checkInsPaused?: boolean;
   timezone?: string;
   /** Full replace of the restriction set when present. */
@@ -231,6 +234,7 @@ export async function updateSettings(
       profileData.quietHoursStartMin = patch.quietHours.startMin;
       profileData.quietHoursEndMin = patch.quietHours.endMin;
     }
+    if (patch.checkInGraceMin != null) profileData.checkInGraceMin = patch.checkInGraceMin;
     if (patch.mode) profileData.mode = patch.mode;
     if (patch.pantryTokens) profileData.pantryTokens = patch.pantryTokens.map((t) => t.trim()).filter(Boolean);
     if (patch.dislikedFoods) profileData.dislikedFoods = patch.dislikedFoods.map((t) => t.trim()).filter(Boolean);
@@ -360,6 +364,7 @@ function toView(user: UserWithSettings, weekendSuggestion: WeekendBreakfastSugge
     weekendDays: p.weekendDays ?? DEFAULT_WEEKEND_DAYS,
     weekendSuggestion,
     quietHours: { startMin: p.quietHoursStartMin, endMin: p.quietHoursEndMin },
+    checkInGraceMin: p.checkInGraceMin ?? SCHEDULE_CONFIG.graceMin,
     checkInsPaused: user.escalationState?.checkInsPaused ?? false,
     restrictions: user.restrictions.map((r) => ({ label: r.label, token: r.token, source: r.source })),
     pantryTokens: p.pantryTokens ?? [],

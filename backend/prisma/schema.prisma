@@ -272,6 +272,9 @@ model OnboardingProfile {
   quietHoursStartMin Int @default(1380)
   quietHoursEndMin   Int @default(420)
 
+  /// Minutes after a usual meal time, with nothing logged, before a check-in.
+  checkInGraceMin Int @default(45)
+
   /// Foods the user currently has / will eat — solver prefers these.
   pantryTokens  String[] @default([])
   /// Soft dislikes (still not served if listed). Distinct from hard exclusions.
@@ -605,6 +608,12 @@ enum WorkoutSource {
   PLANNED
 }
 
+/// What happened to a planned session once its time came. Null: not answered.
+enum WorkoutOutcome {
+  DONE
+  SKIPPED
+}
+
 enum WorkoutKind {
   STRENGTH
   CARDIO
@@ -625,6 +634,8 @@ model Workout {
   clientId    String?
   /// Shared by the sessions of one weekly repeat; null for one-offs and Apple Health.
   seriesId    String?
+  /// Planned sessions only: confirmed done, or skipped (adds nothing to the day).
+  outcome     WorkoutOutcome?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

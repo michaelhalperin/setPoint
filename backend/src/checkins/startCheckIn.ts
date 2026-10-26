@@ -43,6 +43,7 @@ export async function startCheckIn(
           pantryTokens: true,
           prepTimeMaxMin: true,
           drinkableOk: true,
+          checkInGraceMin: true,
         },
       },
     },
@@ -54,7 +55,7 @@ export async function startCheckIn(
   const profile = user.onboarding;
   const times = mealTimesOn(profile, localWeekday(now, user.timezone));
   const nowMin = Math.floor(msSinceLocalMidnight(now, user.timezone) / 60_000);
-  const slot = checkInSlotAt(nowMin, times) ?? 'lunch';
+  const slot = checkInSlotAt(nowMin, times, profile.checkInGraceMin) ?? 'lunch';
   const dayStart = startOfLocalDay(now, user.timezone);
 
   const todayMeals = await prisma.meal.findMany({

@@ -262,11 +262,11 @@ final class TrainingStore {
         nudgeNow = nil
         // Older servers only list sessions inside the last days.
         let entries = response.sessions ?? response.days.flatMap { day in
-            day.workouts.map { TrainingWeekResponse.Entry(id: $0.id, kind: $0.kind, source: $0.source, start: $0.start, durationMin: $0.durationMin, activeKcal: $0.activeKcal) }
+            day.workouts.map { TrainingWeekResponse.Entry(id: $0.id, kind: $0.kind, source: $0.source, start: $0.start, durationMin: $0.durationMin, activeKcal: $0.activeKcal, outcome: $0.outcome) }
         }
         sessions = entries.compactMap { e in
             guard let start = Self.parseDate(e.start) else { return nil }
-            return TrainSession(id: e.id, clientId: e.clientId, seriesId: e.seriesId, kind: e.kind, source: e.source, start: start, durationMin: e.durationMin, activeKcal: e.activeKcal)
+            return TrainSession(id: e.id, clientId: e.clientId, seriesId: e.seriesId, kind: e.kind, source: e.source, start: start, durationMin: e.durationMin, activeKcal: e.activeKcal, outcome: e.outcome)
         }
         .sorted { $0.start < $1.start }
     }
@@ -364,6 +364,31 @@ final class TrainingStore {
             self?.insert(removed)
         } retry: { [weak self] in
             self?.delete(session, scope: scope, env: env)
+        }
+    }
+
+    /// Done or skipped, for a planned session that has started; nil takes it back.
+    /// Skipped takes the session's calories off the day.
+    func setOutcome(_ session: TrainSession, _ outcome: String?, env: AppEnvironment) {
+        var changed = session
+        changed.outcome = outcome
+        replace([changed])
+        Haptics.select()
+        struct Body: Encodable {
+            let outcome: String?
+            // Always sent, so null clears the answer.
+            func encode(to encoder: Encoder) throws {
+                var c = encoder.container(keyedBy: CodingKeys.self)
+                try c.encode(outcome, forKey: .outcome)
+            }
+            enum CodingKeys: String, CodingKey { case outcome }
+        }
+        save(env, touchesToday: Calendar.current.isDateInToday(session.start)) {
+            try await env.api.post("/api/workouts/\(session.id)/outcome", Body(outcome: outcome))
+        } undo: { [weak self] in
+            self?.replace([session])
+        } retry: { [weak self] in
+            self?.setOutcome(session, outcome, env: env)
         }
     }
 

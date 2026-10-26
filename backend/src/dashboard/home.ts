@@ -240,6 +240,7 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
   const localMinute = (date: Date): number => Math.floor(msSinceLocalMidnight(date, user.timezone) / 60_000);
   const mins = localMinute(now);
   const times = mealTimesOn(profile, localWeekday(now, user.timezone));
+  const grace = profile.checkInGraceMin ?? SCHEDULE_CONFIG.graceMin;
   const enforcementEnabled = user.safetyScreening?.enforcementEnabled ?? false;
   const shape = appetiteShape(
     (profile.appetiteMode as 'NORMAL' | 'SMALL_FREQUENT') ?? 'NORMAL',
@@ -276,12 +277,13 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
     .filter(
       (c) => c.tier < TIER.CONVERSATION && c.kind !== 'REFUEL' && c.kind !== 'PRE_WORKOUT' && c.kind !== 'CLOSE',
     )
-    .map((c) => slotNameOf(c.slot) ?? checkInSlotAt(localMinute(c.createdAt), times))
+    .map((c) => slotNameOf(c.slot) ?? checkInSlotAt(localMinute(c.createdAt), times, grace))
     .filter((slot): slot is SlotName => slot !== null);
   const scheduled = checksRunning
     ? upcomingCheckIn({
         nowMin: mins,
         times,
+        graceMin: grace,
         mealMinutesToday: todayMeals.map((m) => localMinute(m.loggedAt)),
         checkedSlotsToday,
         consumedKcal,
@@ -347,7 +349,7 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
         endMin: b.endMin,
       }))
     : [];
-  const movedSlots = movedSlotsToday(times, SCHEDULE_CONFIG.graceMin, todayBusy, calendarPrefs, weekday, keptSlots);
+  const movedSlots = movedSlotsToday(times, grace, todayBusy, calendarPrefs, weekday, keptSlots);
   const trainingRows = workoutHomeRows(trainingDay.workouts, user.timezone, dayStart);
   const firstSession = trainingDay.workouts[0];
   const refuelUntilMin = firstSession
@@ -455,7 +457,7 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
           slot:
             activeCheckIn.tier < TIER.CONVERSATION
               ? slotNameOf(activeCheckIn.slot) ??
-                checkInSlotAt(localMinute(activeCheckIn.createdAt), times)
+                checkInSlotAt(localMinute(activeCheckIn.createdAt), times, grace)
               : null,
           kind: activeCheckIn.kind,
           variant: activeCheckIn.variant,

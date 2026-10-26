@@ -72,6 +72,8 @@ const settingsPatch = z
     weekendMealTimes: weekendMealTimes.optional(),
     weekendDays: z.number().int().min(1).max(127).optional(),
     quietHours: quietHours.optional(),
+    /** Minutes after a meal time, with nothing logged, before a check-in. */
+    checkInGraceMin: z.number().int().min(15).max(120).optional(),
     checkInsPaused: z.boolean().optional(),
     timezone: z.string().optional(),
     restrictions: z.array(restriction).max(50).optional(),

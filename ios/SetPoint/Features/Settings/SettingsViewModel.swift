@@ -26,6 +26,8 @@ final class SettingsViewModel {
     var weekendMealTimes = WeekendMealTimesPayload.empty
     var weekendDays = WeekendDays.default
     var quietHours = QuietHoursPayload(startMin: 1380, endMin: 420)
+    /// Minutes after a meal time, with nothing logged, before a check-in.
+    var checkInGraceMin = CheckInSchedule.graceMin
     var checkInsPaused = false
     var restrictions: [String] = []
     var pantryTokens: [String] = []
@@ -179,6 +181,7 @@ final class SettingsViewModel {
             || weekendMealTimes != (o.weekendMealTimes ?? .empty)
             || weekendDays != (o.weekendDays ?? WeekendDays.default)
             || quietHours != o.quietHours
+            || checkInGraceMin != (o.checkInGraceMin ?? CheckInSchedule.graceMin)
             || checkInsPaused != o.checkInsPaused
             || Set(restrictions) != Set(o.restrictions.map(\.label))
             || pantryTokens != (o.pantryTokens ?? [])
@@ -198,6 +201,7 @@ final class SettingsViewModel {
             || weekendMealTimes != (o.weekendMealTimes ?? .empty)
             || weekendDays != (o.weekendDays ?? WeekendDays.default)
             || quietHours != o.quietHours
+            || checkInGraceMin != (o.checkInGraceMin ?? CheckInSchedule.graceMin)
     }
 
     var restrictionsDirty: Bool {
@@ -284,6 +288,10 @@ final class SettingsViewModel {
                 L10n("Quiet \(formatMinutes(o.quietHours.startMin))–\(formatMinutes(o.quietHours.endMin)) → \(formatMinutes(quietHours.startMin))–\(formatMinutes(quietHours.endMin))")
             )
         }
+        let oldGrace = o.checkInGraceMin ?? CheckInSchedule.graceMin
+        if checkInGraceMin != oldGrace {
+            parts.append(L10n("Check-in \(oldGrace) → \(checkInGraceMin) min after"))
+        }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
@@ -357,6 +365,7 @@ final class SettingsViewModel {
             weekendMealTimes: weekendMealTimes,
             weekendDays: weekendDays,
             quietHours: quietHours,
+            checkInGraceMin: checkInGraceMin,
             checkInsPaused: checkInsPaused,
             restrictions: restrictions.map { .init(label: $0, source: nil) },
             pantryTokens: pantryTokens,
@@ -440,6 +449,7 @@ final class SettingsViewModel {
         weekendDays = s.weekendDays ?? WeekendDays.default
         weekendSuggestion = s.weekendSuggestion
         quietHours = s.quietHours
+        checkInGraceMin = s.checkInGraceMin ?? CheckInSchedule.graceMin
         checkInsPaused = s.checkInsPaused
         restrictions = s.restrictions.map(\.label)
         pantryTokens = s.pantryTokens ?? []

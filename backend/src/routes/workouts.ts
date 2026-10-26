@@ -4,7 +4,7 @@ import { requireAuth, type AuthedRequest } from '../auth/index.js';
 import { getPrisma } from '../db/client.js';
 import { requireEntitlement } from '../subscription/requireEntitlement.js';
 import { localDateISO, localDayRange, msSinceLocalMidnight, shiftDateISO, startOfLocalDay } from '../engine/time.js';
-import { applyTrainingTarget, effectiveWorkouts, REFUEL_WINDOW_MIN, trainingBump } from '../engine/training.js';
+import { applyTrainingTarget, effectiveWorkouts, isSkipped, REFUEL_WINDOW_MIN, trainingBump } from '../engine/training.js';
 import { asTrainingWorkout } from '../training/day.js';
 import { replaceWorkouts } from '../training/replaceWorkouts.js';
 import { canEdit, followingStarts, PLAN_HORIZON_DAYS, startProblem } from '../training/schedule.js';
@@ -54,6 +54,12 @@ const editBody = z.object({
 });
 
 const scopeQuery = z.object({ scope: z.enum(['one', 'following']).default('one') });
+
+/** Done or skipped; null takes the answer back. */
+const outcomeBody = z.object({ outcome: z.enum(['DONE', 'SKIPPED']).nullable().optional() });
+
+/** How far back a planned session can still be answered. */
+const OUTCOME_LOOKBACK_DAYS = 14;
 
 export async function workoutRoutes(app: FastifyInstance): Promise<void> {
   app.addHook('preHandler', requireAuth(app));
@@ -175,6 +181,24 @@ export async function workoutRoutes(app: FastifyInstance): Promise<void> {
     return { updated: rows.length };
   });
 
+  // Say how a planned session went once its time has come: done, or skipped.
+  // Skipped adds nothing to the day's target; null takes the answer back.
+  app.post('/:ref/outcome', async (req) => {
+    const { ref } = z.object({ ref: z.string().min(1) }).parse(req.params);
+    const outcome = outcomeBody.parse(req.body ?? {}).outcome ?? null;
+    const userId = (req as AuthedRequest).userId;
+    const prisma = getPrisma();
+    const row = await prisma.workout.findFirst({ where: { userId, OR: [{ id: ref }, { clientId: ref }] } });
+    if (!row || row.source !== 'PLANNED') throw app.httpErrors.notFound('planned session not found');
+    const now = new Date();
+    if (row.start > now) throw app.httpErrors.conflict('session has not started');
+    if (now.getTime() - row.start.getTime() > OUTCOME_LOOKBACK_DAYS * 86_400_000) {
+      throw app.httpErrors.conflict('session is too old to change');
+    }
+    await prisma.workout.update({ where: { id: row.id }, data: { outcome } });
+    return { id: row.id, outcome };
+  });
+
   // Remove a session that hasn't started, or it and the rest of its repeat.
   app.delete('/:ref', async (req) => {
     const { ref } = z.object({ ref: z.string().min(1) }).parse(req.params);
@@ -237,7 +261,9 @@ export async function workoutRoutes(app: FastifyInstance): Promise<void> {
     for (let i = 0; i < 14; i += 1) {
       const date = shiftDateISO(windowStartISO, i);
       const range = localDayRange(date, user.timezone);
-      const dayWorkouts = effectiveWorkouts(workouts.filter((w) => w.start >= range.start && w.start < range.end));
+      // A session they said they skipped is listed but counts for nothing.
+      const shown = effectiveWorkouts(workouts.filter((w) => w.start >= range.start && w.start < range.end));
+      const dayWorkouts = shown.filter((w) => !isSkipped(w));
       const bump = trainingBump(dayWorkouts.map(asTrainingWorkout), weightKg);
       const past = date <= todayISO;
       const recorded = dayWorkouts.filter((w) => w.source === 'HEALTHKIT');
@@ -272,6 +298,7 @@ export async function workoutRoutes(app: FastifyInstance): Promise<void> {
           startMin: Math.floor(msSinceLocalMidnight(w.start, user.timezone) / 60_000),
           durationMin: w.durationMin,
           activeKcal: w.activeKcal,
+          outcome: w.outcome,
         })),
       });
     }
@@ -290,6 +317,7 @@ export async function workoutRoutes(app: FastifyInstance): Promise<void> {
           start: w.start.toISOString(),
           durationMin: w.durationMin,
           activeKcal: w.activeKcal,
+          outcome: w.outcome,
         });
       }
     }
@@ -300,7 +328,7 @@ export async function workoutRoutes(app: FastifyInstance): Promise<void> {
     const todayFirstDay = effectiveWorkouts(workouts.filter((w) => {
       const r = localDayRange(todayISO, user.timezone);
       return w.start >= r.start && w.start < r.end;
-    }));
+    })).filter((w) => !isSkipped(w));
     const trainingKcal = trainingBump(todayFirstDay.map(asTrainingWorkout), weightKg);
     const baseKcal = p.dailyKcalTarget;
     const targetKcal = applyTrainingTarget(baseKcal, todayBump, addCalories);

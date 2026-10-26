@@ -893,6 +893,7 @@ struct TrainingWeekResponse: Decodable {
         let startMin: Int
         let durationMin: Int
         var activeKcal: Int? = nil
+        var outcome: String? = nil
     }
 
     /// One session in `sessions`: planned (by the person) or recorded by Apple Health.
@@ -905,6 +906,8 @@ struct TrainingWeekResponse: Decodable {
         let start: String
         let durationMin: Int
         var activeKcal: Int? = nil
+        /// Planned sessions: DONE / SKIPPED once answered.
+        var outcome: String? = nil
     }
 
     struct Today: Decodable {
@@ -1018,6 +1021,8 @@ struct SettingsResponse: Decodable {
     var weekendDays: Int? = nil
     var weekendSuggestion: WeekendSuggestion? = nil
     let quietHours: QuietHoursPayload
+    /// Older servers leave it out: the default 45.
+    var checkInGraceMin: Int? = nil
     let checkInsPaused: Bool
     let restrictions: [Restriction]
     let enforcementEnabled: Bool
@@ -1053,6 +1058,8 @@ struct SettingsPatch: Encodable {
     var weekendMealTimes: WeekendMealTimesPayload?
     var weekendDays: Int?
     var quietHours: QuietHoursPayload?
+    /// Minutes after a meal time, with nothing logged, before a check-in.
+    var checkInGraceMin: Int?
     var checkInsPaused: Bool?
     var restrictions: [RestrictionInput]?
     var pantryTokens: [String]?

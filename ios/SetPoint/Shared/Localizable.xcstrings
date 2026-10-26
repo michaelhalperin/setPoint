@@ -12260,6 +12260,86 @@
           }
         }
       }
+    },
+    "Did you train?": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "התאמנת?"
+          }
+        }
+      }
+    },
+    "Skipped": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "דילגתי"
+          }
+        }
+      }
+    },
+    "skipped": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "דילגת"
+          }
+        }
+      }
+    },
+    "Counted in today’s target": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "נספר ביעד של היום"
+          }
+        }
+      }
+    },
+    "It adds nothing to the day": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "זה לא מוסיף ליום"
+          }
+        }
+      }
+    },
+    "Check-in after a meal": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "תזכורת אחרי ארוחה"
+          }
+        }
+      }
+    },
+    "If nothing’s logged %lld min after a meal time, I check in once.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אם לא נרשם כלום %lld דק׳ אחרי שעת הארוחה, אשלח תזכורת אחת."
+          }
+        }
+      }
+    },
+    "Check-in %lld → %lld min after": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "תזכורת %lld → %lld דק׳ אחרי"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

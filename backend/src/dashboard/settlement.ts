@@ -143,6 +143,7 @@ export async function buildSettlement(deps: SettlementDeps, userId: string): Pro
       dinnerMin: profile.weekendDinnerMin ?? null,
     },
     weekendDays: profile.weekendDays ?? undefined,
+    graceMin: profile.checkInGraceMin,
     meals: windowMeals.map((m) => local(m.loggedAt)),
     checkIns: windowCheckIns.map((c) => ({ ...local(c.createdAt), status: c.status, tier: c.tier })),
     planStartDate: profile.completedAt ? localDateISO(profile.completedAt, user.timezone) : undefined,

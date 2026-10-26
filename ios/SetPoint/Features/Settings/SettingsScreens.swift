@@ -542,6 +542,8 @@ struct RhythmSettingsView: View {
                 weekendDays.transition(.opacity.combined(with: .move(edge: .top)))
             }
 
+            checkInWait.appearIn(4)
+
             if let error = model.error {
                 SettingsErrorBanner(message: error)
             }
@@ -585,7 +587,7 @@ struct RhythmSettingsView: View {
         case let .meal(slot):
             let t = activeTimes[slot]
             let weekday = model.mealTimes[slot]
-            let checkIn = L10n( "check-in \(formatMinutes(CheckInSchedule.minute(afterMeal: t)))")
+            let checkIn = L10n( "check-in \(formatMinutes(CheckInSchedule.minute(afterMeal: t, grace: model.checkInGraceMin)))")
             return editingWeekends && t != weekday
                 ? L10n( "weekdays \(formatMinutes(weekday)) · \(checkIn)")
                 : checkIn
@@ -674,6 +676,25 @@ struct RhythmSettingsView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(L10n("Use suggested weekend breakfast \(formatMinutes(suggestion.breakfastMin))"))
+    }
+
+    /// How long after a meal time, with nothing logged, before I check in.
+    private var checkInWait: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Check-in after a meal").sectionLabelStyle()
+            SegmentedPills(
+                options: CheckInSchedule.graceOptions,
+                selection: Binding(get: { model.checkInGraceMin }, set: { model.checkInGraceMin = $0 }),
+                title: { L10n("\($0) min") }
+            )
+            Text(L10n("If nothing’s logged \(model.checkInGraceMin) min after a meal time, I check in once."))
+                .font(Typography.data(13, weight: .regular))
+                .foregroundStyle(Palette.inkSoft)
+                .fixedSize(horizontal: false, vertical: true)
+                .contentTransition(.opacity)
+        }
+        .padding(16)
+        .glass(radius: 22)
     }
 
     /// Lit days follow the weekend times.

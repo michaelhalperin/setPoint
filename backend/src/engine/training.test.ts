@@ -82,3 +82,10 @@ describe('pre-workout nudge', () => {
     ).toBe(true);
   });
 });
+
+describe('planned session outcome', () => {
+  it('a skipped session adds nothing; a done one counts as before', () => {
+    expect(trainingBump([{ ...strength, outcome: 'SKIPPED' }], 80)).toBe(0);
+    expect(trainingBump([{ ...strength, outcome: 'DONE' }], 80)).toBe(trainingBump([strength], 80));
+  });
+});

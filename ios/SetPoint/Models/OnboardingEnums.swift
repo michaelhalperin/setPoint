@@ -277,10 +277,13 @@ func derivedQuietHours(breakfastMin: Int, dinnerMin: Int) -> (start: Int, end: I
 /// When a check-in would come: a usual meal time plus a grace period with
 /// nothing logged. Onboarding draws these as the bells on the day dial.
 enum CheckInSchedule {
+    /// The default; each person can change theirs under You → Meal times.
     static let graceMin = 45
+    /// The waits offered in Meal times, in minutes.
+    static let graceOptions = [30, 45, 60, 90]
 
-    static func minute(afterMeal mealMin: Int) -> Int {
-        (mealMin + graceMin) % 1440
+    static func minute(afterMeal mealMin: Int, grace: Int = graceMin) -> Int {
+        (mealMin + grace) % 1440
     }
 }
 

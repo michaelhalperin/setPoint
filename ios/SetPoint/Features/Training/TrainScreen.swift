@@ -136,6 +136,19 @@ struct TrainingScreen: View {
 
     @ViewBuilder
     private func dayCard(_ day: TrainDay, now: Date) -> some View {
+        VStack(spacing: 12) {
+            dayCardBody(day, now: now)
+            // Planned sessions whose time has come: did it happen?
+            ForEach(day.sessions.filter { $0.canAnswer(now: now) }) { s in
+                SessionOutcomeRow(session: s) { outcome in
+                    store.setOutcome(s, outcome, env: env)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func dayCardBody(_ day: TrainDay, now: Date) -> some View {
         if day.sessions.isEmpty {
             TrainRestCard(day: day) { sheet = .plan(defaultStart(on: day.date)) }
         } else if day.isToday, let first = day.sessions.first {

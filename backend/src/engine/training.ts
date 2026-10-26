@@ -16,7 +16,14 @@ export type TrainingWorkout = {
   start: Date;
   durationMin: number;
   activeKcal: number | null;
+  /** Planned sessions: DONE / SKIPPED once answered; null before. */
+  outcome?: string | null;
 };
+
+/** A planned session the person said didn't happen adds nothing and needs no refuel. */
+export function isSkipped(workout: { outcome?: string | null }): boolean {
+  return workout.outcome === 'SKIPPED';
+}
 
 const MET: Record<WorkoutKind, number> = {
   STRENGTH: 6,
@@ -56,7 +63,9 @@ export function effectiveWorkouts<T extends { source: string; start: Date; durat
 }
 
 export function trainingBump(workouts: TrainingWorkout[], weightKg: number): number {
-  const raw = effectiveWorkouts(workouts).reduce((sum, w) => sum + sessionKcal(w, weightKg), 0);
+  const raw = effectiveWorkouts(workouts)
+    .filter((w) => !isSkipped(w))
+    .reduce((sum, w) => sum + sessionKcal(w, weightKg), 0);
   const rounded = Math.round(raw / TRAINING_ROUND) * TRAINING_ROUND;
   return Math.min(TRAINING_BUMP_CAP, Math.max(0, rounded));
 }

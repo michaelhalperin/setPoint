@@ -62,6 +62,8 @@ export type RecordInput = {
   checkIns: { date: string; minute: number; status: string; tier: number }[];
   /** Local YYYY-MM-DD the plan started. Days before this are not missed. */
   planStartDate?: string;
+  /** Minutes after a meal time before a check-in; the default when absent. */
+  graceMin?: number;
 };
 
 export const RECORD_CONFIG = {
@@ -109,7 +111,7 @@ function isWeekday(iso: string, weekendDays: number = DEFAULT_WEEKEND_DAYS): boo
 
 export function buildWeekRecord(input: RecordInput, config = RECORD_CONFIG): WeekRecord {
   const today = input.dates[input.dates.length - 1];
-  const grace = SCHEDULE_CONFIG.graceMin;
+  const grace = input.graceMin ?? SCHEDULE_CONFIG.graceMin;
   let onTime = 0;
   let afterCheckIn = 0;
   let missed = 0;

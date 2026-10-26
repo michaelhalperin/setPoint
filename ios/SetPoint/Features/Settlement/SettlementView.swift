@@ -184,10 +184,6 @@ private struct SettlementSkeletonView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 6) {
-                Circle().fill(Palette.amber).frame(width: 6, height: 6)
-                Text("COUNTING").font(Typography.mono(10)).tracking(1.1).foregroundStyle(Palette.inkFaint)
-            }
             TimelineView(.animation(paused: reduceMotion)) { ctx in
                 let t = ctx.date.timeIntervalSinceReferenceDate
                 VStack(alignment: .leading, spacing: 14) {

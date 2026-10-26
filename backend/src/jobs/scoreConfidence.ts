@@ -330,11 +330,12 @@ async function processUser(
     .filter(
       (c) => c.tier < TIER.CONVERSATION && c.kind !== 'REFUEL' && c.kind !== 'PRE_WORKOUT' && c.kind !== 'CLOSE',
     )
-    .map((c) => slotNameOf(c.slot) ?? checkInSlotAt(localMinute(c.createdAt, user.timezone), times))
+    .map((c) => slotNameOf(c.slot) ?? checkInSlotAt(localMinute(c.createdAt, user.timezone), times, profile.checkInGraceMin))
     .filter((slot): slot is SlotName => slot !== null);
   const upcoming = upcomingCheckIn({
     nowMin,
     times,
+    graceMin: profile.checkInGraceMin,
     mealMinutesToday: todayMeals.map((m) => localMinute(m.loggedAt, user.timezone)),
     checkedSlotsToday,
     consumedKcal,
@@ -717,7 +718,7 @@ type TrainingCtx = {
   dayStart: Date;
   todayMeals: { kcal: number; proteinG: number; loggedAt: Date }[];
   todayCheckIns: { episodeKey: string | null; kind: string; slot: string | null; tier: number; createdAt: Date }[];
-  workouts: { id: string; source: string; start: Date; durationMin: number }[];
+  workouts: { id: string; source: string; start: Date; durationMin: number; outcome?: string | null }[];
   dinnerMin: number;
   restrictions: { token: string }[];
   usualForSlot: { suggestSlot: string | null }[];
@@ -737,8 +738,9 @@ async function maybeFireTrainingCheckIn(
   const meals = ctx.todayMeals.map((m) => ({ at: m.loggedAt, kcal: m.kcal }));
   const excludedTokens = excludedTokensFrom(ctx.restrictions, profile.dislikedFoods);
 
-  // Only a session Apple Health recorded proves the user trained — a planned one may have been skipped.
-  for (const workout of ctx.workouts.filter((w) => w.source === 'HEALTHKIT')) {
+  // Only a session Apple Health recorded, or a planned one they confirmed, proves
+  // the user trained — an unanswered plan may have been skipped.
+  for (const workout of ctx.workouts.filter((w) => w.source === 'HEALTHKIT' || w.outcome === 'DONE')) {
     const ended = new Date(workout.start.getTime() + workout.durationMin * 60_000);
     if (
       !needsRefuel({

@@ -2,18 +2,22 @@ import type { PrismaClient, Workout } from '@prisma/client';
 import {
   applyTrainingTarget,
   effectiveWorkouts,
+  isSkipped,
   trainingBump,
   type TrainingWorkout,
 } from '../engine/training.js';
 import { msSinceLocalMidnight, startOfLocalDay } from '../engine/time.js';
 
-export function asTrainingWorkout(row: Pick<Workout, 'source' | 'kind' | 'start' | 'durationMin' | 'activeKcal'>): TrainingWorkout {
+export function asTrainingWorkout(
+  row: Pick<Workout, 'source' | 'kind' | 'start' | 'durationMin' | 'activeKcal'> & { outcome?: string | null },
+): TrainingWorkout {
   return {
     source: row.source,
     kind: row.kind,
     start: row.start,
     durationMin: row.durationMin,
     activeKcal: row.activeKcal,
+    outcome: row.outcome ?? null,
   };
 }
 
@@ -38,7 +42,7 @@ export async function trainingForLocalDay(
   return {
     bump,
     targetKcal: applyTrainingTarget(input.baseKcal, bump, input.addCalories),
-    workouts: effectiveWorkouts(workouts),
+    workouts: effectiveWorkouts(workouts).filter((w) => !isSkipped(w)),
   };
 }
 
