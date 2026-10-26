@@ -10,8 +10,8 @@
 import { env } from '../env.js';
 
 /** Bump when the substance changes; the app can compare it to what a user accepted. */
-export const LEGAL_VERSION = '2026-10-21-nutrition-assistant';
-export const LEGAL_EFFECTIVE_DATE = 'October 21, 2026';
+export const LEGAL_VERSION = '2026-10-26-location-training-appetite';
+export const LEGAL_EFFECTIVE_DATE = 'October 26, 2026';
 
 const SUPPORT = env.SUPPORT_EMAIL;
 
@@ -54,7 +54,7 @@ export function privacyPolicyHtml(): string {
   return page(
     'Privacy Policy',
     `<h1>Privacy Policy</h1>
-<p class="meta">Effective ${LEGAL_EFFECTIVE_DATE}</p>
+<p class="meta">Last updated ${LEGAL_EFFECTIVE_DATE}</p>
 
 <p>SetPoint ("we", "us") is an under-fueling coach: it watches whether meals
 are logged on the rhythm you set, and checks in when a meal appears to have
@@ -75,6 +75,9 @@ never sell your data or use health data for advertising.</p>
   <li><strong>Safety screening answers</strong> — medical-eligibility questions and a validated eating-concern questionnaire, used once to decide whether active check-ins should be enabled. Uncertain answers keep check-ins off. Stored so you don't have to answer again; never used for any other purpose.</li>
   <li><strong>Weight entries</strong> — weigh-ins you record or that are read from Apple Health.</li>
   <li><strong>Derived biosignal values (Smart mode only)</strong> — if you connect Apple Health, the app reads your heart-rate variability and resting heart rate <em>on your device</em>, converts them to a normalized deviation from your own baseline, and may send only that derived number. Raw heart-rate time series never leave your phone. These values may adjust an already-due check-in; they are not a diagnosis of under-fueling.</li>
+  <li><strong>Training</strong> — sessions you plan in the app (type, start time, duration, whether you did or skipped them, and weekly repeats) and, if you connect Apple Health, workouts it records (type, start time, duration, active calories). Used to adjust your calorie and protein targets for training days and to time snacks around a session.</li>
+  <li><strong>Appetite</strong> — the daily appetite level you tell the app (and your appetite settings). Used to adjust your plan for the day.</li>
+  <li><strong>Location (only when you ask for nearby food)</strong> — when you open nearby dish suggestions, your approximate position is sent with that request so we can find places and dishes close to you. It is used for that search only and is not stored. Location is not collected in the background.</li>
   <li><strong>Check-in activity</strong> — when check-ins fire, whether you logged, deferred, or missed them, and any thumbs up/down you give. Used to operate the escalation logic and to tune the detection thresholds during the beta.</li>
   <li><strong>Device push token</strong> — an Apple-issued identifier used to deliver check-in notifications and Live Activities.</li>
   <li><strong>How you use the app</strong> — which screens you open and the actions you take (for example signing up, finishing setup, logging or fixing a meal, answering a check-in, opening a dish in Wolt), with the time. Kept in our own database, linked to your account, and never sent to an analytics or advertising company.</li>
@@ -90,8 +93,14 @@ never sell your data or use health data for advertising.</p>
   <li>To understand how the app is used and make it better — for example, which screens help people eat enough and where they get stuck.</li>
 </ul>
 <p><strong>Review by the SetPoint team.</strong> Members of the SetPoint team can see the meals you log (including their text and photos), your calorie and protein numbers, your weight entries, your check-in answers, and how you use the app, linked to your account. We look at this to support you, to check that estimates and check-ins are working, and to improve the app. Access is limited to the people who run SetPoint.</p>
-<p><strong>Nutrition assistant.</strong> This is an AI assistant, not a dietitian or a doctor. It is off unless you are in a flagged group and you accept an in-app consent screen. Your trainer cannot see the chat. If a message is flagged as unsafe, SetPoint may read that turn to check the safety system. Full-thread reading happens only if you explicitly opt in. Counsel review of this surface is required before it is turned on for a cohort.</p>
+<p><strong>Nutrition assistant.</strong> This is an AI assistant, not a dietitian or a doctor. It is off unless you are in a flagged group and you accept an in-app consent screen. Your trainer cannot see the chat. If a message is flagged as unsafe, SetPoint may read that turn to check the safety system. Full-thread reading happens only if you explicitly opt in.</p>
 <p>We do not use your information for advertising, and we do not sell it.</p>
+
+<h2>Camera and photos</h2>
+<p>The camera is used only when you take a meal photo or scan a barcode. The photo
+library is used only for photos you choose to attach. Meal photos you log are
+stored and sent for automatic parsing as described above; barcode scans are not
+kept as images, and only the barcode number is looked up.</p>
 
 <h2>Calendar</h2>
 <p>If you connect a calendar, SetPoint reads event times on your device and uploads
@@ -106,6 +115,7 @@ before a block of meetings. You can disconnect the calendar at any time.</p>
   <em>bounded modifier</em> on check-ins that are already due from missed or late
   meals. Wearable signals never independently trigger a check-in.</li>
   <li>Reads body weight, height, age and sex to set targets and track progress.</li>
+  <li>Reads workouts (type, start time, duration, active calories) so training days are reflected in your targets.</li>
   <li>Writes meals you log (calories, protein, carbohydrates and fat) into Health
   as one food entry per meal, using the meal identifier so an edit or delete in
   SetPoint updates the same samples. You can turn each nutrient off in Settings.
@@ -121,8 +131,8 @@ Health app or in iOS Settings.</p>
 <ul>
   <li><strong>Anthropic</strong> — processes the meal text or photo you submit to return a nutrition estimate, and generates the wording of check-in messages. If you use the Nutrition assistant, your messages and a snapshot of today’s meals, plan, and restrictions are also sent to generate a reply. Meal photos are not sent in that chat. Input is sent over an encrypted connection for those purposes. Meals you log from a saved plate, a barcode, or the food catalog are not sent to the model.</li>
   <li><strong>Open Food Facts</strong> — a public food database we query when you scan a barcode, to look up the product name and per-100g nutrition. We send only the barcode.</li>
-  <li><strong>USDA FoodData Central</strong> — the U.S. Department of Agriculture's public food database, queried when Open Food Facts doesn't know a scanned barcode. We send only the barcode.</li>
-  <li><strong>USDA FoodData Central</strong> — a public-domain food composition dataset we import so you can search generic foods (chicken, rice, banana) and get per-100g calories and macros. We do not send your search to USDA at lookup time.</li>
+  <li><strong>USDA FoodData Central</strong> — the U.S. Department of Agriculture's public food database. We query it with only the barcode when Open Food Facts doesn't know a scanned product, and we keep an imported copy of it so you can search generic foods (chicken, rice, banana) for per-100g calories and macros; those searches are not sent to USDA.</li>
+  <li><strong>Wolt</strong> — nearby dish suggestions link out to Wolt's search pages. We do not send Wolt your location or account; once you open a link, Wolt's own privacy policy applies. We record only that you opened it.</li>
   <li><strong>Vercel</strong> — hosts the backend service.</li>
   <li><strong>Neon</strong> — hosts the database.</li>
   <li><strong>Cloudflare</strong> — stores the meal photos you log, in private storage.</li>
@@ -167,7 +177,7 @@ export function termsOfServiceHtml(): string {
   return page(
     'Terms of Service',
     `<h1>Terms of Service</h1>
-<p class="meta">Effective ${LEGAL_EFFECTIVE_DATE}</p>
+<p class="meta">Last updated ${LEGAL_EFFECTIVE_DATE}</p>
 
 <p>By using SetPoint you agree to these terms.</p>
 
@@ -196,6 +206,18 @@ by design and not a diagnosis.</p>
   <li>You are 16 or older.</li>
   <li>Don't misuse the service (interfering with its operation, attempting unauthorized access, or reverse-engineering it beyond what the law allows).</li>
 </ul>
+
+<h2>Nutrition assistant</h2>
+<p>Where it is available to you, the Nutrition assistant is an AI. It is not a
+dietitian or a doctor, it can be wrong, and it does not replace professional
+advice. Use it only after accepting its in-app consent screen, and follow your
+care team's guidance over its suggestions.</p>
+
+<h2>Training and nearby food</h2>
+<p>Training plans, workout-based adjustments and nearby dish suggestions are
+estimates to help you eat enough. Dishes and venues come from third parties
+(such as Wolt); we don't control their menus, availability, prices or
+nutrition information, and any order you place is between you and them.</p>
 
 <h2>Check-ins and notifications</h2>
 <p>SetPoint sends time-sensitive notifications and Live Activities as part of its
