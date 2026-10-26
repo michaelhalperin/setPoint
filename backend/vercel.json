@@ -4,7 +4,8 @@
     { "source": "/api/(.*)", "destination": "/api" },
     { "source": "/privacy", "destination": "/api" },
     { "source": "/terms", "destination": "/api" },
-    { "source": "/admin", "destination": "/api" }
+    { "source": "/admin", "destination": "/api" },
+    { "source": "/ops", "destination": "/api" }
   ],
   "functions": {
     "api/index.ts": { "maxDuration": 60 }
