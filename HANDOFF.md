@@ -1,8 +1,33 @@
-# SetPoint — handoff for Cursor (2026-10-25)
+# SetPoint — handoff (updated 2026-10-26, after build 19)
 
-Read this first. It covers the rules that bite, how to test and ship, what changed today,
-and what's still open. `README.md`, `ios/README.md`, `backend/README.md` and
+Read this first; you don't need the old conversation. It covers what to do next, the rules
+that bite, how to test and ship, and what changed recently. `README.md`, `ios/README.md`, `backend/README.md` and
 `backend/COMPLIANCE.md` have the longer background.
+
+## 0. Start here: next up, and how the owner works
+
+**Next up, from the owner's list (not started):**
+1. **My meals rework** (You → My meals, `Features/Settings/SavedMealsSettingsView.swift`). The
+   owner saw a design and hasn't said yes or asked for changes yet. Ask first. Design board:
+   https://claude.ai/artifact/W53ibrDXyLfVtU4NV24BHo — big "My meals" title + count;
+   All / Breakfast / Lunch / Dinner filter chips; a "BREAKFAST · RIGHT NOW" card for the plate
+   that fits now, with a big "Log it · 420 kcal" button; then a compact list (name, slot,
+   "used 12×", kcal, "+ Log" button; tap the row to edit). It replaces the big kcal rings.
+2. **Edit plan screen** (`Features/Settings/SettingsScreens.swift`, `ScreenHeader(label: "Edit plan")`).
+   The owner only said "Edit plan screen"; ask what's wrong before changing it.
+
+**How the owner works:**
+- Sends bug/feature lists; each batch ends in a TestFlight build (bump the build number, §2).
+- For UI reworks they want to **see a simple design first** (a static mockup on a design board),
+  then you build it in the app. Keep mockups simple.
+- They reply in short messages; when something is ambiguous, ask with 2–4 concrete options.
+- **Others edit this repo at the same time** (the owner, Cursor). Before committing, check
+  `git status` for files you didn't touch. Don't commit them unless asked, and archive from a
+  clean worktree if they'd end up in the build:
+  ```bash
+  W=$(mktemp -d)/ship && git worktree add --detach $W HEAD && cp ios/Config/Signing.xcconfig $W/ios/Config/ && (cd $W && UPLOAD=1 ./ios/scripts/archive.sh); git worktree remove --force $W
+  ```
+  (`Signing.xcconfig` is untracked, so copy it in.)
 
 ## 1. Rules you must not break
 
@@ -49,13 +74,14 @@ and what's still open. `README.md`, `ios/README.md`, `backend/README.md` and
   ```bash
   SETPOINT_SIM="iPhone 18 Pro" ./ios/scripts/test.sh
   ```
-  206 tests passed at commit `2bc181a`.
+  206 tests passed at commit `e713e02` (build 19).
 - **Backend:** see the command in §1. `src/ai/experts/kernel.test.ts` ("returns paused…") fails
   on `main` before any of today's changes. It depends on a local env flag; ignore it.
 - **Debug screens without signing in:** launch with `-uiStub <name>` (the list is in
   `ios/SetPoint/App/RootView.swift` → `fromLaunchArguments`). Useful ones: `log-quick`,
   `log-meal-result`, `log-meal-parsing`, `fix-meal`, `meal-detail`, `scanner`, `scanner-found`,
-  `scanner-miss`, `scanner-label`, `scanner-looking`, `training`, `home`.
+  `scanner-miss`, `scanner-label`, `scanner-looking`, `training` (yesterday has an unanswered
+  planned lift), `home`, `settings`, `settings-meal-times`, `settings-saved-meals`.
 - `./ios/scripts/run.sh` builds, then dies at `open -a Simulator` **before installing**, so you
   launch the old build. Install by hand instead:
   ```bash
@@ -91,55 +117,50 @@ first-person voice ("לא מצאתי", "I'll work it out").
   URL image fetcher gets blocked by Wikimedia. Keep scratch scripts out of `src/` and delete them
   afterwards.
 
-## 6. What changed today (commits on `main`, oldest → newest)
+## 6. What changed recently (newest first)
 
-- **Release setup:**
-  - Bundle ID moved to `com.michaelhalperin.setpointapp`; iPhone-only build.
-  - Privacy manifests, Release entitlements (production push), `ios/scripts/archive.sh` (`UPLOAD=1`).
-- **Barcode:**
-  - The scanner has an aiming frame and stays up during lookup. Not-found offers **Photograph
-    the label / Scan again / Type it instead**.
-  - Results show as an in-scanner card (`ScannedProductCard`) instead of a sheet on top of the
-    log sheet. "Save as my meal" opens over the scanner.
-  - Lookup tries UPC-E / UPC-A / EAN-13 forms, keeps Hebrew-only names, works out kcal from
-    macros, retries Open Food Facts once, then falls back to **USDA branded foods** (`FDC_API_KEY`).
-  - Label photo → AI → saved in the shared `BarcodeFood` cache (new route
-    `POST /api/foods/barcode/:code/label`, own quota `label_read`; never overwrites a known
-    product).
-- **Camera:** every add-photo entry offers Take photo / Choose from library (`CameraCapture`).
-  A taken photo is submitted immediately (`LogMealViewModel.logPhoto`).
-- **Photo recognition:** the Sonnet 5.5 path above. The app uploads at 1536px / 80% JPEG; the
-  meal-log and label routes accept 4 MB (`backend/src/http/limits.ts`).
-- **Photo result:** X button (cancels while reading, even if the meal lands later; asks before
-  discarding a result). Today reloads on `env.changes.mealRevision`; deleted meals used to
-  linger there.
-- **Logged-meal sheet** (`MealDetailSheet` in `MealViews.swift`): rebuilt. Pinned actions
-  (Log again / Fix / Save), delete confirmation, % of today, macro split.
-- **Titles never truncate:** `FittingHeadline` in `DesignSystem/Atmosphere.swift`.
-- **Sideways bounce fix:** `pullToReload` now bounces vertically only (`Components.swift`).
-- **Train:** the snack shows as logged only when it's on today's log (`TrainingStore.isSnackLogged`).
-- **Cursor, builds 11–15:** snack-before meal context, photo chip nudge, settings and clock
-  fixes, pantry orbit.
+- **Build 19:**
+  - **Train:** once a planned session starts, "Did you train?" with Done / Skipped and Undo
+    (`SessionOutcomeRow` in `TrainWeekViews.swift`, `TrainingStore.setOutcome`).
+    `POST /api/workouts/:ref/outcome`, nullable `Workout.outcome`, 14-day window. Skipped adds no
+    calories and needs no refuel (`isSkipped` in `engine/training.ts` and `TrainPlan.swift`).
+    Done counts as proof of training for the refuel nudge (`jobs/scoreConfidence.ts`).
+  - **Check-in delay per user:** `OnboardingProfile.checkInGraceMin` (default 45), set to
+    30/45/60/90 under You → Meal times (`checkInWait` in `RhythmSettingsView`). It's passed to
+    every `checkInSlotAt` / `upcomingCheckIn` / `movedSlotsToday` / `buildWeekRecord` /
+    `buildCalendarWeek` caller.
+  - Migration `20261026120000_workout_outcome_checkin_grace` (additive), already live.
+- **Build 18:**
+  - Log sheet: the rough-size "Pick a size · + Log ~1,050" row is pinned under the scroll area.
+  - You screen: "How I check in" removed. Notifications live in Settings. An account that paused
+    check-ins sees a "Check-ins are paused · Turn on" row; safety-off accounts still see why.
+- **Build 17:**
+  - Log sheet opens on a live camera (`LiveMealCamera.swift`, AVFoundation; library button;
+    fallback with no camera or no permission).
+  - Sideways "Recent" cards (last 10, one per name) from `GET /api/meals/recent` (14 days).
+  - Usual tiles are saved plates only.
+- **Build 16:**
+  - Meal editor: Undo after removing a food, an empty-plate state, and "Back to what I saw".
+    "Clear it" is gone.
+  - Delete meal closes the sheet first, then deletes in the background.
+  - Scroll bars hidden app-wide (`.scrollIndicators(.hidden)` in `SetPointApp`).
+- **Build 15:**
+  - Photo Fix tags are measured and truncate instead of leaving the screen.
+  - The Meal times day label follows the user's weekend days (`WeekendDays.span`).
+  - Pantry suggestions are localized; Hebrew filled in.
+- **Builds 10–14 (2026-10-25):**
+  - Barcode scanner rebuild + USDA fallback + label photo → AI.
+  - Sonnet 5.5 photo parsing.
+  - Camera capture.
+  - Logged-meal sheet rebuild.
+  - `FittingHeadline`.
+  - Vertical-only pull bounce.
+  - Train snack fix.
+  - Cursor's settings/clock/pantry work.
 
 ## 7. Open items
 
-1. **Done 2026-10-26 (build 15):** Cursor's ruler momentum and `alreadySaved` are committed;
-   photo Fix tags are measured (`chipDx(spotX:chipWidth:containerWidth:)`) and long names
-   truncate; the Meal times day label uses `WeekendDays.span` (weekend days are user-set);
-   pantry suggestions go through `L10nKey`; Hebrew added for all of it.
-   **Build 16:** the meal editor has Undo / "Back to what I saw" (no more "Clear it" dead end);
-   Delete meal closes the sheet first and deletes in the background; scroll bars hidden app-wide
-   (`.scrollIndicators(.hidden)` in `SetPointApp`). Still to do from the owner's list: new
-   "How I check in" switch design, Edit plan screen, My meals rework.
-   **Build 17:** log sheet opens on a live camera (`LiveMealCamera.swift`, AVFoundation) and a
-   sideways Recent list (`GET /api/meals/recent`, last 14 days). Archive from a clean worktree
-   when someone else has uncommitted edits: `archive.sh` builds whatever is in the folder.
-   **Build 18:** the log sheet's rough-size Log button is pinned under the scroll area; the You
-   screen's "How I check in" card is gone (a paused account sees one "Turn on" row).
-   **Build 19:** planned sessions get "Did you train?" Done / Skipped once started
-   (`POST /api/workouts/:ref/outcome`, `Workout.outcome`; skipped adds no calories and needs no
-   refuel). Check-in delay per user (`OnboardingProfile.checkInGraceMin`, 30/45/60/90 under
-   You → Meal times), threaded through every `checkInSlotAt` / `upcomingCheckIn` caller.
+1. See §0 for the next features.
 2. **Vercel env:** add `FDC_API_KEY` (free at api.data.gov; the demo key allows about 10
    lookups an hour) and `APPLE_APP_APPLE_ID=6826865782`. `APPLE_CLIENT_ID`, `APNS_BUNDLE_ID` and
    `APP_BUNDLE_ID` must all equal the bundle ID.
