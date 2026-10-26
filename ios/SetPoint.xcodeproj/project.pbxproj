@@ -70,6 +70,7 @@
 		5CBD1DA8FA61AB27EF2F5F23 /* SetPointWidgetsBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59A5DF79076B600F6BF06497 /* SetPointWidgetsBundle.swift */; };
 		5E8A34073E3D7328D86C65B3 /* CalendarDayScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2A33E0964E77BC24B5733DC /* CalendarDayScreen.swift */; };
 		61C31B28C3ED19D2068E2977 /* CalendarBusyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CE425D9949F2C629FC21ADB /* CalendarBusyTests.swift */; };
+		61E1D3D0870692E863388833 /* AppIntroView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A9B3A36C1B2B8678A208444 /* AppIntroView.swift */; };
 		6557D90382A31A210B260EA5 /* HealthKitManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7021ED198E64F06CF3DED7DD /* HealthKitManagerTests.swift */; };
 		65A7BC9F4DAB8C5EC8C1B5B7 /* TrainScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3768659F767C219C5E5A80AB /* TrainScreen.swift */; };
 		68C662A20CFA38C3DC99D29D /* GoalGraphics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FBD6573F65372C38D55EE1A /* GoalGraphics.swift */; };
@@ -302,6 +303,7 @@
 		8D2EAD6478466ABC9C7DAA94 /* SessionSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionSheet.swift; sourceTree = "<group>"; };
 		9086CF76120B951F38382F7E /* OnboardingModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingModel.swift; sourceTree = "<group>"; };
 		99EDC533BAB8E6329BDB5A96 /* TodayWidgetViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayWidgetViews.swift; sourceTree = "<group>"; };
+		9A9B3A36C1B2B8678A208444 /* AppIntroView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIntroView.swift; sourceTree = "<group>"; };
 		9BB6EDFED14C73482BD780ED /* HealthWrite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthWrite.swift; sourceTree = "<group>"; };
 		9D05051B152A3F34D639B5E9 /* SignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInView.swift; sourceTree = "<group>"; };
 		9EDB4F489DB6A01791F0DAAD /* DeepLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepLink.swift; sourceTree = "<group>"; };
@@ -461,6 +463,7 @@
 				D5D455D4A8806EF0D3B4A014 /* Experts */,
 				6289B3322997243B406037A1 /* Home */,
 				E1D33D9454AC2C87F00F3E4A /* Insights */,
+				CC6453B9CCBD4EF7BF16E27E /* Intro */,
 				95D597730328140D83BDA746 /* Onboarding */,
 				B483B313749BEC8F3FC05901 /* Order */,
 				C3A0DD88CD0EFE94B0362DE4 /* Paywall */,
@@ -705,6 +708,14 @@
 				6B3FA7987515E2FFFE27418C /* PaywallView.swift */,
 			);
 			path = Paywall;
+			sourceTree = "<group>";
+		};
+		CC6453B9CCBD4EF7BF16E27E /* Intro */ = {
+			isa = PBXGroup;
+			children = (
+				9A9B3A36C1B2B8678A208444 /* AppIntroView.swift */,
+			);
+			path = Intro;
 			sourceTree = "<group>";
 		};
 		CDC76CEFC9A64C4E2646A2FA /* Calendar */ = {
@@ -976,6 +987,7 @@
 				0D26C725D05378638A6A862D /* Analytics.swift in Sources */,
 				E9BE1261A4D3B02ADCA6C6C4 /* AppDelegate.swift in Sources */,
 				21B611B9BD8199A8E7D5BBE5 /* AppEnvironment.swift in Sources */,
+				61E1D3D0870692E863388833 /* AppIntroView.swift in Sources */,
 				F9B179537ABE384174E70AC4 /* AppLanguage.swift in Sources */,
 				CA55CBE3E382E504B876F638 /* AppetiteScreens.swift in Sources */,
 				CE801C7A791C3513C5DC44E0 /* AppetiteTodayLine.swift in Sources */,
@@ -1206,7 +1218,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 26;
+				CURRENT_PROJECT_VERSION = 28;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = "$(SETPOINT_TEAM_ID)";
 				ENABLE_NS_ASSERTIONS = NO;
@@ -1288,7 +1300,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 26;
+				CURRENT_PROJECT_VERSION = 28;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = "$(SETPOINT_TEAM_ID)";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;

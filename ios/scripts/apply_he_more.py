@@ -508,6 +508,32 @@ A tofu poke bowl ⇒ קערת פוקי טופו
 Falafel in a pita with hummus ⇒ פלאפל בפיתה עם חומוס
 """)
 
+add("""
+How it works ⇒ איך זה עובד
+Training is half of it. ⇒ האימון הוא חצי מהסיפור.
+Eating enough is the other half. ⇒ לאכול מספיק זה החצי השני.
+SetPoint watches your day and closes the gap between what you ate and what your training needs. ⇒ SetPoint עוקבת אחרי היום שלך וסוגרת את הפער בין מה שאכלת למה שהאימון שלך דורש.
+Your day is one line. ⇒ היום שלך הוא קו אחד.
+See where you should be. ⇒ תראה איפה כדאי שתהיה.
+The ticks are your meal times and the dots are what you ate. The marker is now. Whatever comes next shows up as a single card. ⇒ הסימנים הם זמני הארוחות, הנקודות הן מה שאכלת, והמחוון הוא עכשיו. מה שבא אחרי מופיע ככרטיס אחד.
+Check-ins ⇒ צ׳ק-אינים
+Skipped or light? ⇒ דילגת או אכלת קל?
+I’ll ask. ⇒ אני אשאל.
+When a meal is missed or small, I check in. Log it, swap it, or top up with something easy like milk or nuts. In the evening I close what’s left. ⇒ כשארוחה מתפספסת או קטנה, אני בודק איתך. תרשום אותה, תחליף, או תשלים עם משהו קל כמו חלב או אגוזים. בערב אני סוגר את מה שנשאר.
+Training moves your plan. ⇒ האימון מזיז את התוכנית.
+Add a session, targets rise. ⇒ מוסיפים אימון, היעדים עולים.
+Plan your sessions on the Train tab. Tap + any time to log a meal by text, photo or barcode. ⇒ תכנן את האימונים בלשונית אימון. לחץ על + בכל רגע כדי לרשום ארוחה בטקסט, בתמונה או בברקוד.
+Get started ⇒ מתחילים
+Needed today ⇒ נדרש היום
+Ate ⇒ אכלת
+The gap ⇒ הפער
+Next: dinner ⇒ הבא: ארוחת ערב
+Lunch was light ⇒ ארוחת הצהריים הייתה קלה
+A glass of milk and a spoon of peanut butter gets you back on track. ⇒ כוס חלב וכף חמאת בוטנים מחזירות אותך למסלול.
+How SetPoint works ⇒ איך SetPoint עובדת
+A quick tour ⇒ סיור קצר
+""")
+
 # ---------------------------------------------------------------------------
 
 

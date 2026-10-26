@@ -103,6 +103,7 @@ enum DebugPreviewStub {
     case mealDetail
     case snooze
     case settings
+    case intro
     case settingsGoal
     case settingsMealTimes
     case settingsMealTimesWeekends
@@ -193,6 +194,8 @@ enum DebugPreviewStub {
                 draft: SavedMealDraft(from: SavedMeal.samples[0]),
                 onSave: { _ in true }
             )
+        case .intro:
+            AppIntroView { }
         case .settings:
             NavigationStack { SettingsView(previewModel: .previewed()) }
         case .settingsGoal:
@@ -346,6 +349,7 @@ enum DebugPreviewStub {
         case "fix-meal": return .fixMeal
         case "snooze": return .snooze
         case "settings": return .settings
+        case "intro": return .intro
         case "you": return .settings
         case "calendar-settings":
             CalendarManager.shared.loadPreview(connected: true)

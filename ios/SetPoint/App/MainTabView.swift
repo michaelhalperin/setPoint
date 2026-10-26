@@ -16,6 +16,7 @@ struct MainTabView: View {
     @State private var deepLinkCheckInID: String?
     /// A just-logged meal opened from the "Logged · Fix" toast.
     @State private var fixing: MealSummary?
+    @AppStorage(AppIntroView.seenKey) private var introSeen = false
 
     enum Tab: Hashable, CaseIterable {
         case today, training, week, you
@@ -60,6 +61,13 @@ struct MainTabView: View {
                 .fullScreenCover(isPresented: needsOnboarding) {
                     OnboardingFlow(model: onboarding)
                 }
+                .overlay {
+                    if showsIntro(home) {
+                        AppIntroView { introSeen = true }
+                            .transition(.opacity)
+                    }
+                }
+                .animation(.easeInOut(duration: 0.3), value: introSeen)
             } else {
                 HomeSkeletonView()
             }
@@ -195,6 +203,12 @@ struct MainTabView: View {
         } else {
             env.chrome.logPanelOpen = true
         }
+    }
+
+    /// The intro appears once, after setup, over a loaded Today.
+    private func showsIntro(_ home: HomeViewModel) -> Bool {
+        guard !introSeen, case .loaded = home.phase else { return false }
+        return true
     }
 
     private var needsOnboarding: Binding<Bool> {
