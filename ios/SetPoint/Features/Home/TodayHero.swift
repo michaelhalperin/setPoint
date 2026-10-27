@@ -306,7 +306,7 @@ struct TodayHero: View {
         let logging = loggingPickID == meal.id
         return Button { onPick(meal) } label: {
             HStack(spacing: 12) {
-                (Text(meal.name)
+                (Text(FoodText.name(meal.name))
                     + Text(isUsual(meal) ? "  · your usual" : "")
                         .font(Typography.data(12, weight: .regular))
                         .foregroundColor(Palette.inkFaint))

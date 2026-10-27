@@ -687,7 +687,7 @@ struct LogDock: View {
     {
         Button(action: action) {
             VStack(alignment: .leading, spacing: 10) {
-                Text(name)
+                Text(FoodText.name(name))
                     .font(Typography.data(14, weight: .regular))
                     .foregroundStyle(Palette.ink)
                     .lineLimit(2, reservesSpace: true)
@@ -735,7 +735,7 @@ struct LogDock: View {
                                     .font(.system(size: 11, weight: .medium))
                                     .foregroundStyle(Palette.inkFaint)
                             }
-                            Text(meal.summary ?? "")
+                            Text(FoodText.name(meal.summary ?? ""))
                                 .lineLimit(1)
                             Text("\(meal.kcal)")
                                 .font(Typography.mono(12))
@@ -832,7 +832,7 @@ private struct RecentMealCard: View {
                         .background(Circle().fill(Color.white.opacity(0.06)))
                 }
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(meal.summary ?? "")
+                    Text(FoodText.name(meal.summary ?? ""))
                         .font(Typography.data(14, weight: .regular))
                         .foregroundStyle(Palette.ink)
                         .lineLimit(2, reservesSpace: true)

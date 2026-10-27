@@ -96,7 +96,7 @@ struct SavedMealsSettingsView: View {
         HStack(spacing: 14) {
             kcalMark(meal)
             VStack(alignment: .leading, spacing: 6) {
-                Text(meal.name)
+                Text(FoodText.name(meal.name))
                     .font(Typography.data(17, weight: .regular))
                     .foregroundStyle(Palette.ink)
                     .lineLimit(1)

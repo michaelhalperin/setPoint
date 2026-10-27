@@ -805,7 +805,7 @@ struct HomeContent: View {
             // Once Home has the real meal — from the optimistic insert or a
             // reload — don't show it twice.
             if loadedHome?.meals.contains(where: { $0.id == logged.mealId }) == true { return nil }
-            return .logged(title: logged.summary ?? "Logged", kcal: logged.kcal, slot: slot)
+            return .logged(title: FoodText.name(logged.summary ?? "Logged"), kcal: logged.kcal, slot: slot)
         default:
             return nil
         }

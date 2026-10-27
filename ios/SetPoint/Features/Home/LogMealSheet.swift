@@ -532,7 +532,7 @@ struct PhotoParseConfirm: View {
                         Text(L10n("Photo · \(countsFor.title.lowercased())")).sectionLabelStyle()
                     }
 
-                    FittingHeadline(logged.summary ?? L10n("Your meal"), size: 26)
+                    FittingHeadline(FoodText.name(logged.summary ?? L10n("Your meal")), size: 26)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
