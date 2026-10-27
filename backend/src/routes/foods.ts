@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { getAnthropic } from '../ai/client.js';
+import { createMealParser, MealParseError } from '../ai/parseMeal.js';
 import { consumeAiQuota } from '../ai/quota.js';
 import { requireAuth, type AuthedRequest } from '../auth/index.js';
 import { getPrisma } from '../db/client.js';
@@ -8,6 +9,7 @@ import { fetchOpenFoodFacts, lookupBarcode, normalizeBarcode, saveBarcodeFood, t
 import { searchCatalog } from '../foods/catalog.js';
 import { createLabelReader } from '../foods/label.js';
 import { fetchUsdaBranded } from '../foods/usdaBranded.js';
+import { userLang } from '../i18n/user.js';
 import { PHOTO_BODY_LIMIT } from '../http/limits.js';
 
 const params = z.object({
@@ -25,8 +27,35 @@ const searchQuery = z.object({
   q: z.string().min(1).max(80),
 });
 
+/** Most foods one typed line can come back as ("rice and chicken"). */
+const ESTIMATE_MAX_ITEMS = 6;
+
+const estimateBody = z.object({
+  text: z.string().trim().min(1).max(200),
+});
+
 export async function foodRoutes(app: FastifyInstance): Promise<void> {
   app.addHook('preHandler', requireAuth(app));
+
+  // "bread", "2 eggs": the foods with a portion and macros, so nobody guesses numbers.
+  // Nothing is logged; the app adds the items to the plate being edited.
+  app.post('/estimate', async (req) => {
+    const userId = (req as AuthedRequest).userId;
+    const { text } = estimateBody.parse(req.body);
+    const client = getAnthropic();
+    if (!client) throw app.httpErrors.serviceUnavailable('food estimates are unavailable right now');
+    const prisma = getPrisma();
+    await consumeAiQuota(prisma, userId, 'meal_parse');
+    try {
+      const parsed = await createMealParser(client)({ text, lang: await userLang(prisma, userId) });
+      const items = (parsed.items ?? []).slice(0, ESTIMATE_MAX_ITEMS);
+      if (items.length === 0) throw app.httpErrors.unprocessableEntity('could not read a food from that');
+      return { items };
+    } catch (err) {
+      if (err instanceof MealParseError) throw app.httpErrors.unprocessableEntity('could not read a food from that');
+      throw err;
+    }
+  });
 
   // USDA catalog (Foundation + SR Legacy), imported into CatalogFood.
   app.get('/search', async (req) => {

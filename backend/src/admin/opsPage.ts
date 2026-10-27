@@ -172,52 +172,55 @@ a.grid:hover{background:var(--fill)}
 .sw{display:flex;gap:28px;flex-wrap:wrap;margin:26px 0 8px;color:var(--soft);font-size:14px}
 .sw span{display:flex;align-items:center;gap:8px}
 .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:var(--ink);color:#0A0A0B;padding:10px 18px;border-radius:20px;font-weight:600;font-size:14px;z-index:20}
-.tr-head{position:sticky;top:60px;z-index:7;display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:16px 0;margin:0 0 8px;background:var(--bg);border-bottom:1px solid var(--line)}
-.tr-head h1{margin:0;font-size:26px;letter-spacing:-.03em;font-weight:500}
+.wrap:has(.tr-app){padding:14px 28px 0;max-width:1700px}
+.tr-app{height:calc(100vh - 60px - 14px);min-height:520px;display:flex;flex-direction:column;gap:14px}
+.tr-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:0 0 12px;border-bottom:1px solid var(--line);flex:none}
+.tr-head h1{margin:0;font-size:22px;letter-spacing:-.03em;font-weight:500}
 .tr-head .meta{color:var(--faint);font-size:13px}
 .tr-head .sp{flex:1}
 .tr-head .state{font-size:13px;color:var(--faint);display:flex;align-items:center;gap:8px}
 .tr-head .state.dirty{color:var(--warn)}
 .tr-head .state i{width:8px;height:8px;border-radius:50%;background:currentColor}
 .tr-head .ck{display:flex;align-items:center;gap:8px;color:var(--soft);font-size:13px}
-.tr3{display:grid;grid-template-columns:270px 402px minmax(300px,1fr);gap:36px;margin-top:24px;align-items:start}
-.tr-col{min-width:0}
-.tr-sticky{position:sticky;top:136px;display:flex;flex-direction:column;gap:12px}
-.ts-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
-.ts{display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:14px;cursor:pointer;background:transparent;text-align:left;width:100%}
+.tr3{display:grid;grid-template-columns:250px minmax(0,1fr) minmax(340px,420px);gap:28px;flex:1;min-height:0}
+.tr-col{min-width:0;min-height:0;display:flex;flex-direction:column}
+.tr-left .ts-list{flex:1;min-height:0;overflow-y:auto;padding-right:4px}
+.tr-mid{align-items:center;gap:10px}
+.tr-fit{position:relative;flex:none}
+.tr-right{overflow-y:auto}
+.ts-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+.ts{display:grid;grid-template-columns:20px 10px minmax(0,1fr) auto;gap:8px;align-items:center;height:38px;padding:0 10px;border:1px solid var(--line);border-radius:12px;cursor:pointer;background:transparent}
 .ts:hover{background:var(--fill)}
-.ts.sel{border-color:rgba(255,184,107,.65);background:rgba(255,184,107,.07)}
+.ts.sel{border-color:rgba(255,184,107,.65);background:rgba(255,184,107,.08)}
 .ts.over{border-color:var(--ember);box-shadow:0 -2px 0 var(--ember)}
-.ts .n{font:500 12px var(--mono);color:var(--faint);text-align:center}
-.ts .tt{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ts .sub{display:block;font-size:12px;color:var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.ts .n{font:500 11px var(--mono);color:var(--faint);text-align:center}
+.ts .dotc{width:8px;height:8px;border-radius:50%}
+.ts .tt{font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ts .badge{font:500 10px var(--mono);padding:2px 6px;border-radius:8px;background:rgba(255,107,107,.15);color:var(--bad)}
-.ts-add{margin-top:10px}
-.tr-edit{border:1px solid var(--line);border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:20px}
-.tr-edit h2{margin:0;font-size:18px;font-weight:600;letter-spacing:-.01em}
+.ts-add{margin-top:8px;flex:none}
+.tr-edit{border:1px solid var(--line);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:14px}
+.tr-edit h2{margin:0;font-size:16px;font-weight:600;letter-spacing:-.01em}
 .tr-edit .top{display:flex;align-items:center;gap:8px}
 .tr-edit .top .sp{flex:1}
-.sec{display:flex;flex-direction:column;gap:10px}
+.sec{display:flex;flex-direction:column;gap:8px}
 .sec>label,.sec>.lab{font:500 11px var(--mono);letter-spacing:.06em;color:var(--faint);text-transform:uppercase;display:flex;justify-content:space-between;align-items:baseline}
 .sec .cnt{text-transform:none;letter-spacing:0;font-weight:400}
-.sec input[type=text],.sec textarea{width:100%;min-width:0;border-radius:12px;border:1px solid var(--line-hi);background:var(--fill);padding:0 12px;font-size:15px;height:42px}
-.sec textarea{height:auto;min-height:92px;padding:10px 12px;resize:vertical;line-height:1.45}
+.sec input[type=text],.sec textarea{width:100%;min-width:0;border-radius:12px;border:1px solid var(--line-hi);background:var(--fill);padding:0 12px;font-size:14px;height:38px}
+.sec textarea{height:auto;min-height:74px;padding:9px 12px;resize:vertical;line-height:1.4}
 .sec input.ti{font-weight:600}
 .sec.he input,.sec.he textarea{direction:rtl;text-align:right}
 .segs{display:flex;gap:6px;flex-wrap:wrap}
-.opts{display:flex;flex-direction:column;gap:6px}
-.opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:9px 12px;border-radius:12px;border:1px solid var(--line);background:transparent;cursor:pointer;font-size:14px}
+.opts{display:flex;gap:6px;flex-wrap:wrap}
+.opt{display:inline-flex;align-items:center;gap:7px;text-align:left;padding:0 12px;height:32px;border-radius:16px;border:1px solid var(--line);background:transparent;cursor:pointer;font-size:13px}
 .opt:hover{background:var(--fill)}
-.opt[aria-pressed=true]{border-color:rgba(255,122,61,.8);background:rgba(255,122,61,.12)}
-.opt i{width:12px;height:12px;border-radius:50%;border:1.5px solid var(--faint);flex:none}
+.opt[aria-pressed=true]{border-color:rgba(255,122,61,.8);background:rgba(255,122,61,.14)}
+.opt i{width:10px;height:10px;border-radius:50%;border:1.5px solid var(--faint);flex:none}
 .opt[aria-pressed=true] i{border-color:var(--ember);background:var(--ember)}
-.opt span{color:var(--faint);font-size:12px;margin-left:auto}
-.mini{height:30px;min-width:30px;padding:0 10px;border-radius:15px;border:1px solid var(--line);background:transparent;cursor:pointer;font-size:12px}
+.mini{height:28px;min-width:28px;padding:0 10px;border-radius:14px;border:1px solid var(--line);background:transparent;cursor:pointer;font-size:12px}
 .mini:hover{background:var(--fill)}.mini:disabled{opacity:.3;cursor:default}.mini.dng{color:var(--bad)}
 .hint{margin:0;color:var(--faint);font-size:12px;line-height:1.45}
-.tr-empty{border:1px dashed var(--line-hi);border-radius:20px;padding:28px;color:var(--soft)}
-@media (max-width:1280px){.tr3{grid-template-columns:240px 402px minmax(0,1fr);gap:24px}}
-@media (max-width:1100px){.tr3{grid-template-columns:minmax(0,1fr);justify-items:start}.tr-sticky{position:static}.tr-col{width:100%}.tr-head{top:60px}}
+.tr-empty{border:1px dashed var(--line-hi);border-radius:18px;padding:24px;color:var(--soft)}
+@media (max-width:1180px){.tr3{grid-template-columns:220px minmax(0,1fr) minmax(300px,360px);gap:18px}}
 @media (max-width:1000px){
   .bar{padding:0 16px;gap:16px;overflow-x:auto}.find{display:none}.wrap{padding:24px 16px 60px}
   .h1{font-size:36px}.nums{grid-template-columns:repeat(2,minmax(0,1fr))}.nums div{padding-left:0!important;border-left:0!important}
@@ -739,7 +742,7 @@ ${PHONE_CSS}
     }
     function place() {
       var s = step(); if (!s || layer.hidden) return;
-      var sr = scr.getBoundingClientRect(), W = sr.width, H = sr.height;
+      var W = scr.offsetWidth, H = scr.offsetHeight;
       var pw = Math.min(284, W - 32); pop.style.width = pw + 'px';
       var ph2 = pop.offsetHeight, top, left, side = null, rect = null;
       var a = s.anchor ? byId[s.anchor] : null;
@@ -803,9 +806,11 @@ ${PHONE_CSS}
 
     // ---- left: the steps
     var dragFrom = null;
+    var TAB_DOT = { today: '#FF7A3D', train: '#818CF8', progress: '#FFB86B', you: '#86EFAC' };
     var items = tw.steps.map(function (s, i) {
       var missing = !s.welcome && !(s.he && s.he.title && s.he.body);
-      var item = h('li', null, [h('div', { class: 'ts' + (tw.sel === i ? ' sel' : ''), role: 'button', tabindex: '0', draggable: 'true', 'aria-label': 'Step ' + (i + 1) + ': ' + s.title,
+      var tab = tabOf(s);
+      var item = h('li', null, [h('div', { class: 'ts' + (tw.sel === i ? ' sel' : ''), role: 'button', tabindex: '0', draggable: 'true', title: sub(s), 'aria-label': 'Step ' + (i + 1) + ': ' + s.title + ', ' + sub(s),
         onclick: function () { choose(i); },
         onkeydown: function (e) {
           if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); choose(i); }
@@ -817,24 +822,30 @@ ${PHONE_CSS}
         ondragleave: function (e) { e.currentTarget.classList.remove('over'); },
         ondrop: function (e) { e.preventDefault(); var from = dragFrom; dragFrom = null; if (from !== null) dropAt(from, i); },
         ondragend: function () { dragFrom = null; }
-      }, [h('span', { class: 'n', text: s.welcome ? '·' : String(i) }), h('div', { style: 'min-width:0' }, [h('span', { class: 'tt', style: 'display:block', text: s.title || 'Untitled' }), h('span', { class: 'sub', text: sub(s) })]), missing ? h('span', { class: 'badge', title: 'No Hebrew yet, people on Hebrew see English', text: 'HE' }) : null])]);
+      }, [h('span', { class: 'n', text: s.welcome ? '\u00b7' : String(i) }), h('span', { class: 'dotc', style: 'background:' + (tab ? TAB_DOT[tab] : 'transparent') + (tab ? '' : ';border:1.5px solid var(--faint)') }), h('span', { class: 'tt', text: s.title || 'Untitled' }), missing ? h('span', { class: 'badge', title: 'No Hebrew yet, people on Hebrew see English', text: 'HE' }) : null])]);
       listEls.push(item.firstChild);
       return item;
     });
-    var leftCol = h('div', { class: 'tr-col' }, [
-      h('div', { class: 'h3', style: 'margin-bottom:10px' }, ['Steps', h('span', { text: tw.steps.length + (tw.steps.length === 1 ? ' step' : ' steps') })]),
+    var leftCol = h('div', { class: 'tr-col tr-left' }, [
+      h('div', { class: 'h3', style: 'margin:0 0 8px', title: 'Drag to reorder, or Alt with the arrow keys. A red HE means no Hebrew yet.' }, ['Steps', h('span', { text: String(tw.steps.length) })]),
       h('ul', { class: 'ts-list' }, items),
-      h('button', { class: 'btn ts-add', type: 'button', text: '+ Add a step', onclick: add }),
-      h('p', { class: 'hint', style: 'margin-top:12px', text: 'Drag to reorder, or Alt with the arrow keys. A red HE means no Hebrew yet.' })
+      h('button', { class: 'btn ts-add', type: 'button', text: '+ Add a step', onclick: add })
     ]);
 
     // ---- middle: the phone
     var langBtn = function (code, label) { return h('button', { class: 'chip', type: 'button', 'aria-pressed': tw.lang === code ? 'true' : 'false', text: label, onclick: function () { tw.lang = code; redo(); } }); };
-    var midCol = h('div', { class: 'tr-col' }, [h('div', { class: 'tr-sticky' }, [
-      h('div', { class: 'segs' }, [langBtn('en', 'English'), langBtn('he', 'עברית')]),
-      ph,
-      h('p', { class: 'hint', text: 'The app as people see it. Tap the dimmed area or the cross to close the tip, and pick a step to open it again.' })
-    ])]);
+    var fitBox = h('div', { class: 'tr-fit' }, [ph]);
+    var langRow = h('div', { class: 'segs' }, [langBtn('en', 'English'), langBtn('he', '\u05e2\u05d1\u05e8\u05d9\u05ea')]);
+    var midCol = h('div', { class: 'tr-col tr-mid' }, [langRow, fitBox]);
+    // the phone shrinks to the height that is left, so the whole page fits the screen
+    function fit() {
+      if (!midCol.isConnected) return;
+      var availH = midCol.clientHeight - langRow.offsetHeight - 12, availW = midCol.clientWidth;
+      var k = Math.max(0.4, Math.min(1, availH / 874, availW / 402));
+      fitBox.style.width = Math.round(402 * k) + 'px'; fitBox.style.height = Math.round(874 * k) + 'px';
+      ph.style.transform = 'scale(' + k + ')'; ph.style.transformOrigin = '0 0';
+    }
+    window.__tourFit = fit;
 
     // ---- right: the selected step
     var s = step(), right;
@@ -875,7 +886,7 @@ ${PHONE_CSS}
         h('label', { class: 'ck', for: 'tr-welcome' }, [ck, 'Make this the opening prompt'])
       ]);
     }
-    var rightCol = h('div', { class: 'tr-col' }, [right]);
+    var rightCol = h('div', { class: 'tr-col tr-right' }, [right]);
 
     // ---- the top bar: the one place to save
     saveBtn = h('button', { class: 'btn pri', type: 'button', text: 'Save tour', disabled: !tw.dirty, onclick: function () {
@@ -892,20 +903,20 @@ ${PHONE_CSS}
       api('/api/admin/tour', { method: 'DELETE' }).then(function () { toast('Back to the built-in tour'); delete state.data.tour; state.tw = null; render(); }).catch(fail);
     } });
     var head = h('div', { class: 'tr-head' }, [
-      h('h1', { text: 'Guided tour' }),
+      h('h1', { text: 'Guided tour', title: 'What a new person sees once after setup, and again from You, How SetPoint works. Changes reach the app on its next launch, no build needed.' }),
       h('span', { class: 'meta', text: tw.revision > 1 ? 'Shown again ' + (tw.revision - 1) + ' time' + (tw.revision > 2 ? 's' : '') : 'Never re-shown' }),
       h('span', { class: 'sp' }), stateEl,
       h('label', { class: 'ck', for: 'tr-bump' }, [bump, 'Show again to everyone who has seen it']),
       resetBtn, saveBtn
     ]);
 
-    var body = [h('div', { class: 'kick', text: 'Tour' }), head,
-      h('p', { class: 't-soft', style: 'max-width:680px;margin:14px 0 0', text: 'What a new person sees once after setup, and again from You, How SetPoint works. Pick a step on the left, change what it points at and what it says, and watch it on the phone. Changes reach the app on its next launch, no build needed.' }),
-      h('div', { class: 'tr3' }, [leftCol, midCol, rightCol])];
-    setTimeout(function () { apply(); if (s) { var el = listEls[tw.sel]; if (el && document.activeElement === document.body && tw.__focusList) el.focus(); } }, 0);
-    if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { place(); });
+    var body = [h('div', { class: 'tr-app' }, [head, h('div', { class: 'tr3' }, [leftCol, midCol, rightCol])])];
+    setTimeout(function () { fit(); apply(); }, 0);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { fit(); place(); });
     return shell('tour', loose, body);
   }
+
+  window.addEventListener('resize', function () { if (window.__tourFit) window.__tourFit(); });
 
   // ----- loading + render -----
   function load(key, path) {
