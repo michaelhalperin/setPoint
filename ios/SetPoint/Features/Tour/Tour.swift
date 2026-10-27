@@ -24,6 +24,11 @@ struct TourStep: Codable, Identifiable, Equatable {
     /// The spotlight's padding and corner radius, from the element's entry on the server.
     let pad: Double?
     let radius: Double?
+    /// Where the tip sits against the element: "auto", "above" or "below". Older tours don't say.
+    var side: String? = nil
+    /// The owner's nudge of the tip from that spot, in points.
+    var dx: Double? = nil
+    var dy: Double? = nil
 
     /// What this person reads: Hebrew when they use Hebrew and the step has it.
     var words: Words {
@@ -173,6 +178,13 @@ final class TourController {
 
     #if DEBUG
     func showForDebug(at newIndex: Int) { index = newIndex }
+
+    func debugAdjust(stepID: String, side: String?, dx: Double?, dy: Double?) {
+        guard let i = tour.steps.firstIndex(where: { $0.id == stepID }) else { return }
+        if let side { tour.steps[i].side = side }
+        if let dx { tour.steps[i].dx = dx }
+        if let dy { tour.steps[i].dy = dy }
+    }
     #endif
 
     private func go(to newIndex: Int) {

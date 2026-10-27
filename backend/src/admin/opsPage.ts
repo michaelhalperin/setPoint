@@ -740,30 +740,37 @@ ${PHONE_CSS}
       q('#pop-back').textContent = s.welcome ? L.skip : L.back;
       var nx = q('#pop-next'); clear(nx); nx.appendChild(h('i')); nx.appendChild(document.createTextNode(s.welcome ? L.show : last ? L.done : L.next));
     }
+    var lastBase = null, nudgeEl = null, nudgeReset = null;
     function place() {
       var s = step(); if (!s || layer.hidden) return;
       var W = scr.offsetWidth, H = scr.offsetHeight;
       var pw = Math.min(284, W - 32); pop.style.width = pw + 'px';
-      var ph2 = pop.offsetHeight, top, left, side = null, rect = null;
+      var ph2 = pop.offsetHeight, top, left, rect = null;
       var a = s.anchor ? byId[s.anchor] : null;
       if (a && a.frame) {
         var k = W / refW, pad = a.pad;
         rect = { l: (a.frame[0] - pad) * k, t: (a.frame[1] - pad) * k, w: (a.frame[2] + pad * 2) * k, h: (a.frame[3] + pad * 2) * k };
         hl.style.left = rect.l + 'px'; hl.style.top = rect.t + 'px'; hl.style.width = rect.w + 'px'; hl.style.height = rect.h + 'px'; hl.style.borderRadius = (a.radius * k) + 'px';
         var gap = 16, below = H - (rect.t + rect.h) - gap - 8, above = rect.t - gap - 56;
-        side = below >= ph2 ? 'bottom' : above >= ph2 ? 'top' : (below > above ? 'bottom' : 'top');
-        top = side === 'bottom' ? rect.t + rect.h + gap : rect.t - gap - ph2;
+        var want = s.side || 'auto';
+        var under = want === 'below' ? true : want === 'above' ? false : (below >= ph2 || (above < ph2 && below > above));
+        top = under ? rect.t + rect.h + gap : rect.t - gap - ph2;
         top = Math.max(58, Math.min(H - ph2 - 90, top));
         left = Math.max(16, Math.min(W - pw - 16, rect.l + rect.w / 2 - pw / 2));
       } else {
         hl.style.left = W / 2 + 'px'; hl.style.top = H / 2 + 'px'; hl.style.width = '0px'; hl.style.height = '0px';
         top = (H - ph2) / 2 - 30; left = (W - pw) / 2;
       }
-      pop.style.left = left + 'px'; pop.style.top = top + 'px';
-      if (side) {
+      lastBase = { left: left, top: top, pw: pw, ph: ph2, W: W, H: H };
+      var nl = Math.max(16, Math.min(W - pw - 16, left + (s.dx || 0)));
+      var nt = Math.max(58, Math.min(H - ph2 - 24, top + (s.dy || 0)));
+      pop.style.left = nl + 'px'; pop.style.top = nt + 'px';
+      var arrowSide = null;
+      if (rect) { if (nt >= rect.t + rect.h - 2) arrowSide = 'bottom'; else if (nt + ph2 <= rect.t + 2) arrowSide = 'top'; }
+      if (arrowSide) {
         arrow.hidden = false;
-        arrow.style.left = (Math.max(22, Math.min(pw - 22, rect.l + rect.w / 2 - left)) - 7) + 'px';
-        arrow.style.top = side === 'bottom' ? '-5px' : 'auto'; arrow.style.bottom = side === 'top' ? '-5px' : 'auto';
+        arrow.style.left = (Math.max(22, Math.min(pw - 22, rect.l + rect.w / 2 - nl)) - 7) + 'px';
+        arrow.style.top = arrowSide === 'bottom' ? '-5px' : 'auto'; arrow.style.bottom = arrowSide === 'top' ? '-5px' : 'auto';
       } else arrow.hidden = true;
     }
     function apply() {
@@ -783,6 +790,32 @@ ${PHONE_CSS}
     q('#pop-x').addEventListener('click', function (e) { e.stopPropagation(); close(); });
     layer.addEventListener('click', close);
     pop.addEventListener('click', function (e) { e.stopPropagation(); });
+    // drag the tip to nudge it; the app moves it by the same amount from its own spot
+    pop.addEventListener('pointerdown', function (e) {
+      if (e.button !== 0 || e.target.closest('button') || !lastBase) return;
+      var s = step(); if (!s) return;
+      var k = scr.getBoundingClientRect().width / scr.offsetWidth, sx = e.clientX, sy = e.clientY, d0x = s.dx || 0, d0y = s.dy || 0;
+      pop.classList.add('fresh'); pop.classList.add('grabbing'); pop.setPointerCapture(e.pointerId);
+      var move = function (ev) {
+        s.dx = d0x + (ev.clientX - sx) / k; s.dy = d0y + (ev.clientY - sy) / k;
+        place();
+        s.dx = Math.round(parseFloat(pop.style.left) - lastBase.left); s.dy = Math.round(parseFloat(pop.style.top) - lastBase.top);
+        showNudge();
+      };
+      var up = function () {
+        pop.removeEventListener('pointermove', move); pop.removeEventListener('pointerup', up); pop.removeEventListener('pointercancel', up);
+        pop.classList.remove('grabbing'); requestAnimationFrame(function () { pop.classList.remove('fresh'); });
+        if (s.dx !== d0x || s.dy !== d0y) touch();
+      };
+      pop.addEventListener('pointermove', move); pop.addEventListener('pointerup', up); pop.addEventListener('pointercancel', up);
+      e.preventDefault();
+    });
+    function showNudge() {
+      var s = step(); if (!nudgeEl || !s) return;
+      var moved = (s.dx || 0) !== 0 || (s.dy || 0) !== 0;
+      nudgeEl.textContent = moved ? 'Moved ' + (s.dx || 0) + ', ' + (s.dy || 0) : 'Not moved';
+      if (nudgeReset) nudgeReset.disabled = !moved;
+    }
     Array.prototype.forEach.call(ph.querySelectorAll('.tabhit'), function (t) { t.addEventListener('click', function () { if (!tw.picking) { tw.closed = true; layer.hidden = true; } tw.pickTab = t.dataset.tab; setTab(t.dataset.tab); }); });
     scr.addEventListener('click', function (e) {
       if (!tw.picking) return;
@@ -874,6 +907,14 @@ ${PHONE_CSS}
       } }); ck.checked = !!s.welcome;
       var pickBtn = h('button', { class: 'btn' + (tw.picking ? ' pri' : ''), type: 'button', text: tw.picking ? 'Click an element on the phone… (cancel)' : 'Pick on the phone', onclick: function () { tw.picking = !tw.picking; if (tw.picking) tw.pickTab = tw.pickTab || tabOf(s) || 'today'; redo(); } });
 
+      var sideBtn = function (v, label) {
+        return h('button', { class: 'chip', type: 'button', 'aria-pressed': (s.side || 'auto') === v ? 'true' : 'false', text: label, onclick: function () { s.side = v; s.dx = 0; s.dy = 0; touch(); redo(); } });
+      };
+      nudgeEl = h('span', { class: 'cnt' });
+      nudgeReset = h('button', { class: 'mini', type: 'button', text: 'Put back', onclick: function () { s.dx = 0; s.dy = 0; touch(); showNudge(); live(); } });
+      var posSec = h('div', { class: 'sec' }, [h('div', { class: 'lab' }, ['Tip position', nudgeEl]),
+        h('div', { class: 'segs' }, (s.anchor ? [sideBtn('auto', 'Auto'), sideBtn('above', 'Above'), sideBtn('below', 'Below')] : []).concat([nudgeReset])),
+        h('p', { class: 'hint', text: 'Or drag the tip on the phone to nudge it.' })]);
       right = h('div', { class: 'tr-edit' }, [
         h('div', { class: 'top' }, [h('h2', { text: s.welcome ? 'Opening prompt' : 'Step ' + tw.sel }), h('span', { class: 'sp' }),
           h('button', { class: 'mini', type: 'button', 'aria-label': 'Move up', disabled: tw.sel === 0, onclick: function () { move(tw.sel, -1); }, text: '↑' }),
@@ -881,6 +922,7 @@ ${PHONE_CSS}
           h('button', { class: 'mini dng', type: 'button', onclick: function () { remove(tw.sel); }, text: 'Remove' })]),
         s.welcome ? h('p', { class: 'hint', text: 'This one has no element. It asks “Show me / Not now” before the tour starts.' }) :
           h('div', { class: 'sec' }, [h('div', { class: 'lab', text: 'Points at' }), tabSegs, h('div', { class: 'opts' }, opts), pickBtn]),
+        posSec,
         h('div', { class: 'sec' + (he ? ' he' : '') }, [h('label', null, ['Title' + (he ? ' (עברית)' : ''), tCnt]), titleIn]),
         h('div', { class: 'sec' + (he ? ' he' : '') }, [h('label', null, ['Text' + (he ? ' (עברית)' : ''), bCnt]), bodyIn]),
         h('label', { class: 'ck', for: 'tr-welcome' }, [ck, 'Make this the opening prompt'])
@@ -911,7 +953,7 @@ ${PHONE_CSS}
     ]);
 
     var body = [h('div', { class: 'tr-app' }, [head, h('div', { class: 'tr3' }, [leftCol, midCol, rightCol])])];
-    setTimeout(function () { fit(); apply(); }, 0);
+    setTimeout(function () { fit(); apply(); showNudge(); }, 0);
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { fit(); place(); });
     return shell('tour', loose, body);
   }

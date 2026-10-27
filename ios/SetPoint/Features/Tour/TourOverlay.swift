@@ -96,19 +96,39 @@ struct TourOverlay: View {
     private func cardLayout(step: TourStep, target: CGRect?, screen: CGSize) -> Layout {
         let width = min(284, screen.width - 32)
         let height = cardSize.height
+        let nudge = CGPoint(x: step.dx ?? 0, y: step.dy ?? 0)
+        func settle(_ left: CGFloat, _ top: CGFloat) -> CGPoint {
+            CGPoint(
+                x: max(16, min(screen.width - width - 16, left + nudge.x)),
+                y: max(58, min(screen.height - height - 24, top + nudge.y))
+            )
+        }
         guard let target else {
-            return Layout(width: width, origin: CGPoint(x: (screen.width - width) / 2, y: (screen.height - height) / 2 - 30), arrow: nil)
+            let origin = settle((screen.width - width) / 2, (screen.height - height) / 2 - 30)
+            return Layout(width: width, origin: origin, arrow: nil)
         }
         let gap: CGFloat = 16
         let below = screen.height - target.maxY - gap - 8
         let above = target.minY - gap - 56
-        let placeBelow = below >= height || (above < height && below > above)
+        let placeBelow: Bool
+        switch step.side {
+        case "below": placeBelow = true
+        case "above": placeBelow = false
+        default: placeBelow = below >= height || (above < height && below > above)
+        }
         var top = placeBelow ? target.maxY + gap : target.minY - gap - height
         top = max(58, min(screen.height - height - 90, top))
         let left = max(16, min(screen.width - width - 16, target.midX - width / 2))
-        let arrowX = left + max(22, min(width - 22, target.midX - left))
-        let arrowY = placeBelow ? top + 2 : top + height - 2
-        return Layout(width: width, origin: CGPoint(x: left, y: top), arrow: CGPoint(x: arrowX, y: arrowY))
+        let origin = settle(left, top)
+        // The arrow points at the element from whichever edge faces it; a tip dragged over it has none.
+        var arrow: CGPoint?
+        let arrowX = origin.x + max(22, min(width - 22, target.midX - origin.x))
+        if origin.y >= target.maxY - 2 {
+            arrow = CGPoint(x: arrowX, y: origin.y + 2)
+        } else if origin.y + height <= target.minY + 2 {
+            arrow = CGPoint(x: arrowX, y: origin.y + height - 2)
+        }
+        return Layout(width: width, origin: origin, arrow: arrow)
     }
 
     // MARK: The card

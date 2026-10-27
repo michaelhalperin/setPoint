@@ -27,6 +27,9 @@ export const PHONE_CSS = String.raw`
 .ph .hl{position:absolute;pointer-events:none;border-radius:20px;box-shadow:0 0 0 2000px rgba(5,5,7,var(--dim)),inset 0 0 0 1.5px rgba(255,184,107,.75);transition:left .42s cubic-bezier(.3,.9,.3,1),top .42s cubic-bezier(.3,.9,.3,1),width .42s cubic-bezier(.3,.9,.3,1),height .42s cubic-bezier(.3,.9,.3,1),border-radius .3s}
 .ph .pop{position:absolute;width:284px;padding:16px 16px 14px;border-radius:22px;background:#f5f5f4;color:#09090b;box-shadow:0 24px 40px rgba(0,0,0,.5);transition:left .42s cubic-bezier(.3,.9,.3,1),top .42s cubic-bezier(.3,.9,.3,1),opacity .2s}
 .ph .pop.fresh{transition:opacity .2s}
+.ph .pop{cursor:grab;touch-action:none}
+.ph .pop.grabbing{cursor:grabbing}
+.ph .pop button{cursor:pointer}
 .ph .pop .dots{display:flex;gap:4px;margin:0 0 10px}
 .ph .pop .dots[hidden]{display:none}
 .ph .pop .dots i{height:3px;flex:1;border-radius:2px;background:rgba(9,9,11,.12)}

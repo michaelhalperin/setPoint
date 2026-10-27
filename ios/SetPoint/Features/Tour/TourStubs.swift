@@ -29,7 +29,15 @@ struct TourShellStub: View {
             .ignoresSafeArea()
         }
         .task {
-            if let id = Self.argument("-tourStep") { env.tour.debugShow(stepID: id) }
+            if let id = Self.argument("-tourStep") {
+                env.tour.debugAdjust(
+                    stepID: id,
+                    side: Self.argument("-tourSide"),
+                    dx: Self.argument("-tourDx").flatMap(Double.init),
+                    dy: Self.argument("-tourDy").flatMap(Double.init)
+                )
+                env.tour.debugShow(stepID: id)
+            }
         }
     }
 

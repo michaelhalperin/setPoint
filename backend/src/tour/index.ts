@@ -47,6 +47,11 @@ export const tourStepSchema = z.object({
   anchor: z.enum(anchorIds).nullable(),
   /** The opening prompt: asks "Show me / Not now" before the tour starts. */
   welcome: z.boolean().default(false),
+  /** Where the tip sits against the element. `auto` picks the side with room. */
+  side: z.enum(['auto', 'above', 'below']).default('auto'),
+  /** The owner's nudge from that spot, in points. */
+  dx: z.number().int().min(-400).max(400).default(0),
+  dy: z.number().int().min(-900).max(900).default(0),
   title: text(60),
   body: text(260),
   he: z.object({ title: text(60), body: text(260) }).nullable().default(null),
@@ -63,9 +68,7 @@ export type Tour = z.infer<typeof tourSchema>;
 
 export const TOUR_KEY = 'tour';
 
-export const DEFAULT_TOUR: Tour = {
-  revision: 1,
-  steps: [
+const DEFAULT_STEPS = [
     {
       id: 'welcome', anchor: null, welcome: true,
       title: 'Welcome to SetPoint',
@@ -132,7 +135,11 @@ export const DEFAULT_TOUR: Tour = {
       body: 'Open this row whenever you want the tour again.',
       he: { title: 'הפעל שוב בכל רגע', body: 'פתח את השורה הזו בכל פעם שתרצה את הסיור שוב.' },
     },
-  ],
+];
+
+export const DEFAULT_TOUR: Tour = {
+  revision: 1,
+  steps: DEFAULT_STEPS.map((step) => tourStepSchema.parse(step)),
 };
 
 /** What the app gets: each step also carries the spotlight shape of its element, so the app needn't know it. */

@@ -30,7 +30,7 @@ describe('loadTour', () => {
 
   it('returns what the owner saved', async () => {
     const saved = { revision: 3, steps: [{ id: 'a', anchor: 'today.orb', welcome: false, title: 'Hi', body: 'There', he: null }] };
-    expect(await loadTour(fakePrisma(saved))).toEqual(saved);
+    expect(await loadTour(fakePrisma(saved))).toEqual(tourSchema.parse(saved));
   });
 
   it('falls back when a saved element no longer exists', async () => {
@@ -50,6 +50,23 @@ describe('tourProblems', () => {
 
   it('rejects two steps with the same id', () => {
     expect(tourProblems({ revision: 1, steps: [step({}), step({})] })).toMatch(/share an id/i);
+  });
+});
+
+describe('tip position', () => {
+  it('starts automatic and unnudged, also for a tour saved before these fields existed', () => {
+    for (const step of DEFAULT_TOUR.steps) {
+      expect(step.side).toBe('auto');
+      expect([step.dx, step.dy]).toEqual([0, 0]);
+    }
+    const old = tourSchema.parse({ revision: 1, steps: [{ id: 'a', anchor: 'today.orb', title: 'Hi', body: 'There' }] });
+    expect(old.steps[0]).toMatchObject({ side: 'auto', dx: 0, dy: 0 });
+  });
+
+  it('keeps the owner\u2019s choice and passes it to the app', () => {
+    const tour = tourSchema.parse({ revision: 2, steps: [{ id: 'a', anchor: 'today.orb', side: 'above', dx: 24, dy: -12, title: 'Hi', body: 'There' }] });
+    expect(forApp(tour).steps[0]).toMatchObject({ side: 'above', dx: 24, dy: -12 });
+    expect(tourSchema.safeParse({ revision: 1, steps: [{ id: 'a', anchor: null, side: 'left', title: 'x', body: 'y' }] }).success).toBe(false);
   });
 });
 
