@@ -55,6 +55,7 @@ struct TodayHero: View {
                 .accessibilityLabel(orbAccessibility)
             }
             .padding(.top, Space.xs)
+            .tourAnchor("today.orb")
 
             Button(action: onOpenDay) {
                 StatusPill(dot: statusDot, text: statusText) {
@@ -68,6 +69,7 @@ struct TodayHero: View {
                 }
             }
             .buttonStyle(PressableCard())
+            .tourAnchor("today.pace")
             .accessibilityHint("Shows today’s meals")
 
             nutritionEntry
@@ -81,12 +83,14 @@ struct TodayHero: View {
                         })
                     } else {
                         momentCard
+                            .tourAnchor("today.next")
                     }
                 }
                 .appearIn(1, rise: 16)
 
             PlateStrip(home: home, loading: appetiteBusy)
                 .padding(.top, Space.sm)
+                .tourAnchor("today.dots")
         }
         // Overlay keeps the menu floating — it must not grow the hero layout.
         .overlay(alignment: .topTrailing) {

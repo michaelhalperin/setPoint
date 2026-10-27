@@ -103,7 +103,7 @@ enum DebugPreviewStub {
     case mealDetail
     case snooze
     case settings
-    case intro
+    case tourShell(MainTabView.Tab)
     case settingsGoal
     case settingsMealTimes
     case settingsMealTimesWeekends
@@ -194,8 +194,8 @@ enum DebugPreviewStub {
                 draft: SavedMealDraft(from: SavedMeal.samples[0]),
                 onSave: { _ in true }
             )
-        case .intro:
-            AppIntroView { }
+        case let .tourShell(tab):
+            TourShellStub(tab: tab)
         case .settings:
             NavigationStack { SettingsView(previewModel: .previewed()) }
         case .settingsGoal:
@@ -349,7 +349,10 @@ enum DebugPreviewStub {
         case "fix-meal": return .fixMeal
         case "snooze": return .snooze
         case "settings": return .settings
-        case "intro": return .intro
+        case "tour-today": return .tourShell(.today)
+        case "tour-train": return .tourShell(.training)
+        case "tour-progress": return .tourShell(.week)
+        case "tour-you": return .tourShell(.you)
         case "you": return .settings
         case "calendar-settings":
             CalendarManager.shared.loadPreview(connected: true)

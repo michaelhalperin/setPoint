@@ -1,6 +1,6 @@
 import type { PrismaClient } from '@prisma/client';
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_TOUR, TOUR_ANCHORS, loadTour, tourProblems, tourSchema } from './index.js';
+import { DEFAULT_TOUR, TOUR_ANCHORS, anchorsForAdmin, forApp, loadTour, tourProblems, tourSchema } from './index.js';
 
 const fakePrisma = (value: unknown | undefined) =>
   ({ appConfig: { findUnique: async () => (value === undefined ? null : { key: 'tour', value }) } }) as unknown as PrismaClient;
@@ -50,5 +50,24 @@ describe('tourProblems', () => {
 
   it('rejects two steps with the same id', () => {
     expect(tourProblems({ revision: 1, steps: [step({}), step({})] })).toMatch(/share an id/i);
+  });
+});
+
+describe('anchorsForAdmin', () => {
+  it('knows where every element sits on the phone', () => {
+    for (const a of anchorsForAdmin()) {
+      expect(a.frame, a.id).not.toBeNull();
+      expect(a.frame![2]).toBeGreaterThan(10);
+    }
+  });
+});
+
+describe('forApp', () => {
+  it('adds the spotlight shape of each step\u2019s element', () => {
+    const out = forApp(DEFAULT_TOUR);
+    const orb = out.steps.find((s) => s.anchor === 'today.orb')!;
+    expect(orb.pad).toBe(8);
+    expect(orb.radius).toBe(150);
+    expect(out.steps[0]!.pad).toBeNull();
   });
 });

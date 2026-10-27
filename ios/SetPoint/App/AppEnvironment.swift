@@ -15,6 +15,7 @@ final class AppEnvironment {
     let chrome = AppChrome()
     let subscription = SubscriptionStore()
     let flags = FeatureFlags()
+    let tour = TourController()
 
     init(tokenStore: TokenStore = SessionTokenStore()) {
         let auth = AuthStore(tokenStore: tokenStore)
@@ -32,6 +33,8 @@ final class AppEnvironment {
         push.api = api
         health.api = api
         calendar.api = api
+        let chrome = self.chrome
+        tour.requestTab = { chrome.requestTab($0) }
     }
 
     static func preview() -> AppEnvironment {

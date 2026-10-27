@@ -1,5 +1,6 @@
 import type { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
+import { ANCHOR_FRAMES, REFERENCE_SCREEN } from './anchorFrames.js';
 
 /**
  * The guided tour: a list of steps, each pointing at one element of the app by
@@ -27,6 +28,13 @@ export const TOUR_ANCHORS = [
   { id: 'you.setup', tab: 'you', label: 'Setup tiles', pad: 6, radius: 30 },
   { id: 'you.help', tab: 'you', label: 'How SetPoint works row', pad: 4, radius: 30 },
 ] as const satisfies readonly { id: string; tab: TourTab; label: string; pad: number; radius: number }[];
+
+/** For the admin's phone: each element with where it sits on the reference phone (points). */
+export function anchorsForAdmin() {
+  return TOUR_ANCHORS.map((a) => ({ ...a, frame: ANCHOR_FRAMES[a.id] ?? null }));
+}
+
+export { REFERENCE_SCREEN };
 
 export type TourAnchorId = (typeof TOUR_ANCHORS)[number]['id'];
 const anchorIds = TOUR_ANCHORS.map((a) => a.id) as [TourAnchorId, ...TourAnchorId[]];
@@ -126,6 +134,18 @@ export const DEFAULT_TOUR: Tour = {
     },
   ],
 };
+
+/** What the app gets: each step also carries the spotlight shape of its element, so the app needn't know it. */
+export function forApp(tour: Tour) {
+  const byId = new Map<string, (typeof TOUR_ANCHORS)[number]>(TOUR_ANCHORS.map((a) => [a.id, a]));
+  return {
+    revision: tour.revision,
+    steps: tour.steps.map((s) => {
+      const a = s.anchor ? byId.get(s.anchor) : undefined;
+      return { ...s, pad: a?.pad ?? null, radius: a?.radius ?? null };
+    }),
+  };
+}
 
 /** What the owner saved, or the built-in tour when nothing is saved or what's saved no longer parses. */
 export async function loadTour(prisma: PrismaClient): Promise<Tour> {

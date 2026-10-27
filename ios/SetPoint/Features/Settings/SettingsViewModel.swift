@@ -507,7 +507,7 @@ final class SettingsViewModel {
     }
 
     #if DEBUG
-    static func previewed() -> SettingsViewModel {
+    static func previewed(admin: Bool = true) -> SettingsViewModel {
         let vm = SettingsViewModel(api: AppEnvironment.preview().api, onUnauthorized: {}, onDeleted: {})
         vm.apply(SettingsResponse(
             email: "alex@example.com", displayName: "Alex",
@@ -516,7 +516,7 @@ final class SettingsViewModel {
             targetWeightKg: 84, paceKgPerWeek: 0.25, startWeightKg: 78, currentWeightKg: 79.6,
             mealTimes: .init(breakfastMin: 480, lunchMin: 780, dinnerMin: 1140),
             quietHours: .init(startMin: 1380, endMin: 420),
-            checkInsPaused: false, isAdmin: true,
+            checkInsPaused: false, isAdmin: admin,
             restrictions: [.init(label: "Dairy", token: "dairy", source: "INTOLERANCE")],
             enforcementEnabled: true, enforcementDisabledReason: nil,
             heightCm: 182, minHealthyWeightKg: 61.3,

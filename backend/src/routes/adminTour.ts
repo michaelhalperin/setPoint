@@ -3,7 +3,8 @@ import { z } from 'zod';
 import { getPrisma } from '../db/client.js';
 import {
   DEFAULT_TOUR,
-  TOUR_ANCHORS,
+  REFERENCE_SCREEN,
+  anchorsForAdmin,
   loadTour,
   resetTour,
   saveTour,
@@ -25,7 +26,8 @@ export async function adminTourRoutes(app: FastifyInstance): Promise<void> {
   app.get('/tour', async () => ({
     tour: await loadTour(getPrisma()),
     defaults: DEFAULT_TOUR,
-    anchors: TOUR_ANCHORS,
+    anchors: anchorsForAdmin(),
+    screen: REFERENCE_SCREEN,
   }));
 
   app.put('/tour', async (req) => {

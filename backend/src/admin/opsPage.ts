@@ -172,7 +172,7 @@ a.grid:hover{background:var(--fill)}
 .sw{display:flex;gap:28px;flex-wrap:wrap;margin:26px 0 8px;color:var(--soft);font-size:14px}
 .sw span{display:flex;align-items:center;gap:8px}
 .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:var(--ink);color:#0A0A0B;padding:10px 18px;border-radius:20px;font-weight:600;font-size:14px;z-index:20}
-.tr{display:grid;grid-template-columns:minmax(0,1fr) 410px;gap:48px;margin-top:36px;align-items:start}
+.tr{display:grid;grid-template-columns:minmax(0,1fr) 402px;gap:48px;margin-top:36px;align-items:start}
 .tr-list{display:flex;flex-direction:column;gap:12px}
 .tc{border:1px solid var(--line);border-radius:18px;padding:16px 18px;display:grid;gap:10px;cursor:default}
 .tc.sel{border-color:rgba(255,184,107,.6);background:rgba(255,184,107,.05)}
@@ -193,13 +193,6 @@ a.grid:hover{background:var(--fill)}
 .tr-note{margin:0;color:var(--faint);font-size:12px;line-height:1.45}
 .tr-bar{position:sticky;bottom:0;display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:28px -40px -80px;padding:14px 40px;background:rgba(10,10,11,.92);border-top:1px solid var(--line);backdrop-filter:blur(10px);z-index:6}
 .tr-bar .ck{display:flex;align-items:center;gap:8px;color:var(--soft);font-size:13px}
-.ph .screen.picking [data-anchor]{cursor:crosshair;outline:1.5px dashed rgba(255,184,107,.7);outline-offset:3px}
-.ph .screen.picking [data-anchor]:hover{outline:2.5px solid #ffb86b;background-color:rgba(255,184,107,.1)}
-.ph .pickbar{position:absolute;z-index:30;left:14px;right:14px;top:56px;padding:10px 16px;border-radius:999px;background:#f5f5f4;color:#09090b;font-size:13px;text-align:center;box-shadow:0 12px 34px rgba(0,0,0,.5)}
-.ph .pop[dir=rtl] h4{margin:0 0 6px 26px}
-.ph .pop[dir=rtl] .x{right:auto;left:10px}
-.ph .pop[dir=rtl] .count{margin-right:0;margin-left:auto}
-.ph .pop[dir=rtl] p{text-align:right}
 @media (max-width:1000px){.tr{grid-template-columns:minmax(0,1fr);gap:28px;justify-items:start}.tr-side{position:static}.tr-bar{margin:24px -16px -60px;padding:12px 16px}}
 @media (max-width:1000px){
   .bar{padding:0 16px;gap:16px;overflow-x:auto}.find{display:none}.wrap{padding:24px 16px 60px}
@@ -687,11 +680,20 @@ ${PHONE_CSS}
     var scr = ph.querySelector('.screen'), layer = ph.querySelector('#tour'), hl = ph.querySelector('#hl'), pop = ph.querySelector('#pop'), arrow = ph.querySelector('#pop-arrow');
     var q = function (sel) { return ph.querySelector(sel); };
     var cardEls = [];
+    var refW = d.screen[0];
+    var curTab = 'today';
 
+    // a button over each element, so it can be picked straight off the phone
+    var hits = q('#hits');
+    anchors.forEach(function (a) {
+      if (!a.frame) return;
+      hits.appendChild(h('button', { type: 'button', class: 'hit', 'data-anchor': a.id, 'aria-label': a.label,
+        style: 'left:' + a.frame[0] + 'px;top:' + a.frame[1] + 'px;width:' + a.frame[2] + 'px;height:' + a.frame[3] + 'px;border-radius:' + a.radius + 'px' }));
+    });
     function setTab(name) {
-      Array.prototype.forEach.call(ph.querySelectorAll('.pane'), function (p) { p.classList.toggle('on', p.dataset.pane === name); });
-      Array.prototype.forEach.call(ph.querySelectorAll('.tab'), function (t) { t.classList.toggle('on', t.dataset.tab === name); });
-      scr.dataset.tone = name === 'train' ? 'haze' : 'ember';
+      curTab = name;
+      Array.prototype.forEach.call(ph.querySelectorAll('.shot'), function (p) { p.classList.toggle('on', p.dataset.pane === name); });
+      Array.prototype.forEach.call(ph.querySelectorAll('.hit'), function (b) { var a = byId[b.dataset.anchor]; b.classList.toggle('on', a.id === 'nav.plus' || a.tab === name); });
     }
     function step() { return tw.steps[tw.sel]; }
     function words(s) { return (tw.lang === 'he' && s.he && s.he.title && s.he.body) ? s.he : s; }
@@ -716,11 +718,11 @@ ${PHONE_CSS}
       var sr = scr.getBoundingClientRect(), W = sr.width, H = sr.height;
       var pw = Math.min(284, W - 32); pop.style.width = pw + 'px';
       var ph2 = pop.offsetHeight, top, left, side = null, rect = null;
-      var el = s.anchor ? ph.querySelector('[data-anchor="' + s.anchor + '"]') : null;
-      if (el) {
-        var r = el.getBoundingClientRect(), a = byId[s.anchor], pad = a ? a.pad : 8;
-        rect = { l: r.left - sr.left - pad, t: r.top - sr.top - pad, w: r.width + pad * 2, h: r.height + pad * 2 };
-        hl.style.left = rect.l + 'px'; hl.style.top = rect.t + 'px'; hl.style.width = rect.w + 'px'; hl.style.height = rect.h + 'px'; hl.style.borderRadius = (a ? a.radius : 20) + 'px';
+      var a = s.anchor ? byId[s.anchor] : null;
+      if (a && a.frame) {
+        var k = W / refW, pad = a.pad;
+        rect = { l: (a.frame[0] - pad) * k, t: (a.frame[1] - pad) * k, w: (a.frame[2] + pad * 2) * k, h: (a.frame[3] + pad * 2) * k };
+        hl.style.left = rect.l + 'px'; hl.style.top = rect.t + 'px'; hl.style.width = rect.w + 'px'; hl.style.height = rect.h + 'px'; hl.style.borderRadius = (a.radius * k) + 'px';
         var gap = 16, below = H - (rect.t + rect.h) - gap - 8, above = rect.t - gap - 56;
         side = below >= ph2 ? 'bottom' : above >= ph2 ? 'top' : (below > above ? 'bottom' : 'top');
         top = side === 'bottom' ? rect.t + rect.h + gap : rect.t - gap - ph2;
@@ -739,12 +741,10 @@ ${PHONE_CSS}
     }
     function apply() {
       var s = step();
-      if (s && s.anchor && byId[s.anchor]) setTab(byId[s.anchor].tab); else setTab(s ? 'today' : 'today');
+      if (s && s.anchor && byId[s.anchor]) setTab(byId[s.anchor].tab); else if (!s) setTab(curTab);
       var showing = !!s && !tw.closed && !tw.picking;
       layer.hidden = !showing;
       if (!showing) return;
-      var el = s.anchor ? ph.querySelector('[data-anchor="' + s.anchor + '"]') : null;
-      if (el) { var pane = el.closest('.pane'), r = el.getBoundingClientRect(), pr = pane.getBoundingClientRect(); pane.scrollTop = Math.max(0, pane.scrollTop + (r.top - pr.top) - 110); }
       renderPop(); place();
     }
     function choose(i) {
@@ -758,7 +758,7 @@ ${PHONE_CSS}
     q('#pop-x').addEventListener('click', function (e) { e.stopPropagation(); close(); });
     layer.addEventListener('click', close);
     pop.addEventListener('click', function (e) { e.stopPropagation(); });
-    Array.prototype.forEach.call(ph.querySelectorAll('.tab'), function (t) { t.addEventListener('click', function () { if (!tw.picking) { tw.closed = true; layer.hidden = true; } setTab(t.dataset.tab); }); });
+    Array.prototype.forEach.call(ph.querySelectorAll('.tabhit'), function (t) { t.addEventListener('click', function () { if (!tw.picking) { tw.closed = true; layer.hidden = true; } setTab(t.dataset.tab); }); });
     scr.addEventListener('click', function (e) {
       if (!tw.picking) return;
       var t = e.target.closest('[data-anchor]'); if (!t) return;
@@ -770,8 +770,7 @@ ${PHONE_CSS}
     function move(i, dir) { var j = i + dir; if (j < 0 || j >= tw.steps.length) return; var t = tw.steps[i]; tw.steps[i] = tw.steps[j]; tw.steps[j] = t; tw.sel = j; tw.closed = false; touch(); redo(); }
     function remove(i) { tw.steps.splice(i, 1); tw.sel = Math.max(0, Math.min(tw.sel, tw.steps.length - 1)); touch(); redo(); }
     function add() {
-      var tab = (ph.querySelector('.pane.on') || {}).dataset ? ph.querySelector('.pane.on').dataset.pane : 'today';
-      var first = anchors.filter(function (a) { return a.tab === tab; })[0];
+      var first = anchors.filter(function (a) { return a.tab === curTab; })[0];
       tw.steps.push({ id: 's' + Date.now().toString(36) + Math.floor(Math.random() * 1000).toString(36), anchor: first ? first.id : null, welcome: false, title: 'New step', body: 'Say what this does in one line.', he: null });
       tw.sel = tw.steps.length - 1; tw.closed = false; touch(); redo();
     }

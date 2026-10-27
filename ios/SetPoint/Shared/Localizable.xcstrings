@@ -17080,6 +17080,36 @@
           }
         }
       }
+    },
+    "Show me": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "הראה לי"
+          }
+        }
+      }
+    },
+    "Next": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "הבא"
+          }
+        }
+      }
+    },
+    "Show tour as first run": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "הצג סיור כבפעם הראשונה"
+          }
+        }
+      }
     }
   },
   "version": "1.0"
