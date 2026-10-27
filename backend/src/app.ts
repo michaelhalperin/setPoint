@@ -16,6 +16,7 @@ import { adminAccessRoutes } from './routes/adminAccess.js';
 import { adminInsightRoutes } from './routes/adminInsights.js';
 import { adminOpsRoutes } from './routes/adminOps.js';
 import { adminTourRoutes } from './routes/adminTour.js';
+import { adminUsageRoutes } from './routes/adminUsage.js';
 import { authRoutes } from './routes/auth.js';
 import { biosignalRoutes } from './routes/biosignals.js';
 import { calendarRoutes } from './routes/calendar.js';
@@ -158,6 +159,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   await app.register(adminInsightRoutes, { prefix: '/api/admin' });
   await app.register(adminOpsRoutes, { prefix: '/api/admin' });
   await app.register(adminTourRoutes, { prefix: '/api/admin' });
+  await app.register(adminUsageRoutes, { prefix: '/api/admin' });
   await app.register(cronRoutes, { prefix: '/api/cron' });
 
   return app;

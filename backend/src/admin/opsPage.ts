@@ -8,6 +8,7 @@
  * template literals or backticks so nothing here is read as interpolation.
  */
 import { PHONE_CSS, PHONE_HTML } from './tourPhone.js';
+import { USAGE_CSS, USAGE_JS } from './usagePage.js';
 
 export const OPS_PAGE_HTML = String.raw`<!doctype html>
 <html lang="en">
@@ -209,6 +210,7 @@ a.grid:hover{background:var(--fill)}
   .k{grid-template-columns:minmax(0,1fr)}.lr{grid-template-columns:minmax(0,1fr)}.cost b{font-size:64px}.lane,.axis{grid-template-columns:80px minmax(0,1fr)}
 }
 ${PHONE_CSS}
+${USAGE_CSS}
 </style>
 </head>
 <body>
@@ -284,14 +286,14 @@ ${PHONE_CSS}
   function route() {
     var raw = (location.hash || '#now').slice(1);
     if (raw.indexOf('person/') === 0) return { name: 'person', id: raw.slice(7) };
-    if (['now', 'people', 'delivery', 'machine', 'access', 'tour'].indexOf(raw) >= 0) return { name: raw };
+    if (['now', 'people', 'usage', 'delivery', 'machine', 'access', 'tour'].indexOf(raw) >= 0) return { name: raw };
     return { name: 'now' };
   }
   window.addEventListener('hashchange', function () { if (state.secret) render(); window.scrollTo(0, 0); });
 
   // ----- shell -----
   function shell(active, loose, body) {
-    var tabs = [['now', 'Now'], ['people', 'People'], ['delivery', 'Delivery'], ['machine', 'Machine'], ['access', 'Access'], ['tour', 'Tour']];
+    var tabs = [['now', 'Now'], ['people', 'People'], ['usage', 'Usage'], ['delivery', 'Delivery'], ['machine', 'Machine'], ['access', 'Access'], ['tour', 'Tour']];
     var bar = h('header', { class: 'bar' }, [
       h('div', { class: 'word' }, ['SetPoint', h('span', { text: 'ops' })]),
       h('nav', { class: 'tabs', 'aria-label': 'Sections' }, tabs.map(function (t) {
@@ -843,6 +845,7 @@ ${PHONE_CSS}
     return shell('tour', loose, body);
   }
 
+${USAGE_JS}
   // ----- loading + render -----
   function load(key, path) {
     if (state.data['_loading:' + key]) return;
@@ -855,7 +858,7 @@ ${PHONE_CSS}
     if (!state.secret) { root.appendChild(signIn()); return; }
     var r = route();
     if (!state.data.now && !state.data['_loading:now']) load('now', '/api/admin/ops/now?since=' + encodeURIComponent(midnight().toISOString()));
-    var view = r.name === 'now' ? nowScreen() : r.name === 'people' ? peopleScreen() : r.name === 'person' ? personScreen(r.id) : r.name === 'delivery' ? deliveryScreen() : r.name === 'access' ? accessScreen() : r.name === 'tour' ? tourScreen() : machineScreen();
+    var view = r.name === 'now' ? nowScreen() : r.name === 'people' ? peopleScreen() : r.name === 'person' ? personScreen(r.id) : r.name === 'usage' ? usageScreen() : r.name === 'delivery' ? deliveryScreen() : r.name === 'access' ? accessScreen() : r.name === 'tour' ? tourScreen() : machineScreen();
     root.appendChild(view);
   }
 

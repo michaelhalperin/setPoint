@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import { track } from '../analytics/events.js';
 import { requireAuth, type AuthedRequest } from '../auth/index.js';
 import { getPrisma } from '../db/client.js';
 import { requireEntitlement } from '../subscription/requireEntitlement.js';
@@ -109,6 +110,7 @@ export async function workoutRoutes(app: FastifyInstance): Promise<void> {
       const row = await prisma.workout.create({
         data: { userId, source: 'PLANNED', kind: body.kind, start: rows[0]!.start, durationMin: body.durationMin },
       });
+      await track(prisma, userId, 'workout_planned', { kind: body.kind, count: 1, repeat: false });
       return { id: row.id, sessions: [{ id: row.id, clientId: null }] };
     }
     await prisma.workout.createMany({
@@ -127,6 +129,14 @@ export async function workoutRoutes(app: FastifyInstance): Promise<void> {
       where: { userId, clientId: { in: rows.map((r) => r.clientId!) } },
       select: { id: true, clientId: true },
     });
+    // A retried request re-sends the same ids, so the first one of a batch counts once.
+    await track(
+      prisma,
+      userId,
+      'workout_planned',
+      { kind: body.kind, count: rows.length, repeat: !!body.seriesId },
+      { dedupeKey: `workout_planned:${userId}:${rows[0]!.clientId}` },
+    );
     return { id: saved[0]?.id, sessions: saved };
   });
 
@@ -196,6 +206,11 @@ export async function workoutRoutes(app: FastifyInstance): Promise<void> {
       throw app.httpErrors.conflict('session is too old to change');
     }
     await prisma.workout.update({ where: { id: row.id }, data: { outcome } });
+    if (outcome) {
+      await track(prisma, userId, outcome === 'DONE' ? 'workout_completed' : 'workout_skipped', { kind: row.kind }, {
+        dedupeKey: `workout_${outcome}:${row.id}`,
+      });
+    }
     return { id: row.id, outcome };
   });
 

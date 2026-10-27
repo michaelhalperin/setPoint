@@ -35,6 +35,11 @@ export const EVENTS = [
   'expert_safety_trip',
   'expert_safety_lock',
   'expert_consent',
+  'workout_planned',
+  'workout_completed',
+  'workout_skipped',
+  'language_changed',
+  'subscription_verified',
 ] as const;
 
 export type EventName = (typeof EVENTS)[number];

@@ -1,4 +1,5 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
+import { buildDigest, storeDigest } from '../admin/digest.js';
 import { pruneAiUsage } from '../ai/quota.js';
 import { getPrisma } from '../db/client.js';
 import { pruneRateLimitBuckets } from '../http/rateLimit.js';
@@ -26,6 +27,9 @@ function isAuthorized(req: FastifyRequest): boolean {
   const headerSecret = req.headers['x-cron-secret'];
   return bearer === env.CRON_SECRET || headerSecret === env.CRON_SECRET;
 }
+
+/** Raw analytics events older than this are dropped by the digest job. */
+const EVENT_RETENTION_DAYS = 180;
 
 export async function cronRoutes(app: FastifyInstance): Promise<void> {
   app.addHook('preHandler', async (req) => {
@@ -102,6 +106,27 @@ export async function cronRoutes(app: FastifyInstance): Promise<void> {
       req.log.info({ ...summary, aiUsagePruned, rateLimitPruned, photoCleanup }, 'cron:settle complete');
       await flushSentry();
       return { ...summary, aiUsagePruned, rateLimitPruned, photoCleanup };
+    },
+  });
+
+  // Usage digest each morning, plus the weekly one on Mondays. Stored in AppConfig for the
+  // dashboard's Usage tab; also drops analytics events past the retention window.
+  app.route({
+    method: ['GET', 'POST'],
+    url: '/digest',
+    handler: async (req) => {
+      const now = new Date();
+      const periods: Array<'daily' | 'weekly'> = now.getUTCDay() === 1 ? ['daily', 'weekly'] : ['daily'];
+      const digests = [];
+      for (const period of periods) {
+        const digest = await buildDigest(getPrisma(), period, now);
+        await storeDigest(getPrisma(), digest);
+        digests.push(digest);
+      }
+      const cutoff = new Date(now.getTime() - EVENT_RETENTION_DAYS * 86_400_000);
+      const pruned = await getPrisma().analyticsEvent.deleteMany({ where: { occurredAt: { lt: cutoff } } });
+      req.log.info({ periods, pruned: pruned.count }, 'cron:digest complete');
+      return { digests, pruned: pruned.count };
     },
   });
 

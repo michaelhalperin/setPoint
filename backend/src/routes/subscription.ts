@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import { track } from '../analytics/events.js';
 import { requireAuth, type AuthedRequest } from '../auth/index.js';
 import { getPrisma } from '../db/client.js';
 import { captureError } from '../observability/sentry.js';
@@ -55,7 +56,10 @@ export async function subscriptionRoutes(app: FastifyInstance): Promise<void> {
       throw err;
     }
     try {
-      return await saveVerifiedSubscription(getPrisma(), (req as AuthedRequest).userId, verified);
+      const userId = (req as AuthedRequest).userId;
+      const saved = await saveVerifiedSubscription(getPrisma(), userId, verified);
+      await track(getPrisma(), userId, 'subscription_verified');
+      return saved;
     } catch (err) {
       if (err instanceof SubscriptionOwnedElsewhereError) throw app.httpErrors.conflict(err.message);
       throw err;
