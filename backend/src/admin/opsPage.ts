@@ -172,28 +172,52 @@ a.grid:hover{background:var(--fill)}
 .sw{display:flex;gap:28px;flex-wrap:wrap;margin:26px 0 8px;color:var(--soft);font-size:14px}
 .sw span{display:flex;align-items:center;gap:8px}
 .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:var(--ink);color:#0A0A0B;padding:10px 18px;border-radius:20px;font-weight:600;font-size:14px;z-index:20}
-.tr{display:grid;grid-template-columns:minmax(0,1fr) 402px;gap:48px;margin-top:36px;align-items:start}
-.tr-list{display:flex;flex-direction:column;gap:12px}
-.tc{border:1px solid var(--line);border-radius:18px;padding:16px 18px;display:grid;gap:10px;cursor:default}
-.tc.sel{border-color:rgba(255,184,107,.6);background:rgba(255,184,107,.05)}
-.tc-h{display:flex;align-items:center;gap:8px;min-width:0}
-.tc-h .n{font:500 12px var(--mono);color:var(--faint);width:22px;flex:none}
-.tc-h .sp{flex:1}
-.tc select,.tc input[type=text],.tc textarea{width:100%;min-width:0;border-radius:12px;border:1px solid var(--line-hi);background:var(--fill);padding:0 12px;font-size:14px;height:38px}
-.tc textarea{height:auto;min-height:62px;padding:9px 12px;resize:vertical;line-height:1.4}
-.tc input.ti{font-weight:600}
-.tc label.l{display:block;font:400 11px var(--mono);color:var(--faint);margin:0 0 4px}
-.tc .he input,.tc .he textarea{direction:rtl;text-align:right}
-.tc .ck{display:flex;align-items:center;gap:8px;color:var(--soft);font-size:13px}
-.mini{height:28px;min-width:28px;padding:0 10px;border-radius:14px;border:1px solid var(--line);background:transparent;cursor:pointer;font-size:12px}
+.tr-head{position:sticky;top:60px;z-index:7;display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:16px 0;margin:0 0 8px;background:var(--bg);border-bottom:1px solid var(--line)}
+.tr-head h1{margin:0;font-size:26px;letter-spacing:-.03em;font-weight:500}
+.tr-head .meta{color:var(--faint);font-size:13px}
+.tr-head .sp{flex:1}
+.tr-head .state{font-size:13px;color:var(--faint);display:flex;align-items:center;gap:8px}
+.tr-head .state.dirty{color:var(--warn)}
+.tr-head .state i{width:8px;height:8px;border-radius:50%;background:currentColor}
+.tr-head .ck{display:flex;align-items:center;gap:8px;color:var(--soft);font-size:13px}
+.tr3{display:grid;grid-template-columns:270px 402px minmax(300px,1fr);gap:36px;margin-top:24px;align-items:start}
+.tr-col{min-width:0}
+.tr-sticky{position:sticky;top:136px;display:flex;flex-direction:column;gap:12px}
+.ts-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.ts{display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:14px;cursor:pointer;background:transparent;text-align:left;width:100%}
+.ts:hover{background:var(--fill)}
+.ts.sel{border-color:rgba(255,184,107,.65);background:rgba(255,184,107,.07)}
+.ts.over{border-color:var(--ember);box-shadow:0 -2px 0 var(--ember)}
+.ts .n{font:500 12px var(--mono);color:var(--faint);text-align:center}
+.ts .tt{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ts .sub{display:block;font-size:12px;color:var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.ts .badge{font:500 10px var(--mono);padding:2px 6px;border-radius:8px;background:rgba(255,107,107,.15);color:var(--bad)}
+.ts-add{margin-top:10px}
+.tr-edit{border:1px solid var(--line);border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:20px}
+.tr-edit h2{margin:0;font-size:18px;font-weight:600;letter-spacing:-.01em}
+.tr-edit .top{display:flex;align-items:center;gap:8px}
+.tr-edit .top .sp{flex:1}
+.sec{display:flex;flex-direction:column;gap:10px}
+.sec>label,.sec>.lab{font:500 11px var(--mono);letter-spacing:.06em;color:var(--faint);text-transform:uppercase;display:flex;justify-content:space-between;align-items:baseline}
+.sec .cnt{text-transform:none;letter-spacing:0;font-weight:400}
+.sec input[type=text],.sec textarea{width:100%;min-width:0;border-radius:12px;border:1px solid var(--line-hi);background:var(--fill);padding:0 12px;font-size:15px;height:42px}
+.sec textarea{height:auto;min-height:92px;padding:10px 12px;resize:vertical;line-height:1.45}
+.sec input.ti{font-weight:600}
+.sec.he input,.sec.he textarea{direction:rtl;text-align:right}
+.segs{display:flex;gap:6px;flex-wrap:wrap}
+.opts{display:flex;flex-direction:column;gap:6px}
+.opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:9px 12px;border-radius:12px;border:1px solid var(--line);background:transparent;cursor:pointer;font-size:14px}
+.opt:hover{background:var(--fill)}
+.opt[aria-pressed=true]{border-color:rgba(255,122,61,.8);background:rgba(255,122,61,.12)}
+.opt i{width:12px;height:12px;border-radius:50%;border:1.5px solid var(--faint);flex:none}
+.opt[aria-pressed=true] i{border-color:var(--ember);background:var(--ember)}
+.opt span{color:var(--faint);font-size:12px;margin-left:auto}
+.mini{height:30px;min-width:30px;padding:0 10px;border-radius:15px;border:1px solid var(--line);background:transparent;cursor:pointer;font-size:12px}
 .mini:hover{background:var(--fill)}.mini:disabled{opacity:.3;cursor:default}.mini.dng{color:var(--bad)}
-.tr-side{position:sticky;top:76px;display:flex;flex-direction:column;gap:12px}
-.tr-ctl{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.tr-ctl .sp{flex:1}
-.tr-note{margin:0;color:var(--faint);font-size:12px;line-height:1.45}
-.tr-bar{position:sticky;bottom:0;display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:28px -40px -80px;padding:14px 40px;background:rgba(10,10,11,.92);border-top:1px solid var(--line);backdrop-filter:blur(10px);z-index:6}
-.tr-bar .ck{display:flex;align-items:center;gap:8px;color:var(--soft);font-size:13px}
-@media (max-width:1000px){.tr{grid-template-columns:minmax(0,1fr);gap:28px;justify-items:start}.tr-side{position:static}.tr-bar{margin:24px -16px -60px;padding:12px 16px}}
+.hint{margin:0;color:var(--faint);font-size:12px;line-height:1.45}
+.tr-empty{border:1px dashed var(--line-hi);border-radius:20px;padding:28px;color:var(--soft)}
+@media (max-width:1280px){.tr3{grid-template-columns:240px 402px minmax(0,1fr);gap:24px}}
+@media (max-width:1100px){.tr3{grid-template-columns:minmax(0,1fr);justify-items:start}.tr-sticky{position:static}.tr-col{width:100%}.tr-head{top:60px}}
 @media (max-width:1000px){
   .bar{padding:0 16px;gap:16px;overflow-x:auto}.find{display:none}.wrap{padding:24px 16px 60px}
   .h1{font-size:36px}.nums{grid-template-columns:repeat(2,minmax(0,1fr))}.nums div{padding-left:0!important;border-left:0!important}
@@ -667,23 +691,25 @@ ${PHONE_CSS}
     var loose = state.data.now ? state.data.now.looseEnds.length : 0;
     var d = state.data.tour;
     if (!d) { load('tour', '/api/admin/tour'); return shell('tour', loose, [h('p', { class: 'empty', text: 'Loading…' })]); }
-    if (!state.tw) state.tw = { steps: JSON.parse(JSON.stringify(d.tour.steps)), revision: d.tour.revision, sel: 0, dirty: false, bump: false, lang: 'en', closed: false, picking: false };
+    if (!state.tw) state.tw = { steps: JSON.parse(JSON.stringify(d.tour.steps)), revision: d.tour.revision, sel: 0, dirty: false, bump: false, lang: 'en', closed: false, picking: false, pickTab: null };
     var tw = state.tw, anchors = d.anchors, byId = {};
     anchors.forEach(function (a) { byId[a.id] = a; });
     var redo = function () { var y = window.scrollY; render(); window.scrollTo(0, y); };
-    var saveBtn = null;
-    var touch = function () { tw.dirty = true; if (saveBtn) saveBtn.disabled = false; };
+    var saveBtn = null, stateEl = null;
+    var touch = function () {
+      tw.dirty = true;
+      if (saveBtn) saveBtn.disabled = false;
+      if (stateEl) { stateEl.className = 'state dirty'; stateEl.lastChild.textContent = 'Unsaved changes'; }
+    };
     var fail = function (e) { toast(e.message); };
+    function step() { return tw.steps[tw.sel]; }
+    function tabOf(s) { return s && s.anchor && byId[s.anchor] ? byId[s.anchor].tab : null; }
 
-    // ---- the phone: the app's own screens, with the tour drawn the way the app draws it
+    // ---- the phone: screenshots of the app, with the tour drawn the way the app draws it
     var ph = document.getElementById('phone-tpl').content.firstElementChild.cloneNode(true);
     var scr = ph.querySelector('.screen'), layer = ph.querySelector('#tour'), hl = ph.querySelector('#hl'), pop = ph.querySelector('#pop'), arrow = ph.querySelector('#pop-arrow');
     var q = function (sel) { return ph.querySelector(sel); };
-    var cardEls = [];
-    var refW = d.screen[0];
-    var curTab = 'today';
-
-    // a button over each element, so it can be picked straight off the phone
+    var refW = d.screen[0], curTab = 'today';
     var hits = q('#hits');
     anchors.forEach(function (a) {
       if (!a.frame) return;
@@ -695,11 +721,9 @@ ${PHONE_CSS}
       Array.prototype.forEach.call(ph.querySelectorAll('.shot'), function (p) { p.classList.toggle('on', p.dataset.pane === name); });
       Array.prototype.forEach.call(ph.querySelectorAll('.hit'), function (b) { var a = byId[b.dataset.anchor]; b.classList.toggle('on', a.id === 'nav.plus' || a.tab === name); });
     }
-    function step() { return tw.steps[tw.sel]; }
     function words(s) { return (tw.lang === 'he' && s.he && s.he.title && s.he.body) ? s.he : s; }
     function realCount() { return tw.steps.filter(function (x) { return !x.welcome; }).length; }
     function realIndex() { return tw.steps.slice(0, tw.sel + 1).filter(function (x) { return !x.welcome; }).length; }
-
     function renderPop() {
       var s = step(); if (!s) return;
       var w = words(s), L = TOUR_WORDS[tw.lang], last = tw.sel === tw.steps.length - 1;
@@ -740,17 +764,15 @@ ${PHONE_CSS}
       } else arrow.hidden = true;
     }
     function apply() {
-      var s = step();
-      if (s && s.anchor && byId[s.anchor]) setTab(byId[s.anchor].tab); else if (!s) setTab(curTab);
-      var showing = !!s && !tw.closed && !tw.picking;
+      var s = step(), showing = !!s && !tw.closed && !tw.picking;
+      setTab(showing ? (tabOf(s) || 'today') : (tw.pickTab || tabOf(s) || curTab));
       layer.hidden = !showing;
-      if (!showing) return;
-      renderPop(); place();
+      if (showing) { renderPop(); place(); }
     }
+    var listEls = [];
     function choose(i) {
-      tw.sel = Math.max(0, Math.min(tw.steps.length - 1, i)); tw.closed = false; tw.picking = false;
-      cardEls.forEach(function (c, k) { c.classList.toggle('sel', k === tw.sel); });
-      apply();
+      tw.sel = Math.max(0, Math.min(tw.steps.length - 1, i)); tw.closed = false; tw.picking = false; tw.pickTab = null;
+      redo();
     }
     function close() { tw.closed = true; layer.hidden = true; }
     q('#pop-next').addEventListener('click', function (e) { e.stopPropagation(); tw.sel >= tw.steps.length - 1 ? close() : choose(tw.sel + 1); });
@@ -758,7 +780,7 @@ ${PHONE_CSS}
     q('#pop-x').addEventListener('click', function (e) { e.stopPropagation(); close(); });
     layer.addEventListener('click', close);
     pop.addEventListener('click', function (e) { e.stopPropagation(); });
-    Array.prototype.forEach.call(ph.querySelectorAll('.tabhit'), function (t) { t.addEventListener('click', function () { if (!tw.picking) { tw.closed = true; layer.hidden = true; } setTab(t.dataset.tab); }); });
+    Array.prototype.forEach.call(ph.querySelectorAll('.tabhit'), function (t) { t.addEventListener('click', function () { if (!tw.picking) { tw.closed = true; layer.hidden = true; } tw.pickTab = t.dataset.tab; setTab(t.dataset.tab); }); });
     scr.addEventListener('click', function (e) {
       if (!tw.picking) return;
       var t = e.target.closest('[data-anchor]'); if (!t) return;
@@ -766,78 +788,121 @@ ${PHONE_CSS}
       tw.picking = false; setAnchor(tw.sel, t.dataset.anchor);
     }, true);
 
-    // ---- editing
+    // ---- changing the steps
     function move(i, dir) { var j = i + dir; if (j < 0 || j >= tw.steps.length) return; var t = tw.steps[i]; tw.steps[i] = tw.steps[j]; tw.steps[j] = t; tw.sel = j; tw.closed = false; touch(); redo(); }
-    function remove(i) { tw.steps.splice(i, 1); tw.sel = Math.max(0, Math.min(tw.sel, tw.steps.length - 1)); touch(); redo(); }
+    function dropAt(from, to) { if (from === to) return; var t = tw.steps.splice(from, 1)[0]; tw.steps.splice(to, 0, t); tw.sel = to; tw.closed = false; touch(); redo(); }
+    function remove(i) { tw.steps.splice(i, 1); tw.sel = Math.max(0, Math.min(tw.sel, tw.steps.length - 1)); tw.closed = false; touch(); redo(); }
     function add() {
       var first = anchors.filter(function (a) { return a.tab === curTab; })[0];
       tw.steps.push({ id: 's' + Date.now().toString(36) + Math.floor(Math.random() * 1000).toString(36), anchor: first ? first.id : null, welcome: false, title: 'New step', body: 'Say what this does in one line.', he: null });
-      tw.sel = tw.steps.length - 1; tw.closed = false; touch(); redo();
+      tw.sel = tw.steps.length - 1; tw.closed = false; tw.pickTab = null; touch(); redo();
     }
-    function setAnchor(i, id) { tw.steps[i].anchor = id || null; if (id) tw.steps[i].welcome = false; tw.closed = false; touch(); redo(); }
+    function setAnchor(i, id) { tw.steps[i].anchor = id || null; if (id) tw.steps[i].welcome = false; tw.closed = false; tw.pickTab = null; touch(); redo(); }
     var live = function () { if (!layer.hidden) { renderPop(); place(); } };
+    function sub(s) { return s.welcome ? 'Opening prompt' : s.anchor && byId[s.anchor] ? byId[s.anchor].label : 'Shown in the middle'; }
 
-    var cards = tw.steps.map(function (s, i) {
-      var groups = TOUR_TABS.map(function (t) {
-        return h('optgroup', { label: t[1] }, anchors.filter(function (a) { return a.tab === t[0]; }).map(function (a) { return h('option', { value: a.id, text: a.label }); }));
+    // ---- left: the steps
+    var dragFrom = null;
+    var items = tw.steps.map(function (s, i) {
+      var missing = !s.welcome && !(s.he && s.he.title && s.he.body);
+      var item = h('li', null, [h('div', { class: 'ts' + (tw.sel === i ? ' sel' : ''), role: 'button', tabindex: '0', draggable: 'true', 'aria-label': 'Step ' + (i + 1) + ': ' + s.title,
+        onclick: function () { choose(i); },
+        onkeydown: function (e) {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); choose(i); }
+          else if (e.key === 'ArrowDown' && e.altKey) { e.preventDefault(); move(i, 1); }
+          else if (e.key === 'ArrowUp' && e.altKey) { e.preventDefault(); move(i, -1); }
+        },
+        ondragstart: function (e) { dragFrom = i; e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', String(i)); } catch (x) {} },
+        ondragover: function (e) { if (dragFrom === null) return; e.preventDefault(); e.currentTarget.classList.add('over'); },
+        ondragleave: function (e) { e.currentTarget.classList.remove('over'); },
+        ondrop: function (e) { e.preventDefault(); var from = dragFrom; dragFrom = null; if (from !== null) dropAt(from, i); },
+        ondragend: function () { dragFrom = null; }
+      }, [h('span', { class: 'n', text: s.welcome ? '·' : String(i) }), h('div', { style: 'min-width:0' }, [h('span', { class: 'tt', style: 'display:block', text: s.title || 'Untitled' }), h('span', { class: 'sub', text: sub(s) })]), missing ? h('span', { class: 'badge', title: 'No Hebrew yet, people on Hebrew see English', text: 'HE' }) : null])]);
+      listEls.push(item.firstChild);
+      return item;
+    });
+    var leftCol = h('div', { class: 'tr-col' }, [
+      h('div', { class: 'h3', style: 'margin-bottom:10px' }, ['Steps', h('span', { text: tw.steps.length + (tw.steps.length === 1 ? ' step' : ' steps') })]),
+      h('ul', { class: 'ts-list' }, items),
+      h('button', { class: 'btn ts-add', type: 'button', text: '+ Add a step', onclick: add }),
+      h('p', { class: 'hint', style: 'margin-top:12px', text: 'Drag to reorder, or Alt with the arrow keys. A red HE means no Hebrew yet.' })
+    ]);
+
+    // ---- middle: the phone
+    var langBtn = function (code, label) { return h('button', { class: 'chip', type: 'button', 'aria-pressed': tw.lang === code ? 'true' : 'false', text: label, onclick: function () { tw.lang = code; redo(); } }); };
+    var midCol = h('div', { class: 'tr-col' }, [h('div', { class: 'tr-sticky' }, [
+      h('div', { class: 'segs' }, [langBtn('en', 'English'), langBtn('he', 'עברית')]),
+      ph,
+      h('p', { class: 'hint', text: 'The app as people see it. Tap the dimmed area or the cross to close the tip, and pick a step to open it again.' })
+    ])]);
+
+    // ---- right: the selected step
+    var s = step(), right;
+    if (!s) {
+      right = h('div', { class: 'tr-empty' }, [h('p', { style: 'margin:0 0 14px', text: 'No steps yet. People will not see a tour until you add one.' }), h('button', { class: 'btn pri', type: 'button', text: '+ Add the first step', onclick: add })]);
+    } else {
+      var he = tw.lang === 'he';
+      var field = function () { if (!he) return s; if (!s.he) s.he = { title: '', body: '' }; return s.he; };
+      var cur = field();
+      var titleIn = h('input', { type: 'text', class: 'ti', maxlength: '60', 'aria-label': 'Title', value: cur.title || '', placeholder: he ? 'English is shown when this is empty' : '' });
+      var bodyIn = h('textarea', { maxlength: '260', 'aria-label': 'Text', placeholder: he ? 'English is shown when this is empty' : '' }); bodyIn.value = cur.body || '';
+      var tCnt = h('span', { class: 'cnt', text: (cur.title || '').length + '/60' }), bCnt = h('span', { class: 'cnt', text: (cur.body || '').length + '/260' });
+      titleIn.addEventListener('input', function () { field().title = titleIn.value; tCnt.textContent = titleIn.value.length + '/60'; touch(); live(); var t = listEls[tw.sel] && listEls[tw.sel].querySelector('.tt'); if (t && !he) t.textContent = titleIn.value || 'Untitled'; });
+      bodyIn.addEventListener('input', function () { field().body = bodyIn.value; bCnt.textContent = bodyIn.value.length + '/260'; touch(); live(); });
+
+      var pickTab = tw.pickTab || tabOf(s) || 'today';
+      var tabSegs = h('div', { class: 'segs' }, TOUR_TABS.map(function (t) {
+        return h('button', { class: 'chip', type: 'button', 'aria-pressed': pickTab === t[0] ? 'true' : 'false', text: t[1], onclick: function () { tw.pickTab = t[0]; tw.closed = true; tw.picking = false; redo(); } });
+      }));
+      var opts = anchors.filter(function (a) { return a.tab === pickTab; }).map(function (a) {
+        return h('button', { class: 'opt', type: 'button', 'aria-pressed': s.anchor === a.id ? 'true' : 'false', onclick: function () { setAnchor(tw.sel, a.id); } }, [h('i'), a.label]);
       });
-      var sel = h('select', { 'aria-label': 'Element for step ' + (i + 1), onchange: function (e) { setAnchor(i, e.target.value); } }, [h('option', { value: '', text: 'Nothing, show in the middle' })].concat(groups));
-      sel.value = s.anchor || '';
-      var title = h('input', { type: 'text', class: 'ti', maxlength: '60', 'aria-label': 'Title of step ' + (i + 1), value: s.title, oninput: function (e) { s.title = e.target.value; touch(); live(); } });
-      var body = h('textarea', { maxlength: '260', 'aria-label': 'Text of step ' + (i + 1), oninput: function (e) { s.body = e.target.value; touch(); live(); } }); body.value = s.body;
-      var he = function () { if (!s.he) s.he = { title: '', body: '' }; return s.he; };
-      var hTitle = h('input', { type: 'text', maxlength: '60', 'aria-label': 'Hebrew title of step ' + (i + 1), value: s.he ? s.he.title : '', oninput: function (e) { he().title = e.target.value; touch(); live(); } });
-      var hBody = h('textarea', { maxlength: '260', 'aria-label': 'Hebrew text of step ' + (i + 1), oninput: function (e) { he().body = e.target.value; touch(); live(); } }); hBody.value = s.he ? s.he.body : '';
-      var ck = h('input', { type: 'checkbox', 'aria-label': 'Opening prompt', onchange: function (e) {
+      opts.push(h('button', { class: 'opt', type: 'button', 'aria-pressed': !s.anchor ? 'true' : 'false', onclick: function () { setAnchor(tw.sel, null); } }, [h('i'), 'Nothing, show in the middle']));
+      var ck = h('input', { type: 'checkbox', id: 'tr-welcome', onchange: function (e) {
         tw.steps.forEach(function (x) { x.welcome = false; }); s.welcome = e.target.checked; if (s.welcome) s.anchor = null; touch(); redo();
       } }); ck.checked = !!s.welcome;
-      var card = h('div', { class: 'tc' + (tw.sel === i ? ' sel' : ''), onfocusin: function () { if (tw.sel !== i || tw.closed) choose(i); }, onclick: function (e) { if ((tw.sel !== i || tw.closed) && !/^(SELECT|INPUT|TEXTAREA|BUTTON|OPTION)$/.test(e.target.tagName)) choose(i); } }, [
-        h('div', { class: 'tc-h' }, [h('span', { class: 'n', text: s.welcome ? '·' : String(i + 1) }), s.welcome ? h('span', { class: 't-warn', style: 'font-size:12px', text: 'Opening prompt' }) : h('span', { class: 't-faint', style: 'font-size:12px', text: s.anchor ? byId[s.anchor].tab : 'middle' }), h('span', { class: 'sp' }),
-          h('button', { class: 'mini', type: 'button', 'aria-label': 'Move up', disabled: i === 0, onclick: function () { move(i, -1); }, text: '↑' }),
-          h('button', { class: 'mini', type: 'button', 'aria-label': 'Move down', disabled: i === tw.steps.length - 1, onclick: function () { move(i, 1); }, text: '↓' }),
-          h('button', { class: 'mini dng', type: 'button', onclick: function () { remove(i); }, text: 'Remove' })]),
-        h('div', null, [h('label', { class: 'l', text: 'POINTS AT' }), sel]),
-        h('div', null, [h('label', { class: 'l', text: 'TITLE' }), title]),
-        h('div', null, [h('label', { class: 'l', text: 'TEXT' }), body]),
-        h('div', { class: 'he' }, [h('label', { class: 'l', style: 'direction:ltr;text-align:left', text: 'HEBREW (leave empty to show English)' }), hTitle, h('div', { style: 'height:8px' }), hBody]),
-        h('label', { class: 'ck' }, [ck, 'Opening prompt (asks “Show me / Not now” first, no element)'])
+      var pickBtn = h('button', { class: 'btn' + (tw.picking ? ' pri' : ''), type: 'button', text: tw.picking ? 'Click an element on the phone… (cancel)' : 'Pick on the phone', onclick: function () { tw.picking = !tw.picking; if (tw.picking) tw.pickTab = tw.pickTab || tabOf(s) || 'today'; redo(); } });
+
+      right = h('div', { class: 'tr-edit' }, [
+        h('div', { class: 'top' }, [h('h2', { text: s.welcome ? 'Opening prompt' : 'Step ' + tw.sel }), h('span', { class: 'sp' }),
+          h('button', { class: 'mini', type: 'button', 'aria-label': 'Move up', disabled: tw.sel === 0, onclick: function () { move(tw.sel, -1); }, text: '↑' }),
+          h('button', { class: 'mini', type: 'button', 'aria-label': 'Move down', disabled: tw.sel === tw.steps.length - 1, onclick: function () { move(tw.sel, 1); }, text: '↓' }),
+          h('button', { class: 'mini dng', type: 'button', onclick: function () { remove(tw.sel); }, text: 'Remove' })]),
+        s.welcome ? h('p', { class: 'hint', text: 'This one has no element. It asks “Show me / Not now” before the tour starts.' }) :
+          h('div', { class: 'sec' }, [h('div', { class: 'lab', text: 'Points at' }), tabSegs, h('div', { class: 'opts' }, opts), pickBtn]),
+        h('div', { class: 'sec' + (he ? ' he' : '') }, [h('label', null, ['Title' + (he ? ' (עברית)' : ''), tCnt]), titleIn]),
+        h('div', { class: 'sec' + (he ? ' he' : '') }, [h('label', null, ['Text' + (he ? ' (עברית)' : ''), bCnt]), bodyIn]),
+        h('label', { class: 'ck', for: 'tr-welcome' }, [ck, 'Make this the opening prompt'])
       ]);
-      cardEls.push(card);
-      return card;
-    });
+    }
+    var rightCol = h('div', { class: 'tr-col' }, [right]);
 
-    var langBtn = function (code, label) { return h('button', { class: 'chip', type: 'button', 'aria-pressed': tw.lang === code ? 'true' : 'false', text: label, onclick: function () { tw.lang = code; redo(); } }); };
-    var pick = h('button', { class: 'btn', type: 'button', 'aria-pressed': tw.picking ? 'true' : 'false', text: tw.picking ? 'Cancel picking' : 'Pick on phone', onclick: function () {
-      if (!step()) { toast('Add a step first'); return; }
-      tw.picking = !tw.picking; redo();
-    } });
-    if (tw.picking) { scr.classList.add('picking'); q('#pickbar').hidden = false; q('#pickmsg').textContent = 'Click an element on the phone'; }
-    else q('#pickbar').hidden = true;
-    var tabsRow = h('div', { class: 'tr-ctl' }, [langBtn('en', 'English'), langBtn('he', 'עברית'), h('span', { class: 'sp' }), pick]);
-
+    // ---- the top bar: the one place to save
     saveBtn = h('button', { class: 'btn pri', type: 'button', text: 'Save tour', disabled: !tw.dirty, onclick: function () {
       saveBtn.disabled = true;
       api('/api/admin/tour', { method: 'PUT', body: { steps: tw.steps, bumpRevision: tw.bump } }).then(function () {
         toast('Saved. The app picks it up on next launch.'); delete state.data.tour; state.tw = null; render();
       }).catch(function (e) { saveBtn.disabled = false; fail(e); });
     } });
-    var bump = h('input', { type: 'checkbox', 'aria-label': 'Show again to everyone', onchange: function (e) { tw.bump = e.target.checked; touch(); } }); bump.checked = tw.bump;
+    stateEl = h('span', { class: 'state' + (tw.dirty ? ' dirty' : '') }, [h('i'), document.createTextNode(tw.dirty ? 'Unsaved changes' : 'Saved')]);
+    var bump = h('input', { type: 'checkbox', id: 'tr-bump', onchange: function (e) { tw.bump = e.target.checked; touch(); } }); bump.checked = tw.bump;
     var armed = false;
-    var resetBtn = h('button', { class: 'btn dng', type: 'button', text: 'Reset to defaults', onclick: function () {
-      if (!armed) { armed = true; resetBtn.textContent = 'Tap again to reset'; setTimeout(function () { armed = false; resetBtn.textContent = 'Reset to defaults'; }, 3500); return; }
+    var resetBtn = h('button', { class: 'btn', type: 'button', text: 'Reset to defaults', onclick: function () {
+      if (!armed) { armed = true; resetBtn.textContent = 'Click again to reset'; resetBtn.classList.add('dng'); setTimeout(function () { armed = false; resetBtn.textContent = 'Reset to defaults'; resetBtn.classList.remove('dng'); }, 3500); return; }
       api('/api/admin/tour', { method: 'DELETE' }).then(function () { toast('Back to the built-in tour'); delete state.data.tour; state.tw = null; render(); }).catch(fail);
     } });
+    var head = h('div', { class: 'tr-head' }, [
+      h('h1', { text: 'Guided tour' }),
+      h('span', { class: 'meta', text: tw.revision > 1 ? 'Shown again ' + (tw.revision - 1) + ' time' + (tw.revision > 2 ? 's' : '') : 'Never re-shown' }),
+      h('span', { class: 'sp' }), stateEl,
+      h('label', { class: 'ck', for: 'tr-bump' }, [bump, 'Show again to everyone who has seen it']),
+      resetBtn, saveBtn
+    ]);
 
-    var body = [h('div', { class: 'kick', text: 'Tour' }),
-      h('h1', { class: 'h1' }, ['The guided tour. ', h('em', { text: tw.steps.length + ' steps, ' + (tw.revision > 1 ? 'shown again ' + (tw.revision - 1) + ' time' + (tw.revision > 2 ? 's' : '') : 'never re-shown') + '.' })]),
-      h('p', { class: 't-soft', style: 'max-width:640px;margin:14px 0 0', text: 'What a new person sees once, after setup, and again from You, How SetPoint works. Pick a step to see it on the app, point it at an element, write what it does, and add the Hebrew. Changes reach the app on its next launch, no build needed.' }),
-      h('div', { class: 'tr' }, [
-        h('div', { class: 'tr-list' }, cards.concat([h('div', null, [h('button', { class: 'btn', type: 'button', text: '+ Add a step', onclick: add })])])),
-        h('aside', { class: 'tr-side' }, [tabsRow, ph, h('p', { class: 'tr-note', text: 'This is the app and its tip as people see them. The dim area and the cross close the tip; pick a step to open it again.' })])
-      ]),
-      h('div', { class: 'tr-bar' }, [saveBtn, h('label', { class: 'ck' }, [bump, 'Show again to everyone who has seen it']), h('span', { class: 'sp' }), resetBtn])];
-    // measure once the phone is on the page, and again when the fonts settle
-    setTimeout(function () { if (tw.steps.length) apply(); else setTab('today'); }, 0);
+    var body = [h('div', { class: 'kick', text: 'Tour' }), head,
+      h('p', { class: 't-soft', style: 'max-width:680px;margin:14px 0 0', text: 'What a new person sees once after setup, and again from You, How SetPoint works. Pick a step on the left, change what it points at and what it says, and watch it on the phone. Changes reach the app on its next launch, no build needed.' }),
+      h('div', { class: 'tr3' }, [leftCol, midCol, rightCol])];
+    setTimeout(function () { apply(); if (s) { var el = listEls[tw.sel]; if (el && document.activeElement === document.body && tw.__focusList) el.focus(); } }, 0);
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { place(); });
     return shell('tour', loose, body);
   }
