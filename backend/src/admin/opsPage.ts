@@ -745,7 +745,7 @@ ${PHONE_CSS}
       var s = step(); if (!s || layer.hidden) return;
       var W = scr.offsetWidth, H = scr.offsetHeight;
       var pw = Math.min(284, W - 32); pop.style.width = pw + 'px';
-      var ph2 = pop.offsetHeight, top, left, rect = null;
+      var ph2 = pop.getBoundingClientRect().height / (scr.getBoundingClientRect().width / scr.offsetWidth), top, left, rect = null;
       var a = s.anchor ? byId[s.anchor] : null;
       if (a && a.frame) {
         var k = W / refW, pad = a.pad;
@@ -866,14 +866,12 @@ ${PHONE_CSS}
     ]);
 
     // ---- middle: the phone
-    var langBtn = function (code, label) { return h('button', { class: 'chip', type: 'button', 'aria-pressed': tw.lang === code ? 'true' : 'false', text: label, onclick: function () { tw.lang = code; redo(); } }); };
     var fitBox = h('div', { class: 'tr-fit' }, [ph]);
-    var langRow = h('div', { class: 'segs' }, [langBtn('en', 'English'), langBtn('he', '\u05e2\u05d1\u05e8\u05d9\u05ea')]);
-    var midCol = h('div', { class: 'tr-col tr-mid' }, [langRow, fitBox]);
+    var midCol = h('div', { class: 'tr-col tr-mid' }, [fitBox]);
     // the phone shrinks to the height that is left, so the whole page fits the screen
     function fit() {
       if (!midCol.isConnected) return;
-      var availH = midCol.clientHeight - langRow.offsetHeight - 12, availW = midCol.clientWidth;
+      var availH = midCol.clientHeight, availW = midCol.clientWidth;
       var k = Math.max(0.4, Math.min(1, availH / 874, availW / 402));
       fitBox.style.width = Math.round(402 * k) + 'px'; fitBox.style.height = Math.round(874 * k) + 'px';
       ph.style.transform = 'scale(' + k + ')'; ph.style.transformOrigin = '0 0';
@@ -944,10 +942,12 @@ ${PHONE_CSS}
       if (!armed) { armed = true; resetBtn.textContent = 'Click again to reset'; resetBtn.classList.add('dng'); setTimeout(function () { armed = false; resetBtn.textContent = 'Reset to defaults'; resetBtn.classList.remove('dng'); }, 3500); return; }
       api('/api/admin/tour', { method: 'DELETE' }).then(function () { toast('Back to the built-in tour'); delete state.data.tour; state.tw = null; render(); }).catch(fail);
     } });
+    var langBtn = function (code, label) { return h('button', { class: 'chip', type: 'button', 'aria-pressed': tw.lang === code ? 'true' : 'false', text: label, onclick: function () { tw.lang = code; redo(); } }); };
+    var langRow = h('div', { class: 'segs', role: 'group', 'aria-label': 'Preview language' }, [langBtn('en', 'English'), langBtn('he', '\u05e2\u05d1\u05e8\u05d9\u05ea')]);
     var head = h('div', { class: 'tr-head' }, [
       h('h1', { text: 'Guided tour', title: 'What a new person sees once after setup, and again from You, How SetPoint works. Changes reach the app on its next launch, no build needed.' }),
       h('span', { class: 'meta', text: tw.revision > 1 ? 'Shown again ' + (tw.revision - 1) + ' time' + (tw.revision > 2 ? 's' : '') : 'Never re-shown' }),
-      h('span', { class: 'sp' }), stateEl,
+      h('span', { class: 'sp' }), langRow, stateEl,
       h('label', { class: 'ck', for: 'tr-bump' }, [bump, 'Show again to everyone who has seen it']),
       resetBtn, saveBtn
     ]);

@@ -72,6 +72,17 @@ struct TourOverlay: View {
                 gaveUp = true
             }
             .accessibilityAddTraits(.isModal)
+            #if DEBUG
+            .task(id: "\(step.id)-\(cardSize.height)-\(layout.origin.x)-\(layout.origin.y)") {
+                guard CommandLine.arguments.contains("-dumpTourCard"), cardSize != .zero else { return }
+                try? await Task.sleep(for: .seconds(1.5))
+                let rect = [layout.origin.x, layout.origin.y, cardSize.width, cardSize.height].map { Double($0) }
+                if let data = try? JSONSerialization.data(withJSONObject: ["id": step.id, "rect": rect]),
+                   let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
+                    try? data.write(to: docs.appendingPathComponent("tour-card.json"))
+                }
+            }
+            #endif
         }
     }
 

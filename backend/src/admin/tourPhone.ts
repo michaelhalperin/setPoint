@@ -34,8 +34,8 @@ export const PHONE_CSS = String.raw`
 .ph .pop .dots[hidden]{display:none}
 .ph .pop .dots i{height:3px;flex:1;border-radius:2px;background:rgba(9,9,11,.12)}
 .ph .pop .dots i.on{background:#09090b}
-.ph .pop h4{margin:0 26px 6px 0;font-size:18px;line-height:21.5px;font-weight:500;letter-spacing:-.27px}
-.ph .pop p{font-size:14px;line-height:18.8px;color:#3f3f46}
+.ph .pop h4{margin:0 26px 6px 0;font-size:18px;line-height:21.48px;font-weight:500;letter-spacing:-.47px}
+.ph .pop p{font-size:14px;line-height:18.71px;letter-spacing:.09px;color:#3f3f46}
 .ph .pop .x{position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:50%;background:rgba(9,9,11,.07);display:grid;place-items:center}
 .ph .pop .foot{display:flex;align-items:center;gap:8px;margin-top:14px}
 .ph .pop .count{margin-right:auto;font-family:var(--mono);font-size:11px;color:#71717a}

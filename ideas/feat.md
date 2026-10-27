@@ -14,7 +14,7 @@ track on the food if prepared by week and in advanced.
 
 food DB. v
 
-langauges. v
+langauges. v  (under FF)
 
 schedualing training. v
 
@@ -27,8 +27,11 @@ an option for the user to activate blocking apps.
 i want to add a new feature , which will be off by the feature flag
 high and smart description of the training itself ,and help with that.
 
-there should be an option to confirm the training has been done if its a premake training session.
+there should be an option to confirm the training has been done if its a premake training session. v
 
+water intake.
+
+driver to explain the app.
 
                 ------------------------------------
 
@@ -38,9 +41,9 @@ admin dashboard. v
 
 analytics. v
 
-dieatan in the app - AI chat bot specificly for this.
+dieatan in the app - AI chat bot specificly for this. (under FF)
 
-training expert - AI chat bot specificly for this.
+training expert - AI chat bot specificly for this. (under FF)
 
 trainers area.
 
