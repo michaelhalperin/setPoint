@@ -259,7 +259,7 @@ struct MealSummary: Decodable, Identifiable, Hashable {
 
     var title: String {
         let trimmed = summary?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        return trimmed.isEmpty ? L10n( "Logged meal") : trimmed
+        return trimmed.isEmpty ? L10n( "Logged meal") : FoodText.name(trimmed)
     }
 
     var sourceLabel: String {
