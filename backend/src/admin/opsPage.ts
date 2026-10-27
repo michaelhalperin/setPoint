@@ -7,6 +7,8 @@
  * Kept as a raw string so it ships inside the serverless bundle. The script uses no
  * template literals or backticks so nothing here is read as interpolation.
  */
+import { PHONE_CSS, PHONE_HTML } from './tourPhone.js';
+
 export const OPS_PAGE_HTML = String.raw`<!doctype html>
 <html lang="en">
 <head>
@@ -16,7 +18,7 @@ export const OPS_PAGE_HTML = String.raw`<!doctype html>
 <title>SetPoint ops</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Geist:wght@300;400;500&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root{
   --bg:#0A0A0B;--ink:#F4F2EE;--soft:#A8A59F;--faint:#8A8780;
@@ -170,7 +172,7 @@ a.grid:hover{background:var(--fill)}
 .sw{display:flex;gap:28px;flex-wrap:wrap;margin:26px 0 8px;color:var(--soft);font-size:14px}
 .sw span{display:flex;align-items:center;gap:8px}
 .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:var(--ink);color:#0A0A0B;padding:10px 18px;border-radius:20px;font-weight:600;font-size:14px;z-index:20}
-.tr{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:56px;margin-top:36px;align-items:start}
+.tr{display:grid;grid-template-columns:minmax(0,1fr) 410px;gap:48px;margin-top:36px;align-items:start}
 .tr-list{display:flex;flex-direction:column;gap:12px}
 .tc{border:1px solid var(--line);border-radius:18px;padding:16px 18px;display:grid;gap:10px;cursor:default}
 .tc.sel{border-color:rgba(255,184,107,.6);background:rgba(255,184,107,.05)}
@@ -180,27 +182,25 @@ a.grid:hover{background:var(--fill)}
 .tc select,.tc input[type=text],.tc textarea{width:100%;min-width:0;border-radius:12px;border:1px solid var(--line-hi);background:var(--fill);padding:0 12px;font-size:14px;height:38px}
 .tc textarea{height:auto;min-height:62px;padding:9px 12px;resize:vertical;line-height:1.4}
 .tc input.ti{font-weight:600}
-.tc-2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
 .tc label.l{display:block;font:400 11px var(--mono);color:var(--faint);margin:0 0 4px}
 .tc .he input,.tc .he textarea{direction:rtl;text-align:right}
 .tc .ck{display:flex;align-items:center;gap:8px;color:var(--soft);font-size:13px}
 .mini{height:28px;min-width:28px;padding:0 10px;border-radius:14px;border:1px solid var(--line);background:transparent;cursor:pointer;font-size:12px}
 .mini:hover{background:var(--fill)}.mini:disabled{opacity:.3;cursor:default}.mini.dng{color:var(--bad)}
-.tr-side{position:sticky;top:84px;display:flex;flex-direction:column;gap:14px}
-.tr-tabs{display:flex;gap:6px;flex-wrap:wrap}
-.tr-phone{position:relative;width:100%;max-width:300px;aspect-ratio:370/792;border-radius:34px;border:1px solid var(--line-hi);background:linear-gradient(#111113,#0b0b0c);overflow:hidden;margin:0 auto}
-.tr-phone:before{content:"";position:absolute;left:50%;top:10px;width:30%;height:12px;margin-left:-15%;border-radius:8px;background:#000;border:1px solid var(--line)}
-.rg{position:absolute;border:1.5px dashed rgba(244,242,238,.3);border-radius:14px;background:rgba(244,242,238,.04);cursor:pointer;display:flex;align-items:flex-start;justify-content:flex-start;padding:4px 6px;font:500 10px var(--mono);color:var(--soft);overflow:hidden;text-align:left}
-.rg:hover{border-color:var(--warn);background:rgba(255,184,107,.1)}
-.rg.on{border-style:solid;border-color:rgba(255,122,61,.8);background:rgba(255,122,61,.14);color:var(--ink)}
-.rg.cur{border-color:var(--warn);box-shadow:0 0 0 3px rgba(255,184,107,.25);background:rgba(255,184,107,.18)}
-.rg b{background:var(--ember);color:#1A0A04;border-radius:8px;padding:0 5px;margin-right:3px;font-weight:600}
-.tip{background:#F4F2EE;color:#0A0A0B;border-radius:18px;padding:14px 16px;box-shadow:0 14px 40px rgba(0,0,0,.4)}
-.tip h4{margin:0 0 4px;font-size:16px;font-weight:600;letter-spacing:-.01em}.tip p{margin:0;font-size:13px;line-height:1.45;color:#3f3f46}
-.tip small{display:block;margin-top:10px;font:400 11px var(--mono);color:#71717a}
-.tr-bar{position:sticky;bottom:0;display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:28px -40px -80px;padding:14px 40px;background:rgba(10,10,11,.92);border-top:1px solid var(--line);backdrop-filter:blur(10px)}
+.tr-side{position:sticky;top:76px;display:flex;flex-direction:column;gap:12px}
+.tr-ctl{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.tr-ctl .sp{flex:1}
+.tr-note{margin:0;color:var(--faint);font-size:12px;line-height:1.45}
+.tr-bar{position:sticky;bottom:0;display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:28px -40px -80px;padding:14px 40px;background:rgba(10,10,11,.92);border-top:1px solid var(--line);backdrop-filter:blur(10px);z-index:6}
 .tr-bar .ck{display:flex;align-items:center;gap:8px;color:var(--soft);font-size:13px}
-@media (max-width:1000px){.tr{grid-template-columns:minmax(0,1fr);gap:28px}.tr-side{position:static}.tr-bar{margin:24px -16px -60px;padding:12px 16px}.tc-2{grid-template-columns:minmax(0,1fr)}}
+.ph .screen.picking [data-anchor]{cursor:crosshair;outline:1.5px dashed rgba(255,184,107,.7);outline-offset:3px}
+.ph .screen.picking [data-anchor]:hover{outline:2.5px solid #ffb86b;background-color:rgba(255,184,107,.1)}
+.ph .pickbar{position:absolute;z-index:30;left:14px;right:14px;top:56px;padding:10px 16px;border-radius:999px;background:#f5f5f4;color:#09090b;font-size:13px;text-align:center;box-shadow:0 12px 34px rgba(0,0,0,.5)}
+.ph .pop[dir=rtl] h4{margin:0 0 6px 26px}
+.ph .pop[dir=rtl] .x{right:auto;left:10px}
+.ph .pop[dir=rtl] .count{margin-right:0;margin-left:auto}
+.ph .pop[dir=rtl] p{text-align:right}
+@media (max-width:1000px){.tr{grid-template-columns:minmax(0,1fr);gap:28px;justify-items:start}.tr-side{position:static}.tr-bar{margin:24px -16px -60px;padding:12px 16px}}
 @media (max-width:1000px){
   .bar{padding:0 16px;gap:16px;overflow-x:auto}.find{display:none}.wrap{padding:24px 16px 60px}
   .h1{font-size:36px}.nums{grid-template-columns:repeat(2,minmax(0,1fr))}.nums div{padding-left:0!important;border-left:0!important}
@@ -208,10 +208,12 @@ a.grid:hover{background:var(--fill)}
   .two,.two2,.hero,.chk{grid-template-columns:minmax(0,1fr);gap:32px}.path{grid-template-columns:minmax(0,1fr);gap:18px}.path:before{display:none}
   .k{grid-template-columns:minmax(0,1fr)}.lr{grid-template-columns:minmax(0,1fr)}.cost b{font-size:64px}.lane,.axis{grid-template-columns:80px minmax(0,1fr)}
 }
+${PHONE_CSS}
 </style>
 </head>
 <body>
 <div id="root"></div>
+<template id="phone-tpl">${PHONE_HTML}</template>
 <script>
 (function () {
   'use strict';
@@ -662,37 +664,119 @@ a.grid:hover{background:var(--fill)}
     return shell('access', loose, body);
   }
 
-  // ----- Tour: edit the in-app guided tour -----
+  // ----- Tour: edit the in-app guided tour, shown on the app itself -----
   var TOUR_TABS = [['today', 'Today'], ['train', 'Train'], ['progress', 'Progress'], ['you', 'You']];
+  var TOUR_WORDS = {
+    en: { skip: 'Not now', show: 'Show me', back: 'Back', next: 'Next', done: 'Done', of: ' of ' },
+    he: { skip: 'לא עכשיו', show: 'הראה לי', back: 'חזרה', next: 'הבא', done: 'סיום', of: ' מתוך ' }
+  };
   function tourScreen() {
     var loose = state.data.now ? state.data.now.looseEnds.length : 0;
     var d = state.data.tour;
     if (!d) { load('tour', '/api/admin/tour'); return shell('tour', loose, [h('p', { class: 'empty', text: 'Loading…' })]); }
-    if (!state.tw) state.tw = { steps: JSON.parse(JSON.stringify(d.tour.steps)), revision: d.tour.revision, sel: 0, tab: 'today', dirty: false, bump: false };
+    if (!state.tw) state.tw = { steps: JSON.parse(JSON.stringify(d.tour.steps)), revision: d.tour.revision, sel: 0, dirty: false, bump: false, lang: 'en', closed: false, picking: false };
     var tw = state.tw, anchors = d.anchors, byId = {};
     anchors.forEach(function (a) { byId[a.id] = a; });
     var redo = function () { var y = window.scrollY; render(); window.scrollTo(0, y); };
+    var saveBtn = null;
     var touch = function () { tw.dirty = true; if (saveBtn) saveBtn.disabled = false; };
-    var saveBtn = null, tipHost = null;
     var fail = function (e) { toast(e.message); };
 
-    function tip() {
-      var s = tw.steps[tw.sel];
-      if (!s) return h('div', { class: 'tip' }, [h('h4', { text: 'No steps yet' }), h('p', { text: 'Add a step to see how it looks.' })]);
-      var real = tw.steps.filter(function (x) { return !x.welcome; }).length, at = tw.steps.slice(0, tw.sel + 1).filter(function (x) { return !x.welcome; }).length;
-      return h('div', { class: 'tip' }, [h('h4', { text: s.title || '…' }), h('p', { text: s.body || '' }), h('small', { text: s.welcome ? 'Opening prompt' : at + ' of ' + real })]);
-    }
-    function retip() { if (!tipHost) return; clear(tipHost); tipHost.appendChild(tip()); }
+    // ---- the phone: the app's own screens, with the tour drawn the way the app draws it
+    var ph = document.getElementById('phone-tpl').content.firstElementChild.cloneNode(true);
+    var scr = ph.querySelector('.screen'), layer = ph.querySelector('#tour'), hl = ph.querySelector('#hl'), pop = ph.querySelector('#pop'), arrow = ph.querySelector('#pop-arrow');
+    var q = function (sel) { return ph.querySelector(sel); };
+    var cardEls = [];
 
-    function select(i) { tw.sel = i; var a = tw.steps[i] && tw.steps[i].anchor; if (a && byId[a]) tw.tab = byId[a].tab; redo(); }
-    function move(i, dir) { var j = i + dir; if (j < 0 || j >= tw.steps.length) return; var t = tw.steps[i]; tw.steps[i] = tw.steps[j]; tw.steps[j] = t; tw.sel = j; touch(); redo(); }
+    function setTab(name) {
+      Array.prototype.forEach.call(ph.querySelectorAll('.pane'), function (p) { p.classList.toggle('on', p.dataset.pane === name); });
+      Array.prototype.forEach.call(ph.querySelectorAll('.tab'), function (t) { t.classList.toggle('on', t.dataset.tab === name); });
+      scr.dataset.tone = name === 'train' ? 'haze' : 'ember';
+    }
+    function step() { return tw.steps[tw.sel]; }
+    function words(s) { return (tw.lang === 'he' && s.he && s.he.title && s.he.body) ? s.he : s; }
+    function realCount() { return tw.steps.filter(function (x) { return !x.welcome; }).length; }
+    function realIndex() { return tw.steps.slice(0, tw.sel + 1).filter(function (x) { return !x.welcome; }).length; }
+
+    function renderPop() {
+      var s = step(); if (!s) return;
+      var w = words(s), L = TOUR_WORDS[tw.lang], last = tw.sel === tw.steps.length - 1;
+      pop.dir = tw.lang === 'he' ? 'rtl' : 'ltr';
+      q('#pop-title').textContent = w.title || '…';
+      q('#pop-body').textContent = w.body || '';
+      var dots = q('#pop-dots'); clear(dots);
+      if (!s.welcome) for (var k = 1; k <= realCount(); k++) dots.appendChild(h('i', { class: k <= realIndex() ? 'on' : '' }));
+      dots.hidden = !!s.welcome;
+      q('#pop-count').textContent = s.welcome ? '' : realIndex() + L.of + realCount();
+      q('#pop-back').textContent = s.welcome ? L.skip : L.back;
+      var nx = q('#pop-next'); clear(nx); nx.appendChild(h('i')); nx.appendChild(document.createTextNode(s.welcome ? L.show : last ? L.done : L.next));
+    }
+    function place() {
+      var s = step(); if (!s || layer.hidden) return;
+      var sr = scr.getBoundingClientRect(), W = sr.width, H = sr.height;
+      var pw = Math.min(284, W - 32); pop.style.width = pw + 'px';
+      var ph2 = pop.offsetHeight, top, left, side = null, rect = null;
+      var el = s.anchor ? ph.querySelector('[data-anchor="' + s.anchor + '"]') : null;
+      if (el) {
+        var r = el.getBoundingClientRect(), a = byId[s.anchor], pad = a ? a.pad : 8;
+        rect = { l: r.left - sr.left - pad, t: r.top - sr.top - pad, w: r.width + pad * 2, h: r.height + pad * 2 };
+        hl.style.left = rect.l + 'px'; hl.style.top = rect.t + 'px'; hl.style.width = rect.w + 'px'; hl.style.height = rect.h + 'px'; hl.style.borderRadius = (a ? a.radius : 20) + 'px';
+        var gap = 16, below = H - (rect.t + rect.h) - gap - 8, above = rect.t - gap - 56;
+        side = below >= ph2 ? 'bottom' : above >= ph2 ? 'top' : (below > above ? 'bottom' : 'top');
+        top = side === 'bottom' ? rect.t + rect.h + gap : rect.t - gap - ph2;
+        top = Math.max(58, Math.min(H - ph2 - 90, top));
+        left = Math.max(16, Math.min(W - pw - 16, rect.l + rect.w / 2 - pw / 2));
+      } else {
+        hl.style.left = W / 2 + 'px'; hl.style.top = H / 2 + 'px'; hl.style.width = '0px'; hl.style.height = '0px';
+        top = (H - ph2) / 2 - 30; left = (W - pw) / 2;
+      }
+      pop.style.left = left + 'px'; pop.style.top = top + 'px';
+      if (side) {
+        arrow.hidden = false;
+        arrow.style.left = (Math.max(22, Math.min(pw - 22, rect.l + rect.w / 2 - left)) - 7) + 'px';
+        arrow.style.top = side === 'bottom' ? '-5px' : 'auto'; arrow.style.bottom = side === 'top' ? '-5px' : 'auto';
+      } else arrow.hidden = true;
+    }
+    function apply() {
+      var s = step();
+      if (s && s.anchor && byId[s.anchor]) setTab(byId[s.anchor].tab); else setTab(s ? 'today' : 'today');
+      var showing = !!s && !tw.closed && !tw.picking;
+      layer.hidden = !showing;
+      if (!showing) return;
+      var el = s.anchor ? ph.querySelector('[data-anchor="' + s.anchor + '"]') : null;
+      if (el) { var pane = el.closest('.pane'), r = el.getBoundingClientRect(), pr = pane.getBoundingClientRect(); pane.scrollTop = Math.max(0, pane.scrollTop + (r.top - pr.top) - 110); }
+      renderPop(); place();
+    }
+    function choose(i) {
+      tw.sel = Math.max(0, Math.min(tw.steps.length - 1, i)); tw.closed = false; tw.picking = false;
+      cardEls.forEach(function (c, k) { c.classList.toggle('sel', k === tw.sel); });
+      apply();
+    }
+    function close() { tw.closed = true; layer.hidden = true; }
+    q('#pop-next').addEventListener('click', function (e) { e.stopPropagation(); tw.sel >= tw.steps.length - 1 ? close() : choose(tw.sel + 1); });
+    q('#pop-back').addEventListener('click', function (e) { e.stopPropagation(); (step() && step().welcome) || tw.sel === 0 ? close() : choose(tw.sel - 1); });
+    q('#pop-x').addEventListener('click', function (e) { e.stopPropagation(); close(); });
+    layer.addEventListener('click', close);
+    pop.addEventListener('click', function (e) { e.stopPropagation(); });
+    Array.prototype.forEach.call(ph.querySelectorAll('.tab'), function (t) { t.addEventListener('click', function () { if (!tw.picking) { tw.closed = true; layer.hidden = true; } setTab(t.dataset.tab); }); });
+    scr.addEventListener('click', function (e) {
+      if (!tw.picking) return;
+      var t = e.target.closest('[data-anchor]'); if (!t) return;
+      e.preventDefault(); e.stopPropagation();
+      tw.picking = false; setAnchor(tw.sel, t.dataset.anchor);
+    }, true);
+
+    // ---- editing
+    function move(i, dir) { var j = i + dir; if (j < 0 || j >= tw.steps.length) return; var t = tw.steps[i]; tw.steps[i] = tw.steps[j]; tw.steps[j] = t; tw.sel = j; tw.closed = false; touch(); redo(); }
     function remove(i) { tw.steps.splice(i, 1); tw.sel = Math.max(0, Math.min(tw.sel, tw.steps.length - 1)); touch(); redo(); }
     function add() {
-      var first = anchors.filter(function (a) { return a.tab === tw.tab; })[0];
+      var tab = (ph.querySelector('.pane.on') || {}).dataset ? ph.querySelector('.pane.on').dataset.pane : 'today';
+      var first = anchors.filter(function (a) { return a.tab === tab; })[0];
       tw.steps.push({ id: 's' + Date.now().toString(36) + Math.floor(Math.random() * 1000).toString(36), anchor: first ? first.id : null, welcome: false, title: 'New step', body: 'Say what this does in one line.', he: null });
-      tw.sel = tw.steps.length - 1; touch(); redo();
+      tw.sel = tw.steps.length - 1; tw.closed = false; touch(); redo();
     }
-    function setAnchor(i, id) { tw.steps[i].anchor = id || null; if (id) tw.steps[i].welcome = false; if (id && byId[id]) tw.tab = byId[id].tab; touch(); redo(); }
+    function setAnchor(i, id) { tw.steps[i].anchor = id || null; if (id) tw.steps[i].welcome = false; tw.closed = false; touch(); redo(); }
+    var live = function () { if (!layer.hidden) { renderPop(); place(); } };
 
     var cards = tw.steps.map(function (s, i) {
       var groups = TOUR_TABS.map(function (t) {
@@ -700,15 +784,15 @@ a.grid:hover{background:var(--fill)}
       });
       var sel = h('select', { 'aria-label': 'Element for step ' + (i + 1), onchange: function (e) { setAnchor(i, e.target.value); } }, [h('option', { value: '', text: 'Nothing, show in the middle' })].concat(groups));
       sel.value = s.anchor || '';
-      var title = h('input', { type: 'text', class: 'ti', maxlength: '60', 'aria-label': 'Title of step ' + (i + 1), value: s.title, oninput: function (e) { s.title = e.target.value; touch(); retip(); } });
-      var body = h('textarea', { maxlength: '260', 'aria-label': 'Text of step ' + (i + 1), oninput: function (e) { s.body = e.target.value; touch(); retip(); } }); body.value = s.body;
+      var title = h('input', { type: 'text', class: 'ti', maxlength: '60', 'aria-label': 'Title of step ' + (i + 1), value: s.title, oninput: function (e) { s.title = e.target.value; touch(); live(); } });
+      var body = h('textarea', { maxlength: '260', 'aria-label': 'Text of step ' + (i + 1), oninput: function (e) { s.body = e.target.value; touch(); live(); } }); body.value = s.body;
       var he = function () { if (!s.he) s.he = { title: '', body: '' }; return s.he; };
-      var hTitle = h('input', { type: 'text', maxlength: '60', 'aria-label': 'Hebrew title of step ' + (i + 1), value: s.he ? s.he.title : '', oninput: function (e) { he().title = e.target.value; touch(); } });
-      var hBody = h('textarea', { maxlength: '260', 'aria-label': 'Hebrew text of step ' + (i + 1), oninput: function (e) { he().body = e.target.value; touch(); } }); hBody.value = s.he ? s.he.body : '';
+      var hTitle = h('input', { type: 'text', maxlength: '60', 'aria-label': 'Hebrew title of step ' + (i + 1), value: s.he ? s.he.title : '', oninput: function (e) { he().title = e.target.value; touch(); live(); } });
+      var hBody = h('textarea', { maxlength: '260', 'aria-label': 'Hebrew text of step ' + (i + 1), oninput: function (e) { he().body = e.target.value; touch(); live(); } }); hBody.value = s.he ? s.he.body : '';
       var ck = h('input', { type: 'checkbox', 'aria-label': 'Opening prompt', onchange: function (e) {
         tw.steps.forEach(function (x) { x.welcome = false; }); s.welcome = e.target.checked; if (s.welcome) s.anchor = null; touch(); redo();
       } }); ck.checked = !!s.welcome;
-      return h('div', { class: 'tc' + (tw.sel === i ? ' sel' : ''), onclick: function (e) { if (tw.sel !== i && !/^(SELECT|INPUT|TEXTAREA|BUTTON|OPTION)$/.test(e.target.tagName)) select(i); }, onfocusin: function () { if (tw.sel !== i) { tw.sel = i; var a = s.anchor; if (a && byId[a]) tw.tab = byId[a].tab; Array.prototype.forEach.call(document.querySelectorAll('.tc'), function (c, k) { c.classList.toggle('sel', k === i); }); retip(); reRegions(); } } }, [
+      var card = h('div', { class: 'tc' + (tw.sel === i ? ' sel' : ''), onfocusin: function () { if (tw.sel !== i || tw.closed) choose(i); }, onclick: function (e) { if ((tw.sel !== i || tw.closed) && !/^(SELECT|INPUT|TEXTAREA|BUTTON|OPTION)$/.test(e.target.tagName)) choose(i); } }, [
         h('div', { class: 'tc-h' }, [h('span', { class: 'n', text: s.welcome ? '·' : String(i + 1) }), s.welcome ? h('span', { class: 't-warn', style: 'font-size:12px', text: 'Opening prompt' }) : h('span', { class: 't-faint', style: 'font-size:12px', text: s.anchor ? byId[s.anchor].tab : 'middle' }), h('span', { class: 'sp' }),
           h('button', { class: 'mini', type: 'button', 'aria-label': 'Move up', disabled: i === 0, onclick: function () { move(i, -1); }, text: '↑' }),
           h('button', { class: 'mini', type: 'button', 'aria-label': 'Move down', disabled: i === tw.steps.length - 1, onclick: function () { move(i, 1); }, text: '↓' }),
@@ -719,27 +803,18 @@ a.grid:hover{background:var(--fill)}
         h('div', { class: 'he' }, [h('label', { class: 'l', style: 'direction:ltr;text-align:left', text: 'HEBREW (leave empty to show English)' }), hTitle, h('div', { style: 'height:8px' }), hBody]),
         h('label', { class: 'ck' }, [ck, 'Opening prompt (asks “Show me / Not now” first, no element)'])
       ]);
+      cardEls.push(card);
+      return card;
     });
 
-    // the sketch of the app: click a box to point the selected step at it
-    var phone = h('div', { class: 'tr-phone', role: 'group', 'aria-label': 'Sketch of the ' + tw.tab + ' screen' });
-    function reRegions() {
-      clear(phone);
-      var cur = tw.steps[tw.sel] ? tw.steps[tw.sel].anchor : null;
-      anchors.filter(function (a) { return a.tab === tw.tab; }).forEach(function (a) {
-        var used = [];
-        tw.steps.forEach(function (st, k) { if (st.anchor === a.id) used.push(k + 1); });
-        phone.appendChild(h('button', { type: 'button', class: 'rg' + (used.length ? ' on' : '') + (cur === a.id ? ' cur' : ''), title: a.label,
-          style: 'left:' + a.box[0] + '%;top:' + a.box[1] + '%;width:' + a.box[2] + '%;height:' + a.box[3] + '%',
-          onclick: function () { if (!tw.steps[tw.sel]) { toast('Add a step first'); return; } setAnchor(tw.sel, a.id); } },
-          used.map(function (n) { return h('b', { text: String(n) }); }).concat([a.label])));
-      });
-    }
-    reRegions();
-    var tabs = h('div', { class: 'tr-tabs' }, TOUR_TABS.map(function (t) {
-      return h('button', { class: 'chip', type: 'button', 'aria-pressed': tw.tab === t[0] ? 'true' : 'false', text: t[1], onclick: function () { tw.tab = t[0]; redo(); } });
-    }));
-    tipHost = h('div'); retip();
+    var langBtn = function (code, label) { return h('button', { class: 'chip', type: 'button', 'aria-pressed': tw.lang === code ? 'true' : 'false', text: label, onclick: function () { tw.lang = code; redo(); } }); };
+    var pick = h('button', { class: 'btn', type: 'button', 'aria-pressed': tw.picking ? 'true' : 'false', text: tw.picking ? 'Cancel picking' : 'Pick on phone', onclick: function () {
+      if (!step()) { toast('Add a step first'); return; }
+      tw.picking = !tw.picking; redo();
+    } });
+    if (tw.picking) { scr.classList.add('picking'); q('#pickbar').hidden = false; q('#pickmsg').textContent = 'Click an element on the phone'; }
+    else q('#pickbar').hidden = true;
+    var tabsRow = h('div', { class: 'tr-ctl' }, [langBtn('en', 'English'), langBtn('he', 'עברית'), h('span', { class: 'sp' }), pick]);
 
     saveBtn = h('button', { class: 'btn pri', type: 'button', text: 'Save tour', disabled: !tw.dirty, onclick: function () {
       saveBtn.disabled = true;
@@ -756,12 +831,15 @@ a.grid:hover{background:var(--fill)}
 
     var body = [h('div', { class: 'kick', text: 'Tour' }),
       h('h1', { class: 'h1' }, ['The guided tour. ', h('em', { text: tw.steps.length + ' steps, ' + (tw.revision > 1 ? 'shown again ' + (tw.revision - 1) + ' time' + (tw.revision > 2 ? 's' : '') : 'never re-shown') + '.' })]),
-      h('p', { class: 't-soft', style: 'max-width:640px;margin:14px 0 0', text: 'What a new person sees once, after setup, and again from You, How SetPoint works. Point each step at an element, write what it does, and add the Hebrew. Changes reach the app on its next launch, no build needed.' }),
+      h('p', { class: 't-soft', style: 'max-width:640px;margin:14px 0 0', text: 'What a new person sees once, after setup, and again from You, How SetPoint works. Pick a step to see it on the app, point it at an element, write what it does, and add the Hebrew. Changes reach the app on its next launch, no build needed.' }),
       h('div', { class: 'tr' }, [
         h('div', { class: 'tr-list' }, cards.concat([h('div', null, [h('button', { class: 'btn', type: 'button', text: '+ Add a step', onclick: add })])])),
-        h('aside', { class: 'tr-side' }, [h('div', { class: 'h3', text: 'Click an element to point the selected step at it' }), tabs, phone, tipHost])
+        h('aside', { class: 'tr-side' }, [tabsRow, ph, h('p', { class: 'tr-note', text: 'This is the app and its tip as people see them. The dim area and the cross close the tip; pick a step to open it again.' })])
       ]),
       h('div', { class: 'tr-bar' }, [saveBtn, h('label', { class: 'ck' }, [bump, 'Show again to everyone who has seen it']), h('span', { class: 'sp' }), resetBtn])];
+    // measure once the phone is on the page, and again when the fonts settle
+    setTimeout(function () { if (tw.steps.length) apply(); else setTab('today'); }, 0);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { place(); });
     return shell('tour', loose, body);
   }
 

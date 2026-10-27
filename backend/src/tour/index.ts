@@ -11,22 +11,22 @@ import { z } from 'zod';
 export const TOUR_TABS = ['today', 'train', 'progress', 'you'] as const;
 export type TourTab = (typeof TOUR_TABS)[number];
 
-/** `box` is where the element sits on its screen, in % of width/height — only the admin's sketch uses it. */
+/** `pad` and `radius` shape the spotlight around the element, in points. The app and the admin preview both use them. */
 export const TOUR_ANCHORS = [
-  { id: 'today.orb', tab: 'today', label: 'Orb and ring', box: [16, 13, 68, 32] },
-  { id: 'today.pace', tab: 'today', label: 'Pace pill', box: [28, 47, 44, 5] },
-  { id: 'today.next', tab: 'today', label: 'Next card', box: [4, 54, 92, 17] },
-  { id: 'today.dots', tab: 'today', label: 'Meal dots', box: [4, 72, 92, 7] },
-  { id: 'nav.plus', tab: 'today', label: '+ button', box: [41, 88, 18, 8] },
-  { id: 'train.add', tab: 'train', label: 'Add session +', box: [80, 13, 14, 6] },
-  { id: 'train.week', tab: 'train', label: 'Week card', box: [4, 21, 92, 28] },
-  { id: 'train.day', tab: 'train', label: 'Today’s training card', box: [4, 51, 92, 40] },
-  { id: 'progress.weight', tab: 'progress', label: 'Weight card', box: [4, 8, 92, 40] },
-  { id: 'progress.days', tab: 'progress', label: 'Days closed', box: [4, 51, 92, 24] },
-  { id: 'you.goal', tab: 'you', label: 'Goal card', box: [4, 15, 92, 20] },
-  { id: 'you.setup', tab: 'you', label: 'Setup tiles', box: [4, 38, 92, 38] },
-  { id: 'you.help', tab: 'you', label: 'How SetPoint works row', box: [4, 80, 92, 9] },
-] as const satisfies readonly { id: string; tab: TourTab; label: string; box: readonly [number, number, number, number] }[];
+  { id: 'today.orb', tab: 'today', label: 'Orb and ring', pad: 8, radius: 150 },
+  { id: 'today.pace', tab: 'today', label: 'Pace pill', pad: 6, radius: 24 },
+  { id: 'today.next', tab: 'today', label: 'Next card', pad: 6, radius: 30 },
+  { id: 'today.dots', tab: 'today', label: 'Meal dots', pad: 8, radius: 18 },
+  { id: 'nav.plus', tab: 'today', label: '+ button', pad: 6, radius: 40 },
+  { id: 'train.add', tab: 'train', label: 'Add session +', pad: 6, radius: 30 },
+  { id: 'train.week', tab: 'train', label: 'Week card', pad: 4, radius: 30 },
+  { id: 'train.day', tab: 'train', label: 'Today’s training card', pad: 4, radius: 32 },
+  { id: 'progress.weight', tab: 'progress', label: 'Weight card', pad: 4, radius: 30 },
+  { id: 'progress.days', tab: 'progress', label: 'Days closed', pad: 4, radius: 30 },
+  { id: 'you.goal', tab: 'you', label: 'Goal card', pad: 4, radius: 30 },
+  { id: 'you.setup', tab: 'you', label: 'Setup tiles', pad: 6, radius: 30 },
+  { id: 'you.help', tab: 'you', label: 'How SetPoint works row', pad: 4, radius: 30 },
+] as const satisfies readonly { id: string; tab: TourTab; label: string; pad: number; radius: number }[];
 
 export type TourAnchorId = (typeof TOUR_ANCHORS)[number]['id'];
 const anchorIds = TOUR_ANCHORS.map((a) => a.id) as [TourAnchorId, ...TourAnchorId[]];
