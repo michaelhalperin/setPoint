@@ -523,6 +523,15 @@ struct LogMealResponse: Decodable {
     }
 }
 
+/// `POST /api/foods/estimate`: a typed food ("bread") with its portion and macros worked out.
+struct FoodEstimateRequest: Encodable {
+    let text: String
+}
+
+struct FoodEstimateResponse: Decodable {
+    let items: [LogMealResponse.Parsed.Item]
+}
+
 struct MealCorrectionRequest: Encodable {
     let summary: String
     let items: [Item]
