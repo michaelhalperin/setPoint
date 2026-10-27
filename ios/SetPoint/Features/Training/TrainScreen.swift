@@ -80,6 +80,7 @@ struct TrainingScreen: View {
                 Spacer(minLength: 8)
                 if selected.canAdd {
                     TrainPlanPill { sheet = .plan(defaultStart(on: selected.date)) }
+                        .tourAnchor("train.add")
                 }
             }
             .padding(.horizontal, 4)
@@ -104,12 +105,14 @@ struct TrainingScreen: View {
                     withAnimation(Motion.settle) { selectedKey = day.key }
                 }
             )
+            .tourAnchor("train.week")
             .id(weekOffset)
             .transition(.push(from: forward ? .trailing : .leading))
             .simultaneousGesture(swipe(latest: latest, byDay: byDay, now: now))
             .appearIn(1, rise: 14)
 
             dayCard(selected, now: now)
+                .tourAnchor("train.day")
                 .id(selected.key)
                 .transition(dayChange)
                 .appearIn(2, rise: 14)

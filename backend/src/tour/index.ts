@@ -1,5 +1,6 @@
 import type { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
+import { ANCHOR_FRAMES, REFERENCE_SCREEN } from './anchorFrames.js';
 
 /**
  * The guided tour: a list of steps, each pointing at one element of the app by
@@ -28,6 +29,13 @@ export const TOUR_ANCHORS = [
   { id: 'you.help', tab: 'you', label: 'How SetPoint works row', pad: 4, radius: 30 },
 ] as const satisfies readonly { id: string; tab: TourTab; label: string; pad: number; radius: number }[];
 
+/** For the admin's phone: each element with where it sits on the reference phone (points). */
+export function anchorsForAdmin() {
+  return TOUR_ANCHORS.map((a) => ({ ...a, frame: ANCHOR_FRAMES[a.id] ?? null }));
+}
+
+export { REFERENCE_SCREEN };
+
 export type TourAnchorId = (typeof TOUR_ANCHORS)[number]['id'];
 const anchorIds = TOUR_ANCHORS.map((a) => a.id) as [TourAnchorId, ...TourAnchorId[]];
 
@@ -39,6 +47,11 @@ export const tourStepSchema = z.object({
   anchor: z.enum(anchorIds).nullable(),
   /** The opening prompt: asks "Show me / Not now" before the tour starts. */
   welcome: z.boolean().default(false),
+  /** Where the tip sits against the element. `auto` picks the side with room. */
+  side: z.enum(['auto', 'above', 'below']).default('auto'),
+  /** The owner's nudge from that spot, in points. */
+  dx: z.number().int().min(-400).max(400).default(0),
+  dy: z.number().int().min(-900).max(900).default(0),
   title: text(60),
   body: text(260),
   he: z.object({ title: text(60), body: text(260) }).nullable().default(null),
@@ -55,9 +68,7 @@ export type Tour = z.infer<typeof tourSchema>;
 
 export const TOUR_KEY = 'tour';
 
-export const DEFAULT_TOUR: Tour = {
-  revision: 1,
-  steps: [
+const DEFAULT_STEPS = [
     {
       id: 'welcome', anchor: null, welcome: true,
       title: 'Welcome to SetPoint',
@@ -124,8 +135,24 @@ export const DEFAULT_TOUR: Tour = {
       body: 'Open this row whenever you want the tour again.',
       he: { title: 'הפעל שוב בכל רגע', body: 'פתח את השורה הזו בכל פעם שתרצה את הסיור שוב.' },
     },
-  ],
+];
+
+export const DEFAULT_TOUR: Tour = {
+  revision: 1,
+  steps: DEFAULT_STEPS.map((step) => tourStepSchema.parse(step)),
 };
+
+/** What the app gets: each step also carries the spotlight shape of its element, so the app needn't know it. */
+export function forApp(tour: Tour) {
+  const byId = new Map<string, (typeof TOUR_ANCHORS)[number]>(TOUR_ANCHORS.map((a) => [a.id, a]));
+  return {
+    revision: tour.revision,
+    steps: tour.steps.map((s) => {
+      const a = s.anchor ? byId.get(s.anchor) : undefined;
+      return { ...s, pad: a?.pad ?? null, radius: a?.radius ?? null };
+    }),
+  };
+}
 
 /** What the owner saved, or the built-in tour when nothing is saved or what's saved no longer parses. */
 export async function loadTour(prisma: PrismaClient): Promise<Tour> {

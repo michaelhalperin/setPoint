@@ -7,9 +7,7 @@ struct SettingsView: View {
     @AppStorage(MassUnit.storageKey) private var massUnit = MassUnit.localeDefault
     @AppStorage("you.seen.calendar") private var seenCalendar = false
     @AppStorage("you.seen.appetite") private var seenAppetite = false
-    @AppStorage(AppIntroView.seenKey) private var introSeen = false
     @State private var reloading = false
-    @State private var showingIntro = false
     #if DEBUG
     @State private var showingDevOnboarding = false
     @State private var showingDevMealConfirm = false
@@ -92,6 +90,7 @@ struct SettingsView: View {
                 .appearIn(0)
 
                 goalCard(model)
+                    .tourAnchor("you.goal")
                     .appearIn(0)
 
                 if model.enforcementEnabled, model.checkInsPaused {
@@ -108,12 +107,14 @@ struct SettingsView: View {
                 }
 
                 setupGrid(model)
+                    .tourAnchor("you.setup")
                     .appearIn(2)
 
-                Button { showingIntro = true } label: {
+                Button { env.tour.replay(from: .you) } label: {
                     DestinationRow(title: "How SetPoint works", subtitle: "A quick tour")
                 }
                 .buttonStyle(PressableCard())
+                .tourAnchor("you.help")
                 .appearIn(3)
 
                 if model.isAdmin {
@@ -149,9 +150,6 @@ struct SettingsView: View {
         .background(alignment: .top) { AmbientGlow(tone: .mixed, strength: 0.6).offset(y: -140).ignoresSafeArea() }
         .background(Palette.background.ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
-        .fullScreenCover(isPresented: $showingIntro) {
-            AppIntroView { showingIntro = false }
-        }
         #if DEBUG
         .fullScreenCover(isPresented: $showingDevOnboarding) {
             DevOnboardingPreview()
@@ -225,11 +223,11 @@ struct SettingsView: View {
     /// Admin only: run the intro again exactly as a new user gets it.
     private var adminIntroTools: some View {
         VStack(alignment: .leading, spacing: Space.sm) {
-            Text(verbatim: "Admin · Intro")
+            Text(verbatim: "Admin · Tour")
                 .sectionLabelStyle()
                 .padding(.top, Space.sm)
-            Button { introSeen = false } label: {
-                DestinationRow(title: "Show intro as first run", subtitle: "Resets the “seen” flag; it opens over the app right away")
+            Button { env.tour.showAsFirstRun(from: .you) } label: {
+                DestinationRow(title: "Show tour as first run", subtitle: "Resets the “seen” flag and starts with the opening prompt")
             }
             .buttonStyle(PressableCard())
         }

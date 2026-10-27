@@ -731,6 +731,13 @@ struct MealCorrectionEditor: View {
     @State private var selected: UUID?
     @State private var showExact = false
     @State private var confirmingRemove = false
+    /// "+ Add a food": type what it is and the portion and numbers are worked out.
+    @Environment(AppEnvironment.self) private var env
+    @State private var adding = false
+    @State private var addText = ""
+    @State private var estimating = false
+    @State private var addError: String?
+    @FocusState private var addFocused: Bool
     /// Each food's numbers as the photo read them, so a portion is always relative to that.
     @State private var bases: [UUID: Base] = [:]
     @State private var portions: [UUID: Double] = [:]
@@ -897,15 +904,22 @@ struct MealCorrectionEditor: View {
 
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Something I missed?").sectionLabelStyle()
-                    Button(action: addFood) {
-                        Text("+ Add a food")
-                            .font(Typography.data(14, weight: .regular))
-                            .foregroundStyle(Palette.inkSoft)
-                            .frame(maxWidth: .infinity, minHeight: 46)
-                            .overlay(Capsule().strokeBorder(Color.white.opacity(0.16), style: StrokeStyle(lineWidth: 1, dash: [5, 4])))
+                    if adding {
+                        addFoodCard
+                    } else {
+                        Button {
+                            withAnimation(Motion.settle) { adding = true }
+                            addFocused = true
+                        } label: {
+                            Text("+ Add a food")
+                                .font(Typography.data(14, weight: .regular))
+                                .foregroundStyle(Palette.inkSoft)
+                                .frame(maxWidth: .infinity, minHeight: 46)
+                                .overlay(Capsule().strokeBorder(Color.white.opacity(0.16), style: StrokeStyle(lineWidth: 1, dash: [5, 4])))
+                        }
+                        .buttonStyle(PressableCard())
+                        .disabled(saving || items.count >= 20)
                     }
-                    .buttonStyle(PressableCard())
-                    .disabled(saving || items.count >= 20)
                 }
 
                 if let error {
@@ -1206,6 +1220,98 @@ struct MealCorrectionEditor: View {
         selected = items.first?.id
         removed = nil
         showExact = false
+    }
+
+    /// Type what it is; the portion and the numbers come back worked out.
+    private var addFoodCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            TextField("What did you add? e.g. bread", text: $addText)
+                .font(Typography.data(16, weight: .regular))
+                .foregroundStyle(Palette.ink)
+                .focused($addFocused)
+                .submitLabel(.go)
+                .onSubmit { Task { await estimateFood() } }
+                .padding(.horizontal, 14)
+                .frame(minHeight: 48)
+                .glass(radius: 16)
+                .disabled(estimating)
+            if let addError {
+                Text(LocalizedStringKey(addError))
+                    .font(Typography.data(13))
+                    .foregroundStyle(Palette.amber)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            HStack(spacing: 8) {
+                Button {
+                    Task { await estimateFood() }
+                } label: {
+                    Text(estimating ? "Working out the portion…" : "Add")
+                        .font(Typography.data(15, weight: .semibold))
+                        .foregroundStyle(Palette.onEmber)
+                        .frame(maxWidth: .infinity, minHeight: 46)
+                        .background(Palette.amber, in: Capsule())
+                }
+                .buttonStyle(PressableCard())
+                .disabled(estimating || addText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .opacity(addText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.5 : 1)
+                Button("Cancel") {
+                    withAnimation(Motion.settle) { closeAdd() }
+                }
+                .font(Typography.data(14, weight: .regular))
+                .foregroundStyle(Palette.inkSoft)
+                .frame(minHeight: 46)
+                .padding(.horizontal, 8)
+                .disabled(estimating)
+            }
+            Button("Enter the numbers myself") {
+                closeAdd()
+                addFood()
+            }
+            .font(Typography.data(13, weight: .regular))
+            .foregroundStyle(Palette.inkSoft)
+            .frame(minHeight: 44)
+            .buttonStyle(.plain)
+        }
+        .padding(14)
+        .glass(radius: 22)
+        .transition(.opacity)
+    }
+
+    private func closeAdd() {
+        adding = false
+        addText = ""
+        addError = nil
+        addFocused = false
+    }
+
+    /// Works out the portion and numbers for what was typed, then puts them on the plate.
+    private func estimateFood() async {
+        let text = addText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty, !estimating else { return }
+        estimating = true
+        addError = nil
+        defer { estimating = false }
+        do {
+            let response: FoodEstimateResponse = try await env.api.post("/api/foods/estimate", FoodEstimateRequest(text: text))
+            let room = max(0, 20 - items.count)
+            let added = response.items.prefix(room).map(EditableMealItem.init)
+            guard !added.isEmpty else {
+                addError = L10n("I couldn’t work that out. Try another word, or enter the numbers yourself.")
+                return
+            }
+            withAnimation(Motion.settle) {
+                for item in added {
+                    items.append(item)
+                    bases[item.id] = base(of: item)
+                }
+                selected = added.first?.id
+                showExact = false
+                closeAdd()
+            }
+            Haptics.landed()
+        } catch {
+            addError = UserFacingError.message(for: error, fallback: L10n("I couldn’t work that out. Try another word, or enter the numbers yourself."))
+        }
     }
 
     private func addFood() {

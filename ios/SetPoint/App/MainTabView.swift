@@ -16,7 +16,6 @@ struct MainTabView: View {
     @State private var deepLinkCheckInID: String?
     /// A just-logged meal opened from the "Logged · Fix" toast.
     @State private var fixing: MealSummary?
-    @AppStorage(AppIntroView.seenKey) private var introSeen = false
 
     enum Tab: Hashable, CaseIterable {
         case today, training, week, you
@@ -61,16 +60,26 @@ struct MainTabView: View {
                 .fullScreenCover(isPresented: needsOnboarding) {
                     OnboardingFlow(model: onboarding)
                 }
-                .overlay {
-                    if showsIntro(home) {
-                        AppIntroView { introSeen = true }
-                            .transition(.opacity)
+                .overlayPreferenceValue(TourAnchorKey.self) { anchors in
+                    GeometryReader { proxy in
+                        if env.tour.isActive {
+                            TourOverlay(proxy: proxy, anchors: anchors)
+                                .transition(.opacity)
+                        }
                     }
+                    .ignoresSafeArea()
                 }
-                .animation(.easeInOut(duration: 0.3), value: introSeen)
+                .animation(.easeInOut(duration: 0.25), value: env.tour.isActive)
             } else {
                 HomeSkeletonView()
             }
+        }
+        // The guided tour, once per revision, after setup. The owner's latest steps first.
+        .task(id: todayLoaded) {
+            guard todayLoaded else { return }
+            await env.tour.refresh(api: env.api)
+            try? await Task.sleep(for: .seconds(1))
+            env.tour.startIfUnseen()
         }
         .onChange(of: env.push.pendingCheckInID) { _, id in
             guard let id else { return }
@@ -205,10 +214,10 @@ struct MainTabView: View {
         }
     }
 
-    /// The intro appears once, after setup, over a loaded Today.
-    private func showsIntro(_ home: HomeViewModel) -> Bool {
-        guard !introSeen, case .loaded = home.phase else { return false }
-        return true
+    /// True once Today has loaded, which is also when setup is done.
+    private var todayLoaded: Bool {
+        if case .loaded = home?.phase { return true }
+        return false
     }
 
     private var needsOnboarding: Binding<Bool> {
@@ -237,6 +246,7 @@ struct FloatingNav: View {
                     Image(systemName: "plus")
                         .font(.system(size: 22, weight: .semibold))
                 }
+                .tourAnchor("nav.plus")
             }
             .buttonStyle(PressableCard())
             .frame(maxWidth: .infinity)

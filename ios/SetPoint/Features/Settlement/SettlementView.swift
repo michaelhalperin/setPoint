@@ -66,6 +66,7 @@ struct SettlementView: View {
                     WeightJourneyCard(goal: goal, entries: model.weights, busy: model.loggingWeight) {
                         showingWeighIn = true
                     }
+                    .tourAnchor("progress.weight")
                     .appearIn(1, rise: 14)
                     if let err = model.weighInError {
                         Text(LocalizedStringKey(err))
@@ -79,6 +80,7 @@ struct SettlementView: View {
                         .appearIn(2, rise: 14)
                 } else {
                     DayOrbsCard(gap: s.gap, stations: stations) { selectedStation = $0 }
+                        .tourAnchor("progress.days")
                         .appearIn(2, rise: 14)
                 }
 
