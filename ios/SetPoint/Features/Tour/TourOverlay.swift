@@ -98,6 +98,12 @@ struct TourOverlay: View {
         return frame.insetBy(dx: -CGFloat(step.pad ?? 8), dy: -CGFloat(step.pad ?? 8))
     }
 
+    /// The phone the admin's preview is drawn on (iPhone 16 Pro, points). Which side the tip takes is
+    /// decided as on that phone, so every phone agrees with the preview. From there the tip sits a fixed
+    /// distance from its element (plus the owner's nudge), and a shorter phone only pushes it up when it
+    /// would otherwise run off the screen.
+    private static let referenceHeight: CGFloat = 874
+
     private struct Layout {
         var width: CGFloat
         var origin: CGPoint
@@ -108,18 +114,22 @@ struct TourOverlay: View {
         let width = min(284, screen.width - 32)
         let height = cardSize.height
         let nudge = CGPoint(x: step.dx ?? 0, y: step.dy ?? 0)
-        func settle(_ left: CGFloat, _ top: CGFloat) -> CGPoint {
-            CGPoint(
-                x: max(16, min(screen.width - width - 16, left + nudge.x)),
-                y: max(58, min(screen.height - height - 24, top + nudge.y))
+        let nudged = nudge != .zero
+        /// A nudge counts from the tip's spot against its element, not from where this phone's bottom
+        /// edge would push it, so it lands where the owner put it on a phone of any height.
+        func settle(raw: CGPoint, clamped: CGPoint) -> CGPoint {
+            guard nudged else { return clamped }
+            return CGPoint(
+                x: max(16, min(screen.width - width - 16, raw.x + nudge.x)),
+                y: max(58, min(min(screen.height, Self.referenceHeight) - height - 24, raw.y + nudge.y))
             )
         }
         guard let target else {
-            let origin = settle((screen.width - width) / 2, (screen.height - height) / 2 - 30)
-            return Layout(width: width, origin: origin, arrow: nil)
+            let middle = CGPoint(x: (screen.width - width) / 2, y: (screen.height - height) / 2 - 30)
+            return Layout(width: width, origin: settle(raw: middle, clamped: middle), arrow: nil)
         }
         let gap: CGFloat = 16
-        let below = screen.height - target.maxY - gap - 8
+        let below = Self.referenceHeight - target.maxY - gap - 8
         let above = target.minY - gap - 56
         let placeBelow: Bool
         switch step.side {
@@ -127,10 +137,13 @@ struct TourOverlay: View {
         case "above": placeBelow = false
         default: placeBelow = below >= height || (above < height && below > above)
         }
-        var top = placeBelow ? target.maxY + gap : target.minY - gap - height
-        top = max(58, min(screen.height - height - 90, top))
-        let left = max(16, min(screen.width - width - 16, target.midX - width / 2))
-        let origin = settle(left, top)
+        let rawTop = placeBelow ? target.maxY + gap : target.minY - gap - height
+        let rawLeft = target.midX - width / 2
+        let clamped = CGPoint(
+            x: max(16, min(screen.width - width - 16, rawLeft)),
+            y: max(58, min(min(screen.height, Self.referenceHeight) - height - 24, rawTop))
+        )
+        let origin = settle(raw: CGPoint(x: rawLeft, y: rawTop), clamped: clamped)
         // The arrow points at the element from whichever edge faces it; a tip dragged over it has none.
         var arrow: CGPoint?
         let arrowX = origin.x + max(22, min(width - 22, target.midX - origin.x))

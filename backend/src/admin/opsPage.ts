@@ -714,7 +714,7 @@ ${USAGE_CSS}
     var ph = document.getElementById('phone-tpl').content.firstElementChild.cloneNode(true);
     var scr = ph.querySelector('.screen'), layer = ph.querySelector('#tour'), hl = ph.querySelector('#hl'), pop = ph.querySelector('#pop'), arrow = ph.querySelector('#pop-arrow');
     var q = function (sel) { return ph.querySelector(sel); };
-    var refW = d.screen[0], curTab = 'today';
+    var refW = d.screen[0], refH = d.screen[1], curTab = 'today';
     var hits = q('#hits');
     anchors.forEach(function (a) {
       if (!a.frame) return;
@@ -747,25 +747,30 @@ ${USAGE_CSS}
       var s = step(); if (!s || layer.hidden) return;
       var W = scr.offsetWidth, H = scr.offsetHeight;
       var pw = Math.min(284, W - 32); pop.style.width = pw + 'px';
-      var ph2 = pop.getBoundingClientRect().height / (scr.getBoundingClientRect().width / scr.offsetWidth), top, left, rect = null;
+      var ph2 = pop.getBoundingClientRect().height / (scr.getBoundingClientRect().width / scr.offsetWidth), top, left, rawTop, rawLeft, sideNow = null, rect = null;
       var a = s.anchor ? byId[s.anchor] : null;
       if (a && a.frame) {
         var k = W / refW, pad = a.pad;
         rect = { l: (a.frame[0] - pad) * k, t: (a.frame[1] - pad) * k, w: (a.frame[2] + pad * 2) * k, h: (a.frame[3] + pad * 2) * k };
         hl.style.left = rect.l + 'px'; hl.style.top = rect.t + 'px'; hl.style.width = rect.w + 'px'; hl.style.height = rect.h + 'px'; hl.style.borderRadius = (a.radius * k) + 'px';
-        var gap = 16, below = H - (rect.t + rect.h) - gap - 8, above = rect.t - gap - 56;
+        var gap = 16, below = refH - (rect.t + rect.h) - gap - 8, above = rect.t - gap - 56;
         var want = s.side || 'auto';
         var under = want === 'below' ? true : want === 'above' ? false : (below >= ph2 || (above < ph2 && below > above));
-        top = under ? rect.t + rect.h + gap : rect.t - gap - ph2;
-        top = Math.max(58, Math.min(H - ph2 - 90, top));
-        left = Math.max(16, Math.min(W - pw - 16, rect.l + rect.w / 2 - pw / 2));
+        rawTop = under ? rect.t + rect.h + gap : rect.t - gap - ph2;
+        rawLeft = rect.l + rect.w / 2 - pw / 2;
+        top = Math.max(58, Math.min(H - ph2 - 24, rawTop));
+        left = Math.max(16, Math.min(W - pw - 16, rawLeft));
+        sideNow = under;
       } else {
         hl.style.left = W / 2 + 'px'; hl.style.top = H / 2 + 'px'; hl.style.width = '0px'; hl.style.height = '0px';
-        top = (H - ph2) / 2 - 30; left = (W - pw) / 2;
+        top = (H - ph2) / 2 - 30; left = (W - pw) / 2; rawTop = top; rawLeft = left;
       }
-      lastBase = { left: left, top: top, pw: pw, ph: ph2, W: W, H: H };
-      var nl = Math.max(16, Math.min(W - pw - 16, left + (s.dx || 0)));
-      var nt = Math.max(58, Math.min(H - ph2 - 24, top + (s.dy || 0)));
+      // A nudge counts from the tip's spot against its element, not from where the phone's
+      // bottom edge would push it, so it lands the same on a phone of any height.
+      lastBase = { rawLeft: rawLeft, rawTop: rawTop, left: left, top: top, under: sideNow };
+      var nudged = (s.dx || 0) !== 0 || (s.dy || 0) !== 0;
+      var nl = nudged ? Math.max(16, Math.min(W - pw - 16, rawLeft + (s.dx || 0))) : left;
+      var nt = nudged ? Math.max(58, Math.min(H - ph2 - 24, rawTop + (s.dy || 0))) : top;
       pop.style.left = nl + 'px'; pop.style.top = nt + 'px';
       var arrowSide = null;
       if (rect) { if (nt >= rect.t + rect.h - 2) arrowSide = 'bottom'; else if (nt + ph2 <= rect.t + 2) arrowSide = 'top'; }
@@ -796,18 +801,23 @@ ${USAGE_CSS}
     pop.addEventListener('pointerdown', function (e) {
       if (e.button !== 0 || e.target.closest('button') || !lastBase) return;
       var s = step(); if (!s) return;
-      var k = scr.getBoundingClientRect().width / scr.offsetWidth, sx = e.clientX, sy = e.clientY, d0x = s.dx || 0, d0y = s.dy || 0;
+      var k = scr.getBoundingClientRect().width / scr.offsetWidth, sx = e.clientX, sy = e.clientY;
+      var was = (s.dx || 0) !== 0 || (s.dy || 0) !== 0;
+      var d0x = was ? s.dx : lastBase.left - lastBase.rawLeft, d0y = was ? s.dy : lastBase.top - lastBase.rawTop;
+      var side0 = s.side, dx0 = s.dx || 0, dy0 = s.dy || 0;
       pop.classList.add('fresh'); pop.classList.add('grabbing'); pop.setPointerCapture(e.pointerId);
       var move = function (ev) {
         s.dx = d0x + (ev.clientX - sx) / k; s.dy = d0y + (ev.clientY - sy) / k;
         place();
-        s.dx = Math.round(parseFloat(pop.style.left) - lastBase.left); s.dy = Math.round(parseFloat(pop.style.top) - lastBase.top);
+        s.dx = Math.round(parseFloat(pop.style.left) - lastBase.rawLeft); s.dy = Math.round(parseFloat(pop.style.top) - lastBase.rawTop);
+        // pin the side the tip sits on, so a phone with more or less room doesn't flip it
+        if (lastBase.under !== null && (!s.side || s.side === 'auto')) s.side = lastBase.under ? 'below' : 'above';
         showNudge();
       };
       var up = function () {
         pop.removeEventListener('pointermove', move); pop.removeEventListener('pointerup', up); pop.removeEventListener('pointercancel', up);
         pop.classList.remove('grabbing'); requestAnimationFrame(function () { pop.classList.remove('fresh'); });
-        if (s.dx !== d0x || s.dy !== d0y) touch();
+        if (s.dx !== dx0 || s.dy !== dy0 || s.side !== side0) touch();
       };
       pop.addEventListener('pointermove', move); pop.addEventListener('pointerup', up); pop.addEventListener('pointercancel', up);
       e.preventDefault();
