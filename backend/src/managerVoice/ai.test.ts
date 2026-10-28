@@ -1,18 +1,15 @@
 import type Anthropic from '@anthropic-ai/sdk';
 import { describe, expect, it, vi } from 'vitest';
 import { createAiManagerVoice } from './ai.js';
-import type { ManagerVoice, ManagerVoiceContext } from './types.js';
+import type { HomeNoteContext, ManagerVoice } from './types.js';
 
-const ctx: ManagerVoiceContext = {
-  tier: 2,
-  goal: 'BULK',
-  hoursSinceMeal: 6.4,
-  kcalGap: 500,
-  prescriptionSummary: '2× Hard-boiled eggs + Banana',
+const note: HomeNoteContext = {
+  goal: 'BULK', state: 'under', consumedKcal: 600, targetKcal: 3000, remainingKcal: 2400,
+  remainingProteinG: 120, mealsToday: 1, nextMeal: 'lunch', hoursSinceMeal: 3,
+  hasActiveCheckIn: false, enforcementEnabled: true, paceStatus: 'behind',
 };
 
 const fallback: ManagerVoice = {
-  checkInMessage: vi.fn(async () => 'FALLBACK LINE'),
   homeNote: vi.fn(async () => 'FALLBACK NOTE'),
   daySummary: vi.fn(async () => 'FALLBACK SUMMARY'),
 };
@@ -26,13 +23,13 @@ describe('createAiManagerVoice', () => {
     const client = fakeClient(async () => ({ content: [{ type: 'text', text: 'Time to eat — 2 hard-boiled eggs and a banana.' }] }));
     const voice = createAiManagerVoice(client, fallback);
 
-    const line = await voice.checkInMessage(ctx);
+    const line = await voice.homeNote(note);
     expect(line).toBe('Time to eat — 2 hard-boiled eggs and a banana.');
 
     const call = (client.messages.create as ReturnType<typeof vi.fn>).mock.calls[0]![0];
     expect(call.system).toMatch(/manager, not a punisher/i);
     expect(call.system).toMatch(/never mention weight/i);
-    expect(fallback.checkInMessage).not.toHaveBeenCalled();
+    expect(fallback.homeNote).not.toHaveBeenCalled();
   });
 
   it('falls back when the model call throws', async () => {
@@ -42,12 +39,12 @@ describe('createAiManagerVoice', () => {
       }),
       fallback,
     );
-    expect(await voice.checkInMessage(ctx)).toBe('FALLBACK LINE');
+    expect(await voice.homeNote(note)).toBe('FALLBACK NOTE');
   });
 
   it('falls back when the model returns no text', async () => {
     const voice = createAiManagerVoice(fakeClient(async () => ({ content: [] })), fallback);
-    expect(await voice.checkInMessage(ctx)).toBe('FALLBACK LINE');
+    expect(await voice.homeNote(note)).toBe('FALLBACK NOTE');
   });
 
   it('tells the model not to restate totals and to go quiet in quiet mode', async () => {

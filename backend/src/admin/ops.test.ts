@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildPipeline, failureLabel, groupOf, levelOf, nameOf, outcomeOf, pushStatus, runsFrom, streakOf, type Level } from './ops.js';
+import { buildPipeline, failureLabel, groupOf, levelOf, nameOf, outcomeOf, pushStatus, runsFrom, scoringNote, streakOf, type Level } from './ops.js';
 
 describe('levelOf', () => {
   it('buckets how much of the target a day reached', () => {
@@ -92,5 +92,18 @@ describe('small helpers', () => {
     expect(runsFrom({ runs: [1, 2, 'x'] })).toEqual([1, 2]);
     expect(runsFrom(null)).toEqual([]);
     expect(runsFrom({ error: 'x' })).toEqual([]);
+  });
+});
+
+describe('scoringNote', () => {
+  const at = new Date('2026-10-28T10:00:00Z');
+  it('reports what the last pass said about this person', () => {
+    const note = scoringNote({ lastRunAt: at, summary: { reasons: { u1: 'Quiet hours' } } }, 'u1');
+    expect(note).toEqual({ at: at.toISOString(), text: 'Quiet hours' });
+  });
+  it('has the time but no text for someone the pass did not mention, and nothing before the first run', () => {
+    expect(scoringNote({ lastRunAt: at, summary: { reasons: {} } }, 'u2')).toEqual({ at: at.toISOString(), text: null });
+    expect(scoringNote({ lastRunAt: at, summary: null }, 'u2')?.text).toBeNull();
+    expect(scoringNote(null, 'u2')).toBeNull();
   });
 });

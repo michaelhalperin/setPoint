@@ -69,7 +69,17 @@ export const APPETITE_SLOT_ORDER: SlotName[] = ['breakfast', 'snack_am', 'lunch'
 export const SCHEDULE_CONFIG = {
   /** Minutes after a usual meal time, with nothing logged, before a check-in. */
   graceMin: 45,
+  /**
+   * A log under this many kcal (a coffee, a sip of juice) is not a meal: it doesn't cover its
+   * slot and doesn't restart the "time since you last ate" clock. It still counts toward the day.
+   */
+  minMealKcal: 100,
 } as const;
+
+/** Whether a logged item is big enough to count as having eaten a meal. */
+export function countsAsMeal(kcal: number): boolean {
+  return kcal >= SCHEDULE_CONFIG.minMealKcal;
+}
 
 const MINUTES_PER_DAY = 1440;
 

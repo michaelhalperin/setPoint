@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fallbackManagerVoice } from '../managerVoice/fallback.js';
+import { checkInCopy } from '../managerVoice/checkInCopy.js';
 import { fallbackTierThree } from '../ai/tierThree.js';
 import { closeCopy, lightMealCopy } from '../jobs/scoreConfidence.js';
 import { namedSummary } from '../solver/prescribe.js';
@@ -22,8 +22,8 @@ describe('Hebrew copy', () => {
   });
 
   it('writes the check-in, light-meal and close lines in Hebrew', async () => {
-    const line = await fallbackManagerVoice.checkInMessage({ tier: 1, goal: 'BULK', hoursSinceMeal: 5, kcalGap: 600, slot: 'lunch', lang: 'he' });
-    expect(line).toBe('ארוחת הצהריים התפספסה.');
+    const line = checkInCopy({ tier: 1, goal: 'BULK', hoursSinceMeal: 5, kcalGap: 600, slot: 'lunch', lang: 'he' });
+    expect(line).toBe('ארוחת הצהריים התפספסה. עברו 5 שעות מהארוחה האחרונה.');
     expect(lightMealCopy('snack_pm', null, 'he')).toContain('הנשנוש היה קל');
     expect(closeCopy(480, 'חלב מלא', 'he')).toContain('חסרות לך 480 קלוריות');
     expect(closeCopy(480, 'whole milk')).toBe("You're 480 kcal short today. Whole milk closes most of it.");

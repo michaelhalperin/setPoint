@@ -360,7 +360,7 @@ export async function gatherPerson(prisma: PrismaClient, id: string, now: Date) 
   const tz = user.timezone || 'UTC';
   const today = localDateISO(now, tz);
   const dates = Array.from({ length: GRID_DAYS }, (_, i) => shiftDateISO(today, i - (GRID_DAYS - 1)));
-  const [meals, checkIns] = await Promise.all([
+  const [meals, checkIns, heartbeat] = await Promise.all([
     prisma.meal.findMany({ where: { userId: id, loggedAt: { gte: new Date(now.getTime() - (GRID_DAYS + 2) * DAY_MS) } }, select: { loggedAt: true, kcal: true } }),
     prisma.checkIn.findMany({
       where: { userId: id },
@@ -368,6 +368,7 @@ export async function gatherPerson(prisma: PrismaClient, id: string, now: Date) 
       take: 12,
       select: { createdAt: true, message: true, slot: true, kind: true, tier: true, status: true, deliveryStatus: true, lastPushError: true, episodeKey: true },
     }),
+    prisma.schedulerHeartbeat.findUnique({ where: { job: 'score' }, select: { lastRunAt: true, summary: true } }),
   ]);
   const byDate = new Map<string, number>();
   for (const m of meals) {
@@ -388,6 +389,7 @@ export async function gatherPerson(prisma: PrismaClient, id: string, now: Date) 
     joined: user.createdAt.toISOString(),
     timezone: tz,
     pipeline,
+    scoring: scoringNote(heartbeat, user.id),
     tokens: user.pushTokens.map((t) => ({ environment: t.environment, lastSeenAt: t.lastSeenAt.toISOString(), tail: t.token.slice(-6) })),
     chart: { target, days: dates.map((d) => ({ date: d, kcal: byDate.get(d) ?? 0 })) },
     settings: o
@@ -411,6 +413,17 @@ export async function gatherPerson(prisma: PrismaClient, id: string, now: Date) 
       outcome: outcomeOf(c),
     })),
   };
+}
+
+/** What the last scoring pass said about this person: it sent something, or why it didn't. */
+export function scoringNote(
+  heartbeat: { lastRunAt: Date; summary: unknown } | null,
+  userId: string,
+): { at: string; text: string | null } | null {
+  if (!heartbeat) return null;
+  const reasons = (heartbeat.summary as { reasons?: Record<string, unknown> } | null)?.reasons;
+  const text = reasons && typeof reasons[userId] === 'string' ? (reasons[userId] as string) : null;
+  return { at: heartbeat.lastRunAt.toISOString(), text };
 }
 
 export async function gatherDelivery(prisma: PrismaClient, now: Date, days: number, tzOffsetMin: number) {

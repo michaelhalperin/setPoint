@@ -35,6 +35,8 @@ import {
   needsPreWorkoutNudge,
   effectiveWorkouts,
   GAP_CONFIG,
+  countsAsMeal,
+  SCHEDULE_CONFIG,
   closeCheckIn,
   dailyCapReached,
   lightShortfall,
@@ -43,9 +45,9 @@ import {
   type SlotName,
 } from '../engine/index.js';
 import { evaluateStopConditions } from '../engine/stopConditions.js';
-import { fallbackManagerVoice } from '../managerVoice/fallback.js';
+import { checkInCopy } from '../managerVoice/checkInCopy.js';
 import { gatherStopSignals } from '../metrics/stopSignals.js';
-import type { ManagerVoice, ManagerVoiceContext } from '../managerVoice/types.js';
+import type { ManagerVoice } from '../managerVoice/types.js';
 import { captureError } from '../observability/sentry.js';
 import { deliverCheckIn } from '../push/deliver.js';
 import type { PushSender } from '../push/types.js';
@@ -87,6 +89,8 @@ export type ScoreConfidenceSummary = {
   /** The wearable modifier was on but stop conditions switched it off for this run. */
   wearableHalted: boolean;
   skipped: Record<string, number>;
+  /** Per person, in plain words: what this run did for them, or why it did nothing. Shown on their ops page. */
+  reasons: Record<string, string>;
 };
 
 const USER_INCLUDE = {
@@ -129,6 +133,7 @@ export async function runScoreConfidenceJob(
     errors: 0,
     wearableHalted: false,
     skipped: {},
+    reasons: {},
   };
 
   const context: JobContext = {
@@ -168,6 +173,27 @@ function bump(summary: ScoreConfidenceSummary, reason: string): void {
   summary.skipped[reason] = (summary.skipped[reason] ?? 0) + 1;
 }
 
+/** Remember, per person, what this run did or why it didn't. */
+function note(summary: ScoreConfidenceSummary, userId: string, text: string): void {
+  summary.reasons[userId] = text;
+}
+
+/** A check-in that never reached the phone is retried for this long, then given up on (not a miss). */
+export const DELIVERY_RETRY_WINDOW_MIN = 90;
+
+const ELIGIBILITY_WORDS: Record<string, string> = {
+  onboarding_incomplete: 'Setup is not finished',
+  enforcement_disabled: 'Check-ins are off for this person (safety screening)',
+  checkins_paused: 'Check-ins are paused',
+  backed_off: 'Backing off for a day after a run of missed check-ins',
+  active_checkin: 'A check-in is already open',
+  quiet_hours: 'Quiet hours',
+};
+
+function categoryOf(kind: string): 'CHECK_IN' | 'HEADS_UP' | 'REFUEL' {
+  return kind === 'HEADS_UP' ? 'HEADS_UP' : kind === 'REFUEL' ? 'REFUEL' : 'CHECK_IN';
+}
+
 function escStateOf(user: UserWithRelations): { consecutiveMisses: number; currentTier: number } {
   return {
     consecutiveMisses: user.escalationState?.consecutiveMisses ?? 0,
@@ -197,7 +223,10 @@ async function processUser(
       where: { userId: user.id, status: { in: ['PENDING', 'DEFERRED'] } },
       orderBy: { createdAt: 'desc' },
     }),
-    prisma.meal.findFirst({ where: { userId: user.id }, orderBy: { loggedAt: 'desc' } }),
+    prisma.meal.findFirst({
+      where: { userId: user.id, kcal: { gte: SCHEDULE_CONFIG.minMealKcal } },
+      orderBy: { loggedAt: 'desc' },
+    }),
     prisma.meal.findMany({
       where: { userId: user.id, loggedAt: { gte: dayStart } },
       select: { kcal: true, proteinG: true, loggedAt: true },
@@ -241,7 +270,26 @@ async function processUser(
   const underTarget = consumedKcal < targetKcal;
 
   let blocked = false;
+  let droppedNow = 0;
   for (const ci of activeCheckIns) {
+    // A check-in whose push never went out (no token yet, APNs hiccup) must not sit silent for hours:
+    // try again every run for a while, then let it go so a fresh one can take its place.
+    if (ci.status === 'PENDING' && (ci.deliveryStatus === 'FAILED' || ci.deliveryStatus === 'CREATED')) {
+      const ageMin = (now.getTime() - ci.createdAt.getTime()) / 60_000;
+      if (ageMin >= DELIVERY_RETRY_WINDOW_MIN) {
+        await prisma.checkIn.update({ where: { id: ci.id }, data: { status: 'EXPIRED', resolvedAt: now } });
+        summary.checkInsResolved += 1;
+        droppedNow += 1;
+        note(summary, user.id, `A check-in never reached the phone (${ci.lastPushError ?? 'not sent'}) and was dropped after ${DELIVERY_RETRY_WINDOW_MIN} min`);
+        continue;
+      }
+      const rx = await prisma.prescription.findFirst({ where: { checkInId: ci.id }, select: { id: true } });
+      await markDelivered(deps, user.id, ci.id, ci.tier, ci.message ?? 'Time to eat.', rx?.id ?? null, now, categoryOf(ci.kind));
+      summary.checkInsRedelivered += 1;
+      note(summary, user.id, `Tried again to send an undelivered check-in (${ci.lastPushError ?? 'not sent'})`);
+      blocked = true;
+      continue;
+    }
     const isDeferred = ci.status === 'DEFERRED';
     const decision = decideEscalation({
       checkIn: {
@@ -264,8 +312,12 @@ async function processUser(
     blocked = (await applyDecision(deps, user, ci.id, ci.message, settled, now, summary)) || blocked;
   }
 
-  if (blocked || activeCheckIns.length > 0) {
+  if (blocked || activeCheckIns.length - droppedNow > 0) {
     bump(summary, 'active_checkin');
+    if (!summary.reasons[user.id]) {
+      const open = activeCheckIns[0];
+      note(summary, user.id, open ? `A check-in is already open (${String(open.kind ?? 'meal').toLowerCase()}, ${open.status.toLowerCase()})` : 'A check-in is already open');
+    }
     return;
   }
 
@@ -282,11 +334,13 @@ async function processUser(
   });
   if (!eligibility.eligible) {
     bump(summary, eligibility.reason);
+    note(summary, user.id, ELIGIBILITY_WORDS[eligibility.reason] ?? eligibility.reason);
     return;
   }
 
   if (dailyCapReached(todayCheckIns)) {
     bump(summary, 'daily_cap');
+    note(summary, user.id, `Already sent ${GAP_CONFIG.maxCheckInsPerDay} check-ins today`);
     return;
   }
 
@@ -315,6 +369,7 @@ async function processUser(
       summary,
     })
   ) {
+    note(summary, user.id, 'Sent a training check-in');
     return;
   }
 
@@ -338,7 +393,7 @@ async function processUser(
     nowMin,
     times,
     graceMin: profile.checkInGraceMin,
-    mealMinutesToday: todayMeals.map((m) => localMinute(m.loggedAt, user.timezone)),
+    mealMinutesToday: todayMeals.filter((m) => countsAsMeal(m.kcal)).map((m) => localMinute(m.loggedAt, user.timezone)),
     checkedSlotsToday,
     consumedKcal,
     targetKcal,
@@ -388,9 +443,21 @@ async function processUser(
         summary,
       }))
     ) {
+      note(summary, user.id, 'Sent the evening check-in');
       return;
     }
     bump(summary, 'not_due');
+    const small = todayMeals.filter((m) => !countsAsMeal(m.kcal)).length;
+    const ignored = small > 0 ? `; ${small} small log${small > 1 ? 's' : ''} under ${SCHEDULE_CONFIG.minMealKcal} kcal don't count as a meal` : '';
+    note(
+      summary,
+      user.id,
+      (shifted
+        ? `Nothing due yet: next is ${shifted.slot.replace('_', ' ')} at ${clock24(shifted.dueMin)}`
+        : consumedKcal >= targetKcal
+          ? 'Nothing due: today\'s target is met'
+          : 'Nothing due: every meal today is covered or past') + ignored,
+    );
     return;
   }
 
@@ -398,6 +465,7 @@ async function processUser(
   const existing = todayCheckIns.find((c) => c.episodeKey === episodeKey);
   if (existing) {
     bump(summary, 'duplicate_episode');
+    note(summary, user.id, `Already checked in for ${due.slot.replace('_', ' ')} today`);
     return;
   }
 
@@ -460,6 +528,11 @@ async function processUser(
 
   if (!scored.shouldFire) {
     bump(summary, 'below_threshold');
+    note(
+      summary,
+      user.id,
+      `${due.slot.replace('_', ' ')} is ${Math.round(overdueMin)} min overdue, holding: score ${scored.score.toFixed(2)} of ${scored.threshold.toFixed(2)}`,
+    );
     return;
   }
 
@@ -472,7 +545,7 @@ async function processUser(
     times,
     extra: extraSlots,
     checked: checkedSlotsToday,
-    mealMinutesToday: todayMeals.map((m) => localMinute(m.loggedAt, user.timezone)),
+    mealMinutesToday: todayMeals.filter((m) => countsAsMeal(m.kcal)).map((m) => localMinute(m.loggedAt, user.timezone)),
   });
   const computed = computePrescriptionTarget({
     dailyKcalTarget: targetKcal,
@@ -517,10 +590,10 @@ async function processUser(
     ? headsUpCopy(due.busy, due.slot, lang)
     : isLight
     ? lightMealCopy(due.slot, namedLine, lang)
-    : await checkInCopy(deps.voice, {
+    : checkInCopy({
         tier,
         goal: profile.goal as Goal,
-        hoursSinceMeal,
+        hoursSinceMeal: lastMeal ? hoursSinceMeal : null,
         kcalGap: target.targetKcal,
         prescriptionSummary: summaryLine,
         slot: due.slot,
@@ -580,6 +653,14 @@ async function processUser(
   }
 
   await markDelivered(deps, user.id, checkIn.id, tier, message, prescriptionId, now, isHeadsUp ? 'HEADS_UP' : 'CHECK_IN');
+  const sent = await prisma.checkIn.findUnique({ where: { id: checkIn.id }, select: { deliveryStatus: true, lastPushError: true } });
+  note(
+    summary,
+    user.id,
+    sent?.deliveryStatus === 'SENT'
+      ? `Sent a ${due.slot.replace('_', ' ')} check-in`
+      : `Created a ${due.slot.replace('_', ' ')} check-in but the push did not go out (${sent?.lastPushError ?? 'unknown'})`,
+  );
   await prisma.escalationState.upsert({
     where: { userId: user.id },
     create: { userId: user.id, lastCheckInAt: now, currentTier: tier },
@@ -997,23 +1078,6 @@ async function wearableHaltedByStopConditions(prisma: PrismaClient, now: Date): 
     });
   }
   return evaluation.haltWearable;
-}
-
-/** How long a check-in waits for the manager's-voice line before sending the deterministic one. */
-export const CHECK_IN_COPY_TIMEOUT_MS = 4_000;
-
-async function checkInCopy(voice: ManagerVoice, ctx: ManagerVoiceContext): Promise<string> {
-  const fallback = () => fallbackManagerVoice.checkInMessage(ctx);
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const timedOut = new Promise<null>((resolve) => {
-    timer = setTimeout(() => resolve(null), CHECK_IN_COPY_TIMEOUT_MS);
-  });
-  try {
-    const line = await Promise.race([voice.checkInMessage(ctx).catch(() => null), timedOut]);
-    return line?.trim() ? line : await fallback();
-  } finally {
-    clearTimeout(timer);
-  }
 }
 
 async function markDelivered(

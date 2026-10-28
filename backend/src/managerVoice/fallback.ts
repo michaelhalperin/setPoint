@@ -1,9 +1,4 @@
-import type {
-  DaySummaryContext,
-  HomeNoteContext,
-  ManagerVoice,
-  ManagerVoiceContext,
-} from './types.js';
+import type { DaySummaryContext, HomeNoteContext, ManagerVoice } from './types.js';
 import { slotNameHe } from '../i18n/index.js';
 
 /**
@@ -11,21 +6,6 @@ import { slotNameHe } from '../i18n/index.js';
  * specific, never shaming. Tier 3 is a conversation, handled elsewhere.
  */
 export const fallbackManagerVoice: ManagerVoice = {
-  async checkInMessage(ctx: ManagerVoiceContext): Promise<string> {
-    if (ctx.lang === 'he') {
-      const directive = ctx.prescriptionSummary ? ` נסה ${ctx.prescriptionSummary}.` : '';
-      if (ctx.tier <= 1) {
-        return ctx.slot ? `${slotNameHe(ctx.slot)} התפספסה.${directive}` : `הגיע הזמן לאכול.${directive}`;
-      }
-      return `תאכל עכשיו.${directive}`;
-    }
-    const directive = ctx.prescriptionSummary ? ` Try ${ctx.prescriptionSummary}.` : '';
-    if (ctx.tier <= 1) {
-      return ctx.slot ? `${cap(ctx.slot)} slipped.${directive}` : `Time to eat.${directive}`;
-    }
-    return `Eat now.${directive}`;
-  },
-
   async homeNote(ctx: HomeNoteContext): Promise<string> {
     if (ctx.lang === 'he') return homeNoteHe(ctx);
     // The screen shows the numbers; the note is about timing and what's next.

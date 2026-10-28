@@ -7,7 +7,6 @@ import { runSettleDayJob } from './settleDay.js';
 const NOW = new Date('2026-09-02T06:00:00Z');
 
 const voice: ManagerVoice = {
-  checkInMessage: vi.fn(async () => 'ci'),
   homeNote: vi.fn(async () => 'note'),
   daySummary: vi.fn(async (ctx) => `summary:${ctx.kind}`),
 };

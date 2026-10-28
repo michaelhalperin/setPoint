@@ -511,6 +511,12 @@ ${USAGE_CSS}
         h('p', { class: s.state === 'no' ? 't-bad' : '', text: s.detail })
       ]);
     }));
+    var scoring = p.scoring
+      ? h('p', { class: 't-soft', style: 'margin:18px 0 0;text-align:center' }, [
+          'The last pass over their day, ' + ago(p.scoring.at) + ': ',
+          h('b', { style: 'color:var(--ink);font-weight:500', text: p.scoring.text || 'nothing recorded for them (they may be new, or the pass is older than this view)' })
+        ])
+      : h('p', { class: 't-bad', style: 'margin:18px 0 0;text-align:center', text: 'The scoring job has never run.' });
     var why = broken ? h('div', { class: 'why' }, ['It breaks at step ' + (firstBad + 1) + '. ', h('em', { text: broken })]) : h('div', { class: 'why' }, ['Every step looks fine.']);
     var max = Math.max(p.chart.target * 1.1, 1);
     var chartBars = p.chart.days.map(function (day) {
@@ -540,7 +546,7 @@ ${USAGE_CSS}
       ]));
     });
     var body = [h('div', { class: 'kick' }, [h('a', { href: '#people', text: 'People' }), ' / ' + p.name]), head,
-      h('div', { class: 'h3', style: 'margin-top:44px' }, ['Why the phone stays quiet', h('span', { text: 'the path of one notification' })]), path, why,
+      h('div', { class: 'h3', style: 'margin-top:44px' }, ['Why the phone stays quiet', h('span', { text: 'the path of one notification' })]), path, why, scoring,
       h('div', { class: 'two' }, [
         h('section', null, [h('div', { class: 'h3' }, ['Kcal eaten, 14 days', h('span', { text: 'dashed line is their target' })]), chart, days]),
         h('section', null, [h('div', { class: 'h3' }, ['How check-ins treat them']), dl, h('p', { class: 't-faint', style: 'margin:18px 0 0;font-size:13px', text: tokens })])

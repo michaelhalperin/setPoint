@@ -1,11 +1,6 @@
 import type Anthropic from '@anthropic-ai/sdk';
 import { MANAGER_VOICE_MODEL } from '../ai/models.js';
-import type {
-  DaySummaryContext,
-  HomeNoteContext,
-  ManagerVoice,
-  ManagerVoiceContext,
-} from './types.js';
+import type { DaySummaryContext, HomeNoteContext, ManagerVoice } from './types.js';
 import { languageInstruction } from '../i18n/index.js';
 
 /**
@@ -20,7 +15,7 @@ const SYSTEM = [
   '- Exactly one sentence, under 90 characters. Use the fewest words possible. No emoji or exclamation marks.',
   '- The screen already shows the calorie totals. Do NOT restate them or say "X kcal left / to go".',
   '- Talk about timing and rhythm: which meal is next, whether the day started late, whether they are keeping pace.',
-  '- For a check-in surface a meal-sized calorie figure and the food suggestion are fine; for home_note, avoid calorie figures.',
+  '- Avoid calorie figures.',
   '- Do not explain the text field. Never say "drop it in", "tell me", or "type here".',
   '- Never mention weight, body image, guilt, willpower, "failure", "cheating", "slipping", or being "behind" as a judgement.',
   '- Never diagnose or reference eating patterns clinically.',
@@ -53,21 +48,6 @@ export function createAiManagerVoice(client: Anthropic, fallback: ManagerVoice):
   }
 
   return {
-    checkInMessage: (ctx: ManagerVoiceContext) =>
-      line(
-        'check_in',
-        {
-          tone: ctx.tier >= 2 ? 'firm' : 'gentle',
-          meal: ctx.slot ?? null,
-          goal: ctx.goal.toLowerCase(),
-          hoursSinceLastMeal: Math.round(ctx.hoursSinceMeal),
-          caloriesToTarget: ctx.kcalGap ?? null,
-          suggestion: ctx.prescriptionSummary ?? null,
-        },
-        () => fallback.checkInMessage(ctx),
-        ctx.lang,
-      ),
-
     homeNote: (ctx: HomeNoteContext) =>
       line(
         'home_note',

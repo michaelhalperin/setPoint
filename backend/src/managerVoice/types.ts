@@ -6,7 +6,8 @@ import type { Lang } from '../i18n/index.js';
 export type ManagerVoiceContext = {
   tier: number;
   goal: Goal;
-  hoursSinceMeal: number;
+  /** Hours since the last real meal; null when nothing has been logged yet. */
+  hoursSinceMeal: number | null;
   /** Meal-sized calorie target for right now, when known. */
   kcalGap: number | null;
   /** The solver's "eat this" line, e.g. "2× Hard-boiled eggs + Banana". */
@@ -50,8 +51,6 @@ export type DaySummaryContext = {
  * shaming); `fallbackManagerVoice` is the deterministic stand-in.
  */
 export interface ManagerVoice {
-  /** The firm/gentle check-in line (§2, §5.3). */
-  checkInMessage(ctx: ManagerVoiceContext): Promise<string>;
   /** The manager's-note box under the home hero stat (§5.2). */
   homeNote(ctx: HomeNoteContext): Promise<string>;
   /** The one-line summary on a settled day (§5.7). */

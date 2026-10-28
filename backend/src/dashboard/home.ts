@@ -30,7 +30,7 @@ import {
   type ScheduledCheckIn,
   type SlotName,
 } from '../engine/index.js';
-import { SCHEDULE_CONFIG } from '../engine/mealSchedule.js';
+import { countsAsMeal, SCHEDULE_CONFIG } from '../engine/mealSchedule.js';
 import { REFUEL_WINDOW_MIN } from '../engine/training.js';
 import { trainingForLocalDay, workoutHomeRows } from '../training/day.js';
 import type { ManagerVoice } from '../managerVoice/types.js';
@@ -182,7 +182,11 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
         parseQuality: true,
       },
     }),
-    prisma.meal.findFirst({ where: { userId }, orderBy: { loggedAt: 'desc' }, select: { loggedAt: true } }),
+    prisma.meal.findFirst({
+      where: { userId, kcal: { gte: SCHEDULE_CONFIG.minMealKcal } },
+      orderBy: { loggedAt: 'desc' },
+      select: { loggedAt: true },
+    }),
     prisma.checkIn.findFirst({
       where: { userId, status: { in: ['PENDING', 'DEFERRED'] } },
       orderBy: { createdAt: 'desc' },
@@ -286,7 +290,7 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
         nowMin: mins,
         times,
         graceMin: grace,
-        mealMinutesToday: todayMeals.map((m) => localMinute(m.loggedAt)),
+        mealMinutesToday: todayMeals.filter((m) => countsAsMeal(m.kcal)).map((m) => localMinute(m.loggedAt)),
         checkedSlotsToday,
         consumedKcal,
         targetKcal,
@@ -366,7 +370,7 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
     shape,
     remainingKcal: Math.max(0, remainingKcal),
     checked: checkedSlotsToday,
-    mealMinutesToday: todayMeals.map((m) => localMinute(m.loggedAt)),
+    mealMinutesToday: todayMeals.filter((m) => countsAsMeal(m.kcal)).map((m) => localMinute(m.loggedAt)),
   });
 
   const managerNote = await deps.voice.homeNote({

@@ -9,7 +9,6 @@ const NOW = new Date('2026-09-01T18:00:00Z'); // 14:00 in New York
 const hoursAgo = (h: number) => new Date(NOW.getTime() - h * 3_600_000);
 
 const voice: ManagerVoice = {
-  checkInMessage: vi.fn(async () => 'ci'),
   homeNote: vi.fn(async () => 'MANAGER NOTE'),
   daySummary: vi.fn(async () => 'ds'),
 };

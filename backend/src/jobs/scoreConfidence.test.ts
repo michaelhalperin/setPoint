@@ -4,7 +4,7 @@ import { STAPLE_FOODS } from '../data/stapleFoods.js';
 import { SCORING_VERSION } from '../engine/behaviorScore.js';
 import type { ManagerVoice } from '../managerVoice/types.js';
 import type { PushPayload, PushSender } from '../push/types.js';
-import { CHECK_IN_COPY_TIMEOUT_MS, runScoreConfidenceJob } from './scoreConfidence.js';
+import { DELIVERY_RETRY_WINDOW_MIN, runScoreConfidenceJob } from './scoreConfidence.js';
 
 const NOW = new Date('2026-07-01T16:00:00Z'); // 12:00 in New York (EDT)
 const hoursAgo = (h: number) => new Date(NOW.getTime() - h * 3_600_000);
@@ -168,7 +168,6 @@ const push: PushSender = {
   }),
 };
 const voice: ManagerVoice = {
-  checkInMessage: vi.fn(async () => 'Time to eat.'),
   homeNote: vi.fn(async () => 'note'),
   daySummary: vi.fn(async () => 'summary'),
 };
@@ -400,7 +399,7 @@ describe('runScoreConfidenceJob', () => {
       });
 
       expect(summary.checkInsCreated).toBe(1);
-      expect(voice.checkInMessage).toHaveBeenCalledWith(expect.objectContaining({ slot: 'lunch', tier: 1 }));
+      expect(fake.__tables.checkIns[0]!.message).toMatch(/^Lunch slipped\. 6 hours since you last ate\./);
       expect(fake.__tables.confidenceScores[0]).toMatchObject({ firedCheckIn: true, scoringVersion: SCORING_VERSION });
     });
 
@@ -423,41 +422,90 @@ describe('runScoreConfidenceJob', () => {
       expect(fake.__tables.checkIns.filter((c) => c.tier !== 3)).toHaveLength(1);
     });
 
-    it("sends the manager's-voice line as the check-in, as one alert", async () => {
+    it('sends the check-in as one alert, in words that state only facts', async () => {
       const fake = makeFakePrisma([baseUser()], { seedFoods: true });
       fake.meal.create({ data: breakfast });
       fake.__tables.pushTokens.push({ id: 'pt_live', userId: 'u1', token: 'live_start', kind: 'live_activity_start' });
-      const said: ManagerVoice = { ...voice, checkInMessage: vi.fn(async () => 'Lunch slipped. Eggs and toast now.') };
 
-      await runScoreConfidenceJob({ prisma: fake as unknown as PrismaClient, push, voice: said, now: LUNCH_PLUS_50 });
+      await runScoreConfidenceJob({ prisma: fake as unknown as PrismaClient, push, voice, now: LUNCH_PLUS_50 });
 
-      expect(fake.__tables.checkIns[0]).toMatchObject({ message: 'Lunch slipped. Eggs and toast now.', deliveryStatus: 'SENT' });
+      const message = fake.__tables.checkIns[0]!.message as string;
+      expect(message).toMatch(/^Lunch slipped\. 6 hours since you last ate\. Try .+\.$/);
+      expect(message).not.toMatch(/pace/i);
+      expect(fake.__tables.checkIns[0]).toMatchObject({ deliveryStatus: 'SENT' });
       expect(push.send).toHaveBeenCalledTimes(1);
       expect(vi.mocked(push.send).mock.calls[0]![0]).toEqual(['tok_u1']);
     });
 
-    it('falls back to the deterministic line when the voice fails or hangs', async () => {
-      const failing = makeFakePrisma([baseUser()], { seedFoods: true });
-      failing.meal.create({ data: breakfast });
-      const broken: ManagerVoice = { ...voice, checkInMessage: vi.fn(async () => { throw new Error('ai down'); }) };
-      await runScoreConfidenceJob({ prisma: failing as unknown as PrismaClient, push, voice: broken, now: LUNCH_PLUS_50 });
-      const failedMessage = failing.__tables.checkIns[0]?.message;
-      expect(typeof failedMessage).toBe('string');
-      expect(failedMessage).not.toBe('');
+    it('does not claim a time since the last meal when nothing was ever logged', async () => {
+      const fake = makeFakePrisma([baseUser()], { seedFoods: true });
+      await runScoreConfidenceJob({ prisma: fake as unknown as PrismaClient, push, voice, now: NOW });
+      expect(fake.__tables.checkIns[0]!.message as string).not.toMatch(/hours since/);
+    });
 
-      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
-      try {
-        const hanging = makeFakePrisma([baseUser()], { seedFoods: true });
-        hanging.meal.create({ data: breakfast });
-        const slow: ManagerVoice = { ...voice, checkInMessage: vi.fn(() => new Promise<string>(() => {})) };
-        const run = runScoreConfidenceJob({ prisma: hanging as unknown as PrismaClient, push, voice: slow, now: LUNCH_PLUS_50 });
-        await vi.advanceTimersByTimeAsync(CHECK_IN_COPY_TIMEOUT_MS + 10);
-        const summary = await run;
-        expect(summary.checkInsCreated).toBe(1);
-        expect(hanging.__tables.checkIns[0]?.message).toBe(failedMessage);
-      } finally {
-        vi.useRealTimers();
-      }
+    it('does not let a 10 kcal log stand in for a meal', async () => {
+      const fake = makeFakePrisma([baseUser()], { seedFoods: true });
+      // Breakfast was skipped; a coffee at 08:10 and a 10 kcal log just before lunch.
+      fake.meal.create({ data: { ...breakfast, kcal: 10 } });
+      fake.meal.create({ data: { userId: 'u1', loggedAt: new Date('2026-07-01T17:05:00Z'), kcal: 10, proteinG: 0, source: 'TEXT' } });
+
+      const summary = await runScoreConfidenceJob({ prisma: fake as unknown as PrismaClient, push, voice, now: LUNCH_PLUS_50 });
+
+      expect(summary.checkInsCreated).toBe(1);
+      expect(fake.__tables.checkIns[0]).toMatchObject({ kind: 'MEAL' });
+      // And the "time since you last ate" is not counted from the coffee.
+      expect(summary.reasons.u1).toMatch(/Sent a (breakfast|lunch) check-in/);
+    });
+
+    it('says, per person, why nothing was sent', async () => {
+      const fake = makeFakePrisma([baseUser()]);
+      fake.meal.create({ data: breakfast });
+      fake.meal.create({ data: { userId: 'u1', loggedAt: new Date('2026-07-01T17:20:00Z'), kcal: 20, proteinG: 0, source: 'TEXT' } });
+      const summary = await runScoreConfidenceJob({
+        prisma: fake as unknown as PrismaClient,
+        push,
+        voice,
+        now: new Date('2026-07-01T17:40:00Z'), // 13:40, lunch is due at 13:45
+      });
+      expect(summary.reasons.u1).toBe("Nothing due yet: next is lunch at 13:45; 1 small log under 100 kcal don't count as a meal");
+    });
+
+    describe('when the push does not go out', () => {
+      const failingPush = (): PushSender => ({
+        send: vi.fn(async (tokens) => ({ attempted: tokens.length, sent: 0, failed: tokens.length, invalidTokens: [], error: 'apns_503' })),
+      });
+
+      it('tries the same check-in again on the next run instead of going silent', async () => {
+        const fake = makeFakePrisma([baseUser()], { seedFoods: true });
+        fake.meal.create({ data: breakfast });
+        await runScoreConfidenceJob({ prisma: fake as unknown as PrismaClient, push: failingPush(), voice, now: LUNCH_PLUS_50 });
+        expect(fake.__tables.checkIns[0]).toMatchObject({ deliveryStatus: 'FAILED', lastPushError: 'apns_503' });
+        fake.__tables.checkIns[0]!.createdAt = LUNCH_PLUS_50;
+
+        const again = await runScoreConfidenceJob({
+          prisma: fake as unknown as PrismaClient,
+          push,
+          voice,
+          now: new Date(LUNCH_PLUS_50.getTime() + 15 * 60_000),
+        });
+        expect(again.checkInsRedelivered).toBe(1);
+        expect(fake.__tables.checkIns).toHaveLength(1);
+        expect(fake.__tables.checkIns[0]).toMatchObject({ deliveryStatus: 'SENT', lastPushError: null });
+      });
+
+      it('lets go of a check-in that never reached the phone, without counting a miss, so a new one can follow', async () => {
+        const fake = makeFakePrisma([baseUser()], { seedFoods: true });
+        fake.meal.create({ data: breakfast });
+        await runScoreConfidenceJob({ prisma: fake as unknown as PrismaClient, push: failingPush(), voice, now: LUNCH_PLUS_50 });
+        const later = new Date(LUNCH_PLUS_50.getTime() + (DELIVERY_RETRY_WINDOW_MIN + 5) * 60_000);
+        fake.__tables.checkIns[0]!.createdAt = LUNCH_PLUS_50;
+
+        const summary = await runScoreConfidenceJob({ prisma: fake as unknown as PrismaClient, push, voice, now: later });
+
+        expect(fake.__tables.checkIns[0]).toMatchObject({ status: 'EXPIRED' });
+        expect(summary.misses).toBe(0);
+        expect(fake.__tables.escalationStates[0]?.consecutiveMisses ?? 0).toBe(0);
+      });
     });
 
     it('holds a due lunch while the day is on pace, in one audit row, then fires once it runs long', async () => {
@@ -534,7 +582,6 @@ describe('runScoreConfidenceJob', () => {
       expect(summary.checkInsCreated).toBe(1);
       expect(fake.__tables.checkIns[0]).toMatchObject({ kind: 'TOP_UP', slot: 'lunch' });
       expect(fake.__tables.checkIns[0]!.message).toMatch(/^Lunch was light\. Add .+ to stay on pace\.$/);
-      expect(voice.checkInMessage).not.toHaveBeenCalled();
     });
 
     it('leaves a real lunch alone', async () => {
