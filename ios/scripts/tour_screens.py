@@ -19,6 +19,11 @@ APP = ROOT / "ios/DerivedData/Build/Products/Debug-iphonesimulator/SetPoint.app"
 TABS = ["today", "train", "progress", "you"]
 # id -> simulator name. Sizes come from the screenshots, not from here.
 DEVICES = {
+    "18promax": "iPhone 18 Pro Max",
+    "18pro": "iPhone 18 Pro",
+    "17promax": "iPhone 17 Pro Max",
+    "17pro": "iPhone 17 Pro",
+    "17": "iPhone 17",
     "16promax": "iPhone 16 Pro Max",
     "16plus": "iPhone 16 Plus",
     "air": "iPhone Air",
@@ -40,7 +45,17 @@ def udid_for(name):
         for d in group:
             if d["name"] == name:
                 return d["udid"]
-    sys.exit(f"No simulator named {name}")
+    # Not there yet: make one on the newest iOS runtime that takes this phone.
+    runtimes = json.loads(sh("xcrun", "simctl", "list", "runtimes", "available", "-j"))["runtimes"]
+    ios = [r for r in runtimes if r["identifier"].startswith("com.apple.CoreSimulator.SimRuntime.iOS-")]
+    ios.sort(key=lambda r: [int(x) for x in re.findall(r"\d+", r["version"])], reverse=True)
+    kind = "com.apple.CoreSimulator.SimDeviceType." + name.replace(" ", "-")
+    for runtime in ios:
+        made = subprocess.run(["xcrun", "simctl", "create", name, kind, runtime["identifier"]], capture_output=True, text=True)
+        if made.returncode == 0:
+            print(f"{name}: created a simulator on {runtime['name']}", flush=True)
+            return made.stdout.strip()
+    sys.exit(f"No installed iOS runtime can run {name}")
 
 
 def read_ts_object(path, marker):
