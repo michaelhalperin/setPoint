@@ -124,12 +124,12 @@ export class ApnsClient {
  */
 export function buildCheckInAlertPayload(payload: PushPayload): Record<string, unknown> {
   if (payload.plain) {
-    return { aps: { alert: { title: payload.title, body: payload.body }, sound: 'default' }, checkInId: payload.checkInId };
+    return { aps: { alert: { title: payload.title, body: payload.body }, sound: 'checkin.caf' }, checkInId: payload.checkInId };
   }
   return {
     aps: {
       alert: { title: payload.title, body: payload.body },
-      sound: 'default',
+      sound: 'checkin.caf',
       'interruption-level': 'time-sensitive',
       'relevance-score': 1,
       // Registered by the app: "I ate this" / "In 1 hour" on the notification.
