@@ -1,6 +1,6 @@
 import type { PrismaClient } from '@prisma/client';
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_TOUR, TOUR_ANCHORS, anchorsForAdmin, forApp, loadTour, tourProblems, tourSchema } from './index.js';
+import { DEFAULT_TOUR, TOUR_ANCHORS, TOUR_REFERENCE_HEIGHT, deviceInfo, deviceList, forApp, loadTour, tourProblems, tourSchema } from './index.js';
 
 const fakePrisma = (value: unknown | undefined) =>
   ({ appConfig: { findUnique: async () => (value === undefined ? null : { key: 'tour', value }) } }) as unknown as PrismaClient;
@@ -70,12 +70,25 @@ describe('tip position', () => {
   });
 });
 
-describe('anchorsForAdmin', () => {
-  it('knows where every element sits on the phone', () => {
-    for (const a of anchorsForAdmin()) {
-      expect(a.frame, a.id).not.toBeNull();
-      expect(a.frame![2]).toBeGreaterThan(10);
+describe('the phones the admin previews on', () => {
+  it('knows where every element sits on every phone', () => {
+    const devices = deviceList();
+    expect(devices.length).toBeGreaterThan(1);
+    for (const { id, screen } of devices) {
+      const info = deviceInfo(id)!;
+      expect(screen[0], id).toBeGreaterThan(300);
+      expect(screen[1], id).toBeGreaterThan(600);
+      for (const a of TOUR_ANCHORS) {
+        const frame = info.frames[a.id];
+        expect(frame, `${id} ${a.id}`).toBeDefined();
+        expect(frame![2]).toBeGreaterThan(10);
+      }
     }
+  });
+
+  it('has the reference phone the app decides the tip\u2019s side with', () => {
+    expect(deviceList().some((d) => d.screen[1] === TOUR_REFERENCE_HEIGHT)).toBe(true);
+    expect(deviceInfo('nope')).toBeNull();
   });
 });
 

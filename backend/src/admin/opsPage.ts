@@ -182,6 +182,7 @@ a.grid:hover{background:var(--fill)}
 .tr-head .state{font-size:13px;color:var(--faint);display:flex;align-items:center;gap:8px}
 .tr-head .state.dirty{color:var(--warn)}
 .tr-head .state i{width:8px;height:8px;border-radius:50%;background:currentColor}
+.tr-head .devsel{height:34px;border-radius:17px;border:1px solid var(--line-hi);background:var(--fill);padding:0 12px;font-size:13px;max-width:240px}
 .tr-head .ck{display:flex;align-items:center;gap:8px;color:var(--soft);font-size:13px}
 .tr3{display:grid;grid-template-columns:250px minmax(0,1fr) minmax(340px,420px);gap:28px;flex:1;min-height:0}
 .tr-col{min-width:0;min-height:0;display:flex;flex-direction:column}
@@ -702,8 +703,16 @@ ${USAGE_CSS}
     var loose = state.data.now ? state.data.now.looseEnds.length : 0;
     var d = state.data.tour;
     if (!d) { load('tour', '/api/admin/tour'); return shell('tour', loose, [h('p', { class: 'empty', text: 'Loading…' })]); }
-    if (!state.tw) state.tw = { steps: JSON.parse(JSON.stringify(d.tour.steps)), revision: d.tour.revision, sel: 0, dirty: false, bump: false, lang: 'en', closed: false, picking: false, pickTab: null };
+    if (!state.tw) state.tw = { steps: JSON.parse(JSON.stringify(d.tour.steps)), revision: d.tour.revision, sel: 0, dirty: false, bump: false, lang: 'en', closed: false, picking: false, pickTab: null, device: null };
     var tw = state.tw, anchors = d.anchors, byId = {};
+    if (!tw.device) {
+      var saved = null;
+      try { saved = localStorage.getItem('setpoint.tour.device'); } catch (e) {}
+      tw.device = d.devices.some(function (x) { return x.id === saved; }) ? saved : '16pro';
+    }
+    var devKey = 'tourdev:' + tw.device, dv = state.data[devKey];
+    if (!dv) { load(devKey, '/api/admin/tour/device/' + encodeURIComponent(tw.device)); return shell('tour', loose, [h('p', { class: 'empty', text: 'Loading the phone\u2026' })]); }
+    var devW = dv.screen[0], devH = dv.screen[1], REF_H = d.referenceHeight;
     anchors.forEach(function (a) { byId[a.id] = a; });
     var redo = function () { var y = window.scrollY; render(); window.scrollTo(0, y); };
     var saveBtn = null, stateEl = null;
@@ -720,12 +729,18 @@ ${USAGE_CSS}
     var ph = document.getElementById('phone-tpl').content.firstElementChild.cloneNode(true);
     var scr = ph.querySelector('.screen'), layer = ph.querySelector('#tour'), hl = ph.querySelector('#hl'), pop = ph.querySelector('#pop'), arrow = ph.querySelector('#pop-arrow');
     var q = function (sel) { return ph.querySelector(sel); };
-    var refW = d.screen[0], refH = d.screen[1], curTab = 'today';
+    var curTab = 'today';
+    // this phone's size, its screens, and where each element sits on it
+    scr.style.width = devW + 'px'; scr.style.height = devH + 'px'; scr.style.borderRadius = Math.round(devW * 0.137) + 'px';
+    Array.prototype.forEach.call(ph.querySelectorAll('.shot'), function (img) { if (dv.shots[img.dataset.pane]) img.src = dv.shots[img.dataset.pane]; });
+    [['today', 0.143], ['train', 0.321], ['progress', 0.677], ['you', 0.856]].forEach(function (t) {
+      var b = ph.querySelector('.tabhit[data-tab="' + t[0] + '"]'); b.style.left = Math.round(devW * t[1] - 32) + 'px'; b.style.top = (devH - 102) + 'px';
+    });
     var hits = q('#hits');
     anchors.forEach(function (a) {
-      if (!a.frame) return;
+      var fr = dv.frames[a.id]; if (!fr) return;
       hits.appendChild(h('button', { type: 'button', class: 'hit', 'data-anchor': a.id, 'aria-label': a.label,
-        style: 'left:' + a.frame[0] + 'px;top:' + a.frame[1] + 'px;width:' + a.frame[2] + 'px;height:' + a.frame[3] + 'px;border-radius:' + a.radius + 'px' }));
+        style: 'left:' + fr[0] + 'px;top:' + fr[1] + 'px;width:' + fr[2] + 'px;height:' + fr[3] + 'px;border-radius:' + a.radius + 'px' }));
     });
     function setTab(name) {
       curTab = name;
@@ -755,16 +770,18 @@ ${USAGE_CSS}
       var pw = Math.min(284, W - 32); pop.style.width = pw + 'px';
       var ph2 = pop.getBoundingClientRect().height / (scr.getBoundingClientRect().width / scr.offsetWidth), top, left, rawTop, rawLeft, sideNow = null, rect = null;
       var a = s.anchor ? byId[s.anchor] : null;
-      if (a && a.frame) {
-        var k = W / refW, pad = a.pad;
-        rect = { l: (a.frame[0] - pad) * k, t: (a.frame[1] - pad) * k, w: (a.frame[2] + pad * 2) * k, h: (a.frame[3] + pad * 2) * k };
-        hl.style.left = rect.l + 'px'; hl.style.top = rect.t + 'px'; hl.style.width = rect.w + 'px'; hl.style.height = rect.h + 'px'; hl.style.borderRadius = (a.radius * k) + 'px';
-        var gap = 16, below = refH - (rect.t + rect.h) - gap - 8, above = rect.t - gap - 56;
+      var fr = a ? dv.frames[a.id] : null;
+      if (a && fr) {
+        var pad = a.pad;
+        rect = { l: fr[0] - pad, t: fr[1] - pad, w: fr[2] + pad * 2, h: fr[3] + pad * 2 };
+        hl.style.left = rect.l + 'px'; hl.style.top = rect.t + 'px'; hl.style.width = rect.w + 'px'; hl.style.height = rect.h + 'px'; hl.style.borderRadius = a.radius + 'px';
+        // the app decides the side as on the reference phone, and stops the tip at its bottom limit
+        var gap = 16, below = REF_H - (rect.t + rect.h) - gap - 8, above = rect.t - gap - 56;
         var want = s.side || 'auto';
         var under = want === 'below' ? true : want === 'above' ? false : (below >= ph2 || (above < ph2 && below > above));
         rawTop = under ? rect.t + rect.h + gap : rect.t - gap - ph2;
         rawLeft = rect.l + rect.w / 2 - pw / 2;
-        top = Math.max(58, Math.min(H - ph2 - 24, rawTop));
+        top = Math.max(58, Math.min(Math.min(H, REF_H) - ph2 - 24, rawTop));
         left = Math.max(16, Math.min(W - pw - 16, rawLeft));
         sideNow = under;
       } else {
@@ -776,7 +793,7 @@ ${USAGE_CSS}
       lastBase = { rawLeft: rawLeft, rawTop: rawTop, left: left, top: top, under: sideNow };
       var nudged = (s.dx || 0) !== 0 || (s.dy || 0) !== 0;
       var nl = nudged ? Math.max(16, Math.min(W - pw - 16, rawLeft + (s.dx || 0))) : left;
-      var nt = nudged ? Math.max(58, Math.min(H - ph2 - 24, rawTop + (s.dy || 0))) : top;
+      var nt = nudged ? Math.max(58, Math.min(Math.min(H, REF_H) - ph2 - 24, rawTop + (s.dy || 0))) : top;
       pop.style.left = nl + 'px'; pop.style.top = nt + 'px';
       var arrowSide = null;
       if (rect) { if (nt >= rect.t + rect.h - 2) arrowSide = 'bottom'; else if (nt + ph2 <= rect.t + 2) arrowSide = 'top'; }
@@ -890,8 +907,8 @@ ${USAGE_CSS}
     function fit() {
       if (!midCol.isConnected) return;
       var availH = midCol.clientHeight, availW = midCol.clientWidth;
-      var k = Math.max(0.4, Math.min(1, availH / 874, availW / 402));
-      fitBox.style.width = Math.round(402 * k) + 'px'; fitBox.style.height = Math.round(874 * k) + 'px';
+      var k = Math.max(0.4, Math.min(1, availH / devH, availW / devW));
+      fitBox.style.width = Math.round(devW * k) + 'px'; fitBox.style.height = Math.round(devH * k) + 'px';
       ph.style.transform = 'scale(' + k + ')'; ph.style.transformOrigin = '0 0';
     }
     window.__tourFit = fit;
@@ -962,10 +979,13 @@ ${USAGE_CSS}
     } });
     var langBtn = function (code, label) { return h('button', { class: 'chip', type: 'button', 'aria-pressed': tw.lang === code ? 'true' : 'false', text: label, onclick: function () { tw.lang = code; redo(); } }); };
     var langRow = h('div', { class: 'segs', role: 'group', 'aria-label': 'Preview language' }, [langBtn('en', 'English'), langBtn('he', '\u05e2\u05d1\u05e8\u05d9\u05ea')]);
+    var devicePick = h('select', { class: 'devsel', 'aria-label': 'Phone to preview on', title: 'The phone to preview on. The app lays the tip out on each one from its own screen size.', onchange: function (e) { tw.device = e.target.value; try { localStorage.setItem('setpoint.tour.device', tw.device); } catch (x) {} redo(); } },
+      d.devices.map(function (x) { return h('option', { value: x.id, text: x.name + ' · ' + x.screen[0] + '\u00d7' + x.screen[1] }); }));
+    devicePick.value = tw.device;
     var head = h('div', { class: 'tr-head' }, [
       h('h1', { text: 'Guided tour', title: 'What a new person sees once after setup, and again from You, How SetPoint works. Changes reach the app on its next launch, no build needed.' }),
       h('span', { class: 'meta', text: tw.revision > 1 ? 'Shown again ' + (tw.revision - 1) + ' time' + (tw.revision > 2 ? 's' : '') : 'Never re-shown' }),
-      h('span', { class: 'sp' }), langRow, stateEl,
+      h('span', { class: 'sp' }), devicePick, langRow, stateEl,
       h('label', { class: 'ck', for: 'tr-bump' }, [bump, 'Show again to everyone who has seen it']),
       resetBtn, saveBtn
     ]);

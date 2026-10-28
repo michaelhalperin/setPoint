@@ -1,56 +1,78 @@
 #!/usr/bin/env python3
-"""Refresh what the admin's Tour tab shows of the app.
+"""Refresh what the admin's Tour tab shows of the app, on several iPhone sizes.
 
-Runs the four tour stubs in the booted simulator (iPhone 16 Pro), screenshots each tab,
-reads every tagged element's frame, and writes:
-  backend/src/admin/tourScreens.ts   the four screenshots, as WebP data URIs
-  backend/src/tour/anchorFrames.ts   where each element sits, in points
+For each device below: boot the simulator, install the Debug app, run the four tour stubs,
+screenshot each tab and read every tagged element's frame. Writes
+  backend/src/admin/tourScreens.ts   the screenshots, as WebP data URIs, per device
+  backend/src/tour/devices.ts        each device's screen size and where each element sits (points)
 
-Build and install the Debug app first, then run:  python3 ios/scripts/tour_screens.py
+Build the Debug app first (xcodebuild ... -derivedDataPath ios/DerivedData), then:
+  python3 ios/scripts/tour_screens.py            all devices
+  python3 ios/scripts/tour_screens.py 16pro 16e  only these (the others keep what they had)
 Needs Pillow (pip install pillow).
 """
-import base64, io, json, pathlib, subprocess, sys, time
+import base64, io, json, pathlib, re, subprocess, sys, time
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 BUNDLE = "com.michaelhalperin.setpointapp"
+APP = ROOT / "ios/DerivedData/Build/Products/Debug-iphonesimulator/SetPoint.app"
 TABS = ["today", "train", "progress", "you"]
+# id -> simulator name. Sizes come from the screenshots, not from here.
+DEVICES = {
+    "16promax": "iPhone 16 Pro Max",
+    "16plus": "iPhone 16 Plus",
+    "air": "iPhone Air",
+    "16pro": "iPhone 16 Pro",
+    "16": "iPhone 16",
+    "16e": "iPhone 16e",
+}
+SHOTS_TS = ROOT / "backend/src/admin/tourScreens.ts"
+DEVICES_TS = ROOT / "backend/src/tour/devices.ts"
 
 
-def sh(*args, **kw):
-    return subprocess.run(args, check=True, capture_output=True, text=True, **kw).stdout.strip()
+def sh(*args, check=True):
+    return subprocess.run(args, check=check, capture_output=True, text=True).stdout.strip()
 
 
-def pick_simulator():
-    """The booted iPhone 16 Pro (402x874 points), or SIM=<udid>. The numbers in the admin assume that size."""
-    import os
-    if os.environ.get("SIM"):
-        return os.environ["SIM"]
-    devices = json.loads(sh("xcrun", "simctl", "list", "devices", "booted", "-j"))["devices"]
-    for group in devices.values():
-        for device in group:
-            if device["name"] == "iPhone 16 Pro" and device["state"] == "Booted":
-                return device["udid"]
-    sys.exit("Boot an iPhone 16 Pro simulator with the Debug app installed, or set SIM=<udid>.")
+def udid_for(name):
+    data = json.loads(sh("xcrun", "simctl", "list", "devices", "available", "-j"))["devices"]
+    for group in data.values():
+        for d in group:
+            if d["name"] == name:
+                return d["udid"]
+    sys.exit(f"No simulator named {name}")
 
 
-def main():
+def read_ts_object(path, marker):
+    """The JSON object a generated file holds after `marker`, or {}."""
+    if not path.exists():
+        return {}
+    text = path.read_text()
+    m = re.search(re.escape(marker) + r"\s*=\s*(\{.*\})\s*(?:as const)?;?\s*$", text, re.S)
+    return json.loads(m.group(1)) if m else {}
+
+
+def capture(device_id, name):
     from PIL import Image
 
-    sim = pick_simulator()
-    sh("xcrun", "simctl", "status_bar", sim, "override", "--time", "9:41", "--dataNetwork", "wifi", "--wifiMode", "active",
+    udid = udid_for(name)
+    print(f"{name}: booting", flush=True)
+    sh("xcrun", "simctl", "boot", udid, check=False)
+    sh("xcrun", "simctl", "bootstatus", udid, "-b")
+    sh("xcrun", "simctl", "install", udid, str(APP))
+    sh("xcrun", "simctl", "status_bar", udid, "override", "--time", "9:41", "--dataNetwork", "wifi", "--wifiMode", "active",
        "--wifiBars", "3", "--cellularMode", "active", "--cellularBars", "4", "--batteryState", "charged", "--batteryLevel", "100")
-    data = sh("xcrun", "simctl", "get_app_container", sim, BUNDLE, "data")
-    docs = pathlib.Path(data) / "Documents"
+    docs = pathlib.Path(sh("xcrun", "simctl", "get_app_container", udid, BUNDLE, "data")) / "Documents"
     for old in docs.glob("tour-frames-*.json"):
         old.unlink()
 
     shots, frames, screen = {}, {}, None
     for tab in TABS:
-        subprocess.run(["xcrun", "simctl", "terminate", sim, BUNDLE], capture_output=True)
-        sh("xcrun", "simctl", "launch", sim, BUNDLE, "-uiStub", f"tour-{tab}", "-dumpTourFrames")
-        time.sleep(7)
-        png = pathlib.Path(f"/tmp/tour-{tab}.png")
-        sh("xcrun", "simctl", "io", sim, "screenshot", str(png))
+        sh("xcrun", "simctl", "terminate", udid, BUNDLE, check=False)
+        sh("xcrun", "simctl", "launch", udid, BUNDLE, "-uiStub", f"tour-{tab}", "-dumpTourFrames")
+        time.sleep(8)
+        png = pathlib.Path(f"/tmp/tour-{device_id}-{tab}.png")
+        sh("xcrun", "simctl", "io", udid, "screenshot", str(png))
         dumped = json.loads((docs / f"tour-frames-{tab}.json").read_text())
         screen = dumped["screen"]
         for key, rect in dumped["anchors"].items():
@@ -59,18 +81,34 @@ def main():
         buf = io.BytesIO()
         image.save(buf, "WEBP", quality=80, method=6)
         shots[tab] = "data:image/webp;base64," + base64.b64encode(buf.getvalue()).decode()
-    subprocess.run(["xcrun", "simctl", "status_bar", sim, "clear"], capture_output=True)
+    sh("xcrun", "simctl", "status_bar", udid, "clear", check=False)
+    sh("xcrun", "simctl", "shutdown", udid, check=False)
+    return {"name": name, "screen": screen, "frames": frames}, shots
 
-    (ROOT / "backend/src/admin/tourScreens.ts").write_text(
-        "// Generated by ios/scripts/tour_screens.py. The app's own screens, as the admin's Tour tab shows them.\n"
-        "export const TOUR_SCREENS = " + json.dumps(shots, indent=2) + " as const;\n")
-    (ROOT / "backend/src/tour/anchorFrames.ts").write_text(
-        "// Generated by ios/scripts/tour_screens.py: where each tour element sits on the reference phone, in points.\n"
-        f"export const REFERENCE_SCREEN = {json.dumps(screen)} as const;\n\n"
-        "export const ANCHOR_FRAMES: Record<string, readonly [number, number, number, number]> = "
-        + json.dumps(frames, indent=2, sort_keys=True) + ";\n")
-    print("wrote", len(shots), "screens and", len(frames), "frames; screen", screen)
+
+def main():
+    if not APP.exists():
+        sys.exit("Build the Debug app for the simulator first: " + str(APP))
+    wanted = sys.argv[1:] or list(DEVICES)
+    devices = read_ts_object(DEVICES_TS, "export const TOUR_DEVICES")
+    shots = read_ts_object(SHOTS_TS, "export const TOUR_SHOTS")
+    for device_id in wanted:
+        if device_id not in DEVICES:
+            sys.exit(f"Unknown device {device_id}; choose from {', '.join(DEVICES)}")
+        info, device_shots = capture(device_id, DEVICES[device_id])
+        devices[device_id] = info
+        shots[device_id] = device_shots
+        print(f"{DEVICES[device_id]}: {info['screen']}, {len(info['frames'])} elements", flush=True)
+    order = [d for d in DEVICES if d in devices]
+    devices = {d: devices[d] for d in order}
+    shots = {d: shots[d] for d in order if d in shots}
+    DEVICES_TS.write_text(
+        "// Generated by ios/scripts/tour_screens.py: each phone's screen size and where each tour element sits, in points.\n"
+        "export const TOUR_DEVICES = " + json.dumps(devices, indent=2) + " as const;\n")
+    SHOTS_TS.write_text(
+        "// Generated by ios/scripts/tour_screens.py. The app's own screens per phone, for the admin's Tour tab.\n"
+        "export const TOUR_SHOTS = " + json.dumps(shots) + " as const;\n")
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()

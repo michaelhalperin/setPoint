@@ -1,5 +1,3 @@
-import { TOUR_SCREENS } from './tourScreens.js';
-
 /**
  * The phone drawn in the Tour tab of /admin: screenshots of the app's own screens
  * (src/admin/tourScreens.ts, refreshed by ios/scripts/tour_screens.py) with the tour tip drawn
@@ -8,12 +6,12 @@ import { TOUR_SCREENS } from './tourScreens.js';
  * and sizes are in points, one CSS pixel each, like the phone they were taken on.
  */
 export const PHONE_CSS = String.raw`
-.ph{--sans:-apple-system,"SF Pro Text","SF Pro Display","Geist",ui-sans-serif,system-ui,"Helvetica Neue",sans-serif;--mono:ui-monospace,"SF Mono","Geist Mono",Menlo,monospace;--dim:.72;font-family:var(--sans);font-size:15px;line-height:normal;color:#f5f5f4;-webkit-font-smoothing:antialiased;width:402px;max-width:100%}
+.ph{width:max-content;--sans:-apple-system,"SF Pro Text","SF Pro Display","Geist",ui-sans-serif,system-ui,"Helvetica Neue",sans-serif;--mono:ui-monospace,"SF Mono","Geist Mono",Menlo,monospace;--dim:.72;font-family:var(--sans);font-size:15px;line-height:normal;color:#f5f5f4;-webkit-font-smoothing:antialiased;}
 .ph *{box-sizing:border-box}
 .ph button{font:inherit;color:inherit;cursor:pointer;padding:0;border:0;background:none}
 .ph h4,.ph p{margin:0}
 .ph .hl{all:unset}
-.ph .screen{position:relative;width:402px;height:874px;border-radius:55px;overflow:hidden;background:#09090b;isolation:isolate;box-shadow:0 0 0 1px rgba(255,255,255,.12),0 40px 90px rgba(0,0,0,.6)}
+.ph .screen{position:relative;border-radius:55px;overflow:hidden;background:#09090b;isolation:isolate;box-shadow:0 0 0 1px rgba(255,255,255,.12),0 40px 90px rgba(0,0,0,.6)}
 .ph .shot{position:absolute;inset:0;width:100%;height:100%;display:none;user-select:none;-webkit-user-drag:none}
 .ph .shot.on{display:block}
 .ph .hits{position:absolute;inset:0;z-index:2}
@@ -21,7 +19,7 @@ export const PHONE_CSS = String.raw`
 .ph .hit.on{display:block}
 .ph .screen.picking .hit.on{cursor:crosshair;outline:1.5px dashed rgba(255,184,107,.7);outline-offset:3px}
 .ph .screen.picking .hit.on:hover{outline:2.5px solid #ffb86b;background:rgba(255,184,107,.1)}
-.ph .tabhit{position:absolute;z-index:3;top:772px;width:64px;height:56px;border-radius:20px}
+.ph .tabhit{position:absolute;z-index:3;width:64px;height:56px;border-radius:20px}
 .ph .tour{position:absolute;inset:0;z-index:20}
 .ph .tour[hidden]{display:none}
 .ph .hl{position:absolute;pointer-events:none;border-radius:20px;box-shadow:0 0 0 2000px rgba(5,5,7,var(--dim)),inset 0 0 0 1.5px rgba(255,184,107,.75);transition:left .42s cubic-bezier(.3,.9,.3,1),top .42s cubic-bezier(.3,.9,.3,1),width .42s cubic-bezier(.3,.9,.3,1),height .42s cubic-bezier(.3,.9,.3,1),border-radius .3s}
@@ -53,13 +51,13 @@ export const PHONE_CSS = String.raw`
 @media (prefers-reduced-motion:reduce){.ph .hl,.ph .pop{transition:none}}
 `;
 
-const shot = (pane: keyof typeof TOUR_SCREENS, on = false) =>
-  `<img class="shot${on ? ' on' : ''}" data-pane="${pane}" alt="The ${pane} screen" src="${TOUR_SCREENS[pane]}" draggable="false">`;
+const shot = (pane: string, on = false) =>
+  `<img class="shot${on ? ' on' : ''}" data-pane="${pane}" alt="The ${pane} screen" draggable="false">`;
 
 export const PHONE_HTML = String.raw`<div class="ph"><div class="screen" id="screen">
 ${shot('today', true)}${shot('train')}${shot('progress')}${shot('you')}
 <div class="hits" id="hits"></div>
-<button class="tabhit" style="left:26px" data-tab="today" aria-label="Today"></button><button class="tabhit" style="left:97px" data-tab="train" aria-label="Train"></button><button class="tabhit" style="left:240px" data-tab="progress" aria-label="Progress"></button><button class="tabhit" style="left:312px" data-tab="you" aria-label="You"></button>
+<button class="tabhit" data-tab="today" aria-label="Today"></button><button class="tabhit" data-tab="train" aria-label="Train"></button><button class="tabhit" data-tab="progress" aria-label="Progress"></button><button class="tabhit" data-tab="you" aria-label="You"></button>
 <div class="tour" id="tour" hidden>
 <div class="hl" id="hl"></div>
 <div class="pop" id="pop" role="dialog" aria-live="polite">

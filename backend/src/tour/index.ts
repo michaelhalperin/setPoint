@@ -1,6 +1,6 @@
 import type { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
-import { ANCHOR_FRAMES, REFERENCE_SCREEN } from './anchorFrames.js';
+import { TOUR_DEVICES } from './devices.js';
 
 /**
  * The guided tour: a list of steps, each pointing at one element of the app by
@@ -29,12 +29,24 @@ export const TOUR_ANCHORS = [
   { id: 'you.help', tab: 'you', label: 'How SetPoint works row', pad: 4, radius: 30 },
 ] as const satisfies readonly { id: string; tab: TourTab; label: string; pad: number; radius: number }[];
 
-/** For the admin's phone: each element with where it sits on the reference phone (points). */
-export function anchorsForAdmin() {
-  return TOUR_ANCHORS.map((a) => ({ ...a, frame: ANCHOR_FRAMES[a.id] ?? null }));
+/**
+ * The height the app decides the tip's side and bottom limit with, whatever the phone: the tallest
+ * phone the admin preview was first drawn on (iPhone 16 Pro). Keeping it fixed is what makes the tip
+ * land the same distance from its element on every phone.
+ */
+export const TOUR_REFERENCE_HEIGHT = 874;
+
+/** The phones the admin can preview the tour on. */
+export function deviceList() {
+  return Object.entries(TOUR_DEVICES)
+    .map(([id, d]) => ({ id, name: d.name, screen: d.screen }))
+    .sort((a, b) => b.screen[1] - a.screen[1]);
 }
 
-export { REFERENCE_SCREEN };
+export function deviceInfo(id: string) {
+  const d = (TOUR_DEVICES as Record<string, { name: string; screen: readonly number[]; frames: Record<string, readonly number[]> }>)[id];
+  return d ? { id, name: d.name, screen: d.screen, frames: d.frames } : null;
+}
 
 export type TourAnchorId = (typeof TOUR_ANCHORS)[number]['id'];
 const anchorIds = TOUR_ANCHORS.map((a) => a.id) as [TourAnchorId, ...TourAnchorId[]];

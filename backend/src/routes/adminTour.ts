@@ -3,8 +3,10 @@ import { z } from 'zod';
 import { getPrisma } from '../db/client.js';
 import {
   DEFAULT_TOUR,
-  REFERENCE_SCREEN,
-  anchorsForAdmin,
+  TOUR_ANCHORS,
+  TOUR_REFERENCE_HEIGHT,
+  deviceInfo,
+  deviceList,
   loadTour,
   resetTour,
   saveTour,
@@ -26,9 +28,19 @@ export async function adminTourRoutes(app: FastifyInstance): Promise<void> {
   app.get('/tour', async () => ({
     tour: await loadTour(getPrisma()),
     defaults: DEFAULT_TOUR,
-    anchors: anchorsForAdmin(),
-    screen: REFERENCE_SCREEN,
+    anchors: TOUR_ANCHORS,
+    devices: deviceList(),
+    referenceHeight: TOUR_REFERENCE_HEIGHT,
   }));
+
+  // One phone's screenshots and element positions. Kept apart from the page: they are large.
+  app.get('/tour/device/:id', async (req) => {
+    const { id } = z.object({ id: z.string().min(1).max(20) }).parse(req.params);
+    const info = deviceInfo(id);
+    if (!info) throw app.httpErrors.notFound('no such phone');
+    const { TOUR_SHOTS } = await import('../admin/tourScreens.js');
+    return { ...info, shots: (TOUR_SHOTS as Record<string, unknown>)[id] ?? {} };
+  });
 
   app.put('/tour', async (req) => {
     const body = saveBody.parse(req.body);
