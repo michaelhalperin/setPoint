@@ -4,7 +4,8 @@ import { STAPLE_FOODS } from '../data/stapleFoods.js';
 import { SCORING_VERSION } from '../engine/behaviorScore.js';
 import type { ManagerVoice } from '../managerVoice/types.js';
 import type { PushPayload, PushSender } from '../push/types.js';
-import { DELIVERY_RETRY_WINDOW_MIN, runScoreConfidenceJob } from './scoreConfidence.js';
+import { checkInCopy } from '../managerVoice/checkInCopy.js';
+import { CHECK_IN_COPY_TIMEOUT_MS, DELIVERY_RETRY_WINDOW_MIN, runScoreConfidenceJob } from './scoreConfidence.js';
 
 const NOW = new Date('2026-07-01T16:00:00Z'); // 12:00 in New York (EDT)
 const hoursAgo = (h: number) => new Date(NOW.getTime() - h * 3_600_000);
@@ -168,6 +169,7 @@ const push: PushSender = {
   }),
 };
 const voice: ManagerVoice = {
+  checkInMessage: vi.fn(async (ctx) => checkInCopy(ctx)),
   homeNote: vi.fn(async () => 'note'),
   daySummary: vi.fn(async () => 'summary'),
 };
@@ -435,6 +437,45 @@ describe('runScoreConfidenceJob', () => {
       expect(fake.__tables.checkIns[0]).toMatchObject({ deliveryStatus: 'SENT' });
       expect(push.send).toHaveBeenCalledTimes(1);
       expect(vi.mocked(push.send).mock.calls[0]![0]).toEqual(['tok_u1']);
+    });
+
+    it('hands the voice the same pace Today shows, so the line cannot contradict it', async () => {
+      const fake = makeFakePrisma([baseUser()], { seedFoods: true });
+      fake.meal.create({ data: { ...breakfast, kcal: 10 } });
+      await runScoreConfidenceJob({ prisma: fake as unknown as PrismaClient, push, voice, now: LUNCH_PLUS_50 });
+      expect(voice.checkInMessage).toHaveBeenCalledWith(
+        expect.objectContaining({ slot: 'lunch', paceStatus: 'behind', mealsToday: 0, minutesLate: 5 }),
+      );
+    });
+
+    it('sends the voice\u2019s line when it has one', async () => {
+      const fake = makeFakePrisma([baseUser()], { seedFoods: true });
+      fake.meal.create({ data: breakfast });
+      const said: ManagerVoice = { ...voice, checkInMessage: vi.fn(async () => 'Six hours since you last ate. Eggs and toast now.') };
+      await runScoreConfidenceJob({ prisma: fake as unknown as PrismaClient, push, voice: said, now: LUNCH_PLUS_50 });
+      expect(fake.__tables.checkIns[0]!.message).toBe('Six hours since you last ate. Eggs and toast now.');
+    });
+
+    it('sends the fixed line when the voice fails or takes too long', async () => {
+      const failing = makeFakePrisma([baseUser()], { seedFoods: true });
+      failing.meal.create({ data: breakfast });
+      const broken: ManagerVoice = { ...voice, checkInMessage: vi.fn(async () => { throw new Error('ai down'); }) };
+      await runScoreConfidenceJob({ prisma: failing as unknown as PrismaClient, push, voice: broken, now: LUNCH_PLUS_50 });
+      const fixed = failing.__tables.checkIns[0]!.message as string;
+      expect(fixed).toMatch(/^Lunch slipped\. 6 hours since you last ate\./);
+
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+      try {
+        const hanging = makeFakePrisma([baseUser()], { seedFoods: true });
+        hanging.meal.create({ data: breakfast });
+        const slow: ManagerVoice = { ...voice, checkInMessage: vi.fn(() => new Promise<string>(() => {})) };
+        const run = runScoreConfidenceJob({ prisma: hanging as unknown as PrismaClient, push, voice: slow, now: LUNCH_PLUS_50 });
+        await vi.advanceTimersByTimeAsync(CHECK_IN_COPY_TIMEOUT_MS + 10);
+        expect((await run).checkInsCreated).toBe(1);
+        expect(hanging.__tables.checkIns[0]!.message).toBe(fixed);
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it('does not claim a time since the last meal when nothing was ever logged', async () => {

@@ -16,6 +16,12 @@ export type ManagerVoiceContext = {
   slot?: SlotName | null;
   /** The language the line is written in. English when absent. */
   lang?: Lang;
+  /** The pace the Today screen shows for this moment. */
+  paceStatus?: 'behind' | 'on_pace' | 'ahead' | null;
+  /** How many minutes past the usual meal time it is. */
+  minutesLate?: number | null;
+  /** Meals of real size logged so far today. */
+  mealsToday?: number;
 };
 
 export type HomeNoteContext = {
@@ -51,6 +57,8 @@ export type DaySummaryContext = {
  * shaming); `fallbackManagerVoice` is the deterministic stand-in.
  */
 export interface ManagerVoice {
+  /** The check-in notification line: phrased by the model, checked against the facts, or deterministic. */
+  checkInMessage(ctx: ManagerVoiceContext): Promise<string>;
   /** The manager's-note box under the home hero stat (§5.2). */
   homeNote(ctx: HomeNoteContext): Promise<string>;
   /** The one-line summary on a settled day (§5.7). */

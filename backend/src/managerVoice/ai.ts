@@ -1,6 +1,7 @@
 import type Anthropic from '@anthropic-ai/sdk';
 import { MANAGER_VOICE_MODEL } from '../ai/models.js';
-import type { DaySummaryContext, HomeNoteContext, ManagerVoice } from './types.js';
+import { acceptCheckInLine, CHECK_IN_SYSTEM, checkInFacts } from './checkInAi.js';
+import type { DaySummaryContext, HomeNoteContext, ManagerVoice, ManagerVoiceContext } from './types.js';
 import { languageInstruction } from '../i18n/index.js';
 
 /**
@@ -27,12 +28,19 @@ const SYSTEM = [
 ].join('\n');
 
 export function createAiManagerVoice(client: Anthropic, fallback: ManagerVoice): ManagerVoice {
-  async function line(surface: string, payload: unknown, fallbackFn: () => Promise<string>, lang?: 'en' | 'he'): Promise<string> {
+  async function line(
+    surface: string,
+    payload: unknown,
+    fallbackFn: () => Promise<string>,
+    lang?: 'en' | 'he',
+    opts: { system?: string; accept?: (text: string) => string | null } = {},
+  ): Promise<string> {
+    const base = opts.system ?? SYSTEM;
     try {
       const message = await client.messages.create({
         model: MANAGER_VOICE_MODEL,
         max_tokens: 200,
-        system: lang === 'he' ? `${SYSTEM}\n${languageInstruction('he')}` : SYSTEM,
+        system: lang === 'he' ? `${base}\n${languageInstruction('he')}` : base,
         messages: [{ role: 'user', content: JSON.stringify({ surface, ...(payload as object) }) }],
       });
       const text = message.content
@@ -40,7 +48,16 @@ export function createAiManagerVoice(client: Anthropic, fallback: ManagerVoice):
         .map((b) => b.text)
         .join(' ')
         .trim();
-      return text || fallbackFn();
+      if (!text) return fallbackFn();
+      if (opts.accept) {
+        const accepted = opts.accept(text);
+        if (accepted === null) {
+          console.warn(`[managerVoice:ai] ${surface} — line rejected against the facts, using the fixed one`, text);
+          return fallbackFn();
+        }
+        return accepted;
+      }
+      return text;
     } catch (err) {
       console.error(`[managerVoice:ai] ${surface} — falling back`, err);
       return fallbackFn();
@@ -48,6 +65,12 @@ export function createAiManagerVoice(client: Anthropic, fallback: ManagerVoice):
   }
 
   return {
+    checkInMessage: (ctx: ManagerVoiceContext) =>
+      line('check_in', checkInFacts(ctx), () => fallback.checkInMessage(ctx), ctx.lang, {
+        system: CHECK_IN_SYSTEM,
+        accept: (text) => acceptCheckInLine(text, ctx),
+      }),
+
     homeNote: (ctx: HomeNoteContext) =>
       line(
         'home_note',

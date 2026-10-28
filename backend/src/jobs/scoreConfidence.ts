@@ -45,9 +45,11 @@ import {
   type SlotName,
 } from '../engine/index.js';
 import { evaluateStopConditions } from '../engine/stopConditions.js';
+import { buildDay } from '../dashboard/day.js';
+import { homeFraming } from '../dashboard/classify.js';
 import { checkInCopy } from '../managerVoice/checkInCopy.js';
 import { gatherStopSignals } from '../metrics/stopSignals.js';
-import type { ManagerVoice } from '../managerVoice/types.js';
+import type { ManagerVoice, ManagerVoiceContext } from '../managerVoice/types.js';
 import { captureError } from '../observability/sentry.js';
 import { deliverCheckIn } from '../push/deliver.js';
 import type { PushSender } from '../push/types.js';
@@ -590,7 +592,7 @@ async function processUser(
     ? headsUpCopy(due.busy, due.slot, lang)
     : isLight
     ? lightMealCopy(due.slot, namedLine, lang)
-    : checkInCopy({
+    : await checkInLine(deps.voice, {
         tier,
         goal: profile.goal as Goal,
         hoursSinceMeal: lastMeal ? hoursSinceMeal : null,
@@ -598,6 +600,18 @@ async function processUser(
         prescriptionSummary: summaryLine,
         slot: due.slot,
         lang,
+        // The same pace the Today screen shows, so the words can't contradict it.
+        paceStatus: buildDay({
+          nowMin,
+          mealTimes: times,
+          meals: todayMeals.map((m, i) => ({ id: String(i), minuteOfDay: localMinute(m.loggedAt, user.timezone), kcal: m.kcal })),
+          targetKcal,
+          consumedKcal,
+          framingState: homeFraming(profile.goal as Goal, consumedKcal, targetKcal).state,
+          enforcementEnabled: true,
+        }).pace?.status ?? null,
+        minutesLate: overdueMin,
+        mealsToday: todayMeals.filter((m) => countsAsMeal(m.kcal)).length,
       });
 
   const busyUntil =
@@ -1078,6 +1092,26 @@ async function wearableHaltedByStopConditions(prisma: PrismaClient, now: Date): 
     });
   }
   return evaluation.haltWearable;
+}
+
+/** How long a check-in waits for the model's line before the fixed one goes out. */
+export const CHECK_IN_COPY_TIMEOUT_MS = 4_000;
+
+/**
+ * The words on the notification: the model's phrasing when it arrives in time and agrees with the
+ * facts, otherwise the deterministic line. The voice does its own checking; this only bounds the wait.
+ */
+async function checkInLine(voice: ManagerVoice, ctx: ManagerVoiceContext): Promise<string> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timedOut = new Promise<null>((resolve) => {
+    timer = setTimeout(() => resolve(null), CHECK_IN_COPY_TIMEOUT_MS);
+  });
+  try {
+    const line = await Promise.race([voice.checkInMessage(ctx).catch(() => null), timedOut]);
+    return line?.trim() ? line : checkInCopy(ctx);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function markDelivered(

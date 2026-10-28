@@ -1,4 +1,5 @@
-import type { DaySummaryContext, HomeNoteContext, ManagerVoice } from './types.js';
+import { checkInCopy } from './checkInCopy.js';
+import type { DaySummaryContext, HomeNoteContext, ManagerVoice, ManagerVoiceContext } from './types.js';
 import { slotNameHe } from '../i18n/index.js';
 
 /**
@@ -6,6 +7,10 @@ import { slotNameHe } from '../i18n/index.js';
  * specific, never shaming. Tier 3 is a conversation, handled elsewhere.
  */
 export const fallbackManagerVoice: ManagerVoice = {
+  async checkInMessage(ctx: ManagerVoiceContext): Promise<string> {
+    return checkInCopy(ctx);
+  },
+
   async homeNote(ctx: HomeNoteContext): Promise<string> {
     if (ctx.lang === 'he') return homeNoteHe(ctx);
     // The screen shows the numbers; the note is about timing and what's next.
