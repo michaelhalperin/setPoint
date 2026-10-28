@@ -269,6 +269,24 @@ describe('buildHome', () => {
       expect(view.nextCheckIn).toMatchObject({ slot: 'lunch', light: true });
     });
 
+    it('fits the top-up to the meal, with alternatives and how to eat each', async () => {
+      const view = await buildHome(
+        { prisma: fakePrisma({ meals: [breakfast, { ...lunch(300), rawInput: 'chicken and rice' }] }), voice, now: NOW },
+        'u1',
+      );
+      const options = view.topUp!.options;
+      expect(options.length).toBeGreaterThan(1);
+      expect(view.topUp!.logText).toBe(options[0]!.logText);
+      expect(options.flatMap((o) => o.items.map((i) => i.name)).join(' ')).not.toMatch(/granola|peanut butter/i);
+      for (const o of options) for (const i of o.items) expect(i.how.length).toBeGreaterThan(0);
+    });
+
+    it('offers one top-up per meal', async () => {
+      const toppedUp = { ...lunch(200), id: 'tu', loggedAt: hoursAgo(0.5), rawInput: 'Top-up: Whole milk' };
+      const view = await buildHome({ prisma: fakePrisma({ meals: [breakfast, lunch(300), toppedUp] }), voice, now: NOW }, 'u1');
+      expect(view.topUp).toBeNull();
+    });
+
     it('has no top-up when the day is on pace, or in quiet mode', async () => {
       const onPace = await buildHome({ prisma: fakePrisma({ meals: [breakfast, lunch(1300)] }), voice, now: NOW }, 'u1');
       expect(onPace.topUp).toBeNull();

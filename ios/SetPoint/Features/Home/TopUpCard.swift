@@ -2,13 +2,21 @@ import SwiftUI
 
 /// After a light meal: one or two calorie-dense add-ons that bring the day
 /// back toward pace — the "same bite, more calories" move for someone who
-/// can't face a second plate. One tap logs it; "Not now" hides it for the
-/// rest of that meal.
+/// can't face a second plate. Each says how it goes with what was just eaten;
+/// "Something else" swaps to the next idea. One tap logs it; "Not this time"
+/// hides it for the rest of that meal.
 struct TopUpCard: View {
     let topUp: HomeResponse.TopUp
     let busy: Bool
-    let onAdd: () -> Void
+    let onAdd: (HomeResponse.TopUp.Option) -> Void
     let onDismiss: () -> Void
+
+    @State private var index = 0
+
+    private var choice: HomeResponse.TopUp.Option {
+        let choices = topUp.choices
+        return choices[index % choices.count]
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -21,43 +29,67 @@ struct TopUpCard: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            FlexWrap(spacing: 8, lineSpacing: 8) {
-                ForEach(Array(topUp.items.enumerated()), id: \.offset) { _, item in
-                    HStack(spacing: 8) {
-                        Image(systemName: "checkmark")
+            VStack(alignment: .leading, spacing: 12) {
+                ForEach(Array(choice.items.enumerated()), id: \.offset) { _, item in
+                    HStack(alignment: .firstTextBaseline, spacing: 10) {
+                        Image(systemName: "plus")
                             .font(.system(size: 11, weight: .bold))
                             .foregroundStyle(Palette.amber)
-                        VStack(alignment: .leading, spacing: 0) {
+                        VStack(alignment: .leading, spacing: 2) {
                             Text(item.quantity > 1 ? "\(item.quantity)× \(FoodText.name(item.name))" : FoodText.name(item.name))
-                                .font(Typography.data(14, weight: .regular))
+                                .font(Typography.data(15, weight: .regular))
                                 .foregroundStyle(Palette.ink)
+                            if let how = item.how, !how.isEmpty {
+                                Text(how)
+                                    .font(Typography.data(13, weight: .regular))
+                                    .foregroundStyle(Palette.inkSoft)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
                             Text(FoodText.serving(item.servingDesc))
                                 .font(Typography.data(11, weight: .regular))
                                 .foregroundStyle(Palette.inkFaint)
                         }
+                        Spacer(minLength: 8)
                         Text("+\(item.kcal)")
                             .font(Typography.mono(12))
                             .foregroundStyle(Palette.amber)
                     }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .glassCapsule(fill: Palette.ember.opacity(0.10), stroke: Palette.amber.opacity(0.35))
+                }
+                if choice.totalProteinG >= 10 {
+                    Text("+" + L10n("\(Int(choice.totalProteinG.rounded())) g protein"))
+                        .font(Typography.mono(12))
+                        .foregroundStyle(Palette.inkFaint)
                 }
             }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .glass(radius: Radius.lg, fill: Palette.ember.opacity(0.08), stroke: Palette.amber.opacity(0.30))
+            .id(index)
+            .transition(.opacity)
 
             VStack(spacing: 4) {
                 ActionButton(
-                    title: L10n("Add \(topUp.totalKcal) kcal"),
+                    title: L10n("Add \(choice.totalKcal) kcal"),
                     busy: busy,
                     busyTitle: "Adding…",
                     symbol: "plus",
-                    action: onAdd
+                    action: { onAdd(choice) }
                 )
-                Button("Not this time", action: onDismiss)
-                    .font(Typography.data(14, weight: .regular))
-                    .foregroundStyle(Palette.inkSoft)
-                    .frame(maxWidth: .infinity, minHeight: 44)
-                    .disabled(busy)
+                HStack(spacing: 0) {
+                    if topUp.choices.count > 1 {
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.2)) { index += 1 }
+                        } label: {
+                            Label("Something else", systemImage: "arrow.triangle.2.circlepath")
+                        }
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                    }
+                    Button("Not this time", action: onDismiss)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .font(Typography.data(14, weight: .regular))
+                .foregroundStyle(Palette.inkSoft)
+                .disabled(busy)
             }
         }
         .padding(18)

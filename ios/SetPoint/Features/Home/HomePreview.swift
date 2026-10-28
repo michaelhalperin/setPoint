@@ -282,15 +282,28 @@ extension HomeResponse {
     /// A 280 kcal lunch: Today offers a one-tap top-up, and lunch stays open.
     static var sampleTopUp: HomeResponse {
         var home = lightLunch(checkIn: nil)
+        let first: [HomeResponse.TopUp.Item] = [
+            .init(name: "Olive oil", servingDesc: "1 tbsp (14 g)", quantity: 2, kcal: 238, proteinG: 0, carbsG: 0, fatG: 28, how: "Drizzle it over your plate"),
+            .init(name: "Ready protein shake", servingDesc: "1 bottle (325 ml)", quantity: 1, kcal: 160, proteinG: 30, carbsG: 6, fatG: 3, how: "Sip it with the meal"),
+        ]
+        let second: [HomeResponse.TopUp.Item] = [
+            .init(name: "Avocado", servingDesc: "1/2 medium (100 g)", quantity: 1, kcal: 160, proteinG: 2, carbsG: 9, fatG: 15, how: "Slice it onto your plate"),
+            .init(name: "Tahini", servingDesc: "2 tbsp (30 g)", quantity: 1, kcal: 178, proteinG: 5, carbsG: 6, fatG: 16, how: "Pour it over your plate"),
+        ]
+        let third: [HomeResponse.TopUp.Item] = [
+            .init(name: "Whole milk", servingDesc: "1 cup (240 ml)", quantity: 2, kcal: 298, proteinG: 16, carbsG: 24, fatG: 16, how: "A glass with the meal"),
+        ]
         home.topUp = .init(
             slot: "lunch",
             behindKcal: 1187,
-            totalKcal: 488,
-            totalProteinG: 16,
-            logText: "Top-up: 2 × whole milk + peanut butter",
-            items: [
-                .init(name: "Whole milk", servingDesc: "1 cup (240 ml)", quantity: 2, kcal: 298, proteinG: 16, carbsG: 24, fatG: 16),
-                .init(name: "Peanut butter", servingDesc: "2 tbsp (32 g)", quantity: 1, kcal: 190, proteinG: 8, carbsG: 7, fatG: 16),
+            totalKcal: 398,
+            totalProteinG: 30,
+            logText: "Top-up: 2 × olive oil + ready protein shake",
+            items: first,
+            options: [
+                .init(totalKcal: 398, totalProteinG: 30, logText: "Top-up: 2 × olive oil + ready protein shake", items: first),
+                .init(totalKcal: 338, totalProteinG: 7, logText: "Top-up: Avocado + tahini", items: second),
+                .init(totalKcal: 298, totalProteinG: 16, logText: "Top-up: 2 × whole milk", items: third),
             ]
         )
         return home

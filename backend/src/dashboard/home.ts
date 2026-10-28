@@ -1,4 +1,4 @@
-import { langOf } from '../i18n/index.js';
+import { foodNameIn, langOf, type Lang } from '../i18n/index.js';
 import { AccountNotFoundError } from '../account/deleteAccount.js';
 import type { PrismaClient } from '@prisma/client';
 import {
@@ -29,8 +29,9 @@ import {
   type Goal,
   type ScheduledCheckIn,
   type SlotName,
+  type TopUpGap,
 } from '../engine/index.js';
-import { countsAsMeal, SCHEDULE_CONFIG } from '../engine/mealSchedule.js';
+import { countsAsMeal, expectedThroughSlot, SCHEDULE_CONFIG } from '../engine/mealSchedule.js';
 import { REFUEL_WINDOW_MIN } from '../engine/training.js';
 import { trainingForLocalDay, workoutHomeRows } from '../training/day.js';
 import type { ManagerVoice } from '../managerVoice/types.js';
@@ -39,7 +40,34 @@ import type { PhotoStore } from '../photos/store.js';
 import { homeFraming, type FramingState } from './classify.js';
 import { buildDay, type DayView } from './day.js';
 import { mealWindow } from '../managerVoice/fallback.js';
-import { excludedTokensFor, loadStapleFoods, namedSummary, pickTopUp } from '../solver/index.js';
+import {
+  addOnsInText,
+  excludedTokensFor,
+  loadStapleFoods,
+  mealShapeOf,
+  namedSummary,
+  pickTopUps,
+  topUpHow,
+  type TopUpOption,
+} from '../solver/index.js';
+
+export type TopUpView = {
+  totalKcal: number;
+  totalProteinG: number;
+  /** What gets logged when the user taps Add. */
+  logText: string;
+  items: {
+    name: string;
+    servingDesc: string;
+    quantity: number;
+    kcal: number;
+    proteinG: number;
+    carbsG: number;
+    fatG: number;
+    /** How to get it down with this meal: "Stir it into your bowl". */
+    how: string;
+  }[];
+};
 
 export type HomeDeps = {
   prisma: PrismaClient;
@@ -85,15 +113,12 @@ export type HomeView = {
    * back toward pace, ready to log in one tap. Null when on pace, in quiet
    * mode, or while a check-in is open.
    */
-  topUp: null | {
+  topUp: null | (TopUpView & {
     slot: SlotName;
     behindKcal: number;
-    totalKcal: number;
-    totalProteinG: number;
-    /** What gets logged when the user taps Add. */
-    logText: string;
-    items: { name: string; servingDesc: string; quantity: number; kcal: number; proteinG: number; carbsG: number; fatG: number }[];
-  };
+    /** Alternatives for "Something else", best first; the top-level fields are the first. */
+    options: TopUpView[];
+  });
   /** The evening close-the-gap check-in, if the day is still short at that time. Null in quiet mode. */
   closeCheckIn: { dueMin: number; gapKcal: number } | null;
   needsWeighIn: boolean;
@@ -332,8 +357,11 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
       : null;
 
   const slotNow = currentMealSlot(mins, times);
+  const slotMeals = todayMeals.filter((m) => day.slots.some((s) => s.slot === slotNow && s.mealIds.includes(m.id)));
+  // One top-up per meal: once it's in, the evening close covers what's left.
+  const toppedUp = slotMeals.some((m) => TOP_UP_PREFIXES.some((p) => m.rawInput?.startsWith(p)));
   const topUpNeed =
-    enforcementEnabled && activeCheckIn === null
+    enforcementEnabled && activeCheckIn === null && !toppedUp
       ? topUpGap({
           currentSlot: slotNow,
           loggedInSlot: day.slots.some((s) => s.slot === slotNow && s.mealIds.length > 0),
@@ -342,13 +370,20 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
           extra: false,
         })
       : null;
-  const topUpRx = topUpNeed
-    ? pickTopUp((await loadStapleFoods(prisma)).solverFoods, {
-        targetKcal: topUpNeed.topUpKcal,
-        excludedTokens: await excludedTokensFor(prisma, userId, profile.dislikedFoods),
+  const topUpOptions = topUpNeed
+    ? await topUpsFor(prisma, {
+        userId,
+        now,
+        localDate: localDateISO(now, user.timezone),
+        need: topUpNeed,
+        slotMeals,
+        proteinShortG:
+          targetProteinG === null ? 0 : expectedThroughSlot(slotNow, targetProteinG, false) - consumedProteinG,
+        dislikedFoods: profile.dislikedFoods,
         drinkableOk: profile.drinkableOk ?? true,
       })
-    : null;
+    : [];
+  const topUpViews = topUpOptions.map((o) => topUpView(o, lang));
   const busyBlocks = calendarPrefs.enabled
     ? qualifyingBusyBlocks(todayBusy, calendarPrefs, weekday).map((b) => ({
         startMin: b.startMin,
@@ -417,23 +452,8 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
     day,
     nextCheckIn,
     topUp:
-      topUpNeed && topUpRx
-        ? {
-            slot: topUpNeed.slot,
-            behindKcal: topUpNeed.behindKcal,
-            totalKcal: topUpRx.totalKcal,
-            totalProteinG: topUpRx.totalProteinG,
-            logText: lang === 'he' ? `תוספת: ${namedSummary(topUpRx, 'he')}` : `Top-up: ${namedSummary(topUpRx)}`,
-            items: topUpRx.items.map((i) => ({
-              name: i.name,
-              servingDesc: i.servingDesc,
-              quantity: i.quantity,
-              kcal: i.kcal,
-              proteinG: i.proteinG,
-              carbsG: i.carbsG,
-              fatG: i.fatG,
-            })),
-          }
+      topUpNeed && topUpViews.length > 0
+        ? { ...topUpViews[0]!, slot: topUpNeed.slot, behindKcal: topUpNeed.behindKcal, options: topUpViews }
         : null,
     closeCheckIn: evening && !evening.overdue ? { dueMin: evening.dueMin, gapKcal: evening.gapKcal } : null,
     busyBlocks,
@@ -486,5 +506,80 @@ export async function buildHome(deps: HomeDeps, userId: string): Promise<HomeVie
             : null,
         }
       : null,
+  };
+}
+
+/** Days of past top-ups the next suggestion steers away from. */
+const RECENT_TOP_UP_DAYS = 3;
+const TOP_UP_PREFIXES = ['Top-up:', 'תוספת:'];
+
+/**
+ * Top-up options for the meal just eaten: fitted to what it was (oats, a
+ * sandwich, a plate), the day's protein gap and what's been topped up with
+ * lately; shuffled per user, day and meal so it doesn't repeat.
+ */
+async function topUpsFor(
+  prisma: PrismaClient,
+  input: {
+    userId: string;
+    now: Date;
+    localDate: string;
+    need: TopUpGap;
+    slotMeals: { rawInput: string | null; items: unknown }[];
+    proteinShortG: number;
+    dislikedFoods: string[];
+    drinkableOk: boolean;
+  },
+): Promise<TopUpOption[]> {
+  const [{ solverFoods }, excludedTokens, recentLogs] = await Promise.all([
+    loadStapleFoods(prisma),
+    excludedTokensFor(prisma, input.userId, input.dislikedFoods),
+    prisma.meal.findMany({
+      where: {
+        userId: input.userId,
+        loggedAt: { gte: new Date(input.now.getTime() - RECENT_TOP_UP_DAYS * 86_400_000) },
+        OR: TOP_UP_PREFIXES.map((p) => ({ rawInput: { startsWith: p } })),
+      },
+      select: { rawInput: true },
+    }),
+  ]);
+  const mealText = input.slotMeals
+    .map((m) => [m.rawInput ?? '', ...itemNames(m.items)].join(' '))
+    .join(' ');
+  const recentTexts = recentLogs
+    .map((m) => m.rawInput ?? '')
+    .filter((t) => TOP_UP_PREFIXES.some((p) => t.startsWith(p)));
+  return pickTopUps(solverFoods, {
+    targetKcal: input.need.topUpKcal,
+    excludedTokens,
+    drinkableOk: input.drinkableOk,
+    shape: mealShapeOf(mealText),
+    mealText,
+    proteinShortG: input.proteinShortG,
+    recentSlugs: addOnsInText(recentTexts, solverFoods, (name) => foodNameIn(name, 'he')),
+    seed: `${input.userId}:${input.localDate}:${input.need.slot}`,
+  });
+}
+
+function itemNames(items: unknown): string[] {
+  if (!Array.isArray(items)) return [];
+  return items.flatMap((i) => (i && typeof i === 'object' && typeof (i as { name?: unknown }).name === 'string' ? [(i as { name: string }).name] : []));
+}
+
+function topUpView(option: TopUpOption, lang: Lang): TopUpView {
+  return {
+    totalKcal: option.totalKcal,
+    totalProteinG: option.totalProteinG,
+    logText: lang === 'he' ? `תוספת: ${namedSummary(option, 'he')}` : `Top-up: ${namedSummary(option)}`,
+    items: option.items.map((i) => ({
+      name: i.name,
+      servingDesc: i.servingDesc,
+      quantity: i.quantity,
+      kcal: i.kcal,
+      proteinG: i.proteinG,
+      carbsG: i.carbsG,
+      fatG: i.fatG,
+      how: topUpHow(i.slug, i.use, lang),
+    })),
   };
 }

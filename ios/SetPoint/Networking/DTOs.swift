@@ -47,6 +47,19 @@ struct HomeResponse: Decodable {
         /// What gets logged when the user taps Add.
         let logText: String
         let items: [Item]
+        /// Alternatives for "Something else", best first (the first is the
+        /// top-level one). Older servers send none.
+        var options: [Option]? = nil
+
+        struct Option: Decodable, Equatable {
+            let totalKcal: Int
+            let totalProteinG: Double
+            let logText: String
+            let items: [Item]
+
+            var totalCarbsG: Double { items.reduce(0) { $0 + $1.carbsG } }
+            var totalFatG: Double { items.reduce(0) { $0 + $1.fatG } }
+        }
 
         struct Item: Decodable, Equatable, Hashable {
             let name: String
@@ -56,10 +69,15 @@ struct HomeResponse: Decodable {
             let proteinG: Double
             let carbsG: Double
             let fatG: Double
+            /// How to get it down with this meal: "Stir it into your bowl".
+            var how: String? = nil
         }
 
-        var totalCarbsG: Double { items.reduce(0) { $0 + $1.carbsG } }
-        var totalFatG: Double { items.reduce(0) { $0 + $1.fatG } }
+        /// What the card can show, best first — just this one without alternatives.
+        var choices: [Option] {
+            if let options, !options.isEmpty { return options }
+            return [Option(totalKcal: totalKcal, totalProteinG: totalProteinG, logText: logText, items: items)]
+        }
     }
 
     struct CloseCheckIn: Decodable, Equatable {

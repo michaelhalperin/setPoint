@@ -387,7 +387,7 @@ struct HomeContent: View {
                         TopUpCard(
                             topUp: topUp,
                             busy: topUpBusy,
-                            onAdd: { addTopUp(topUp) },
+                            onAdd: { addTopUp($0) },
                             onDismiss: { topUpDismissed = TopUpDismissal.key(for: topUp, now: now) }
                         )
                         .transition(.opacity.combined(with: .move(edge: .top)))
@@ -616,7 +616,7 @@ struct HomeContent: View {
         Task { try? await CheckInActions.alreadyAte(checkInID: checkIn.id, api: env.api) }
     }
 
-    private func addTopUp(_ topUp: HomeResponse.TopUp) {
+    private func addTopUp(_ topUp: HomeResponse.TopUp.Option) {
         guard let logger, !topUpBusy else { return }
         topUpBusy = true
         Task {

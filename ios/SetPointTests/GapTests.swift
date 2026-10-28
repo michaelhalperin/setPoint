@@ -60,8 +60,11 @@ final class GapTests: XCTestCase {
         """
         let topUp = try JSONDecoder().decode(HomeResponse.TopUp.self, from: Data(json.utf8))
         XCTAssertEqual(topUp.totalKcal, 462)
-        XCTAssertEqual(topUp.totalCarbsG, 30, accuracy: 0.01)
-        XCTAssertEqual(topUp.totalFatG, 30, accuracy: 0.01)
+        // An older server sends no alternatives: the one top-up is the only choice.
+        XCTAssertEqual(topUp.choices.count, 1)
+        XCTAssertEqual(topUp.choices[0].totalCarbsG, 30, accuracy: 0.01)
+        XCTAssertEqual(topUp.choices[0].totalFatG, 30, accuracy: 0.01)
+        XCTAssertNil(topUp.items[0].how)
 
         let close = try JSONDecoder().decode(HomeResponse.CloseCheckIn.self, from: Data(#"{"dueMin":1230,"gapKcal":700}"#.utf8))
         XCTAssertEqual(close, .init(dueMin: 1230, gapKcal: 700))
@@ -71,6 +74,25 @@ final class GapTests: XCTestCase {
             from: Data(#"{"closedDays":4,"totalDays":6,"avgShortfallKcal":null}"#.utf8)
         )
         XCTAssertEqual(gap, .init(closedDays: 4, totalDays: 6, avgShortfallKcal: nil))
+    }
+
+    func testDecodesTopUpAlternatives() throws {
+        let item = #"{"name": "Olive oil", "servingDesc": "1 tbsp (14 g)", "quantity": 2, "kcal": 238, "proteinG": 0, "carbsG": 0, "fatG": 28, "how": "Drizzle it over your plate"}"#
+        let other = #"{"name": "Whole milk", "servingDesc": "1 cup (240 ml)", "quantity": 2, "kcal": 298, "proteinG": 16, "carbsG": 24, "fatG": 16, "how": "A glass with the meal"}"#
+        let json = """
+        {
+          "slot": "lunch", "behindKcal": 600, "totalKcal": 238, "totalProteinG": 0,
+          "logText": "Top-up: 2 × olive oil", "items": [\(item)],
+          "options": [
+            {"totalKcal": 238, "totalProteinG": 0, "logText": "Top-up: 2 × olive oil", "items": [\(item)]},
+            {"totalKcal": 298, "totalProteinG": 16, "logText": "Top-up: 2 × whole milk", "items": [\(other)]}
+          ]
+        }
+        """
+        let topUp = try JSONDecoder().decode(HomeResponse.TopUp.self, from: Data(json.utf8))
+        XCTAssertEqual(topUp.choices.map(\.logText), ["Top-up: 2 × olive oil", "Top-up: 2 × whole milk"])
+        XCTAssertEqual(topUp.choices[0].items[0].how, "Drizzle it over your plate")
+        XCTAssertEqual(topUp.choices[1].totalFatG, 16, accuracy: 0.01)
     }
 
     func testTopUpDismissalIsPerDayAndMeal() {
