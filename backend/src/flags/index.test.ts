@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { FLAGS, flagOn, resolveFlags } from './index.js';
 
-const user = { id: 'u1', role: 'USER' as const, cohort: 'beta' };
-const row = (over: Partial<{ enabled: boolean; cohorts: string[]; roles: ('USER' | 'TRAINER' | 'ADMIN')[]; userIds: string[] }>) => ({
+const user = { id: 'u1', role: 'USER' as const, group: 'beta' };
+const row = (over: Partial<{ enabled: boolean; groups: string[]; roles: ('USER' | 'TRAINER' | 'ADMIN')[]; userIds: string[] }>) => ({
   key: 'order_nearby',
   enabled: false,
-  cohorts: [],
+  groups: [],
   roles: [],
   userIds: [],
   ...over,
@@ -24,9 +24,9 @@ describe('feature flags', () => {
     expect(flagOn('order_nearby', user, row({}))).toBe(false);
   });
 
-  it('turns on for a cohort, a role or a user', () => {
-    expect(flagOn('order_nearby', user, row({ cohorts: ['beta'] }))).toBe(true);
-    expect(flagOn('order_nearby', { ...user, cohort: null }, row({ cohorts: ['beta'] }))).toBe(false);
+  it('turns on for a group, a role or a user', () => {
+    expect(flagOn('order_nearby', user, row({ groups: ['beta'] }))).toBe(true);
+    expect(flagOn('order_nearby', { ...user, group: null }, row({ groups: ['beta'] }))).toBe(false);
     expect(flagOn('order_nearby', { ...user, role: 'TRAINER' }, row({ roles: ['TRAINER'] }))).toBe(true);
     expect(flagOn('order_nearby', user, row({ userIds: ['u1'] }))).toBe(true);
     expect(flagOn('order_nearby', user, row({ userIds: ['u2'], roles: ['ADMIN'] }))).toBe(false);

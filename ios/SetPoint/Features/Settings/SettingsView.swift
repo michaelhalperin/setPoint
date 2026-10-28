@@ -139,7 +139,8 @@ struct SettingsView: View {
                 }
 
                 #if DEBUG
-                developerTools
+                // Debug builds only; the admin's tour preview is shot without it, as people see the app.
+                if !CommandLine.arguments.contains("-hideDevTools") { developerTools }
                 #endif
             }
             .padding(Space.gutter)

@@ -10,12 +10,12 @@ import { getPhotoStore } from '../photos/store.js';
 import { requireAdmin } from './admin.js';
 
 const role = z.enum(['USER', 'TRAINER', 'ADMIN']);
-const cohort = z.string().trim().min(1).max(64);
+const groupName = z.string().trim().min(1).max(64);
 
 const createInvite = z.object({
   /** Leave out for a random 8-character code. */
   code: z.string().min(3).max(32).optional(),
-  cohort: cohort.optional(),
+  group: groupName.optional(),
   role: role.optional(),
   maxUses: z.number().int().positive().optional(),
   expiresAt: z.string().datetime().optional(),
@@ -24,8 +24,8 @@ const createInvite = z.object({
 
 const updateUser = z.object({
   role: role.optional(),
-  /** null takes them out of their cohort. */
-  cohort: cohort.nullable().optional(),
+  /** null takes them out of their group. */
+  group: groupName.nullable().optional(),
   /** Let someone in without a code. Their pending session upgrades on its next request. */
   access: z.literal(true).optional(),
 });
@@ -37,14 +37,14 @@ const deleteUsersBody = z.object({
 const updateFlag = z.object({
   /** On for everyone. */
   enabled: z.boolean().optional(),
-  cohorts: z.array(cohort).optional(),
+  groups: z.array(groupName).optional(),
   roles: z.array(role).optional(),
   userIds: z.array(z.string().min(1)).optional(),
   note: z.string().max(200).nullable().optional(),
 });
 
 const userQuery = z.object({
-  cohort: z.string().optional(),
+  group: z.string().optional(),
   role: role.optional(),
   /** Only accounts still waiting for an invite. */
   pending: z.enum(['true', 'false']).optional(),
@@ -55,7 +55,7 @@ const userQuery = z.object({
 const analyticsQuery = z.object({
   from: z.string().datetime().optional(),
   to: z.string().datetime().optional(),
-  cohort: z.string().optional(),
+  group: z.string().optional(),
 });
 
 const ANALYTICS_DEFAULT_DAYS = 14;
@@ -65,7 +65,7 @@ const userFields = {
   id: true,
   email: true,
   role: true,
-  cohort: true,
+  group: true,
   accessGrantedAt: true,
   createdAt: true,
   inviteCode: { select: { code: true } },
@@ -73,19 +73,19 @@ const userFields = {
   _count: { select: { meals: true } },
 } as const;
 
-/** Invites, roles and cohorts — who gets in and who is who. */
+/** Invites, roles and groups — who gets in and who is who. */
 export async function adminAccessRoutes(app: FastifyInstance): Promise<void> {
   app.addHook('preHandler', requireAdmin(app));
 
   // The switches that live in Vercel's environment, and who's in the app.
   app.get('/status', async () => {
     const prisma = getPrisma();
-    const [users, pending, onboarded, byRole, byCohort] = await Promise.all([
+    const [users, pending, onboarded, byRole, byGroup] = await Promise.all([
       prisma.user.count(),
       prisma.user.count({ where: { accessGrantedAt: null } }),
       prisma.onboardingProfile.count({ where: { completedAt: { not: null } } }),
       prisma.user.groupBy({ by: ['role'], _count: { _all: true } }),
-      prisma.user.groupBy({ by: ['cohort'], _count: { _all: true }, where: { cohort: { not: null } } }),
+      prisma.user.groupBy({ by: ['group'], _count: { _all: true }, where: { group: { not: null } } }),
     ]);
     return {
       environment: env.SENTRY_ENVIRONMENT || (isProd ? 'production' : env.NODE_ENV),
@@ -103,8 +103,8 @@ export async function adminAccessRoutes(app: FastifyInstance): Promise<void> {
         onboarded,
         byRole: Object.fromEntries(byRole.map((r) => [r.role, r._count._all])),
       },
-      cohorts: byCohort
-        .map((c) => ({ cohort: c.cohort as string, users: c._count._all }))
+      groups: byGroup
+        .map((c) => ({ group: c.group as string, users: c._count._all }))
         .sort((a, b) => b.users - a.users),
     };
   });
@@ -122,7 +122,7 @@ export async function adminAccessRoutes(app: FastifyInstance): Promise<void> {
     const invite = await getPrisma().inviteCode.create({
       data: {
         code,
-        cohort: body.cohort ?? null,
+        group: body.group ?? null,
         role: body.role ?? 'USER',
         maxUses: body.maxUses ?? null,
         expiresAt: body.expiresAt ? new Date(body.expiresAt) : null,
@@ -144,7 +144,7 @@ export async function adminAccessRoutes(app: FastifyInstance): Promise<void> {
     const q = userQuery.parse(req.query);
     const users = await getPrisma().user.findMany({
       where: {
-        ...(q.cohort ? { cohort: q.cohort } : {}),
+        ...(q.group ? { group: q.group } : {}),
         ...(q.role ? { role: q.role } : {}),
         ...(q.pending === 'true' ? { accessGrantedAt: null } : {}),
         ...(q.q ? { email: { contains: q.q, mode: 'insensitive' as const } } : {}),
@@ -165,7 +165,7 @@ export async function adminAccessRoutes(app: FastifyInstance): Promise<void> {
       where: { id },
       data: {
         ...(body.role ? { role: body.role } : {}),
-        ...(body.cohort !== undefined ? { cohort: body.cohort } : {}),
+        ...(body.group !== undefined ? { group: body.group } : {}),
         ...(body.access ? { accessGrantedAt: existing.accessGrantedAt ?? new Date() } : {}),
       },
       select: userFields,
@@ -205,7 +205,7 @@ export async function adminAccessRoutes(app: FastifyInstance): Promise<void> {
     const body = updateFlag.parse(req.body ?? {});
     const data = {
       ...(body.enabled !== undefined ? { enabled: body.enabled } : {}),
-      ...(body.cohorts ? { cohorts: body.cohorts } : {}),
+      ...(body.groups ? { groups: body.groups } : {}),
       ...(body.roles ? { roles: body.roles } : {}),
       ...(body.userIds ? { userIds: body.userIds } : {}),
       ...(body.note !== undefined ? { note: body.note } : {}),
@@ -222,13 +222,13 @@ export async function adminAccessRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // Product numbers for a range (default: the last two weeks), optionally for one
-  // cohort — e.g. ?cohort=beta.
+  // group — e.g. ?group=beta.
   app.get('/analytics', async (req) => {
     const q = analyticsQuery.parse(req.query);
     const to = q.to ? new Date(q.to) : new Date();
     const from = q.from ? new Date(q.from) : new Date(to.getTime() - ANALYTICS_DEFAULT_DAYS * 86_400_000);
     const rows = await getPrisma().analyticsEvent.findMany({
-      where: { occurredAt: { gte: from, lte: to }, ...(q.cohort ? { user: { cohort: q.cohort } } : {}) },
+      where: { occurredAt: { gte: from, lte: to }, ...(q.group ? { user: { group: q.group } } : {}) },
       select: { userId: true, name: true, props: true, occurredAt: true },
       orderBy: { occurredAt: 'asc' },
       take: ANALYTICS_MAX_ROWS,
@@ -246,7 +246,7 @@ export async function adminAccessRoutes(app: FastifyInstance): Promise<void> {
     const emailById = new Map(emails.map((u) => [u.id, u.email]));
     return {
       range: { from: from.toISOString(), to: to.toISOString() },
-      cohort: q.cohort ?? null,
+      group: q.group ?? null,
       truncated: rows.length === ANALYTICS_MAX_ROWS,
       ...summary,
       problems: {

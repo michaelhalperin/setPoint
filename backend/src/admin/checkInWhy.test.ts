@@ -61,12 +61,12 @@ describe('checkInWhy', () => {
       lastPushError: null,
       feedbackPositive: null,
       confidenceScore: { hoursSinceMeal: 12, overdueMin: 20 },
-      user: { id: 'u1', email: 'a@b.co', cohort: 'pilot' },
+      user: { id: 'u1', email: 'a@b.co', group: 'pilot' },
     };
     expect(toAdminCheckIn(row)).toMatchObject({
       when: deliveredAt,
       why: 'Nothing logged for breakfast when it was due · 20 min overdue · 12.0 h since last meal',
-      user: { id: 'u1', email: 'a@b.co', cohort: 'pilot' },
+      user: { id: 'u1', email: 'a@b.co', group: 'pilot' },
     });
     expect(toAdminCheckIn({ ...row, deliveredAt: null }).when).toEqual(createdAt);
   });

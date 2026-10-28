@@ -646,13 +646,13 @@ ${USAGE_CSS}
     var fail = function (e) { toast(e.message); };
 
     // invites
-    var f = { code: h('input', { class: 'w', placeholder: 'Code, or leave empty', 'aria-label': 'Code' }), cohort: h('input', { class: 's', placeholder: 'Cohort', 'aria-label': 'Cohort' }),
+    var f = { code: h('input', { class: 'w', placeholder: 'Code, or leave empty', 'aria-label': 'Code' }), group: h('input', { class: 's', placeholder: 'Group', 'aria-label': 'Group' }),
       role: h('select', { 'aria-label': 'Role' }, [h('option', { value: 'USER', text: 'Person' }), h('option', { value: 'TRAINER', text: 'Trainer' }), h('option', { value: 'ADMIN', text: 'Admin' })]),
       max: h('input', { class: 's', type: 'number', min: '1', placeholder: 'Max uses', 'aria-label': 'Max uses' }), note: h('input', { class: 'w', placeholder: 'Note', 'aria-label': 'Note' }) };
     var create = h('button', { class: 'btn pri', type: 'button', text: 'Create invite', onclick: function () {
       var body = {};
       if (f.code.value.trim()) body.code = f.code.value.trim();
-      if (f.cohort.value.trim()) body.cohort = f.cohort.value.trim();
+      if (f.group.value.trim()) body.group = f.group.value.trim();
       body.role = f.role.value;
       if (f.max.value) body.maxUses = Number(f.max.value);
       if (f.note.value.trim()) body.note = f.note.value.trim();
@@ -661,34 +661,34 @@ ${USAGE_CSS}
     var rows = inv.invites.map(function (i) {
       var off = !!i.disabledAt, used = i.maxUses ? i.uses + ' of ' + i.maxUses : i.uses + ' used';
       return h('tr', null, [
-        h('td', { class: 'mono', text: i.code }), h('td', { text: i.cohort || '\u2013' }), h('td', { text: i.role.toLowerCase() }), h('td', { class: 'mono', text: used }),
+        h('td', { class: 'mono', text: i.code }), h('td', { text: i.group || '\u2013' }), h('td', { text: i.role.toLowerCase() }), h('td', { class: 'mono', text: used }),
         h('td', { text: i.expiresAt ? new Date(i.expiresAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'No expiry' }), h('td', { text: i.note || '' }),
         h('td', null, [off ? h('span', { class: 't-faint', text: 'Disabled' }) : h('button', { class: 'btn', type: 'button', text: 'Disable', onclick: function () {
           api('/api/admin/invites/' + encodeURIComponent(i.code) + '/disable', { method: 'POST', body: {} }).then(function () { toast('Disabled ' + i.code); refresh('invites'); }).catch(fail);
         } })])
       ]);
     });
-    var table = inv.invites.length ? h('table', { class: 'tbl' }, [h('thead', null, [h('tr', null, ['Code', 'Cohort', 'Gives', 'Uses', 'Expires', 'Note', ''].map(function (t) { return h('th', { text: t }); }))]), h('tbody', null, rows)]) : h('p', { class: 'empty', text: 'No invite codes yet.' });
+    var table = inv.invites.length ? h('table', { class: 'tbl' }, [h('thead', null, [h('tr', null, ['Code', 'Group', 'Gives', 'Uses', 'Expires', 'Note', ''].map(function (t) { return h('th', { text: t }); }))]), h('tbody', null, rows)]) : h('p', { class: 'empty', text: 'No invite codes yet.' });
 
     // flags
     var flags = fl.flags.map(function (flag) {
       var ov = flag.override, mode = !ov ? 'default' : ov.enabled ? 'on' : 'off';
-      var cohorts = h('input', { class: 'w', placeholder: 'Off, except cohorts: beta, friends', 'aria-label': 'Cohorts for ' + flag.key, value: ov && ov.cohorts ? ov.cohorts.join(', ') : '' });
+      var groups = h('input', { class: 'w', placeholder: 'Off, except groups: beta, friends', 'aria-label': 'Groups for ' + flag.key, value: ov && ov.groups ? ov.groups.join(', ') : '' });
       var pick = function (m) {
         var req = m === 'default' ? api('/api/admin/flags/' + flag.key, { method: 'DELETE' })
-          : api('/api/admin/flags/' + flag.key, { method: 'PUT', body: m === 'on' ? { enabled: true } : { enabled: false, cohorts: cohorts.value.split(',').map(function (c) { return c.trim(); }).filter(Boolean) } });
+          : api('/api/admin/flags/' + flag.key, { method: 'PUT', body: m === 'on' ? { enabled: true } : { enabled: false, groups: groups.value.split(',').map(function (c) { return c.trim(); }).filter(Boolean) } });
         req.then(function () { toast('Saved ' + flag.key); refresh('flags'); }).catch(fail);
       };
       var seg = h('div', { class: 'seg' }, [['default', 'Default ' + (flag.default ? 'on' : 'off')], ['on', 'On for all'], ['off', 'Off']].map(function (m) {
         return h('button', { type: 'button', 'aria-pressed': mode === m[0] ? 'true' : 'false', text: m[1], onclick: function () { pick(m[0]); } });
       }));
-      return h('div', { class: 'flag' }, [h('div', null, [h('b', { text: flag.key }), h('p', { text: flag.description })]), seg, cohorts, h('button', { class: 'btn', type: 'button', text: 'Save cohorts', onclick: function () { pick('off'); } })]);
+      return h('div', { class: 'flag' }, [h('div', null, [h('b', { text: flag.key }), h('p', { text: flag.description })]), seg, groups, h('button', { class: 'btn', type: 'button', text: 'Save groups', onclick: function () { pick('off'); } })]);
     });
 
     var body = [h('div', { class: 'kick', text: 'Access' }), h('h1', { class: 'h1' }, [st.users.total + ' people. ', h('em', { text: st.users.pending + ' waiting for an invite.' })]),
       h('div', { class: 'sw' }, [onoff('Invite only', sw.inviteOnly, true), onoff('Subscription gate', sw.subscriptionGate, true), onoff('Dev login', sw.devLogin, false), onoff('Wearable modifier', sw.wearableModifier, true), h('span', { class: 't-faint', text: 'These switches are set in Vercel.' })]),
       h('div', { class: 'h3', style: 'margin-top:44px' }, ['Invite codes', h('span', { text: String(inv.invites.length) })]),
-      h('div', { class: 'form' }, [f.code, f.cohort, f.role, f.max, f.note, create]), table,
+      h('div', { class: 'form' }, [f.code, f.group, f.role, f.max, f.note, create]), table,
       h('div', { class: 'h3', style: 'margin-top:56px' }, ['Feature flags', h('span', { text: 'who gets what, without a new build' })])].concat(flags);
     return shell('access', loose, body);
   }

@@ -7,7 +7,7 @@ import { requireAdmin } from './admin.js';
 
 const usageQuery = z.object({
   days: z.coerce.number().int().min(1).max(90).default(14),
-  cohort: z.string().optional(),
+  group: z.string().optional(),
 });
 
 const digestQuery = z.object({ period: z.enum(['daily', 'weekly']).default('daily') });
@@ -18,7 +18,7 @@ export async function adminUsageRoutes(app: FastifyInstance): Promise<void> {
 
   app.get('/usage', async (req) => {
     const q = usageQuery.parse(req.query);
-    return gatherUsage(getPrisma(), { days: q.days, cohort: q.cohort });
+    return gatherUsage(getPrisma(), { days: q.days, group: q.group });
   });
 
   // A fresh digest on demand (the cron stores the same one each morning).

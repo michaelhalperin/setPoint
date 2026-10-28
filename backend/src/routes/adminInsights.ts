@@ -10,7 +10,7 @@ import { requireAdmin } from './admin.js';
 
 const mealsQuery = z.object({
   userId: z.string().optional(),
-  cohort: z.string().optional(),
+  group: z.string().optional(),
   source: z.enum(['TEXT', 'PHOTO', 'SAVED', 'BARCODE', 'CATALOG', 'PRESCRIPTION']).optional(),
   /** Older than this — for "load more". */
   before: z.string().datetime().optional(),
@@ -20,14 +20,14 @@ const mealsQuery = z.object({
 const rangeQuery = z.object({
   from: z.string().datetime().optional(),
   to: z.string().datetime().optional(),
-  cohort: z.string().optional(),
+  group: z.string().optional(),
 });
 
 const CHECK_IN_KINDS = ['MEAL', 'TOP_UP', 'CLOSE', 'HEADS_UP', 'REFUEL', 'PRE_WORKOUT'] as const;
 
 const checkInsQuery = z.object({
   userId: z.string().optional(),
-  cohort: z.string().optional(),
+  group: z.string().optional(),
   kind: z.enum(CHECK_IN_KINDS).optional(),
   /** Older than this — for "load more". */
   before: z.string().datetime().optional(),
@@ -85,7 +85,7 @@ async function fixedMealIds(userIds: string[], since: Date): Promise<Set<string>
 
 /**
  * What people eat and weigh, for the owner: a meals feed with photos, one
- * person's page, and food and weight numbers across a cohort. Read straight from
+ * person's page, and food and weight numbers across a group. Read straight from
  * meals, day results and weigh-ins.
  */
 export async function adminInsightRoutes(app: FastifyInstance): Promise<void> {
@@ -97,11 +97,11 @@ export async function adminInsightRoutes(app: FastifyInstance): Promise<void> {
     const rows = await prisma.meal.findMany({
       where: {
         ...(q.userId ? { userId: q.userId } : {}),
-        ...(q.cohort ? { user: { cohort: q.cohort } } : {}),
+        ...(q.group ? { user: { group: q.group } } : {}),
         ...(q.source ? { source: q.source } : {}),
         ...(q.before ? { loggedAt: { lt: new Date(q.before) } } : {}),
       },
-      select: { ...MEAL_FIELDS, user: { select: { id: true, email: true, cohort: true } } },
+      select: { ...MEAL_FIELDS, user: { select: { id: true, email: true, group: true } } },
       orderBy: { loggedAt: 'desc' },
       take: q.limit,
     });
@@ -121,11 +121,11 @@ export async function adminInsightRoutes(app: FastifyInstance): Promise<void> {
     const rows = await prisma.checkIn.findMany({
       where: {
         ...(q.userId ? { userId: q.userId } : {}),
-        ...(q.cohort ? { user: { cohort: q.cohort } } : {}),
+        ...(q.group ? { user: { group: q.group } } : {}),
         ...(q.kind ? { kind: q.kind } : {}),
         ...(q.before ? { createdAt: { lt: new Date(q.before) } } : {}),
       },
-      select: { ...CHECK_IN_FIELDS, user: { select: { id: true, email: true, cohort: true } } },
+      select: { ...CHECK_IN_FIELDS, user: { select: { id: true, email: true, group: true } } },
       orderBy: { createdAt: 'desc' },
       take: q.limit,
     });
@@ -146,7 +146,7 @@ export async function adminInsightRoutes(app: FastifyInstance): Promise<void> {
         id: true,
         email: true,
         role: true,
-        cohort: true,
+        group: true,
         timezone: true,
         createdAt: true,
         accessGrantedAt: true,
@@ -260,12 +260,12 @@ export async function adminInsightRoutes(app: FastifyInstance): Promise<void> {
 
   app.get('/experts/pilot', async () => gatherPilot(getPrisma()));
 
-  // Calories against target, protein, and weight change, for everyone or a cohort.
+  // Calories against target, protein, and weight change, for everyone or a group.
   app.get('/nutrition', async (req) => {
     const q = rangeQuery.parse(req.query);
     const to = q.to ? new Date(q.to) : new Date();
     const from = q.from ? new Date(q.from) : new Date(to.getTime() - 14 * 86_400_000);
-    const userWhere = q.cohort ? { user: { cohort: q.cohort } } : {};
+    const userWhere = q.group ? { user: { group: q.group } } : {};
     const prisma = getPrisma();
     const [outcomes, meals, weights] = await Promise.all([
       prisma.dayOutcome.findMany({

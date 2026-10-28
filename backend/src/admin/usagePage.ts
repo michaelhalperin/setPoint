@@ -49,17 +49,17 @@ export const USAGE_JS = String.raw`
   }
   function usageScreen() {
     var loose = state.data.now ? state.data.now.looseEnds.length : 0;
-    var days = state.usageDays || 14, cohort = state.usageCohort || '';
-    var key = 'usage:' + days + ':' + cohort;
+    var days = state.usageDays || 14, group = state.usageGroup || '';
+    var key = 'usage:' + days + ':' + group;
     var u = state.data[key];
     var controls = h('div', { class: 'us-bar' }, [
       h('select', { 'aria-label': 'Range', onchange: function (e) { state.usageDays = Number(e.target.value); render(); } },
         [7, 14, 30, 90].map(function (n) { return h('option', { value: String(n), selected: n === days, text: 'Last ' + n + ' days' }); })),
-      h('input', { placeholder: 'Cohort (all)', 'aria-label': 'Cohort', value: cohort, onchange: function (e) { state.usageCohort = e.target.value.trim(); render(); } }),
+      h('input', { placeholder: 'Group (all)', 'aria-label': 'Group', value: group, onchange: function (e) { state.usageGroup = e.target.value.trim(); render(); } }),
       h('button', { class: 'btn', type: 'button', text: 'Refresh', onclick: function () { state.usageTried = {}; delete state.data[key]; delete state.data.digestDaily; delete state.data.digestWeekly; render(); } })
     ]);
     if (!u) {
-      usageLoad(key, '/api/admin/usage?days=' + days + (cohort ? '&cohort=' + encodeURIComponent(cohort) : ''));
+      usageLoad(key, '/api/admin/usage?days=' + days + (group ? '&group=' + encodeURIComponent(group) : ''));
       return shell('usage', loose, [controls, h('p', { class: 'empty', text: state.usageTried[key] && !state.data['_loading:' + key] ? 'Could not load usage.' : 'Loading…' })]);
     }
     var s = u.summary, a = u.activity, r = u.retention;

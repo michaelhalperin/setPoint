@@ -152,16 +152,16 @@ export function adoption(rows: ActiveRow[], now: Date, totalPeople: number) {
 
 export type Usage = Awaited<ReturnType<typeof gatherUsage>>;
 
-export async function gatherUsage(prisma: PrismaClient, opts: { days: number; cohort?: string; now?: Date }) {
+export async function gatherUsage(prisma: PrismaClient, opts: { days: number; group?: string; now?: Date }) {
   const now = opts.now ?? new Date();
   const from = new Date(now.getTime() - opts.days * DAY_MS);
-  const userWhere = opts.cohort ? { cohort: opts.cohort } : {};
+  const userWhere = opts.group ? { group: opts.group } : {};
   const people = await prisma.user.findMany({ where: userWhere, select: { id: true, createdAt: true } });
   const ids = people.map((p) => p.id);
   const rows = await prisma.analyticsEvent.findMany({
     where: {
       occurredAt: { gte: from, lte: now },
-      ...(opts.cohort ? { userId: { in: ids } } : {}),
+      ...(opts.group ? { userId: { in: ids } } : {}),
     },
     select: { userId: true, name: true, props: true, occurredAt: true },
     orderBy: { occurredAt: 'asc' },
@@ -172,7 +172,7 @@ export async function gatherUsage(prisma: PrismaClient, opts: { days: number; co
   const longRows =
     longFrom.getTime() < from.getTime()
       ? await prisma.analyticsEvent.findMany({
-          where: { occurredAt: { gte: longFrom, lte: now }, ...(opts.cohort ? { userId: { in: ids } } : {}) },
+          where: { occurredAt: { gte: longFrom, lte: now }, ...(opts.group ? { userId: { in: ids } } : {}) },
           select: { userId: true, name: true, occurredAt: true },
           take: MAX_ROWS,
         })
@@ -181,7 +181,7 @@ export async function gatherUsage(prisma: PrismaClient, opts: { days: number; co
 
   return {
     range: { from: from.toISOString(), to: now.toISOString(), days: opts.days },
-    cohort: opts.cohort ?? null,
+    group: opts.group ?? null,
     people: people.length,
     truncated: rows.length === MAX_ROWS,
     summary: summarizeEvents(rows),

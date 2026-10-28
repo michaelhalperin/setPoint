@@ -87,15 +87,15 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // Redeem an invite code: lets a pending account in (or moves a member into the
-  // code's cohort) and returns a full session. Under /api/auth so the sign-in
+  // code's group) and returns a full session. Under /api/auth so the sign-in
   // rate limit also slows code guessing.
   app.post('/invite', { preHandler: requireAuth(app, { allowPendingInvite: true }) }, async (req) => {
     const { code } = inviteBody.parse(req.body);
     const userId = (req as AuthedRequest).userId;
     try {
-      const { cohort, role } = await redeemInvite(getPrisma(), userId, code);
-      await track(getPrisma(), userId, 'invite_redeemed', cohort ? { cohort } : undefined);
-      return { token: issueSessionToken(userId), userId, cohort, role };
+      const { group, role } = await redeemInvite(getPrisma(), userId, code);
+      await track(getPrisma(), userId, 'invite_redeemed', group ? { group } : undefined);
+      return { token: issueSessionToken(userId), userId, group, role };
     } catch (err) {
       if (err instanceof InviteRejectedError) throw app.httpErrors.badRequest('invite_invalid');
       throw err;

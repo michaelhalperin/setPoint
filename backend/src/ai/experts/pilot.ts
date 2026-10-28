@@ -87,7 +87,7 @@ export async function gatherPilot(prisma: PrismaClient) {
   const [users, flagRow, events, trips] = await Promise.all([
     prisma.user.findMany({
       where: { role: 'USER' },
-      select: { id: true, role: true, cohort: true },
+      select: { id: true, role: true, group: true },
     }),
     prisma.featureFlag.findUnique({ where: { key: 'nutrition_chat' } }),
     prisma.analyticsEvent.findMany({
@@ -99,10 +99,10 @@ export async function gatherPilot(prisma: PrismaClient) {
   ]);
 
   const flagOnIds = new Set(users.filter((u) => flagOn('nutrition_chat', u, flagRow ?? undefined)).map((u) => u.id));
-  const poolCohorts = new Set(flagRow?.cohorts ?? users.map((u) => u.cohort).filter((c): c is string => !!c));
+  const poolGroups = new Set(flagRow?.groups ?? users.map((u) => u.group).filter((c): c is string => !!c));
   const holdoutIds = new Set(
     users
-      .filter((u) => !flagOnIds.has(u.id) && u.cohort !== null && poolCohorts.has(u.cohort))
+      .filter((u) => !flagOnIds.has(u.id) && u.group !== null && poolGroups.has(u.group))
       .map((u) => u.id),
   );
 

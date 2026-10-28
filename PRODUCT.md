@@ -24,11 +24,11 @@ The consumer product is not a calorie counter. Check-ins fire from the meal sche
 
 ## Operating Context
 
-Members use the iOS app. The owner signs into `/admin` with an admin secret kept in that tab's session storage. The page itself is public HTML and holds no data; every number loads from `/api/admin` after sign-in. Cohorts (for example a trainer's pilot group) and invite codes are how people get in. Invite-only can be on or off via env. Typical motions: grant access, assign cohort/role, mint or disable a code, flip a feature flag, open a person, scan meals, check scheduler/alerts.
+Members use the iOS app. The owner signs into `/admin` with an admin secret kept in that tab's session storage. The page itself is public HTML and holds no data; every number loads from `/api/admin` after sign-in. Groups (for example a trainer's pilot group) and invite codes are how people get in. Invite-only can be on or off via env. Typical motions: grant access, assign group/role, mint or disable a code, flip a feature flag, open a person, scan meals, check scheduler/alerts.
 
 ## Capabilities and Constraints
 
-Confirmed on `/admin` today: sign-in with admin secret; Overview (range, cohort, KPIs, crash and failed-log callout, funnel, daily chart, problems, meals by source, calories vs target, screens, events, env switches); Users (search, role/cohort/pending filters, inline role/cohort/access edits, person profile with plan, days, weight, check-ins, meals); Meals (cohort/source filters, photo lightbox, load more); Invites (create/copy/disable); Flags (default/on/off/cohort-role-user overrides); Health (scheduler, alerts, wearable modifier, raw metrics JSON).
+Confirmed on `/admin` today: sign-in with admin secret; Overview (range, group, KPIs, crash and failed-log callout, funnel, daily chart, problems, meals by source, calories vs target, screens, events, env switches); Users (search, role/group/pending filters, inline role/group/access edits, person profile with plan, days, weight, check-ins, meals); Meals (group/source filters, photo lightbox, load more); Invites (create/copy/disable); Flags (default/on/off/group-role-user overrides); Health (scheduler, alerts, wearable modifier, raw metrics JSON).
 
 Technical: one self-contained HTML string in `backend/src/admin/dashboardPage.ts`, served at `GET /admin` with a strict CSP (`script-src 'unsafe-inline'`, styles from Google Fonts today). DOM is built in JS without `innerHTML` from data. Must keep working against the existing `/api/admin` contract. Do not invent metrics, users, or claims.
 

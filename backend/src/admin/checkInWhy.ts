@@ -43,7 +43,7 @@ export type AdminCheckInRow = {
   lastPushError: string | null;
   feedbackPositive: boolean | null;
   confidenceScore: { hoursSinceMeal: number | null; overdueMin: number | null } | null;
-  user?: { id: string; email: string | null; cohort: string | null };
+  user?: { id: string; email: string | null; group: string | null };
 };
 
 /** The fields the dashboard needs for one notification: when it went out, and why. */

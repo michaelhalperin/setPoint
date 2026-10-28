@@ -3,7 +3,7 @@ import type { InviteCode, PrismaClient, UserRole } from '@prisma/client';
 
 /**
  * Invite codes: while sign-up is invite-only, a new account is let in by
- * redeeming one. A code can put people in a cohort ("beta") and give them
+ * redeeming one. A code can put people in a group ("beta") and give them
  * a role, and can be capped in uses and time.
  */
 
@@ -50,7 +50,7 @@ export class InviteRejectedError extends Error {
 
 /**
  * Lets a user in with a code: counts the use, records the code, sets access, the
- * code's cohort, and its role if higher. The use is counted with a compare-and-set
+ * code's group, and its role if higher. The use is counted with a compare-and-set
  * on `uses`, so two people racing for the last use can't both get it.
  */
 export async function redeemInvite(
@@ -58,7 +58,7 @@ export async function redeemInvite(
   userId: string,
   rawCode: string,
   now: Date = new Date(),
-): Promise<{ cohort: string | null; role: UserRole }> {
+): Promise<{ group: string | null; role: UserRole }> {
   const code = normalizeInviteCode(rawCode);
   if (!code) throw new InviteRejectedError('unknown');
 
@@ -73,13 +73,13 @@ export async function redeemInvite(
     });
     if (counted.count === 0) throw new InviteRejectedError('used_up');
 
-    const user = await tx.user.findUniqueOrThrow({ where: { id: userId }, select: { role: true, cohort: true, accessGrantedAt: true } });
+    const user = await tx.user.findUniqueOrThrow({ where: { id: userId }, select: { role: true, group: true, accessGrantedAt: true } });
     const role = higherRole(user.role, invite.role);
-    const cohort = invite.cohort ?? user.cohort;
+    const group = invite.group ?? user.group;
     await tx.user.update({
       where: { id: userId },
-      data: { accessGrantedAt: user.accessGrantedAt ?? now, inviteCodeId: invite.id, cohort, role },
+      data: { accessGrantedAt: user.accessGrantedAt ?? now, inviteCodeId: invite.id, group, role },
     });
-    return { cohort, role };
+    return { group, role };
   });
 }

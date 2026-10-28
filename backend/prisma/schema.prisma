@@ -170,7 +170,8 @@ model User {
 
   role UserRole @default(USER)
   /// A named group, e.g. "beta" — set by the invite code, used by feature flags.
-  cohort String?
+  /// Column is still `cohort` in Postgres (renamed in the app only).
+  group String? @map("cohort")
   /// When this account was let in. Null means it's waiting for an invite code
   /// (only enforced while INVITE_ONLY is on). Accounts from before invites were backfilled.
   accessGrantedAt DateTime?
@@ -1018,12 +1019,12 @@ model RateLimitBucket {
 }
 
 /// A code that lets people in while sign-up is invite-only. It can put them in a
-/// cohort and give them a role, and can be limited in uses and time.
+/// group and give them a role, and can be limited in uses and time.
 model InviteCode {
   id        String    @id @default(cuid())
   /// Stored upper-case; matched without regard to case or spaces.
   code      String    @unique
-  cohort    String?
+  group     String?   @map("cohort")
   role      UserRole  @default(USER)
   /// Null means unlimited.
   maxUses   Int?
@@ -1037,12 +1038,12 @@ model InviteCode {
 }
 
 /// A switch for a feature, overriding its default in code (src/flags). On for
-/// everyone, or only for some cohorts, roles or users.
+/// everyone, or only for some groups, roles or users.
 model FeatureFlag {
   key         String     @id
   /// On for everyone. When false, only the lists below get it.
   enabled     Boolean    @default(false)
-  cohorts     String[]   @default([])
+  groups      String[]   @default([]) @map("cohorts")
   roles       UserRole[] @default([])
   userIds     String[]   @default([])
   note        String?

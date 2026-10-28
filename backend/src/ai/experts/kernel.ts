@@ -60,7 +60,7 @@ function cardFromArgs(id: string, args: PlateArgs, expiresAt: Date, lang: Expert
 export async function nutritionEnabled(prisma: PrismaClient, userId: string): Promise<boolean> {
   if (env.EXPERT_NUTRITION_ENABLED !== 'true') return false;
   const [user, row] = await Promise.all([
-    prisma.user.findUnique({ where: { id: userId }, select: { id: true, role: true, cohort: true } }),
+    prisma.user.findUnique({ where: { id: userId }, select: { id: true, role: true, group: true } }),
     prisma.featureFlag.findUnique({ where: { key: 'nutrition_chat' } }),
   ]);
   if (!user) return false;
