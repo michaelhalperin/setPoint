@@ -687,11 +687,6 @@ struct RhythmSettingsView: View {
                 selection: Binding(get: { model.checkInGraceMin }, set: { model.checkInGraceMin = $0 }),
                 title: { L10n("\($0) min") }
             )
-            Text(L10n("If nothing’s logged \(model.checkInGraceMin) min after a meal time, I check in once."))
-                .font(Typography.data(13, weight: .regular))
-                .foregroundStyle(Palette.inkSoft)
-                .fixedSize(horizontal: false, vertical: true)
-                .contentTransition(.opacity)
         }
         .padding(16)
         .glass(radius: 22)
