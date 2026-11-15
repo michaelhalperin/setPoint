@@ -14,6 +14,8 @@ struct SearchComposer: View {
     var large = false
     /// Off while the log sheet shows its own live camera.
     var showsCamera = true
+    /// When set, the camera button just calls this instead of offering the photo sources.
+    var onCameraTap: (() -> Void)? = nil
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var pickerItem: PhotosPickerItem?
@@ -137,21 +139,33 @@ struct SearchComposer: View {
             .modifier(OptionalMatchedGeometry(id: photoGeometryID, namespace: photoNamespace))
     }
 
+    private var cameraIcon: some View {
+        Image(systemName: "camera")
+            .font(.system(size: 17, weight: .regular))
+            .foregroundStyle(Palette.ink)
+            .frame(width: 50, height: 50)
+            .background(Circle().fill(Color.white.opacity(0.05)))
+            .overlay(Circle().strokeBorder(Color.white.opacity(0.10)))
+            .contentShape(Circle())
+    }
+
+    @ViewBuilder
     private var cameraButton: some View {
-        Menu {
-            PhotoSourceButtons(model: model)
-        } label: {
-            Image(systemName: "camera")
-                .font(.system(size: 17, weight: .regular))
-                .foregroundStyle(Palette.ink)
-                .frame(width: 50, height: 50)
-                .background(Circle().fill(Color.white.opacity(0.05)))
-                .overlay(Circle().strokeBorder(Color.white.opacity(0.10)))
-                .contentShape(Circle())
+        if let onCameraTap {
+            Button(action: onCameraTap) { cameraIcon }
+                .buttonStyle(.plain)
+                .disabled(model.phase == .parsing)
+                .accessibilityLabel("Add a photo")
+        } else {
+            Menu {
+                PhotoSourceButtons(model: model)
+            } label: {
+                cameraIcon
+            }
+            .buttonStyle(.plain)
+            .disabled(model.phase == .parsing)
+            .accessibilityLabel("Add a photo")
         }
-        .buttonStyle(.plain)
-        .disabled(model.phase == .parsing)
-        .accessibilityLabel("Add a photo")
     }
 
     private var sendButton: some View {
@@ -168,8 +182,8 @@ struct SearchComposer: View {
 
     private func submit() {
         guard model.canSubmit else { return }
-        focused.wrappedValue = false
         onSubmit()
+        focused.wrappedValue = false
     }
 }
 

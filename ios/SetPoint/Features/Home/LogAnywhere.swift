@@ -174,6 +174,7 @@ struct LogAnywhere: ViewModifier {
         if logger == nil {
             logger = LogMealViewModel(api: env.api, onMealChanged: { env.changes.mealsChanged() })
         }
+        env.chrome.logFreezeCompact = false
         if !open { open = true }
         if focus {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { focused = true }
@@ -185,6 +186,7 @@ struct LogAnywhere: ViewModifier {
     }
 
     private func close() {
+        env.chrome.logFreezeCompact = env.chrome.logFreezeCompact || focused
         focused = false
         logger?.backdate = nil
         open = false
@@ -193,6 +195,7 @@ struct LogAnywhere: ViewModifier {
     private func handle(_ phase: LogMealViewModel.Phase) {
         switch phase {
         case .parsing:
+            env.chrome.logFreezeCompact = env.chrome.logFreezeCompact || focused
             focused = false
             open = false
             if let meal = logger?.pendingKnownMeal {
@@ -200,6 +203,7 @@ struct LogAnywhere: ViewModifier {
                 beforeKnownMeal = home.applyNow { $0.inserting(meal, into: slot) }
             }
         case .queued:
+            env.chrome.logFreezeCompact = env.chrome.logFreezeCompact || focused
             focused = false
             open = false
         case .failed:
@@ -213,6 +217,7 @@ struct LogAnywhere: ViewModifier {
             }
             show(focus: false)
         case let .logged(logged):
+            env.chrome.logFreezeCompact = env.chrome.logFreezeCompact || focused
             focused = false
             open = false
             Haptics.landed()

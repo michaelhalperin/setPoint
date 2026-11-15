@@ -521,6 +521,7 @@ struct HomeContent: View {
 
     private func openLog(focus: Bool = false) {
         guard !showingCheckIn else { return }
+        env.chrome.logFreezeCompact = false
         withAnimation(Motion.adaptive(Motion.sheet, reduceMotion: reduceMotion)) { logOpen = true }
         if focus {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { composerFocused = true }
@@ -528,6 +529,7 @@ struct HomeContent: View {
     }
 
     private func closeLog() {
+        env.chrome.logFreezeCompact = env.chrome.logFreezeCompact || composerFocused
         composerFocused = false
         logger?.backdate = nil
         withAnimation(Motion.adaptive(Motion.sheet, reduceMotion: reduceMotion)) { logOpen = false }
@@ -687,6 +689,7 @@ struct HomeContent: View {
 
         switch phase {
         case .parsing:
+            env.chrome.logFreezeCompact = env.chrome.logFreezeCompact || composerFocused
             composerFocused = false
             withAnimation(Motion.adaptive(Motion.sheet, reduceMotion: reduceMotion)) { logOpen = false }
             if let meal = logger?.pendingKnownMeal {
@@ -704,9 +707,11 @@ struct HomeContent: View {
             }
             openLog()
         case .queued:
+            env.chrome.logFreezeCompact = env.chrome.logFreezeCompact || composerFocused
             composerFocused = false
             withAnimation(Motion.adaptive(Motion.sheet, reduceMotion: reduceMotion)) { logOpen = false }
         case let .logged(logged):
+            env.chrome.logFreezeCompact = env.chrome.logFreezeCompact || composerFocused
             composerFocused = false
             withAnimation(Motion.adaptive(Motion.sheet, reduceMotion: reduceMotion)) { logOpen = false }
             Haptics.landed()

@@ -72,6 +72,9 @@ final class AppChrome {
     private(set) var logRequest = 0
     /// The log panel open over a tab other than Today (see `LogAnywhere`).
     var logPanelOpen = false
+    /// Set as the log panel closes from its compact (typing) layout, so it slides away
+    /// as it is instead of growing back to the full sheet while the keyboard drops.
+    var logFreezeCompact = false
     /// A tab asked for from inside a screen (Today's avatar → You).
     private(set) var tabRequest: MainTabView.Tab?
 

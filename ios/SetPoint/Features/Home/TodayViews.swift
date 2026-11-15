@@ -331,6 +331,7 @@ struct LogDock: View {
     var onOrder: (() -> Void)? = nil
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(AppEnvironment.self) private var env
     @State private var size = 1
     @State private var keyboardUp = false
 
@@ -350,7 +351,10 @@ struct LogDock: View {
                 Headline(
                     title, tail: typing ? nil : "Tap, snap or scan it.", size: typing ? 22 : 28)
                 Spacer(minLength: 8)
-                RoundIconButton("xmark", label: "Close", action: onClose)
+                RoundIconButton("xmark", label: "Close") {
+                    env.chrome.logFreezeCompact = typing
+                    onClose()
+                }
             }
 
             if let backdate = logger.backdate {
@@ -360,12 +364,17 @@ struct LogDock: View {
             SearchComposer(
                 model: logger,
                 focused: focused,
-                onSubmit: onSubmit,
+                onSubmit: {
+                    env.chrome.logFreezeCompact = typing
+                    onSubmit()
+                },
                 photoNamespace: photoNamespace,
                 photoGeometryID: photoGeometryID,
                 prompt: "“Two eggs, toast and a latte”",
                 large: typing && logger.photo == nil,
-                showsCamera: !showsLiveCamera
+                showsCamera: !showsLiveCamera,
+                // While typing, the camera button goes back to the full sheet, which has the live camera.
+                onCameraTap: typing ? { focused.wrappedValue = false } : nil
             )
             .onChange(of: logger.text) { _, _ in
                 logger.onComposerTextChanged()
@@ -548,7 +557,7 @@ struct LogDock: View {
     /// Compact only while the on-screen keyboard is actually up and the field has
     /// it — not just because there's text left over or a hardware keyboard is in use.
     private var typing: Bool {
-        keyboardUp && focused.wrappedValue
+        env.chrome.logFreezeCompact || (keyboardUp && focused.wrappedValue)
     }
 
     private var title: String {
@@ -617,17 +626,25 @@ struct LogDock: View {
             Image(systemName: symbol)
                 .font(.system(size: 16, weight: .regular))
                 .foregroundStyle(lit ? Palette.hazeSoft : Palette.ink)
+                .shadow(color: lit ? Palette.haze.opacity(0.9) : .clear, radius: 7)
             Text(LocalizedStringKey(title))
                 .font(Typography.data(14, weight: .regular))
                 .lineLimit(1)
             Spacer(minLength: 0)
+            if lit {
+                // It leaves the sheet for the order flow.
+                Image(systemName: "arrow.up.right")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Palette.hazeSoft)
+            }
         }
         .foregroundStyle(Palette.ink)
         .padding(.horizontal, 12)
         .frame(height: 48)
         .glass(
-            radius: 16, fill: lit ? Palette.haze.opacity(0.10) : Palette.glass,
-            stroke: lit ? Palette.haze.opacity(0.5) : Palette.hairline)
+            radius: 16, fill: lit ? Palette.haze.opacity(0.16) : Palette.glass,
+            stroke: lit ? Palette.hazeSoft.opacity(0.75) : Palette.hairline)
+        .shadow(color: lit ? Palette.haze.opacity(0.35) : .clear, radius: 10)
     }
 
     /// The two most recently used saved plates — full list is on You.
