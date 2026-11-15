@@ -41,8 +41,7 @@ struct SavedMealsSettingsView: View {
             }
 
             if !loaded, error == nil {
-                BusyDots(tint: Palette.amber)
-                    .frame(maxWidth: .infinity, minHeight: 120)
+                SavedMealsSkeleton()
             } else if meals.isEmpty {
                 empty
             } else {
@@ -210,5 +209,30 @@ struct SavedMealsSettingsView: View {
             editorError = UserFacingError.message(for: error, fallback: L10n( "Couldn’t remove that plate. Try again."))
             return false
         }
+    }
+}
+
+/// Mirrors the plate cards while the list loads: kcal mark, name, then slot + last-used line.
+private struct SavedMealsSkeleton: View {
+    var body: some View {
+        VStack(spacing: 10) {
+            ForEach(0..<4, id: \.self) { index in
+                HStack(spacing: 14) {
+                    Circle().fill(Palette.surfaceSunk).frame(width: 58, height: 58)
+                    VStack(alignment: .leading, spacing: 8) {
+                        SkeletonBlock(width: index % 2 == 0 ? 150 : 118, height: 17)
+                        HStack(spacing: 6) {
+                            SkeletonBlock(width: 56, height: 20, radius: 10)
+                            SkeletonBlock(width: 84, height: 12)
+                        }
+                    }
+                    Spacer(minLength: 0)
+                }
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .glass(radius: 22, fill: Color.white.opacity(0.035))
+            }
+        }
+        .skeletonLoading()
     }
 }

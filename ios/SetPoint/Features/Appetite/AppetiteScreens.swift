@@ -486,14 +486,14 @@ extension AppetiteHistoryResponse {
 }
 #endif
 
-/// Mirrors the Appetite record layout while history + settings load.
+/// Mirrors the Appetite record layout while history + settings load:
+/// the big low-day count, the four-week curve, the day readout, then the cards.
 private struct AppetiteSkeletonView: View {
-    private let cols = Array(repeating: GridItem(.flexible(), spacing: 6), count: 7)
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            weeksCard
-            tiles
+        VStack(alignment: .leading, spacing: 16) {
+            hero
+            tide
+            readout
             noticed
             foods
             whenLow
@@ -501,50 +501,47 @@ private struct AppetiteSkeletonView: View {
         .skeletonLoading()
     }
 
-    private var weeksCard: some View {
-        SettingsCard {
-            VStack(alignment: .leading, spacing: 14) {
-                SkeletonBlock(width: 96, height: 10)
-                SkeletonBlock(width: 210, height: 28, radius: 8)
-                LazyVGrid(columns: cols, spacing: 6) {
-                    ForEach(0..<7, id: \.self) { _ in
-                        SkeletonBlock(height: 10)
-                    }
-                }
-                LazyVGrid(columns: cols, spacing: 6) {
-                    ForEach(0..<28, id: \.self) { i in
-                        RoundedRectangle(cornerRadius: 6, style: .continuous)
-                            .fill(i % 5 == 0 ? Color.white.opacity(0.05) : Color.white.opacity(0.06))
-                            .aspectRatio(1, contentMode: .fit)
-                    }
-                }
-                HStack(spacing: 14) {
-                    SkeletonBlock(width: 64, height: 12)
-                    SkeletonBlock(width: 58, height: 12)
-                    SkeletonBlock(width: 44, height: 12)
-                }
-                .padding(.top, 4)
+    private var hero: some View {
+        HStack(alignment: .bottom, spacing: 14) {
+            SkeletonBlock(width: 56, height: 76, radius: 12)
+            VStack(alignment: .leading, spacing: 8) {
+                SkeletonBlock(width: 110, height: 22, radius: 8)
+                SkeletonBlock(width: 190, height: 13)
+            }
+            .padding(.bottom, 4)
+        }
+    }
+
+    private var tide: some View {
+        VStack(spacing: 6) {
+            SkeletonBlock(height: 150, radius: 16)
+            HStack {
+                SkeletonBlock(width: 38, height: 10)
+                Spacer()
+                SkeletonBlock(width: 38, height: 10)
+                Spacer()
+                SkeletonBlock(width: 38, height: 10)
+                Spacer()
+                SkeletonBlock(width: 38, height: 10)
             }
         }
     }
 
-    private var tiles: some View {
-        HStack(spacing: 10) {
-            tile
-            tile
+    private var readout: some View {
+        HStack(spacing: 12) {
+            Circle().fill(Color.white.opacity(0.06)).frame(width: 24, height: 24)
+            VStack(alignment: .leading, spacing: 6) {
+                SkeletonBlock(width: 150, height: 15)
+                SkeletonBlock(width: 108, height: 12)
+            }
+            Spacer(minLength: 8)
+            Circle().fill(Color.white.opacity(0.06)).frame(width: 36, height: 36)
+            Circle().fill(Color.white.opacity(0.06)).frame(width: 36, height: 36)
         }
-    }
-
-    private var tile: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            SkeletonBlock(width: 88, height: 10)
-            SkeletonBlock(width: 72, height: 28, radius: 8)
-            SkeletonBlock(width: 110, height: 12)
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Palette.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Palette.hairline))
+        .padding(.leading, 16)
+        .padding(.trailing, 10)
+        .padding(.vertical, 10)
+        .glass(radius: 22)
     }
 
     private var noticed: some View {
