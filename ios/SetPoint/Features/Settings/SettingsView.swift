@@ -76,15 +76,6 @@ struct SettingsView: View {
                     }
                     .buttonStyle(PressableCard())
                     Spacer(minLength: 0)
-                    NavigationLink { GoalSettingsView(model: model) } label: {
-                        Text("Edit plan")
-                            .font(Typography.data(13, weight: .regular))
-                            .foregroundStyle(Palette.ink)
-                            .padding(.horizontal, 14)
-                            .frame(height: 36)
-                            .glassCapsule(fill: Color.white.opacity(0.06), stroke: Color.white.opacity(0.10))
-                    }
-                    .buttonStyle(PressableCard())
                 }
                 .appearIn(0)
 
@@ -281,6 +272,13 @@ struct SettingsView: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 0)
+                // The card is the way into the plan: say so.
+                Image(systemName: "pencil")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(Palette.ink)
+                    .frame(width: 32, height: 32)
+                    .background(Color.white.opacity(0.10), in: Circle())
+                    .accessibilityHidden(true)
             }
             .padding(18)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -670,7 +668,7 @@ func enforcementNote(_ reason: String?) -> String {
     }
 }
 
-/// Matches the loaded You layout: Edit plan, goal orb card, setup grid.
+/// Matches the loaded You layout: identity chip, goal orb card, setup grid.
 private struct SettingsSkeletonView: View {
     var showPro = false
     private let wash = Color.white.opacity(0.06)
@@ -682,7 +680,6 @@ private struct SettingsSkeletonView: View {
                 HStack(spacing: 12) {
                     Circle().fill(washStrong).frame(width: 36, height: 36)
                     Spacer(minLength: 0)
-                    Capsule().fill(washStrong).frame(width: 88, height: 36)
                 }
 
                 goalCard
