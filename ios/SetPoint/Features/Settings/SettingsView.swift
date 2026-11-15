@@ -7,7 +7,6 @@ struct SettingsView: View {
     @AppStorage(MassUnit.storageKey) private var massUnit = MassUnit.localeDefault
     @AppStorage("you.seen.calendar") private var seenCalendar = false
     @AppStorage("you.seen.appetite") private var seenAppetite = false
-    @State private var reloading = false
     #if DEBUG
     @State private var showingDevOnboarding = false
     @State private var showingDevMealConfirm = false
@@ -146,8 +145,8 @@ struct SettingsView: View {
             .padding(Space.gutter)
             .padding(.bottom, 90)
         }
-        .pullToReload({ await model.load(showSpinner: false) }, covering: $reloading)
-        .reloadCover(reloading) { SettingsSkeletonView(showPro: env.flags.isOn(.paywall)) }
+        // Fixed: the screen only moves when its content is taller than the display (admin tools).
+        .scrollBounceBehavior(.basedOnSize, axes: .vertical)
         .background(alignment: .top) { AmbientGlow(tone: .mixed, strength: 0.6).offset(y: -140).ignoresSafeArea() }
         .background(Palette.background.ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
