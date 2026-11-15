@@ -57,20 +57,10 @@ struct TodayHero: View {
             .padding(.top, Space.xs)
             .tourAnchor("today.orb")
 
-            Button(action: onOpenDay) {
-                StatusPill(dot: statusDot, text: statusText) {
-                    Text("·").foregroundStyle(Palette.inkFaint)
-                    Text(mealsLine)
-                        .font(Typography.data(13, weight: .regular))
-                        .foregroundStyle(Palette.inkSoft)
-                    Image(systemName: "chevron.forward")
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(Palette.inkFaint)
-                }
-            }
+            Button(action: onOpenDay) { dayChip }
             .buttonStyle(PressableCard())
             .tourAnchor("today.pace")
-            .accessibilityHint("Shows today’s meals")
+            .accessibilityHint("Opens today’s meals")
 
             nutritionEntry
 
@@ -214,6 +204,62 @@ struct TodayHero: View {
         case 0: return L10n( "nothing yet")
         case 1: return L10n( "1 meal")
         case let n: return L10n( "\(n) meals")
+        }
+    }
+
+    // MARK: Day chip
+
+    /// How much is left, or how many meals are in when there's no target to count against.
+    private var chipDetail: String {
+        let counting = home.enforcementEnabled && home.framing.state == "under" && moment != .covered && moment != .quiet
+        guard counting else { return mealsLine }
+        return L10n("\(max(0, home.ledger.remainingKcal).formatted()) to go")
+    }
+
+    /// The day in one row: a dot per meal, where you are, and a clear way in.
+    private var dayChip: some View {
+        HStack(spacing: 12) {
+            HStack(spacing: 5) {
+                ForEach(home.day?.slots ?? []) { slot in
+                    chipDot(slot.slotState)
+                }
+            }
+            .accessibilityHidden(true)
+            HStack(spacing: 6) {
+                Text(statusText)
+                    .foregroundStyle(statusDot)
+                Text("· \(chipDetail)")
+                    .foregroundStyle(Palette.inkSoft)
+            }
+            .font(Typography.data(13, weight: .regular))
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            Image(systemName: "chevron.forward")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(Palette.ink)
+                .frame(width: 30, height: 30)
+                .background(Color.white.opacity(0.10), in: Circle())
+        }
+        .padding(.leading, 16)
+        .padding(.trailing, 8)
+        .frame(maxWidth: .infinity, minHeight: 44)
+        .glassCapsule()
+        .contentShape(Capsule())
+    }
+
+    @ViewBuilder
+    private func chipDot(_ state: SlotState) -> some View {
+        switch state {
+        case .logged:
+            Circle().fill(Palette.amber).frame(width: 8, height: 8)
+        case .now:
+            Circle().strokeBorder(Palette.amber, lineWidth: 2).frame(width: 8, height: 8)
+                .shadow(color: Palette.amber.opacity(0.8), radius: 4)
+        case .missed:
+            Circle().strokeBorder(Palette.ember, lineWidth: 1.5).frame(width: 8, height: 8)
+        case .upcoming:
+            Circle().strokeBorder(Color.white.opacity(0.3), lineWidth: 1.5).frame(width: 8, height: 8)
         }
     }
 
