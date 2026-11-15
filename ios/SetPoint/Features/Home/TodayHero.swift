@@ -290,7 +290,7 @@ struct TodayHero: View {
             Headline(TodayCopy.headline(moment), tail: "Eat sooner and I’ll stay quiet.", size: 26)
             HStack(spacing: 10) {
                 if home.activeCheckIn != nil {
-                    ActionButton(title: "Open it now", action: onOpenCheckIn)
+                    ActionButton(title: "Check in now", action: onOpenCheckIn)
                 }
                 ActionButton(title: "I ate", kind: .secondary, action: onLog)
             }

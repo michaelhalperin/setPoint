@@ -8941,12 +8941,12 @@
         }
       }
     },
-    "Open it now": {
+    "Check in now": {
       "localizations": {
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "פתח עכשיו"
+            "value": "לתזכורת עכשיו"
           }
         }
       }
