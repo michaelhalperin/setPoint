@@ -177,6 +177,13 @@ struct SavedMealEditorView: View {
     @State private var draft: SavedMealDraft
     @State private var editingItem: UUID?
     @State private var confirmingDelete = false
+    @State private var removing = false
+    /// Typing a food to have its portion and numbers worked out.
+    @State private var addingFood: Bool
+    @State private var addText = ""
+    @State private var estimating = false
+    @State private var addError: String?
+    @FocusState private var addFocused: Bool
     var saving = false
     var error: String?
     let onSave: (SavedMealDraft) async -> Bool
@@ -184,6 +191,7 @@ struct SavedMealEditorView: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.showHints) private var showHints
+    @Environment(AppEnvironment.self) private var env
 
     init(
         draft: SavedMealDraft,
@@ -192,7 +200,13 @@ struct SavedMealEditorView: View {
         onSave: @escaping (SavedMealDraft) async -> Bool,
         onDelete: (() async -> Bool)? = nil
     ) {
-        _draft = State(initialValue: draft)
+        // A new plate starts by asking what's on it, not with an empty row of numbers.
+        var start = draft
+        let isBlank = draft.existingId == nil
+            && draft.items.allSatisfy { $0.name.isEmpty && $0.kcal.isEmpty }
+        if isBlank { start.items = [] }
+        _draft = State(initialValue: start)
+        _addingFood = State(initialValue: isBlank)
         self.saving = saving
         self.error = error
         self.onSave = onSave
@@ -247,19 +261,22 @@ struct SavedMealEditorView: View {
                 ForEach(Array($draft.items.enumerated()), id: \.element.id) { index, $item in
                     itemRow($item, color: Self.colors[index % Self.colors.count])
                 }
-                Button {
-                    let item = SavedMealDraft.Item()
-                    draft.items.append(item)
-                    editingItem = item.id
-                } label: {
-                    Text("+ Add food")
-                        .font(Typography.data(14, weight: .regular))
-                        .foregroundStyle(Palette.inkSoft)
-                        .frame(maxWidth: .infinity, minHeight: 48)
-                        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Color.white.opacity(0.16), style: StrokeStyle(lineWidth: 1, dash: [5, 4])))
+                if addingFood {
+                    addFoodCard
+                        .transition(.opacity)
+                } else {
+                    Button {
+                        withAnimation(Motion.settle) { addingFood = true }
+                    } label: {
+                        Text("+ Add food")
+                            .font(Typography.data(14, weight: .regular))
+                            .foregroundStyle(Palette.inkSoft)
+                            .frame(maxWidth: .infinity, minHeight: 48)
+                            .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Color.white.opacity(0.16), style: StrokeStyle(lineWidth: 1, dash: [5, 4])))
+                    }
+                    .buttonStyle(PressableCard())
+                    .disabled(draft.items.count >= 20)
                 }
-                .buttonStyle(PressableCard())
-                .disabled(draft.items.count >= 20)
             }
             .appearIn(2)
 
@@ -275,14 +292,13 @@ struct SavedMealEditorView: View {
         }
         .animation(Motion.settle, value: editingItem)
         .animation(Motion.settle, value: draft.suggestSlot)
-        .confirmationDialog("Remove this plate? It won’t show in Your usuals.", isPresented: $confirmingDelete, titleVisibility: .visible) {
-            Button("Remove", role: .destructive) {
-                Task {
-                    if await onDelete?() == true { dismiss() }
-                }
+        .overlay {
+            if confirmingDelete {
+                removePopup
+                    .transition(.opacity)
             }
-            Button("Keep it", role: .cancel) {}
         }
+        .animation(Motion.settle, value: confirmingDelete)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             SettingsSaveBar(
                 note: showHints && draft.useInCheckIns ? "Check-ins will offer this plate." : nil,
@@ -294,6 +310,163 @@ struct SavedMealEditorView: View {
                 }
             }
         }
+    }
+
+    // MARK: Add a food
+
+    /// Type what it is; the portion and the numbers come back worked out.
+    private var addFoodCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            TextField("What’s on it? e.g. 2 eggs", text: $addText)
+                .font(Typography.data(16, weight: .regular))
+                .foregroundStyle(Palette.ink)
+                .focused($addFocused)
+                .submitLabel(.go)
+                .onSubmit { Task { await estimateFood() } }
+                .padding(.horizontal, 14)
+                .frame(minHeight: 48)
+                .glass(radius: 16)
+                .disabled(estimating)
+            if let addError {
+                Text(LocalizedStringKey(addError))
+                    .font(Typography.data(13))
+                    .foregroundStyle(Palette.amber)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            HStack(spacing: 8) {
+                Button {
+                    Task { await estimateFood() }
+                } label: {
+                    Text(estimating ? "Working out the portion…" : "Add")
+                        .font(Typography.data(15, weight: .semibold))
+                        .foregroundStyle(Palette.onEmber)
+                        .frame(maxWidth: .infinity, minHeight: 46)
+                        .background(Palette.amber, in: Capsule())
+                }
+                .buttonStyle(PressableCard())
+                .disabled(estimating || addText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .opacity(addText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.5 : 1)
+                if !draft.items.isEmpty {
+                    Button("Cancel") {
+                        withAnimation(Motion.settle) { closeAdd() }
+                    }
+                    .font(Typography.data(14, weight: .regular))
+                    .foregroundStyle(Palette.inkSoft)
+                    .frame(minHeight: 46)
+                    .padding(.horizontal, 8)
+                    .disabled(estimating)
+                }
+            }
+            Button("Enter the numbers myself") {
+                let item = SavedMealDraft.Item()
+                withAnimation(Motion.settle) {
+                    draft.items.append(item)
+                    editingItem = item.id
+                    closeAdd()
+                }
+            }
+            .font(Typography.data(13, weight: .regular))
+            .foregroundStyle(Palette.inkSoft)
+            .frame(minHeight: 44)
+            .buttonStyle(.plain)
+        }
+        .padding(14)
+        .glass(radius: 22)
+    }
+
+    private func closeAdd() {
+        addingFood = false
+        addText = ""
+        addError = nil
+        addFocused = false
+    }
+
+    private func estimateFood() async {
+        let text = addText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty, !estimating else { return }
+        estimating = true
+        addError = nil
+        defer { estimating = false }
+        do {
+            let response: FoodEstimateResponse = try await env.api.post("/api/foods/estimate", FoodEstimateRequest(text: text))
+            let room = max(0, 20 - draft.items.count)
+            let added = response.items.prefix(room).map { food in
+                SavedMealDraft.Item(
+                    name: food.name,
+                    quantity: food.quantity,
+                    kcal: String(food.kcal),
+                    proteinG: SavedMealDraft.Item.numberPublic(food.proteinG),
+                    carbsG: SavedMealDraft.Item.numberPublic(food.carbsG),
+                    fatG: SavedMealDraft.Item.numberPublic(food.fatG)
+                )
+            }
+            guard !added.isEmpty else {
+                addError = L10n("I couldn’t work that out. Try another word, or enter the numbers yourself.")
+                return
+            }
+            withAnimation(Motion.settle) {
+                draft.items.append(contentsOf: added)
+                if draft.name.trimmingCharacters(in: .whitespaces).isEmpty, let first = added.first {
+                    draft.name = first.name
+                }
+                closeAdd()
+            }
+            Haptics.landed()
+        } catch {
+            addError = UserFacingError.message(for: error, fallback: L10n("I couldn’t work that out. Try another word, or enter the numbers yourself."))
+        }
+    }
+
+    // MARK: Remove
+
+    private var removePopup: some View {
+        ZStack {
+            Palette.scrim
+                .ignoresSafeArea()
+                .onTapGesture { if !removing { confirmingDelete = false } }
+            VStack(alignment: .leading, spacing: 12) {
+                Image(systemName: "trash")
+                    .font(.system(size: 18, weight: .regular))
+                    .foregroundStyle(Palette.danger)
+                    .frame(width: 44, height: 44)
+                    .background(Palette.danger.opacity(0.12), in: Circle())
+                Text("Remove this plate?")
+                    .font(Typography.data(20, weight: .medium))
+                    .foregroundStyle(Palette.ink)
+                Text("It won’t show in Your usuals. Meals you already logged stay.")
+                    .font(Typography.data(14, weight: .regular))
+                    .foregroundStyle(Palette.inkSoft)
+                    .lineSpacing(3)
+                    .fixedSize(horizontal: false, vertical: true)
+                HStack(spacing: 10) {
+                    ActionButton(title: "Keep it", kind: .secondary) { confirmingDelete = false }
+                        .disabled(removing)
+                    Button {
+                        Task {
+                            removing = true
+                            defer { removing = false }
+                            if await onDelete?() == true { dismiss() } else { confirmingDelete = false }
+                        }
+                    } label: {
+                        BusyLabel(title: removing ? "Removing" : "Remove", busy: removing, tint: .white)
+                            .font(Typography.data(15, weight: .medium))
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity, minHeight: 50)
+                            .background(Color(hex: 0xDC2626), in: Capsule())
+                    }
+                    .buttonStyle(PressableCard())
+                    .disabled(removing)
+                }
+                .padding(.top, 6)
+            }
+            .padding(22)
+            .frame(maxWidth: 340, alignment: .leading)
+            .background(Palette.sheet, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous).strokeBorder(Palette.hairline))
+            .elevation(.lifted)
+            .padding(.horizontal, Space.gutter)
+        }
+        .accessibilityAddTraits(.isModal)
     }
 
     // MARK: Ring

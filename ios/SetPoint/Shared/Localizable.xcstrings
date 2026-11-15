@@ -8941,6 +8941,46 @@
         }
       }
     },
+    "What’s on it? e.g. 2 eggs": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מה יש בו? למשל 2 ביצים"
+          }
+        }
+      }
+    },
+    "Remove this plate?": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "להסיר את המנה?"
+          }
+        }
+      }
+    },
+    "It won’t show in Your usuals. Meals you already logged stay.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "היא לא תופיע ב״המנות הקבועות שלך״. ארוחות שכבר רשמת נשארות."
+          }
+        }
+      }
+    },
+    "Removing": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מסיר"
+          }
+        }
+      }
+    },
     "Check in now": {
       "localizations": {
         "he": {
