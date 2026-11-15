@@ -1,5 +1,15 @@
+import Observation
 import SwiftUI
 import WidgetKit
+
+/// Bumped when the language changes. `AppLanguage.current` reads it, so every view that
+/// reads the language (directly or through `L10n`) redraws in place — no rebuilding the
+/// app from the top, which used to throw you back to Home.
+@Observable
+final class AppLanguageState {
+    static let shared = AppLanguageState()
+    var revision = 0
+}
 
 /// In-app language. English and Hebrew — the two catalogs we ship.
 enum AppLanguage: String, CaseIterable, Identifiable {
@@ -16,10 +26,12 @@ enum AppLanguage: String, CaseIterable, Identifiable {
         Locale.current.language.languageCode?.identifier == "he" ? .he : .en
     }
 
+    /// The language's name, written in the language the app is showing.
     var title: String {
+        let inHebrew = AppLanguage.current == .he
         switch self {
-        case .en: return "אנגלית"
-        case .he: return "עברית"
+        case .en: return inHebrew ? "אנגלית" : "English"
+        case .he: return inHebrew ? "עברית" : "Hebrew"
         }
     }
 
@@ -53,6 +65,7 @@ enum AppLanguage: String, CaseIterable, Identifiable {
     /// What the settings control last wrote. `String(localized:)` ignores the
     /// SwiftUI locale environment — use `L10n` so copy follows this, not the phone.
     static var current: AppLanguage {
+        _ = AppLanguageState.shared.revision
         guard FeatureFlags.storedIsOn(.appLanguage) else { return localeDefault }
         return UserDefaults.standard.string(forKey: storageKey).flatMap(AppLanguage.init(rawValue:)) ?? localeDefault
     }

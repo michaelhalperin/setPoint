@@ -9,8 +9,8 @@ struct RootView: View {
         ZStack {
             Palette.background.ignoresSafeArea()
 
-            // `L10n` reads the stored language outside the view tree, so a
-            // switch rebuilds the screens (`id`) for every string to be read again.
+            // `L10n` reads the stored language outside the view tree; `AppLanguage.current`
+            // tracks `AppLanguageState`, so a switch redraws the screens in place.
             Group {
                 #if DEBUG
                 if let stub = DebugPreviewStub.fromLaunchArguments() {
@@ -22,15 +22,15 @@ struct RootView: View {
                 authedContent
                 #endif
             }
-            .id(language)
         }
         .modifier(HintCopyReader())
         .modifier(AppLanguageReader())
         .onChange(of: language) { _, _ in
+            AppLanguageState.shared.revision += 1
             // Notification action buttons are registered with the language of the moment.
             PushManager.shared.registerCategories()
             AppLanguage.publishToExtensions()
-            syncLanguage()
+            syncLanguage(refresh: true)
         }
         .onChange(of: env.auth.status) { _, _ in syncLanguage() }
         .animation(Motion.adaptive(Motion.gentle, reduceMotion: reduceMotion), value: env.auth.status)
@@ -46,11 +46,15 @@ struct RootView: View {
     }
 
     /// Tells the server the language, so notifications and the manager's lines match the app.
-    private func syncLanguage() {
+    /// `refresh`: the language just changed, so reload what the server words (Today, Train).
+    private func syncLanguage(refresh: Bool = false) {
         guard case .signedIn = env.auth.status else { return }
         struct Body: Encodable { let language: String }
         let language = AppLanguage.current.rawValue
-        Task { try? await env.api.put("/api/language", Body(language: language)) }
+        Task {
+            try? await env.api.put("/api/language", Body(language: language))
+            if refresh { env.changes.mealsChanged() }
+        }
     }
 
     @ViewBuilder
