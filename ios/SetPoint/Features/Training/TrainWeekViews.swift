@@ -923,10 +923,14 @@ struct TrainRestCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Headline("Rest day.", tail: "Normal food — rest is when you build back up.", size: 22)
-            if !day.isPast {
-                TrainPlanPill(title: day.isToday ? L10n("Plan a session today") : L10n("Plan a session on \(day.date.formatted(.dateTime.weekday(.wide).locale(AppLanguage.current.locale)))"), action: onPlan)
-            } else if day.canAdd {
+            HStack(alignment: .top, spacing: 12) {
+                Headline("Rest day.", tail: "Normal food — rest is when you build back up.", size: 22)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                if !day.isPast {
+                    TrainPlanPill(title: day.isToday ? L10n("Plan a session today") : L10n("Plan a session on \(day.date.formatted(.dateTime.weekday(.wide).locale(AppLanguage.current.locale)))"), action: onPlan)
+                }
+            }
+            if day.isPast, day.canAdd {
                 Button(L10n("Trained without your watch? Add it."), action: onPlan)
                     .font(Typography.data(13, weight: .medium))
                     .foregroundStyle(Palette.hazeSoft)
