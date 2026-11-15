@@ -12,7 +12,7 @@ struct GoalStep: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Space.md) {
-            StepTitle(label: "Goal", text: "What are we building?", tail: "Pick one.")
+            StepTitle(label: "Goal", text: "What are you", tail: "training for?")
             VStack(spacing: 10) {
                 ForEach(Array(Goal.allCases.enumerated()), id: \.element) { index, goal in
                     OptionRow(
@@ -23,12 +23,6 @@ struct GoalStep: View {
                     ) { choose(goal) }
                     .appearIn(1 + index, rise: 14)
                 }
-            }
-            // Gain or cut: the target slides in under the choice.
-            if model.draft.goal?.hasWeightTarget == true {
-                TargetCard(model: model)
-                    .id(model.draft.goal)
-                    .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
         .animation(Motion.settle, value: model.draft.goal)
@@ -53,6 +47,92 @@ struct GoalStep: View {
     }
 }
 
+// MARK: - Apple Health
+
+/// Offers Apple Health before anything is typed: it fills height, weight and age,
+/// and tells Smart from Basic mode by whether heart data is really there.
+struct HealthStep: View {
+    @Bindable var model: OnboardingViewModel
+    @Environment(AppEnvironment.self) private var env
+    @State private var connecting = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Space.md) {
+            Image(systemName: "heart.fill")
+                .font(.system(size: 28, weight: .medium))
+                .foregroundStyle(.white)
+                .frame(width: 64, height: 64)
+                .background(LinearGradient(colors: [Color(hex: 0xFF5E7E), Color(hex: 0xFF2D55)], startPoint: .topLeading, endPoint: .bottomTrailing), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .shadow(color: Color(hex: 0xFF2D55, opacity: 0.35), radius: 20)
+                .appearIn(0, rise: 12)
+                .accessibilityHidden(true)
+
+            Headline("Connect", tail: "Apple Health.", size: 40)
+                .appearIn(1, rise: 16)
+
+            VStack(spacing: 10) {
+                row("ruler", "Height and weight")
+                row("waveform.path.ecg", "Heart-rate variability")
+                row("heart", "Resting heart rate")
+            }
+            .appearIn(2, rise: 14)
+
+            HStack(spacing: 8) {
+                Image(systemName: "lock").font(.system(size: 12, weight: .medium))
+                Text("Read-only. Stays on your phone.")
+            }
+            .font(Typography.data(13, weight: .regular))
+            .foregroundStyle(Palette.inkSoft)
+            .appearIn(3)
+
+            VStack(spacing: 4) {
+                ActionButton(title: "Connect Health", busy: connecting, busyTitle: "One moment") { connect() }
+                    .disabled(!env.health.isAvailable)
+                Button("Enter it myself") { model.advance() }
+                    .font(Typography.data(14, weight: .regular))
+                    .foregroundStyle(Palette.inkSoft)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .disabled(connecting)
+            }
+            .padding(.top, Space.sm)
+            .appearIn(4, rise: 14)
+        }
+    }
+
+    private func row(_ symbol: String, _ title: String) -> some View {
+        HStack(spacing: 14) {
+            Image(systemName: symbol)
+                .font(.system(size: 16, weight: .regular))
+                .foregroundStyle(Palette.amber)
+                .frame(width: 36, height: 36)
+                .background(Palette.amber.opacity(0.10), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            Text(LocalizedStringKey(title))
+                .font(Typography.data(16, weight: .regular))
+                .foregroundStyle(Palette.ink)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 18)
+        .frame(height: 60)
+        .glass(radius: 18)
+    }
+
+    private func connect() {
+        guard !connecting else { return }
+        connecting = true
+        Task {
+            let state = await env.health.connect()
+            if state == .connected {
+                let profile = await env.health.readProfile()
+                model.draft.apply(profile)
+                model.draft.hasWearable = env.health.hasHeartData
+                if profile != HealthProfile() { Haptics.landed() }
+            }
+            connecting = false
+            model.advance()
+        }
+    }
+}
+
 // MARK: - About you
 
 struct AboutStep: View {
@@ -60,18 +140,11 @@ struct AboutStep: View {
     @Environment(AppEnvironment.self) private var env
     @AppStorage(MassUnit.storageKey) private var massUnit = MassUnit.localeDefault
 
-    enum HealthFill: Equatable { case idle, reading, filled, empty }
-
-    @State private var health: HealthFill = .idle
     @State private var editingBirthday = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: Space.md) {
-            StepTitle(label: "About you", text: "A bit about you.", tail: "It sets your numbers.")
-
-            if env.health.isAvailable {
-                healthRow.appearIn(1, rise: 14)
-            }
+            StepTitle(label: "About you", text: "About", tail: "you.")
 
             GlassList {
                 StepperRow(
@@ -107,17 +180,6 @@ struct AboutStep: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                ListDivider()
-                StepperRow(
-                    name: "Activity",
-                    note: model.draft.activityLevel.blurb,
-                    value: model.draft.activityLevel.title,
-                    valueWidth: 86,
-                    canDown: model.draft.activityLevel != ActivityLevel.allCases.first,
-                    canUp: model.draft.activityLevel != ActivityLevel.allCases.last,
-                    onDown: { stepActivity(-1) },
-                    onUp: { stepActivity(1) }
-                )
             }
             .appearIn(2, rise: 14)
 
@@ -137,7 +199,6 @@ struct AboutStep: View {
                     .foregroundStyle(Palette.danger)
             }
         }
-        .animation(Motion.settle, value: health)
         .sheet(isPresented: $editingBirthday) {
             VStack(spacing: Space.md) {
                 Text("Birthday").sectionLabelStyle()
@@ -151,71 +212,6 @@ struct AboutStep: View {
             .presentationDragIndicator(.visible)
             .presentationBackground(Palette.sheet)
             .presentationCornerRadius(32)
-        }
-    }
-
-    // MARK: Apple Health
-
-    private var healthRow: some View {
-        HStack(spacing: 14) {
-            Image(systemName: "heart.fill")
-                .font(.system(size: 18, weight: .medium))
-                .foregroundStyle(Color(hex: 0xFF3B5C))
-                .frame(width: 44, height: 44)
-                .background(Palette.ink, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-            VStack(alignment: .leading, spacing: 3) {
-                Text("Apple Health")
-                    .font(Typography.data(15, weight: .medium))
-                    .foregroundStyle(Palette.ink)
-                Text(healthDetail)
-                    .font(Typography.data(13, weight: .regular))
-                    .foregroundStyle(Palette.inkSoft)
-            }
-            Spacer(minLength: 8)
-            Button(action: fillFromHealth) {
-                Group {
-                    if health == .reading {
-                        BusyDots(tint: Palette.onBone)
-                    } else {
-                        Text(health == .filled ? "Filled" : "Fill in")
-                    }
-                }
-                .font(Typography.data(13, weight: .medium))
-                .foregroundStyle(health == .filled ? Palette.ink : Palette.onBone)
-                .padding(.horizontal, 14)
-                .frame(height: 34)
-                .background(Capsule().fill(health == .filled ? Color.white.opacity(0.08) : Palette.ink))
-            }
-            .buttonStyle(PressableCard())
-            .disabled(health == .reading || health == .filled)
-        }
-        .padding(16)
-        .glass(radius: 22)
-    }
-
-    private var healthDetail: String {
-        switch health {
-        case .idle, .reading: return L10n( "Height, weight and age in one tap")
-        case .filled: return L10n( "Check the numbers below")
-        case .empty: return L10n( "Nothing there yet — set them below")
-        }
-    }
-
-    /// Connect Health, prefill what it knows, and let the heart-rate probe pick
-    /// Smart vs Basic mode from a real device rather than a toggle (§1).
-    private func fillFromHealth() {
-        health = .reading
-        Task {
-            let state = await env.health.connect()
-            guard state == .connected else {
-                health = .idle
-                return
-            }
-            let profile = await env.health.readProfile()
-            withAnimation(Motion.settle) { model.draft.apply(profile) }
-            model.draft.hasWearable = env.health.hasHeartData
-            health = profile == HealthProfile() ? .empty : .filled
-            if health == .filled { Haptics.landed() }
         }
     }
 
@@ -235,13 +231,6 @@ struct AboutStep: View {
         }
     }
 
-    private func stepActivity(_ delta: Int) {
-        let all = ActivityLevel.allCases
-        guard let index = all.firstIndex(of: model.draft.activityLevel) else { return }
-        let next = min(all.count - 1, max(0, index + delta))
-        withAnimation(Motion.settle) { model.draft.activityLevel = all[next] }
-    }
-
     private var latestBirthDate: Date {
         Calendar.current.date(byAdding: .year, value: -OnboardingDraft.minimumAge, to: .now) ?? .now
     }
@@ -251,7 +240,7 @@ struct AboutStep: View {
 
 /// Target weight, pace and timeframe — shown on the goal screen for a gain or
 /// a cut. Maintain has no target.
-private struct TargetCard: View {
+struct TargetCard: View {
     @Bindable var model: OnboardingViewModel
     @AppStorage(MassUnit.storageKey) private var massUnit = MassUnit.localeDefault
 
@@ -372,6 +361,65 @@ private struct TargetCard: View {
     }
 }
 
+struct TargetStep: View {
+    @Bindable var model: OnboardingViewModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Space.md) {
+            StepTitle(label: "Target", text: "What’s your", tail: "target?")
+            TargetCard(model: model)
+                .id(model.draft.goal)
+                .appearIn(1, rise: 14)
+        }
+    }
+}
+
+// MARK: - Appetite
+
+struct AppetiteStep: View {
+    @Bindable var model: OnboardingViewModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Space.md) {
+            StepTitle(label: "Appetite", text: "How hungry are you,", tail: "most days?", size: 32)
+            VStack(spacing: 10) {
+                ForEach(Array(AppetiteChoice.allCases.enumerated()), id: \.element) { index, choice in
+                    OptionRow(title: choice.title, selected: model.draft.appetite == choice) {
+                        withAnimation(Motion.settle) { model.draft.appetite = choice }
+                    }
+                    .appearIn(1 + index, rise: 14)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Training
+
+struct TrainingStep: View {
+    @Bindable var model: OnboardingViewModel
+
+    private let options: [(level: ActivityLevel, title: String)] = [
+        (.light, "1–3 days"),
+        (.moderate, "4–5 days"),
+        (.active, "6–7 days"),
+    ]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Space.md) {
+            StepTitle(label: "Training", text: "How often do", tail: "you train?")
+            VStack(spacing: 10) {
+                ForEach(Array(options.enumerated()), id: \.element.level) { index, option in
+                    OptionRow(title: option.title, selected: model.draft.activityLevel == option.level) {
+                        withAnimation(Motion.settle) { model.draft.activityLevel = option.level }
+                    }
+                    .appearIn(1 + index, rise: 14)
+                }
+            }
+        }
+    }
+}
+
 // MARK: - Meal times
 
 /// Breakfast, lunch and dinner as ± rows (15-minute steps), each with the time
@@ -382,7 +430,7 @@ struct RhythmStep: View {
     var body: some View {
         let d = model.draft
         VStack(alignment: .leading, spacing: Space.md) {
-            StepTitle(label: "Meal times", text: "When do you eat?", tail: "I watch these times.")
+            StepTitle(label: "Meal times", text: "When do you", tail: "eat?")
 
             GlassList {
                 row("Breakfast", d.breakfastMin, range: 300 ... d.lunchMin - 60) { model.draft.breakfastMin = $0 }
@@ -446,7 +494,7 @@ struct RestrictionsStep: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Space.md) {
-            StepTitle(label: "Foods", text: "Anything I should never suggest?", tail: "Hard rule.", size: 32)
+            StepTitle(label: "Foods", text: "Anything off", tail: "the menu?")
 
             FlowChips(options: common, selected: $model.draft.restrictions)
                 .appearIn(1, rise: 14)

@@ -9,7 +9,11 @@ struct OnboardingFlow: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        screenBody.trackScreen("onboarding")
+        screenBody
+            .onAppear {
+                // Before sign-in there is no account to send this to.
+                if env.auth.hasToken { Analytics.screen("onboarding", api: env.api) }
+            }
     }
 
     @ViewBuilder
@@ -31,8 +35,23 @@ struct OnboardingFlow: View {
     @ViewBuilder
     private var content: some View {
         switch model.step {
+        case .building:
+            BuildingStep(model: model)
+                .padding(.horizontal, Space.gutter)
+                .padding(.top, Space.lg)
+                .padding(.bottom, Space.xs)
+        case .reveal:
+            RevealStep(model: model)
+                .padding(.horizontal, Space.gutter)
+                .padding(.top, Space.lg)
+                .padding(.bottom, Space.xs)
         case .reach:
             ReachStep(model: model)
+                .padding(.horizontal, Space.gutter)
+                .padding(.top, Space.lg)
+                .padding(.bottom, Space.xs)
+        case .save:
+            SaveStep(model: model)
                 .padding(.horizontal, Space.gutter)
                 .padding(.top, Space.lg)
                 .padding(.bottom, Space.xs)
@@ -68,11 +87,15 @@ struct OnboardingFlow: View {
     private var stepView: some View {
         switch model.step {
         case .goal: GoalStep(model: model)
+        case .health: HealthStep(model: model)
         case .about: AboutStep(model: model)
+        case .target: TargetStep(model: model)
+        case .appetite: AppetiteStep(model: model)
+        case .training: TrainingStep(model: model)
         case .rhythm: RhythmStep(model: model)
         case .restrictions: RestrictionsStep(model: model)
         case .safety: SafetyStep(model: model)
-        case .reach, .covered: EmptyView()
+        case .building, .reveal, .reach, .save, .covered: EmptyView()
         }
     }
 
@@ -116,8 +139,8 @@ struct OnboardingFlow: View {
                     .foregroundStyle(Palette.danger)
                     .transition(.opacity)
             }
-            // Safety builds the plan from its last answer — no button.
-            if model.step != .safety {
+            // Safety moves on from its last answer, and Health brings its own buttons.
+            if model.step != .safety, model.step != .health {
                 ActionButton(title: "Continue") { model.advance() }
                     .disabled(!model.canAdvance)
             }

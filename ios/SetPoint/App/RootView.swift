@@ -63,7 +63,7 @@ struct RootView: View {
                 SignInSkeletonView()
             }
         case .signedOut:
-            WelcomeView()
+            SignedOutIntro()
         case let .signedIn(userId):
             MainTabView()
                 .id(userId)
@@ -92,6 +92,7 @@ enum DebugPreviewStub {
     case home(HomeResponse)
     case homeModel(HomeViewModel)
     case welcome
+    case intro(Int)
     case invite
     case onboarding(OnboardingViewModel.Step)
     case prescription
@@ -156,7 +157,9 @@ enum DebugPreviewStub {
         case .invite:
             InviteCodeView()
         case .welcome:
-            WelcomeView()
+            WelcomeView(onStart: {})
+        case let .intro(page):
+            SignedOutIntro(startPage: page)
         case let .onboarding(step):
             OnboardingFlow(model: .previewed(at: step))
                 .background(Palette.background)
@@ -319,13 +322,25 @@ enum DebugPreviewStub {
         case "home-light": return .home(.sampleLightCheckIn)
         case "home-close": return .home(.sampleClose)
         case "welcome", "welcome-notice", "welcome-plan", "welcome-quiet": return .welcome
+        case "intro-gap": return .intro(1)
+        case "intro-plates": return .intro(2)
+        case "intro-nudge": return .intro(3)
+        case "intro-topup": return .intro(4)
+        case "intro-close": return .intro(5)
         case "invite": return .invite
-        case "onboarding-goal", "onboarding-target": return .onboarding(.goal)
-        case "onboarding", "onboarding-about": return .onboarding(.about)
+        case "onboarding", "onboarding-goal": return .onboarding(.goal)
+        case "onboarding-health": return .onboarding(.health)
+        case "onboarding-about": return .onboarding(.about)
+        case "onboarding-target": return .onboarding(.target)
+        case "onboarding-appetite": return .onboarding(.appetite)
+        case "onboarding-training": return .onboarding(.training)
         case "onboarding-rhythm": return .onboarding(.rhythm)
         case "onboarding-restrictions": return .onboarding(.restrictions)
         case "onboarding-safety": return .onboarding(.safety)
+        case "onboarding-building": return .onboarding(.building)
+        case "onboarding-reveal": return .onboarding(.reveal)
         case "onboarding-reach": return .onboarding(.reach)
+        case "onboarding-save": return .onboarding(.save)
         case "onboarding-covered", "onboarding-outcome": return .onboarding(.covered)
         case "prescription": return .prescription
         case "conversation": return .conversation(resolved: false)

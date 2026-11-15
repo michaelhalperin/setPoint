@@ -31,6 +31,40 @@ enum HealthyWeight {
     }
 }
 
+/// The appetite question, and what each answer sets in the appetite settings.
+enum AppetiteChoice: String, Codable, CaseIterable, Identifiable {
+    case forgets, fullFast, chore, varies
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .forgets: return L10n("I eat fine, I just forget")
+        case .fullFast: return L10n("I get full fast")
+        case .chore: return L10n("Food feels like a chore")
+        case .varies: return L10n("It changes day to day")
+        }
+    }
+
+    var mode: String {
+        switch self {
+        case .fullFast, .chore: return "SMALL_FREQUENT"
+        case .forgets, .varies: return "NORMAL"
+        }
+    }
+    var drinkableOk: Bool { self == .chore || self == .fullFast }
+    var askDaily: Bool { self == .varies }
+    /// Small plates, five a day.
+    var smallPlates: Bool { mode == "SMALL_FREQUENT" }
+}
+
+/// A rough plan, worked out on the phone for the reveal. The server's own
+/// number replaces it once the account exists; it uses the same formula.
+struct PlanEstimate {
+    let dailyKcal: Int
+    let proteinG: Int
+}
+
 struct OnboardingDraft: Codable {
     var goal: Goal?
     var sex: Sex = .unspecified
@@ -52,6 +86,9 @@ struct OnboardingDraft: Codable {
     var quietStartMin = 1380  // 23:00
     var quietEndMin = 420     // 07:00
 
+    /// How appetite behaves — sets plate size, drinks and the morning ask once the account exists.
+    var appetite: AppetiteChoice?
+
     var restrictions: [String] = []
     var restrictionsFreeText = ""
     /// nil until the first safety card is answered.
@@ -71,6 +108,43 @@ struct OnboardingDraft: Codable {
     }
 
     var isOldEnough: Bool { age >= OnboardingDraft.minimumAge }
+
+    /// SCOFF "yes" answers so far.
+    var scoffYesCount: Int {
+        [scoff.makeSelfSick, scoff.lostControl, scoff.lostOneStone, scoff.believesFat, scoff.foodDominates]
+            .filter { $0 == true }.count
+    }
+
+    /// Mirrors the server's safety rule: a medical condition, or two or more SCOFF yeses, turns check-ins off.
+    var checkInsLikelyOff: Bool {
+        medicalSupervisionRequired == true || scoffYesCount >= 2
+    }
+
+    /// Mifflin–St Jeor × activity, plus the goal's daily surplus or deficit (the server's formula).
+    func estimatedPlan(paceKgPerWeek: Double) -> PlanEstimate? {
+        guard let heightCm, let weightKg else { return nil }
+        let base = 10 * weightKg + 6.25 * heightCm - 5 * Double(age)
+        let sexOffset: Double = sex == .male ? 5 : (sex == .female ? -161 : -78)
+        let factor: Double
+        switch activityLevel {
+        case .sedentary: factor = 1.2
+        case .light: factor = 1.375
+        case .moderate: factor = 1.55
+        case .active: factor = 1.725
+        case .veryActive: factor = 1.9
+        }
+        let resolvedGoal = goal ?? .bulk
+        let perDay = (abs(paceKgPerWeek) * 7700 / 7).rounded()
+        let delta: Double = resolvedGoal == .maintain ? 0 : (resolvedGoal == .bulk ? perDay : -perDay)
+        let kcal = max(1200, Int((((base + sexOffset) * factor + delta) / 10).rounded()) * 10)
+        let protein: Double
+        switch resolvedGoal {
+        case .bulk: protein = 1.8
+        case .diet: protein = 2.0
+        case .maintain: protein = 1.6
+        }
+        return PlanEstimate(dailyKcal: kcal, proteinG: Int((weightKg * protein).rounded()))
+    }
 
     static let minimumAge = 16
 
@@ -167,12 +241,19 @@ final class OnboardingViewModel {
     /// Setup after sign-in (the pitch lives in `WelcomeView`, before it). One
     /// decision per screen; `safety` submits, `reach` and `covered` come after.
     enum Step: Int, CaseIterable {
-        /// Body stats come first so the goal screen can set a target against them.
-        case about, goal, rhythm, restrictions, safety
-        case reach, covered
+        /// Questions first, then the plan, then the account: nothing is asked of
+        /// the person before they have seen what they get.
+        case goal, health, about, target, appetite, training, rhythm, restrictions, safety
+        case building, reveal, reach, save, covered
     }
 
-    var step: Step = .about
+    var step: Step = .goal
+    /// Set while the questions run before the story is done with — Back from the
+    /// first question returns to it.
+    var backToStory: (() -> Void)?
+    /// Whether the account exists. Set by the flow; the last step signs in, or
+    /// (already signed in) goes straight to saving the plan.
+    var signedIn = false
     var draft = OnboardingDraft()
     /// Which safety card is in front.
     var safetyIndex = 0
@@ -205,7 +286,16 @@ final class OnboardingViewModel {
 
     /// The steps counted in the setup header.
     var progressSteps: [Step] {
-        [.about, .goal, .rhythm, .restrictions, .safety]
+        let all: [Step] = [.goal, .health, .about, .target, .appetite, .training, .rhythm, .restrictions, .safety]
+        return draft.goal == .maintain ? all.filter { $0 != .target } : all
+    }
+
+    /// The reveal and the notification ask only make sense when check-ins will run.
+    var showsPlanAndReach: Bool { !draft.checkInsLikelyOff }
+
+    /// The estimate behind the reveal.
+    var estimate: PlanEstimate? {
+        draft.estimatedPlan(paceKgPerWeek: resolvedPace.paceKgPerWeek)
     }
 
     /// 0...1 — how full the ring is once the current step is done.
@@ -329,33 +419,73 @@ final class OnboardingViewModel {
     var canGoBack: Bool {
         guard !submitting else { return false }
         switch step {
-        case .about, .reach, .covered: return false
+        case .goal: return backToStory != nil
+        case .building, .covered: return false
         default: return true
         }
     }
 
     var canAdvance: Bool {
         switch step {
+        case .goal: return draft.goal != nil
+        case .health: return true
         case .about: return draft.heightCm != nil && draft.weightKg != nil && draft.isOldEnough
-        // A gain or cut needs a valid target; Maintain has none to set.
-        case .goal: return targetWeightIsValid
+        case .target: return targetWeightIsValid
+        case .appetite: return draft.appetite != nil
+        case .training: return true
         case .rhythm: return draft.mealRhythmPreset != .custom || mealAnchorsAreValid
         case .restrictions: return true
         case .safety: return safetyComplete && !submitting
-        case .reach, .covered: return true
+        case .building, .reveal, .reach, .save, .covered: return true
+        }
+    }
+
+    /// The step after this one, skipping what doesn't apply.
+    private func nextStep(after current: Step) -> Step {
+        switch current {
+        case .goal: return .health
+        case .health: return .about
+        case .about: return draft.goal?.hasWeightTarget == true ? .target : .appetite
+        case .target: return .appetite
+        case .appetite: return .training
+        case .training: return .rhythm
+        case .rhythm: return .restrictions
+        case .restrictions: return .safety
+        case .safety: return .building
+        case .building: return showsPlanAndReach ? .reveal : .save
+        case .reveal: return asksForNotifications ? .reach : .save
+        case .reach: return .save
+        case .save, .covered: return .covered
+        }
+    }
+
+    private func previousStep(before current: Step) -> Step? {
+        switch current {
+        case .goal: return nil
+        case .health: return .goal
+        case .about: return .health
+        case .target: return .about
+        case .appetite: return draft.goal?.hasWeightTarget == true ? .target : .about
+        case .training: return .appetite
+        case .rhythm: return .training
+        case .restrictions: return .rhythm
+        case .safety: return .restrictions
+        case .building: return nil
+        case .reveal: return .safety
+        case .reach: return .reveal
+        case .save: return showsPlanAndReach ? (asksForNotifications ? .reach : .reveal) : .safety
+        case .covered: return nil
         }
     }
 
     func advance() {
         switch step {
-        case .safety:
-            Task { await submit() }
-        case .reach:
-            step = .covered
+        case .save:
+            break // the account button moves on
         case .covered:
             onComplete()
         default:
-            if let nextStep = Step(rawValue: step.rawValue + 1) { step = nextStep }
+            step = nextStep(after: step)
             saveProgress()
         }
     }
@@ -366,7 +496,13 @@ final class OnboardingViewModel {
             saveProgress()
             return
         }
-        if let prevStep = Step(rawValue: step.rawValue - 1) { step = prevStep }
+        if step == .goal {
+            backToStory?()
+            return
+        }
+        guard let previous = previousStep(before: step) else { return }
+        if previous == .safety { safetyIndex = SafetyQuestion.allCases.count - 1 }
+        step = previous
         saveProgress()
     }
 
@@ -399,13 +535,17 @@ final class OnboardingViewModel {
         }
     }
 
-    /// Where a saved plan goes next: straight to the payoff in quiet mode (no
-    /// check-ins to deliver) or when notifications are already decided.
+    /// Where a saved plan goes after the server answers: the quiet screen when
+    /// check-ins are off for this person, otherwise the app opens.
     func stepAfterSubmit(_ response: OnboardingResponse) -> Step {
-        response.enforcementDisabledReason == nil && asksForNotifications ? .reach : .covered
+        response.enforcementDisabledReason == nil ? .save : .covered
     }
 
-    private func submit() async {
+    /// True once the plan is saved and the app can open.
+    var planSaved = false
+
+    /// Saves the plan to the new account. Safe to call again after a failure.
+    func submit() async {
         // Every safety answer is required — never submit a missing one as "no".
         guard !submitting, safetyComplete else { return }
         submitting = true
@@ -415,6 +555,7 @@ final class OnboardingViewModel {
         if previewOnly {
             let response = OnboardingResponse.preview
             result = response
+            planSaved = response.enforcementDisabledReason == nil
             step = stepAfterSubmit(response)
             return
         }
@@ -422,8 +563,16 @@ final class OnboardingViewModel {
         do {
             let response: OnboardingResponse = try await api.post("/api/onboarding", draft.toRequest())
             result = response
-            step = stepAfterSubmit(response)
+            if let appetite = draft.appetite {
+                // Best effort: the plan is saved either way, and Appetite in Settings can change it.
+                _ = try? await api.patch(
+                    "/api/settings",
+                    SettingsPatch(appetite: .init(mode: appetite.mode, drinkableOk: appetite.drinkableOk, askDaily: appetite.askDaily))
+                )
+            }
             progressStore.map(Self.clearProgress)
+            planSaved = response.enforcementDisabledReason == nil
+            step = stepAfterSubmit(response)
         } catch {
             self.error = UserFacingError.message(for: error, fallback: L10n( "Couldn't save. Try again."))
             saveProgress()
@@ -433,22 +582,27 @@ final class OnboardingViewModel {
     // MARK: Saved progress
 
     private struct Progress: Codable {
-        static let version = 3
+        static let version = 4
         var version = Progress.version
         var step: Int
         var safetyIndex: Int
         var draft: OnboardingDraft
     }
 
-    private static let progressKey = "com.setpoint.app.onboarding.progress"
+    static let progressKey = "com.setpoint.app.onboarding.progress"
 
     /// Everything answered so far — goal, body, target, meal times, quiet
     /// hours, restrictions and safety answers — so a relaunch resumes exactly.
     private func saveProgress() {
-        guard let progressStore, step != .reach, step != .covered else { return }
+        guard let progressStore, step != .covered else { return }
         let progress = Progress(step: step.rawValue, safetyIndex: safetyIndex, draft: draft)
         guard let data = try? JSONEncoder().encode(progress) else { return }
         progressStore.set(data, forKey: Self.progressKey)
+    }
+
+    /// Whether a previous run left answers behind (the intro skips the story then).
+    var hasSavedAnswers: Bool {
+        draft.goal != nil || step != .goal
     }
 
     private func restoreProgress() {
@@ -458,17 +612,22 @@ final class OnboardingViewModel {
               saved.version == Progress.version
         else { return }
         draft = saved.draft
+        var target = Step(rawValue: saved.step) ?? .goal
+        // Past the questions, resume at the plan (or the account step, if that was reached).
+        if target.rawValue > Step.safety.rawValue { target = saved.step == Step.save.rawValue ? .save : .reveal }
         // Resume at the saved step, but never past one whose answers are missing.
-        let target = Step(rawValue: saved.step) ?? .about
-        step = .about
+        step = .goal
         while step.rawValue < target.rawValue, step.rawValue < Step.safety.rawValue, canAdvance {
-            guard let nextStep = Step(rawValue: step.rawValue + 1) else { break }
-            step = nextStep
+            step = nextStep(after: step)
         }
         if step == .safety {
             // Land on the first unanswered card.
             let firstOpen = SafetyQuestion.allCases.first { safetyAnswer($0) == nil }
             safetyIndex = firstOpen?.rawValue ?? min(saved.safetyIndex, SafetyQuestion.allCases.count - 1)
+        }
+        // Everything answered: carry on to where they were.
+        if step == .safety, safetyComplete, target.rawValue > Step.safety.rawValue {
+            step = target == .save ? .save : (showsPlanAndReach ? .reveal : .save)
         }
     }
 
@@ -487,22 +646,23 @@ final class OnboardingViewModel {
     ) -> OnboardingViewModel {
         let vm = OnboardingViewModel(api: AppEnvironment.preview().api, onComplete: onComplete)
         vm.previewOnly = true
-        if step != .about {
+        if step != .goal {
             vm.draft.goal = .bulk
             vm.draft.heightCm = 178
             vm.draft.weightKg = 74
             vm.draft.targetWeightKg = 80
             vm.draft.pace = .steady
+            vm.draft.appetite = .fullFast
         }
         if step == .safety { vm.safetyIndex = 2 }
-        if step == .reach || step == .covered {
+        if step.rawValue > Step.safety.rawValue {
             vm.draft.medicalSupervisionRequired = false
             vm.draft.scoff = ScoffAnswers(
                 makeSelfSick: false, lostControl: false, lostOneStone: false,
                 believesFat: false, foodDominates: false
             )
-            vm.result = .preview
         }
+        if step == .covered { vm.result = .preview }
         vm.step = step
         return vm
     }

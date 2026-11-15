@@ -58,10 +58,15 @@ final class OnboardingTests: XCTestCase {
     }
 
     @MainActor
-    func testSetupStartsAtAboutYouWithNoWayBack() {
+    func testSetupStartsAtTheGoalAndBacksOutToTheStory() {
         let vm = makeModel()
-        XCTAssertEqual(vm.step, .about)
-        XCTAssertFalse(vm.canGoBack) // the pitch lives before sign-in, not behind this
+        XCTAssertEqual(vm.step, .goal)
+        XCTAssertFalse(vm.canGoBack)
+        var backed = false
+        vm.backToStory = { backed = true }
+        XCTAssertTrue(vm.canGoBack)
+        vm.goBack()
+        XCTAssertTrue(backed)
     }
 
     @MainActor
@@ -97,9 +102,9 @@ final class OnboardingTests: XCTestCase {
     }
 
     @MainActor
-    func testGoalWithATargetGatesOnAValidWeight() {
+    func testTargetGatesOnAValidWeight() {
         let vm = makeModel()
-        vm.step = .goal
+        vm.step = .target
         vm.draft.goal = .bulk
         vm.draft.weightKg = 70
         XCTAssertFalse(vm.canAdvance)             // no target yet
@@ -110,24 +115,101 @@ final class OnboardingTests: XCTestCase {
     }
 
     @MainActor
-    func testGoalFollowsAboutAndLeadsToMealTimes() {
+    func testQuestionsRunGoalHealthAboutTargetAppetiteTrainingMealTimes() {
         let vm = makeModel()
-        vm.advance()
-        XCTAssertEqual(vm.step, .goal)
-        vm.advance()
-        XCTAssertEqual(vm.step, .rhythm)
+        vm.draft.goal = .bulk
+        let expected: [OnboardingViewModel.Step] = [.health, .about, .target, .appetite, .training, .rhythm, .restrictions, .safety, .building]
+        for step in expected {
+            vm.advance()
+            XCTAssertEqual(vm.step, step)
+        }
+        vm.step = .rhythm
         vm.goBack()
-        XCTAssertEqual(vm.step, .goal)
+        XCTAssertEqual(vm.step, .training)
     }
 
     @MainActor
-    func testProgressCountsFiveSteps() {
+    func testMaintainSkipsTheTarget() {
         let vm = makeModel()
-        XCTAssertEqual(vm.progress, 1.0 / 5, accuracy: 0.001)
-        vm.step = .goal
-        XCTAssertEqual(vm.progress, 2.0 / 5, accuracy: 0.001)
+        vm.draft.goal = .maintain
+        vm.step = .about
+        vm.advance()
+        XCTAssertEqual(vm.step, .appetite)
+        vm.goBack()
+        XCTAssertEqual(vm.step, .about)
+        XCTAssertFalse(vm.progressSteps.contains(.target))
+    }
+
+    @MainActor
+    func testProgressCountsNineSteps() {
+        let vm = makeModel()
+        vm.draft.goal = .bulk
+        XCTAssertEqual(vm.progress, 1.0 / 9, accuracy: 0.001)
+        vm.step = .about
+        XCTAssertEqual(vm.progress, 3.0 / 9, accuracy: 0.001)
         vm.step = .safety
         XCTAssertEqual(vm.progress, 1, accuracy: 0.001)
+    }
+
+    @MainActor
+    func testPlanThenNudgesThenTheAccountComeLast() {
+        let vm = makeModel()
+        vm.step = .building
+        vm.advance()
+        XCTAssertEqual(vm.step, .reveal)
+        vm.advance()
+        XCTAssertEqual(vm.step, .reach)
+        vm.advance()
+        XCTAssertEqual(vm.step, .save)
+        vm.goBack()
+        XCTAssertEqual(vm.step, .reach)
+
+        // Notifications already decided: straight from the plan to the account.
+        vm.asksForNotifications = false
+        vm.step = .reveal
+        vm.advance()
+        XCTAssertEqual(vm.step, .save)
+    }
+
+    @MainActor
+    func testCheckInsOffSkipsThePlanAndTheNudgeAsk() {
+        let vm = makeModel()
+        vm.draft.medicalSupervisionRequired = true
+        XCTAssertTrue(vm.draft.checkInsLikelyOff)
+        vm.step = .building
+        vm.advance()
+        XCTAssertEqual(vm.step, .save)
+
+        let flagged = makeModel()
+        flagged.draft.medicalSupervisionRequired = false
+        flagged.draft.scoff = ScoffAnswers(makeSelfSick: true, lostControl: true, lostOneStone: false, believesFat: false, foodDominates: false)
+        XCTAssertTrue(flagged.draft.checkInsLikelyOff)
+        flagged.draft.scoff.lostControl = false
+        XCTAssertFalse(flagged.draft.checkInsLikelyOff)
+    }
+
+    func testThePhoneEstimateMatchesTheServerFormula() {
+        var draft = OnboardingDraft()
+        draft.goal = .bulk
+        draft.sex = .male
+        draft.heightCm = 180
+        draft.weightKg = 80
+        draft.birthDate = Calendar.current.date(byAdding: .year, value: -28, to: .now) ?? .now
+        draft.activityLevel = .moderate
+        // (10·80 + 6.25·180 − 5·28 + 5) × 1.55 + 275 → 3,050
+        let plan = draft.estimatedPlan(paceKgPerWeek: 0.25)
+        XCTAssertEqual(plan?.dailyKcal, 3050)
+        XCTAssertEqual(plan?.proteinG, 144)
+        draft.goal = .maintain
+        XCTAssertEqual(draft.estimatedPlan(paceKgPerWeek: 0.25)?.dailyKcal, 2770)
+    }
+
+    func testAppetiteAnswersSetThePlateStyle() {
+        XCTAssertEqual(AppetiteChoice.fullFast.mode, "SMALL_FREQUENT")
+        XCTAssertTrue(AppetiteChoice.fullFast.smallPlates)
+        XCTAssertEqual(AppetiteChoice.forgets.mode, "NORMAL")
+        XCTAssertTrue(AppetiteChoice.varies.askDaily)
+        XCTAssertTrue(AppetiteChoice.chore.drinkableOk)
     }
 
     @MainActor
@@ -182,17 +264,15 @@ final class OnboardingTests: XCTestCase {
     }
 
     @MainActor
-    func testQuietModeAndDecidedNotificationsSkipTheAsk() {
+    func testQuietModeOpensTheQuietScreenAfterTheSave() {
         let vm = makeModel()
         let on = OnboardingResponse(dailyKcalTarget: 2400, dailyProteinTargetG: 120, targetWeightKg: nil,
                                     paceKgPerWeek: nil, enforcementEnabled: true, enforcementDisabledReason: nil)
         let quiet = OnboardingResponse(dailyKcalTarget: 2000, dailyProteinTargetG: nil, targetWeightKg: nil,
                                        paceKgPerWeek: nil, enforcementEnabled: false,
                                        enforcementDisabledReason: "EATING_DISORDER_SCREEN")
-        XCTAssertEqual(vm.stepAfterSubmit(on), .reach)
+        XCTAssertEqual(vm.stepAfterSubmit(on), .save)
         XCTAssertEqual(vm.stepAfterSubmit(quiet), .covered)
-        vm.asksForNotifications = false
-        XCTAssertEqual(vm.stepAfterSubmit(on), .covered)
     }
 
     @MainActor
@@ -375,6 +455,7 @@ final class OnboardingTests: XCTestCase {
         first.draft.lunchMin = 750
         first.draft.dinnerMin = 1170
         first.draft.quietStartMin = 1320
+        first.draft.appetite = .fullFast
         first.step = .restrictions
         first.advance() // → safety, saved
         first.answerSafety(true) // medical: yes
@@ -389,6 +470,7 @@ final class OnboardingTests: XCTestCase {
         XCTAssertEqual(resumed.draft.dinnerMin, 1170)
         XCTAssertEqual(resumed.draft.quietStartMin, 1320)
         XCTAssertEqual(resumed.draft.medicalSupervisionRequired, true)
+        XCTAssertEqual(resumed.draft.appetite, .fullFast)
         XCTAssertEqual(resumed.safetyIndex, SafetyQuestion.makeSelfSick.rawValue)
     }
 
@@ -409,6 +491,7 @@ final class OnboardingTests: XCTestCase {
         let first = makeModel()
         first.draft.goal = .diet
         first.advance()
-        XCTAssertEqual(makeModel().step, .about)
+        XCTAssertEqual(first.step, .health)
+        XCTAssertEqual(makeModel().step, .goal)
     }
 }

@@ -1,8 +1,8 @@
 import SwiftUI
 
-/// Signed-out entry: one cinematic screen. The fuel orb breathing behind three
+/// The first screen of the signed-out story: the fuel orb breathing behind three
 /// floating moments from a real day (a meal landing, a refuel countdown, a day
-/// closed), the pitch, and Start. Start opens Sign in with Apple; setup follows.
+/// closed), the one-line pitch, and a way in. The account comes last, after setup.
 struct WelcomeView: View {
     @State private var showingSignIn = false
     /// When set, skip Sign in and call this instead — the developer preview
@@ -75,29 +75,14 @@ struct WelcomeView: View {
             .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 18) {
-                Text("For people who train and can’t eat enough")
-                    .font(Typography.data(12, weight: .regular))
-                    .foregroundStyle(Palette.inkSoft)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .overlay(Capsule().strokeBorder(Color.white.opacity(0.12)))
-                    .appearIn(1, rise: 16)
-                Headline("Eat enough to grow,", tail: "without forcing it.", size: 44)
+                Headline("Eat enough to grow,", tail: "without forcing it.", size: 46)
                     .appearIn(2, rise: 16)
-                Text("Your plates, planned. A nudge when a meal slips. Easy calories when appetite is low.")
-                    .font(Typography.data(16, weight: .regular))
-                    .lineSpacing(4)
-                    .foregroundStyle(Palette.inkSoft)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .appearIn(3, rise: 16)
                 VStack(spacing: 6) {
-                    ActionButton(title: "Start · 60-second setup", action: start)
-                    if onStart == nil {
-                        Button("I already have an account") { showingSignIn = true }
-                            .font(Typography.data(14, weight: .regular))
-                            .foregroundStyle(Palette.inkSoft)
-                            .frame(maxWidth: .infinity, minHeight: 44)
-                    }
+                    ActionButton(title: "See how it works", action: start)
+                    Button("I already have an account") { showingSignIn = true }
+                        .font(Typography.data(14, weight: .regular))
+                        .foregroundStyle(Palette.inkSoft)
+                        .frame(maxWidth: .infinity, minHeight: 44)
                 }
                 .padding(.top, 4)
                 .appearIn(4, rise: 16)

@@ -33,6 +33,7 @@
 		248F71AF6CBF269F32B6F2DC /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6827E7745F7D8558E4078C9D /* Components.swift */; };
 		27D34BB71954AC8A7696DC53 /* TodayWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50E01D5B7E999D2C927B2941 /* TodayWidgets.swift */; };
 		2893138E7DA64F6B60A7BF64 /* checkin.caf in Resources */ = {isa = PBXBuildFile; fileRef = 8771AE8F454555C1A7CC6B99 /* checkin.caf */; };
+		2907C1B06AA77B8F0B02C679 /* OnboardingIntro.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E2E5DE59D764855D189FDEF /* OnboardingIntro.swift */; };
 		29C68A1F1A29E3189DD7F617 /* TrainPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BD46563ABD6B77750F98A42 /* TrainPlan.swift */; };
 		2A088A0A0163A02BD5A0EAAF /* MealPhoto.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B5888ECCC1D863A84318CA1 /* MealPhoto.swift */; };
 		2B3B061D07B1C7B713E87A06 /* SavedMealsSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12383B21C3EE575115988709 /* SavedMealsSettingsView.swift */; };
@@ -222,6 +223,7 @@
 		08F9D7EC02855CD0E2E2B18D /* BarcodeScanTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BarcodeScanTests.swift; sourceTree = "<group>"; };
 		0A5329FB3FC5CBA4889FD372 /* DTOs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DTOs.swift; sourceTree = "<group>"; };
 		0D059857EA5ACFC913EC5A43 /* OnboardingFlow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingFlow.swift; sourceTree = "<group>"; };
+		0E2E5DE59D764855D189FDEF /* OnboardingIntro.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingIntro.swift; sourceTree = "<group>"; };
 		0EFB517EFB36132E4ED9E74E /* HomeViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeViewModel.swift; sourceTree = "<group>"; };
 		1001315A23F31E814CFD895C /* TrainingStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainingStore.swift; sourceTree = "<group>"; };
 		11862FADC2373C54323DDAE4 /* BiosignalStats.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiosignalStats.swift; sourceTree = "<group>"; };
@@ -618,6 +620,7 @@
 			isa = PBXGroup;
 			children = (
 				5455AEE49A9744D266234D15 /* InviteCodeView.swift */,
+				0E2E5DE59D764855D189FDEF /* OnboardingIntro.swift */,
 				AD9BC7612AD72C12B458596D /* WelcomeView.swift */,
 			);
 			path = Welcome;
@@ -1062,6 +1065,7 @@
 				DDFE111C3191A392FFEBD1E3 /* OnboardingEnums.swift in Sources */,
 				E7F6EB7D6DC0184E22D7C714 /* OnboardingFinish.swift in Sources */,
 				5BDD75C4C4F37BE56005ECF6 /* OnboardingFlow.swift in Sources */,
+				2907C1B06AA77B8F0B02C679 /* OnboardingIntro.swift in Sources */,
 				083FD217A6D6A6354C46DF7C /* OnboardingModel.swift in Sources */,
 				C93EAD75456886331D136C11 /* OnboardingSafety.swift in Sources */,
 				939425AC35FEABDEED6A3B69 /* OnboardingSteps.swift in Sources */,
