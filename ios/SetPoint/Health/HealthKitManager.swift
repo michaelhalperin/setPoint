@@ -463,7 +463,7 @@ final class HealthKitManager {
 
     /// `PATCH /api/settings { mode }`. Fire-and-forget; cached so we don't repeat.
     func setMode(_ mode: HealthMode) async {
-        guard lastKnownMode != mode.rawValue, let api else { return }
+        guard lastKnownMode != mode.rawValue, let api, tokenStore.read() != nil else { return }
         do {
             try await api.patch("/api/settings", SettingsPatch(mode: mode.rawValue))
             lastKnownMode = mode.rawValue

@@ -75,10 +75,15 @@ final class AuthStore {
 
     /// Called by the caller when any request comes back 401.
     func handleUnauthorized() {
+        // A 401 with no session (a call made before sign-in) must not wipe the
+        // answers someone has given on the way to creating the account.
+        guard hasToken else { return }
         signOut()
     }
 
-    func completeSignInWithApple(_ result: Result<ASAuthorization, Error>) async {
+    /// `keepOnboardingDraft`: the account is being created from the setup, whose answers
+    /// belong to it and survive the sign-in's usual clean slate.
+    func completeSignInWithApple(_ result: Result<ASAuthorization, Error>, keepOnboardingDraft: Bool = false) async {
         switch result {
         case let .failure(error):
             if (error as? ASAuthorizationError)?.code == .canceled { return }
@@ -99,7 +104,7 @@ final class AuthStore {
             if let name = Self.displayName(from: credential.fullName) {
                 body["displayName"] = name
             }
-            await exchange(path: "/api/auth/apple", body: body.filter { !$0.value.isEmpty })
+            await exchange(path: "/api/auth/apple", body: body.filter { !$0.value.isEmpty }, keepOnboardingDraft: keepOnboardingDraft)
         }
     }
 
@@ -142,12 +147,12 @@ final class AuthStore {
     private static let devUserKey = "com.setpoint.app.dev-user-id"
 
     /// Dev sign-in reuses the same dev user across launches so onboarding sticks.
-    func developerSignIn() async {
+    func developerSignIn(keepOnboardingDraft: Bool = false) async {
         let stored = UserDefaults.standard.string(forKey: Self.devUserKey)
-        let ok = await exchange(path: "/api/auth/dev", body: stored.map { ["userId": $0] } ?? [:])
+        let ok = await exchange(path: "/api/auth/dev", body: stored.map { ["userId": $0] } ?? [:], keepOnboardingDraft: keepOnboardingDraft)
         if !ok, stored != nil {
             UserDefaults.standard.removeObject(forKey: Self.devUserKey)
-            _ = await exchange(path: "/api/auth/dev", body: [:])
+            _ = await exchange(path: "/api/auth/dev", body: [:], keepOnboardingDraft: keepOnboardingDraft)
         }
     }
 
@@ -159,7 +164,7 @@ final class AuthStore {
     }
 
     @discardableResult
-    private func exchange(path: String, body: [String: String]) async -> Bool {
+    private func exchange(path: String, body: [String: String], keepOnboardingDraft: Bool = false) async -> Bool {
         signingIn = true
         lastError = nil
         defer { signingIn = false }
@@ -176,7 +181,9 @@ final class AuthStore {
                 return false
             }
             let auth = try JSONDecoder().decode(AuthResponse.self, from: data)
+            let draft = keepOnboardingDraft ? UserDefaults.standard.data(forKey: OnboardingViewModel.progressKey) : nil
             AccountLocalState.clear()
+            if let draft { UserDefaults.standard.set(draft, forKey: OnboardingViewModel.progressKey) }
             tokenStore.write(auth.token)
             if path.hasSuffix("/dev") {
                 UserDefaults.standard.set(auth.userId, forKey: Self.devUserKey)

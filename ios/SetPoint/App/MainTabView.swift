@@ -113,6 +113,8 @@ struct MainTabView: View {
             )
             home = h
             await h.load()
+            // An account that was already set up has no use for answers left over from the intro.
+            if case .loaded = h.phase { OnboardingViewModel.clearProgress() }
             // Onboarding asks for itself; everyone else is asked here, once.
             if case .loaded = h.phase { await env.push.askIfNeeded() }
             Analytics.send(.appOpened, api: env.api)
