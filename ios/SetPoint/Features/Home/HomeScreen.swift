@@ -418,6 +418,9 @@ struct HomeContent: View {
             .animation(Motion.adaptive(Motion.morph, reduceMotion: reduceMotion), value: moment.takesOver)
         }
         .scrollDismissesKeyboard(.interactively)
+        // Fixed while the day fits the screen; it scrolls only once something is added.
+        // Set here, inside the pull-to-reload below, so this one wins.
+        .scrollBounceBehavior(.basedOnSize, axes: .vertical)
         .pullToReload({ await model.load(showSpinner: false) }, covering: $reloading)
         .reloadCover(reloading) { HomeSkeletonView() }
         .overlay {
