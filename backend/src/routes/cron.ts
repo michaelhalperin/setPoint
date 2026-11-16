@@ -8,6 +8,7 @@ import { retryPhotoDeletions, type PhotoCleanupSummary } from '../photos/cleanup
 import { getPhotoStore } from '../photos/store.js';
 import { runScoreConfidenceJob } from '../jobs/scoreConfidence.js';
 import { runSettleDayJob } from '../jobs/settleDay.js';
+import { runWeighInReminderJob } from '../jobs/weighInReminder.js';
 import { createManagerVoice } from '../managerVoice/factory.js';
 import { captureError, flushSentry } from '../observability/sentry.js';
 import { createPushSender } from '../push/factory.js';
@@ -52,10 +53,19 @@ export async function cronRoutes(app: FastifyInstance): Promise<void> {
           push: createPushSender(),
           voice: createManagerVoice(),
         });
-        req.log.info(summary, 'cron:score complete');
-        await recordHeartbeat(getPrisma(), 'score', started, true, summary);
+        // The weekly weigh-in reminder is its own notification; a failure here never fails scoring.
+        let weighIns: Awaited<ReturnType<typeof runWeighInReminderJob>> | { error: string } = { error: 'not_run' };
+        try {
+          weighIns = await runWeighInReminderJob({ prisma: getPrisma(), push: createPushSender() });
+        } catch (err) {
+          captureError(err, { tags: { job: 'weigh-in-reminder' } });
+          weighIns = { error: String(err) };
+        }
+        const result = { ...summary, weighIns };
+        req.log.info(result, 'cron:score complete');
+        await recordHeartbeat(getPrisma(), 'score', started, true, result);
         await flushSentry();
-        return summary;
+        return result;
       } catch (err) {
         await recordHeartbeat(getPrisma(), 'score', started, false, { error: String(err) }).catch(() => {});
         throw err;

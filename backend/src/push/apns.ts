@@ -123,6 +123,9 @@ export class ApnsClient {
  * deep-links into the full-screen prescription view (plan §2, §5a). Pure.
  */
 export function buildCheckInAlertPayload(payload: PushPayload): Record<string, unknown> {
+  if (payload.weighIn) {
+    return { aps: { alert: { title: payload.title, body: payload.body }, sound: 'checkin.caf' }, deepLink: 'setpoint://weigh-in' };
+  }
   if (payload.plain) {
     return { aps: { alert: { title: payload.title, body: payload.body }, sound: 'checkin.caf' }, checkInId: payload.checkInId };
   }
@@ -208,7 +211,7 @@ export class ApnsPushSender implements PushSender {
           topic: this.config.bundleId,
           priority: 10,
           expiration,
-          collapseId: payload.checkInId,
+          collapseId: payload.weighIn ? 'weigh-in' : payload.checkInId,
         }),
       ),
     );

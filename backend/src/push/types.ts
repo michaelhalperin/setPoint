@@ -9,6 +9,8 @@ export type PushPayload = {
   category?: 'CHECK_IN' | 'HEADS_UP' | 'REFUEL';
   /** Admin test only: a bare alert with no Time Sensitive level and no action buttons. */
   plain?: boolean;
+  /** The weekly weigh-in reminder: its own alert, opening the weigh-in, no check-in behind it. */
+  weighIn?: boolean;
 };
 
 export type PushSendResult = {
