@@ -108,10 +108,13 @@ struct SettingsView: View {
                 .appearIn(3)
 
                 if model.isAdmin {
-                    AdminNotificationTools()
-                        .appearIn(3)
-                    adminIntroTools
-                        .appearIn(3)
+                    NavigationLink {
+                        AdminHubView()
+                    } label: {
+                        DestinationRow(title: "Admin", subtitle: "People, flags, notifications, tour")
+                    }
+                    .buttonStyle(PressableCard())
+                    .appearIn(3)
                 }
 
                 if env.flags.isOn(.paywall) {
@@ -212,18 +215,6 @@ struct SettingsView: View {
     #endif
 
     /// Admin only: run the intro again exactly as a new user gets it.
-    private var adminIntroTools: some View {
-        VStack(alignment: .leading, spacing: Space.sm) {
-            Text(verbatim: "Admin · Tour")
-                .sectionLabelStyle()
-                .padding(.top, Space.sm)
-            Button { env.tour.showAsFirstRun(from: .you) } label: {
-                DestinationRow(title: "Show tour as first run", subtitle: "Resets the “seen” flag and starts with the opening prompt")
-            }
-            .buttonStyle(PressableCard())
-        }
-    }
-
     private var healthRowValue: String {
         switch env.health.state {
         case .connected:

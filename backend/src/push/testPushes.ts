@@ -10,6 +10,7 @@ export const TEST_PUSHES = [
   { kind: 'top_up', label: 'Top-up', tier: 1, category: 'CHECK_IN', body: 'You are 400 short. A yogurt and a banana closes it.' },
   { kind: 'close', label: 'Evening close', tier: 1, category: 'CHECK_IN', body: 'One more small meal closes the day.' },
   { kind: 'pre_workout', label: 'Before training', tier: 1, category: 'CHECK_IN', body: 'Training soon. Eat something first.' },
+  { kind: 'weigh_in', label: 'Weigh-in reminder', tier: 1, category: undefined, weighIn: true, body: 'Ten seconds keeps your plan accurate.' },
   { kind: 'refuel', label: 'Refuel after training', tier: 1, category: 'REFUEL', body: 'You trained. Eat something now.' },
 ] as const satisfies readonly {
   kind: string;
@@ -17,6 +18,7 @@ export const TEST_PUSHES = [
   tier: number;
   category: PushPayload['category'];
   plain?: boolean;
+  weighIn?: boolean;
   body: string;
 }[];
 

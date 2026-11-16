@@ -75,6 +75,7 @@
 		5CBD1DA8FA61AB27EF2F5F23 /* SetPointWidgetsBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59A5DF79076B600F6BF06497 /* SetPointWidgetsBundle.swift */; };
 		5E8A34073E3D7328D86C65B3 /* CalendarDayScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2A33E0964E77BC24B5733DC /* CalendarDayScreen.swift */; };
 		61C31B28C3ED19D2068E2977 /* CalendarBusyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CE425D9949F2C629FC21ADB /* CalendarBusyTests.swift */; };
+		64F1BC342660AAB1488864CE /* AdminHubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62D9718415659844E80EDFFF /* AdminHubView.swift */; };
 		6557D90382A31A210B260EA5 /* HealthKitManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7021ED198E64F06CF3DED7DD /* HealthKitManagerTests.swift */; };
 		65A7BC9F4DAB8C5EC8C1B5B7 /* TrainScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3768659F767C219C5E5A80AB /* TrainScreen.swift */; };
 		68693AB227915954B6AD309E /* FoodTextTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CB1FB0060E6CCEBEF44A087 /* FoodTextTests.swift */; };
@@ -278,6 +279,7 @@
 		5EDB9692C9CF8C4711B45C52 /* Tour.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tour.swift; sourceTree = "<group>"; };
 		607F057E746FE3D54FF7FFCD /* SetPoint.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SetPoint.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		61D3788B32E3F24D91F4B9F4 /* VisionKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = VisionKit.framework; path = System/Library/Frameworks/VisionKit.framework; sourceTree = SDKROOT; };
+		62D9718415659844E80EDFFF /* AdminHubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminHubView.swift; sourceTree = "<group>"; };
 		6827E7745F7D8558E4078C9D /* Components.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components.swift; sourceTree = "<group>"; };
 		69B36EAF230B9853BC5460FD /* SharedKeychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedKeychain.swift; sourceTree = "<group>"; };
 		69CD7B5DF412B5A16F78BDDE /* TodayTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayTests.swift; sourceTree = "<group>"; };
@@ -417,6 +419,7 @@
 		0A06E3DC38D2B0DE24526D13 /* Settings */ = {
 			isa = PBXGroup;
 			children = (
+				62D9718415659844E80EDFFF /* AdminHubView.swift */,
 				852420F8B6C80943AACEF489 /* AdminNotificationTools.swift */,
 				12383B21C3EE575115988709 /* SavedMealsSettingsView.swift */,
 				A04FB85DEFCCCAE9E2F79DB1 /* SettingsChrome.swift */,
@@ -1002,6 +1005,7 @@
 				35142C85254E15433E247985 /* APIClient.swift in Sources */,
 				9B0C59C6A3F3D67DA3DD2DB7 /* APIConfig.swift in Sources */,
 				52B629F4C2A4C9FA8C00B54E /* AccountLocalState.swift in Sources */,
+				64F1BC342660AAB1488864CE /* AdminHubView.swift in Sources */,
 				5A084CE04BE50AC646043D67 /* AdminNotificationTools.swift in Sources */,
 				0D26C725D05378638A6A862D /* Analytics.swift in Sources */,
 				E9BE1261A4D3B02ADCA6C6C4 /* AppDelegate.swift in Sources */,

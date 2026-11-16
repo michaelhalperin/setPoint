@@ -76,6 +76,7 @@ export async function pushTokenRoutes(app: FastifyInstance): Promise<void> {
       body: `Test · ${sample.body}`,
       category: sample.category,
       plain: 'plain' in sample ? sample.plain : undefined,
+      weighIn: 'weighIn' in sample ? sample.weighIn : undefined,
     });
     if (result.invalidTokens.length > 0) {
       await getPrisma().pushToken.deleteMany({ where: { token: { in: result.invalidTokens } } });
