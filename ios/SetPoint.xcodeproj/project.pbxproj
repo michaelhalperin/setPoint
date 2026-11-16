@@ -30,6 +30,7 @@
 		1D84EE987AEB8AC6F5ABFA9A /* Haptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACBCF91741C03685136590B5 /* Haptics.swift */; };
 		2060850C9364735F0021B7EE /* TourDefault.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BAC85B954D724B9C69EF4D3 /* TourDefault.swift */; };
 		21B611B9BD8199A8E7D5BBE5 /* AppEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77CC24E27F4C73628B9222FB /* AppEnvironment.swift */; };
+		23972E92B55A3876DA7A4411 /* WeightCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A568BDD0566959D089A3537 /* WeightCard.swift */; };
 		248F71AF6CBF269F32B6F2DC /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6827E7745F7D8558E4078C9D /* Components.swift */; };
 		27D34BB71954AC8A7696DC53 /* TodayWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50E01D5B7E999D2C927B2941 /* TodayWidgets.swift */; };
 		2893138E7DA64F6B60A7BF64 /* checkin.caf in Resources */ = {isa = PBXBuildFile; fileRef = 8771AE8F454555C1A7CC6B99 /* checkin.caf */; };
@@ -169,6 +170,7 @@
 		E360F702346592971113420B /* HomeViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0016FF03A93707A587F7E3 /* HomeViews.swift */; };
 		E4E626F696D91C15EA6D1B5B /* LiveMealCamera.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7A82F65C853B1FEFC513BB6 /* LiveMealCamera.swift */; };
 		E696712411D5085DB4BF7A86 /* WeekStation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14219540B9F9117D76AF9B3A /* WeekStation.swift */; };
+		E748372E26847ECC894CB224 /* BurnHelp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 178A88D9672B05A0C13A8A2E /* BurnHelp.swift */; };
 		E7F6EB7D6DC0184E22D7C714 /* OnboardingFinish.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AC0F512FD86BD03490F144B /* OnboardingFinish.swift */; };
 		E9BE1261A4D3B02ADCA6C6C4 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6FBF6B25E85349394163FF0 /* AppDelegate.swift */; };
 		EA55542A09FC3324D9F8491C /* HomePreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA25A32CB6EE0D5D7341FC74 /* HomePreview.swift */; };
@@ -237,6 +239,7 @@
 		1445D836A22672FF8571409D /* BiosignalStatsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiosignalStatsTests.swift; sourceTree = "<group>"; };
 		1605D1BA6C7169FC5AC825DE /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		164B6BA9F86C99092FEC618E /* HealthyWeightTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthyWeightTests.swift; sourceTree = "<group>"; };
+		178A88D9672B05A0C13A8A2E /* BurnHelp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BurnHelp.swift; sourceTree = "<group>"; };
 		181BAF4A550A9B8371140C49 /* Analytics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Analytics.swift; sourceTree = "<group>"; };
 		19F7ECB0DD3A7883A2824FC1 /* ActivityKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ActivityKit.framework; path = System/Library/Frameworks/ActivityKit.framework; sourceTree = SDKROOT; };
 		1BAC85B954D724B9C69EF4D3 /* TourDefault.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TourDefault.swift; sourceTree = "<group>"; };
@@ -257,6 +260,7 @@
 		306DD98DE1DE503E86CEB6DD /* MotionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MotionTests.swift; sourceTree = "<group>"; };
 		308193DF41DAF6B5772A35C3 /* CalendarWeekTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarWeekTests.swift; sourceTree = "<group>"; };
 		3768659F767C219C5E5A80AB /* TrainScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainScreen.swift; sourceTree = "<group>"; };
+		3A568BDD0566959D089A3537 /* WeightCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeightCard.swift; sourceTree = "<group>"; };
 		3AC0F512FD86BD03490F144B /* OnboardingFinish.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingFinish.swift; sourceTree = "<group>"; };
 		3BB436B32C601D78062589D6 /* BarcodeLogViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BarcodeLogViews.swift; sourceTree = "<group>"; };
 		3C6339A05F2010095AE6DB9A /* RedesignPieces.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RedesignPieces.swift; sourceTree = "<group>"; };
@@ -665,6 +669,7 @@
 				DCAE370894D0D70949F82554 /* SettlementViewModel.swift */,
 				14219540B9F9117D76AF9B3A /* WeekStation.swift */,
 				B013F542C7E7F3E861186A47 /* WeekViews.swift */,
+				3A568BDD0566959D089A3537 /* WeightCard.swift */,
 			);
 			path = Settlement;
 			sourceTree = "<group>";
@@ -817,6 +822,7 @@
 		E1D33D9454AC2C87F00F3E4A /* Insights */ = {
 			isa = PBXGroup;
 			children = (
+				178A88D9672B05A0C13A8A2E /* BurnHelp.swift */,
 				4DDF6D20FDE090349E1C4C86 /* BurnScreen.swift */,
 			);
 			path = Insights;
@@ -1024,6 +1030,7 @@
 				47C8F715DE3DE17989FABB04 /* AuthStore.swift in Sources */,
 				861F344B7587158F94135764 /* BarcodeLogViews.swift in Sources */,
 				F5C127BA64C922FA0B491F82 /* BiosignalStats.swift in Sources */,
+				E748372E26847ECC894CB224 /* BurnHelp.swift in Sources */,
 				54EF3A75022188B9CAAEC8B6 /* BurnScreen.swift in Sources */,
 				3591FBD58AF11F7A108E3731 /* BusyRulesScreen.swift in Sources */,
 				42819EE033FE9BC24DBA8891 /* CalendarComponents.swift in Sources */,
@@ -1126,6 +1133,7 @@
 				C7E6BD3F022C447E43FE1584 /* UserFacingError.swift in Sources */,
 				E696712411D5085DB4BF7A86 /* WeekStation.swift in Sources */,
 				DB15457EFAA8BB5DC1F7943C /* WeekViews.swift in Sources */,
+				23972E92B55A3876DA7A4411 /* WeightCard.swift in Sources */,
 				BBE8017B8523475AEC566B26 /* WelcomeView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -1255,7 +1263,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 36;
+				CURRENT_PROJECT_VERSION = 37;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = "$(SETPOINT_TEAM_ID)";
 				ENABLE_NS_ASSERTIONS = NO;
@@ -1337,7 +1345,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 36;
+				CURRENT_PROJECT_VERSION = 37;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = "$(SETPOINT_TEAM_ID)";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;

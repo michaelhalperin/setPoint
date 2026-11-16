@@ -3,16 +3,34 @@ import SwiftUI
 /// Progress → Your burn: what you really burn, learned from meals and the scale.
 struct BurnScreen: View {
     var preview: BurnInsightResponse? = nil
+    /// Holds the loading skeleton (for the admin's Screen previews).
+    var showsSkeleton = false
 
     @Environment(AppEnvironment.self) private var env
     @State private var insight: BurnInsightResponse?
     @State private var error: String?
     @State private var selectedWeek: Int?
+    @State private var showingHelp = CommandLine.arguments.contains("-burnHelp")
 
     var body: some View {
-        InnerScreen(spacing: 16, onRefresh: { await load() }) {
-            ScreenHeader(label: "Your burn")
+        // Fixed to the screen: no scrolling. A very small phone falls back to scrolling the content.
+        InnerScreen(spacing: 12, scrolls: false) {
+            ScreenHeader(label: "Your burn") {
+                RoundIconButton("questionmark", label: "How this works") { showingHelp = true }
+            }
 
+            ViewThatFits(in: .vertical) {
+                content
+                ScrollView { content }.scrollIndicators(.hidden)
+            }
+        }
+        .task { if !showsSkeleton { await load() } }
+        .sheet(isPresented: $showingHelp) { BurnHelpSheet(insight: insight) }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        VStack(alignment: .leading, spacing: 12) {
             if let insight {
                 if insight.ready, let burn = insight.burnKcal {
                     ready(insight, burn: burn)
@@ -23,28 +41,27 @@ struct BurnScreen: View {
                 SettingsErrorBanner(message: error)
                 ActionButton(title: "Try again", kind: .secondary) { Task { await load() } }
             } else {
-                BusyDots(tint: Palette.amber)
-                    .frame(maxWidth: .infinity, minHeight: 120)
+                BurnSkeleton()
             }
         }
-        .task { await load() }
+        .frame(maxWidth: .infinity, alignment: .top)
     }
 
     // MARK: Ready
 
     @ViewBuilder
     private func ready(_ insight: BurnInsightResponse, burn: Int) -> some View {
-        Headline(L10n("You burn \(burn.formatted())."), tail: "Learned from you, not guessed.", size: 34)
+        Headline(L10n("You burn \(burn.formatted())."), tail: "Learned from you, not guessed.", size: 30)
             .appearIn(0, rise: 16)
 
         ZStack {
             OrbRing(progress: coverage(insight))
-                .frame(width: 216, height: 216)
-            FuelOrb(size: 168, glow: 0.45)
+                .frame(width: 198, height: 198)
+            FuelOrb(size: 154, glow: 0.45)
             VStack(spacing: 2) {
                 Text(burn.formatted())
-                    .font(Typography.data(44, weight: .light))
-                    .tracking(-1.8)
+                    .font(Typography.data(42, weight: .light))
+                    .tracking(-1.7)
                 Text("kcal a day")
                     .font(Typography.mono(11))
                     .foregroundStyle(Color(hex: 0xFDE6CF))
@@ -102,11 +119,11 @@ struct BurnScreen: View {
                     Spacer()
                     Text("BURN").font(Typography.mono(9)).foregroundStyle(Palette.amber)
                 }
-                .offset(y: 54)
+                .offset(y: 43)
                 HStack(spacing: 8) {
                     ForEach(Array(weeks.enumerated()), id: \.element.id) { index, w in
                         let d = w.intakeKcal - burn
-                        let height = max(3, CGFloat(abs(d)) / CGFloat(maxDelta) * 56)
+                        let height = max(3, CGFloat(abs(d)) / CGFloat(maxDelta) * 46)
                         let on = index == selected
                         Button { withAnimation(Motion.settle) { selectedWeek = index } } label: {
                             VStack(spacing: 0) {
@@ -114,12 +131,12 @@ struct BurnScreen: View {
                                     Color.clear
                                     if d >= 0 { bar(height: height, over: true, on: on) }
                                 }
-                                .frame(height: 62)
+                                .frame(height: 50)
                                 ZStack(alignment: .top) {
                                     Color.clear
                                     if d < 0 { bar(height: height, over: false, on: on) }
                                 }
-                                .frame(height: 62)
+                                .frame(height: 50)
                             }
                             .frame(maxWidth: .infinity)
                             .contentShape(Rectangle())
@@ -130,7 +147,7 @@ struct BurnScreen: View {
                 }
                 .padding(.horizontal, 44)
             }
-            .frame(height: 124)
+            .frame(height: 100)
             VStack(alignment: .leading, spacing: 2) {
                 Text(L10n("Week \(selected + 1) · ate \(week.intakeKcal.formatted()) a day"))
                     .font(Typography.data(15, weight: .regular))
@@ -140,7 +157,7 @@ struct BurnScreen: View {
                     .foregroundStyle(Palette.inkSoft)
             }
         }
-        .padding(16)
+        .padding(14)
         .glass(radius: 24)
     }
 
@@ -293,5 +310,122 @@ struct BurnScreen: View {
         } catch {
             self.error = UserFacingError.message(for: error, fallback: L10n( "Couldn't load your burn."))
         }
+    }
+}
+
+/// The shape of Your burn while it loads: the headline, the orb, the eaten-vs-burn bars, the day sum and
+/// the sources line. The fixed words are real; the numbers are placeholders that shimmer on their own.
+private struct BurnSkeleton: View {
+    private let wash = Color.white.opacity(0.06)
+    private let washStrong = Color.white.opacity(0.1)
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 10) {
+                SkeletonBlock(width: 220, height: 28, radius: 9, tint: washStrong)
+            }
+            .shimmering()
+
+            ZStack {
+                Circle().stroke(washStrong, lineWidth: 8).frame(width: 198, height: 198)
+                Circle().fill(wash).frame(width: 154, height: 154)
+                VStack(spacing: 8) {
+                    SkeletonBlock(width: 110, height: 40, radius: 10, tint: washStrong)
+                    Text("kcal a day")
+                        .font(Typography.mono(11))
+                        .foregroundStyle(Palette.inkFaint)
+                }
+            }
+            .shimmering()
+            .frame(maxWidth: .infinity)
+
+            SkeletonBlock(width: 230, height: 11, tint: wash)
+                .shimmering()
+                .frame(maxWidth: .infinity)
+
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Text("Eaten vs burn").sectionLabelStyle()
+                    Spacer()
+                    SkeletonBlock(width: 70, height: 11, tint: wash).shimmering()
+                }
+                ZStack {
+                    Rectangle().fill(Color.white.opacity(0.10)).frame(height: 1.5)
+                    HStack(spacing: 8) {
+                        ForEach(0 ..< 8, id: \.self) { i in
+                            let up = i % 2 == 0
+                            VStack(spacing: 0) {
+                                ZStack(alignment: .bottom) {
+                                    Color.clear
+                                    if up { bar(height: CGFloat([20, 34, 26, 40][i / 2])) }
+                                }
+                                .frame(height: 50)
+                                ZStack(alignment: .top) {
+                                    Color.clear
+                                    if !up { bar(height: CGFloat([14, 28, 18, 32][i / 2])) }
+                                }
+                                .frame(height: 50)
+                            }
+                            .frame(maxWidth: .infinity)
+                        }
+                    }
+                    .padding(.horizontal, 44)
+                    .shimmering()
+                }
+                .frame(height: 100)
+                VStack(alignment: .leading, spacing: 6) {
+                    SkeletonBlock(width: 190, height: 13, tint: washStrong)
+                    SkeletonBlock(width: 250, height: 11, tint: wash)
+                }
+                .shimmering()
+            }
+            .padding(16)
+            .glass(radius: 24)
+
+            VStack(alignment: .leading, spacing: 10) {
+                Text("So your day is").sectionLabelStyle()
+                HStack(spacing: 8) {
+                    term("burn")
+                    Text("+").foregroundStyle(Palette.inkFaint)
+                    term("for your goal")
+                    Text("=").foregroundStyle(Palette.inkFaint)
+                    term("your day")
+                }
+                .font(Typography.data(18, weight: .light))
+            }
+
+            HStack(spacing: 10) {
+                SkeletonBlock(width: 78, height: 26, radius: 6, tint: wash).shimmering()
+                VStack(alignment: .leading, spacing: 6) {
+                    SkeletonBlock(height: 11, tint: wash)
+                    SkeletonBlock(width: 130, height: 11, tint: wash)
+                }
+                .shimmering()
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .glass(radius: 18, fill: Color.white.opacity(0.025))
+        }
+        .accessibilityElement()
+        .accessibilityLabel("Loading")
+    }
+
+    private func bar(height: CGFloat) -> some View {
+        RoundedRectangle(cornerRadius: 5, style: .continuous).fill(washStrong).frame(maxWidth: 22).frame(height: height)
+    }
+
+    private func term(_ label: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            SkeletonBlock(width: 52, height: 16, radius: 5, tint: washStrong).shimmering()
+            Text(LocalizedStringKey(label))
+                .font(Typography.data(11, weight: .regular))
+                .foregroundStyle(Palette.inkSoft)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.white.opacity(0.04), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Color.white.opacity(0.08)))
     }
 }

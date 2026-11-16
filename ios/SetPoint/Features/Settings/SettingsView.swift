@@ -588,88 +588,127 @@ func enforcementNote(_ reason: String?) -> String {
     }
 }
 
-/// Matches the loaded You layout: identity chip, goal orb card, setup grid.
-private struct SettingsSkeletonView: View {
+/// Matches the loaded You layout. The fixed words (labels, tile names, the tour row) are real; only what
+/// changes from person to person is a placeholder, and each of those shimmers on its own, so it reads
+/// as the content loading in rather than a sweep across the page.
+struct SettingsSkeletonView: View {
     var showPro = false
     private let wash = Color.white.opacity(0.06)
     private let washStrong = Color.white.opacity(0.1)
+
+    private static let tiles: [(title: String, hasValue: Bool)] = [
+        ("Meal times", false), ("Appetite", true), ("My kitchen", false),
+        ("My meals", false), ("Calendar", true), ("Apple Health", true),
+    ]
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 HStack(spacing: 12) {
-                    Circle().fill(washStrong).frame(width: 36, height: 36)
+                    HStack(spacing: 12) {
+                        Circle().fill(washStrong).frame(width: 40, height: 40)
+                        SkeletonBlock(width: 48, height: 14, tint: washStrong)
+                    }
+                    .shimmering()
+                    .padding(.leading, 6)
+                    .padding(.trailing, 18)
+                    .frame(height: 52)
+                    .background(Color.white.opacity(0.04), in: Capsule())
+                    .overlay(Capsule().strokeBorder(Color.white.opacity(0.08)))
                     Spacer(minLength: 0)
                 }
 
                 goalCard
                 setupGrid
+                tourRow
                 if showPro { proCard }
             }
             .padding(Space.gutter)
         }
         .scrollDisabled(true)
         .background(Palette.background.ignoresSafeArea())
-        .skeletonLoading()
+        .accessibilityElement()
+        .accessibilityLabel("Loading")
     }
 
+    /// The plan card: its label and the pencil are fixed; the sentence, the bar and the numbers load.
     private var goalCard: some View {
-        HStack(spacing: 18) {
-            ZStack {
-                Circle()
-                    .stroke(washStrong, lineWidth: 8)
-                    .frame(width: 112, height: 112)
-                Circle()
-                    .fill(wash)
-                    .frame(width: 80, height: 80)
-                VStack(spacing: 4) {
-                    SkeletonBlock(width: 44, height: 20, radius: 6, tint: washStrong)
-                    SkeletonBlock(width: 36, height: 8, tint: wash)
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Your plan").sectionLabelStyle(Palette.amber)
+                    VStack(alignment: .leading, spacing: 8) {
+                        SkeletonBlock(width: 190, height: 30, radius: 8, tint: washStrong)
+                        SkeletonBlock(width: 220, height: 13, tint: wash)
+                    }
+                    .shimmering()
+                }
+                Spacer(minLength: 8)
+                Image(systemName: "pencil")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundStyle(Palette.ink.opacity(0.6))
+                    .frame(width: 40, height: 40)
+                    .background(Palette.background.opacity(0.5), in: Circle())
+                    .overlay(Circle().strokeBorder(Color.white.opacity(0.14)))
+            }
+            Capsule().fill(washStrong).frame(height: 6).shimmering()
+            HStack(spacing: 8) {
+                ForEach(["Now", "Each day", "Pace"], id: \.self) { label in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(LocalizedStringKey(label)).font(Typography.mono(10)).tracking(1).textCase(.uppercase).foregroundStyle(Palette.inkFaint)
+                        SkeletonBlock(width: 56, height: 20, radius: 6, tint: washStrong).shimmering()
+                    }
+                    .padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Palette.background.opacity(0.55), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Color.white.opacity(0.08)))
                 }
             }
-            .frame(width: 112, height: 112)
-
-            VStack(alignment: .leading, spacing: 8) {
-                SkeletonBlock(width: 96, height: 10, tint: wash)
-                SkeletonBlock(width: 120, height: 26, radius: 8, tint: washStrong)
-                SkeletonBlock(width: 108, height: 11, tint: wash)
-                SkeletonBlock(width: 132, height: 11, tint: wash)
-            }
-            Spacer(minLength: 0)
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background {
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .fill(LinearGradient(colors: [Palette.ember.opacity(0.08), Color.white.opacity(0.02)], startPoint: .topLeading, endPoint: .bottomTrailing))
+            ZStack(alignment: .topTrailing) {
+                RoundedRectangle(cornerRadius: 30, style: .continuous).fill(Color.white.opacity(0.045))
+                Circle().fill(Palette.ember.opacity(0.07)).frame(width: 200, height: 200).offset(x: 50, y: -60)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
         }
-        .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous).strokeBorder(Color(hex: 0xFF8A50, opacity: 0.18)))
+        .overlay(RoundedRectangle(cornerRadius: 30, style: .continuous).strokeBorder(Color.white.opacity(0.08)))
     }
 
+    /// The tile names are fixed; the little picture and the value under the name load.
     private var setupGrid: some View {
         VStack(alignment: .leading, spacing: 10) {
-            SkeletonBlock(width: 84, height: 10, tint: wash)
-                .padding(.horizontal, 4)
+            Text("Your setup").sectionLabelStyle().padding(.horizontal, 4)
             LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
-                ForEach(0..<6, id: \.self) { i in
-                    setupTile(markWidth: [48, 40, 36, 44, 28, 56][i])
+                ForEach(Array(Self.tiles.enumerated()), id: \.offset) { index, tile in
+                    setupTile(title: tile.title, hasValue: tile.hasValue, markWidth: [48, 40, 36, 44, 28, 56][index])
                 }
             }
         }
     }
 
-    private func setupTile(markWidth: CGFloat) -> some View {
+    private func setupTile(title: String, hasValue: Bool, markWidth: CGFloat) -> some View {
         VStack(alignment: .leading, spacing: 16) {
-            SkeletonBlock(width: markWidth, height: 18, radius: 6, tint: washStrong)
+            SkeletonBlock(width: markWidth, height: 18, radius: 6, tint: washStrong).shimmering()
             VStack(alignment: .leading, spacing: 4) {
-                SkeletonBlock(width: 72, height: 14, tint: washStrong)
-                SkeletonBlock(width: 88, height: 11, tint: wash)
+                Text(LocalizedStringKey(title))
+                    .font(Typography.data(15, weight: .regular))
+                    .foregroundStyle(Palette.ink)
+                if hasValue {
+                    SkeletonBlock(width: 80, height: 11, tint: wash).shimmering()
+                }
             }
             Spacer(minLength: 0)
         }
         .padding(14)
         .frame(maxWidth: .infinity, minHeight: 104, alignment: .topLeading)
         .glass(radius: 22)
+    }
+
+    private var tourRow: some View {
+        DestinationRow(title: "How SetPoint works", subtitle: "A quick tour")
     }
 
     private var proCard: some View {
@@ -679,6 +718,7 @@ private struct SettingsSkeletonView: View {
                 SkeletonBlock(width: 96, height: 14, tint: washStrong)
                 SkeletonBlock(width: 168, height: 11, tint: wash)
             }
+            .shimmering()
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 18)

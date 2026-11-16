@@ -4,7 +4,10 @@ struct SettlementView: View {
     @Environment(AppEnvironment.self) private var env
     @Environment(\.scenePhase) private var scenePhase
     @State private var model: SettlementViewModel?
-    @State private var showingWeighIn = false
+    /// The weight card is a ruler while this is on (a weigh-in is due, or someone tapped Weigh in).
+    @State private var weighing = false
+    /// A due weigh-in has already opened the ruler once; cancelling it leaves the trail alone.
+    @State private var dueOpened = false
     @State private var selectedStation: WeekStation?
     @State private var patternHandled = false
     @State private var patternApplied = false
@@ -67,16 +70,11 @@ struct SettlementView: View {
                 }
 
                 if let goal = s.weightGoal {
-                    WeightJourneyCard(goal: goal, entries: model.weights, busy: model.loggingWeight) {
-                        showingWeighIn = true
+                    WeightCard(goal: goal, entries: model.weights, error: model.weighInError, weighing: $weighing) { kg in
+                        await model.logWeight(kg: kg)
                     }
                     .tourAnchor("progress.weight")
                     .appearIn(1, rise: 14)
-                    if let err = model.weighInError {
-                        Text(LocalizedStringKey(err))
-                            .font(Typography.data(13, weight: .regular))
-                            .foregroundStyle(Palette.danger)
-                    }
                 }
 
                 if s.days.count < 3 {
@@ -158,9 +156,12 @@ struct SettlementView: View {
         .sheet(item: $selectedStation) { station in
             DayMealsSheet(station: station, model: model)
         }
-        .sheet(isPresented: $showingWeighIn) {
-            WeighInSheet(lastKg: model.weights.last?.weightKg ?? s.weightGoal?.currentWeightKg) { kg in
-                await model.logWeight(kg: kg)
+        .onChange(of: s.weightGoal?.needsWeighIn, initial: true) { _, due in
+            if due == true, !dueOpened {
+                dueOpened = true
+                weighing = true
+            } else if due != true {
+                dueOpened = false
             }
         }
         .alert("Target reached", isPresented: reachedBinding(model)) {
@@ -175,7 +176,7 @@ struct SettlementView: View {
         let request = env.chrome.weighInRequest
         guard request != weighInHandled else { return }
         weighInHandled = request
-        showingWeighIn = true
+        withAnimation(Motion.settle) { weighing = true }
     }
 
     /// The late-meal pattern while it's open, and after it's applied (to show "Moved").
@@ -194,45 +195,14 @@ struct SettlementView: View {
 /// Progress while it loads: ghost bars rising and falling, a line drawing
 /// itself where the weight goes.
 private struct SettlementSkeletonView: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    private let wash = Color.white.opacity(0.06)
+    private let washStrong = Color.white.opacity(0.1)
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            TimelineView(.animation(paused: reduceMotion)) { ctx in
-                let t = ctx.date.timeIntervalSinceReferenceDate
-                VStack(alignment: .leading, spacing: 14) {
-                    SkeletonBlock(width: 210, height: 24, radius: 8)
-                    HStack(alignment: .bottom, spacing: 10) {
-                        ForEach(Array([50, 64, 40, 70, 58, 30, 44].enumerated()), id: \.offset) { i, h in
-                            let wave = reduceMotion ? 1 : 0.35 + 0.65 * (1 + sin(t * 2 * .pi / 1.6 - Double(i) * 0.7)) / 2
-                            RoundedRectangle(cornerRadius: 9, style: .continuous)
-                                .fill(LinearGradient(colors: [Palette.amber.opacity(0.28), Palette.amber.opacity(0.06)], startPoint: .top, endPoint: .bottom))
-                                .frame(maxWidth: 34)
-                                .frame(height: CGFloat(h) * wave)
-                                .frame(maxWidth: .infinity)
-                        }
-                    }
-                    .frame(height: 76, alignment: .bottom)
-                }
-                .padding(18)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .glass(radius: 26)
-            }
-            HStack(spacing: 14) {
-                SkeletonBlock(width: 80, height: 28, radius: 8)
-                Spacer()
-                SkeletonBlock(width: 140, height: 20, radius: 8)
-            }
-            .padding(18)
-            .glass(radius: 24)
-            .shimmering()
-            VStack(alignment: .leading, spacing: 10) {
-                SkeletonBlock(width: 200, height: 14)
-                SkeletonBlock(height: 10).opacity(0.6)
-            }
-            .padding(18)
-            .glass(radius: 24)
-            .shimmering()
+            weightCard
+            daysCard
+            mealsCard
             Spacer(minLength: 0)
         }
         .padding(.horizontal, Space.gutter)
@@ -242,6 +212,139 @@ private struct SettlementSkeletonView: View {
         .background(Palette.background.ignoresSafeArea())
         .accessibilityElement()
         .accessibilityLabel("Loading progress")
+    }
+
+    /// Fixed words are real ("Next stop", "Weigh in"); the headline, the trail and the last weigh-in load.
+    private var weightCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Next stop").sectionLabelStyle(Palette.amber)
+            VStack(alignment: .leading, spacing: 8) {
+                SkeletonBlock(width: 190, height: 38, radius: 8, tint: washStrong)
+                SkeletonBlock(width: 260, height: 13, tint: wash)
+            }
+            .shimmering()
+            GeometryReader { geo in
+                let w = geo.size.width - 28
+                let y = { (f: Double) -> CGFloat in 38 - CGFloat(sin(f * 3.4)) * 16 }
+                ZStack(alignment: .topLeading) {
+                    Path { p in
+                        for i in 0 ... 60 {
+                            let f = Double(i) / 60
+                            let pt = CGPoint(x: 14 + CGFloat(f) * w, y: y(f))
+                            i == 0 ? p.move(to: pt) : p.addLine(to: pt)
+                        }
+                    }
+                    .stroke(washStrong, style: StrokeStyle(lineWidth: 2, lineCap: .round, dash: [2, 7]))
+                    ForEach(0 ..< 7, id: \.self) { i in
+                        let f = Double(i) / 6
+                        Circle().fill(i < 3 ? washStrong : wash).frame(width: i == 3 ? 24 : 11, height: i == 3 ? 24 : 11)
+                            .position(x: 14 + CGFloat(f) * w, y: y(f))
+                        SkeletonBlock(width: 14, height: 8, tint: wash)
+                            .position(x: 14 + CGFloat(f) * w, y: y(f) + 26)
+                    }
+                }
+            }
+            .frame(height: 80)
+            .shimmering()
+            Divider().overlay(Color.white.opacity(0.06))
+            HStack {
+                VStack(alignment: .leading, spacing: 6) {
+                    SkeletonBlock(width: 150, height: 12, tint: wash)
+                    SkeletonBlock(width: 96, height: 9, tint: wash)
+                }
+                .shimmering()
+                Spacer()
+                Text("Weigh in")
+                    .font(Typography.data(15, weight: .regular))
+                    .foregroundStyle(Palette.ink.opacity(0.6))
+                    .padding(.horizontal, 18)
+                    .frame(height: 44)
+                    .background(Color.white.opacity(0.06), in: Capsule())
+                    .overlay(Capsule().strokeBorder(Color.white.opacity(0.12)))
+            }
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background {
+            RoundedRectangle(cornerRadius: 30, style: .continuous)
+                .fill(LinearGradient(colors: [Palette.ember.opacity(0.10), Color.white.opacity(0.02)], startPoint: .topLeading, endPoint: .bottomTrailing))
+        }
+        .overlay(RoundedRectangle(cornerRadius: 30, style: .continuous).strokeBorder(Color(hex: 0xFF8A50, opacity: 0.2)))
+    }
+
+    /// The last seven days' letters are real; the headline and the orbs load. The legend is fixed.
+    private var daysCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 8) {
+                SkeletonBlock(width: 250, height: 22, radius: 7, tint: washStrong)
+                SkeletonBlock(width: 180, height: 22, radius: 7, tint: wash)
+            }
+            .shimmering()
+            HStack(spacing: 0) {
+                ForEach(Array(lastSevenLetters.enumerated()), id: \.offset) { _, letter in
+                    VStack(spacing: 8) {
+                        Circle().fill(washStrong).frame(width: 44, height: 44).shimmering()
+                        Text(letter).font(Typography.mono(11)).foregroundStyle(Palette.inkFaint)
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+            }
+            HStack(spacing: 16) {
+                HStack(spacing: 8) {
+                    Circle().fill(Palette.amber.opacity(0.5)).frame(width: 12, height: 12)
+                    Text("Closed").font(Typography.data(12, weight: .regular)).foregroundStyle(Palette.inkSoft)
+                }
+                HStack(spacing: 8) {
+                    Circle().strokeBorder(Palette.amber.opacity(0.5), lineWidth: 1.5).frame(width: 12, height: 12)
+                    Text("Short · filled to how much").font(Typography.data(12, weight: .regular)).foregroundStyle(Palette.inkSoft)
+                }
+            }
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glass(radius: 28)
+    }
+
+    private var lastSevenLetters: [String] {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.locale = AppLanguage.current.locale
+        return (0 ..< 7).reversed().compactMap { back in
+            calendar.date(byAdding: .day, value: -back, to: .now).map { calendar.veryShortWeekdaySymbols[calendar.component(.weekday, from: $0) - 1] }
+        }
+    }
+
+    /// "How meals landed": the label, the three meal names and the three count captions are real.
+    private var mealsCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Text("How meals landed").sectionLabelStyle()
+                Spacer()
+                SkeletonBlock(width: 70, height: 10, tint: wash).shimmering()
+            }
+            ForEach([MealSlot.breakfast, .lunch, .dinner], id: \.self) { slot in
+                HStack(spacing: 0) {
+                    Text(slot.title).font(Typography.data(15, weight: .regular)).foregroundStyle(Palette.ink)
+                    Spacer(minLength: 12)
+                    HStack(spacing: 14) {
+                        ForEach(0 ..< 7, id: \.self) { _ in Circle().fill(wash).frame(width: 14, height: 14) }
+                    }
+                    .shimmering()
+                }
+            }
+            HStack {
+                ForEach([L10n("on time"), L10n("after a nudge"), L10n("missed")], id: \.self) { caption in
+                    VStack(alignment: .leading, spacing: 6) {
+                        SkeletonBlock(width: 28, height: 24, radius: 6, tint: washStrong).shimmering()
+                        Text(caption).font(Typography.data(13, weight: .regular)).foregroundStyle(Palette.inkSoft)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            .padding(.top, 6)
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glass(radius: 28)
     }
 }
 

@@ -48,10 +48,10 @@ struct AdminScreenPreviewsView: View {
         ]),
         Group(title: "Train and Progress", items: [
             ("training", "Train"), ("settlement", "Week"), ("settlement-weigh-in", "Weigh-in"),
-            ("settlement-empty", "Empty week"), ("week-one", "First week"), ("settlement-loading", "Week loading"), ("burn", "Burn"),
+            ("settlement-empty", "Empty week"), ("week-one", "First week"), ("settlement-loading", "Week loading"), ("burn", "Burn"), ("burn-loading", "Burn · loading"),
         ]),
         Group(title: "You and settings", items: [
-            ("settings", "You"), ("settings-goal", "Edit plan"), ("settings-meal-times", "Meal times"),
+            ("settings", "You"), ("settings-loading", "You · loading"), ("settings-goal", "Edit plan"), ("settings-meal-times", "Meal times"),
             ("settings-meal-times-weekends", "Meal times · weekends"), ("settings-appetite", "Appetite"),
             ("settings-foods", "My kitchen"), ("settings-saved-meals", "My meals"), ("settings-health", "Apple Health"),
             ("settings-health-write", "Apple Health · writing"), ("settings-account", "Account"), ("settings-delete", "Delete account"),

@@ -135,6 +135,8 @@ enum DebugPreviewStub {
     case settingsAccount
     case settingsDelete
     case adminPreviews
+    case settingsLoading
+    case burnLoading
 
     enum LogMealStubState { case compose, parsing, result, quick, scan, typing, working, offline, failed }
     case settlement(SettlementResponse)
@@ -206,6 +208,10 @@ enum DebugPreviewStub {
             TourShellStub(tab: tab)
         case .settings:
             NavigationStack { SettingsView(previewModel: .previewed()) }
+        case .burnLoading:
+            NavigationStack { BurnScreen(showsSkeleton: true) }
+        case .settingsLoading:
+            SettingsSkeletonView(showPro: false)
         case .adminPreviews:
             NavigationStack { AdminScreenPreviewsView() }
         case .settingsGoal:
@@ -320,6 +326,8 @@ enum DebugPreviewStub {
     static func named(_ name: String) -> DebugPreviewStub? {
         switch name {
         case "admin-previews": return .adminPreviews
+        case "settings-loading": return .settingsLoading
+        case "burn-loading": return .burnLoading
         case "home": return .home(.sampleUnder)
         case "home-over": return .home(.sampleOver)
         case "home-loading": return .homeModel(.previewed(.loading))

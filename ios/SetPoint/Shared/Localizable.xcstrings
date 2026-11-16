@@ -28041,6 +28041,1046 @@
           }
         }
       }
+    },
+    "Weigh-in · this week": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "שקילה · השבוע"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weigh-in · this week"
+          }
+        }
+      }
+    },
+    "Weigh-in": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "שקילה"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weigh-in"
+          }
+        }
+      }
+    },
+    "Next stop": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "התחנה הבאה"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Next stop"
+          }
+        }
+      }
+    },
+    "Target reached.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "הגעת ליעד."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Target reached."
+          }
+        }
+      }
+    },
+    "Your first weigh-in.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "השקילה הראשונה שלך."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your first weigh-in."
+          }
+        }
+      }
+    },
+    "in about a week": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "בעוד בערך שבוע"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "in about a week"
+          }
+        }
+      }
+    },
+    "in about %lld weeks": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "בעוד בערך %lld שבועות"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "in about %lld weeks"
+          }
+        }
+      }
+    },
+    "You’re at %@. Target reached.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אתה ב־%@. הגעת ליעד."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You’re at %@. Target reached."
+          }
+        }
+      }
+    },
+    "You’re at %@. A little behind plan.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אתה ב־%@. קצת מאחורי התוכנית."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You’re at %@. A little behind plan."
+          }
+        }
+      }
+    },
+    "You’re at %@. Ahead of plan.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אתה ב־%@. לפני התוכנית."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You’re at %@. Ahead of plan."
+          }
+        }
+      }
+    },
+    "You’re at %@. On pace for %@ by %@.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אתה ב־%1$@. בקצב ל־%2$@ עד %3$@."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You’re at %@. On pace for %@ by %@."
+          }
+        }
+      }
+    },
+    "You’re at %@. On pace.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אתה ב־%@. בקצב."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You’re at %@. On pace."
+          }
+        }
+      }
+    },
+    "You’re at %@.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אתה ב־%@."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You’re at %@."
+          }
+        }
+      }
+    },
+    "yesterday": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אתמול"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "yesterday"
+          }
+        }
+      }
+    },
+    "%lld days ago": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "לפני %lld ימים"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld days ago"
+          }
+        }
+      }
+    },
+    "Last weigh-in · %@": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "שקילה אחרונה · %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Last weigh-in · %@"
+          }
+        }
+      }
+    },
+    "No weigh-ins yet": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "עוד לא נשקלת"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No weigh-ins yet"
+          }
+        }
+      }
+    },
+    "%@%@ %@ A WEEK": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@%2$@ %3$@ לשבוע"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@%@ %@ A WEEK"
+          }
+        }
+      }
+    },
+    "Goal %@": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "יעד %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Goal %@"
+          }
+        }
+      }
+    },
+    "about %lld weeks": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "בערך %lld שבועות"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "about %lld weeks"
+          }
+        }
+      }
+    },
+    "It starts your line to %@. One a week is enough.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "זה פותח את הקו שלך אל %@. אחת בשבוע מספיקה."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "It starts your line to %@. One a week is enough."
+          }
+        }
+      }
+    },
+    "How this works": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "איך זה עובד"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "How this works"
+          }
+        }
+      }
+    },
+    "What’s your burn?": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מה זה השריפה שלך?"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What’s your burn?"
+          }
+        }
+      }
+    },
+    "In plain words.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "במילים פשוטות."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In plain words."
+          }
+        }
+      }
+    },
+    "In one line": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "במשפט אחד"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In one line"
+          }
+        }
+      }
+    },
+    "Your burn is how many calories your body uses in a day: moving, training, even sitting still and digesting. It isn’t what you eat.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "השריפה שלך היא כמה קלוריות הגוף משתמש בהן ביום: תנועה, אימונים, ואפילו ישיבה ועיכול. זה לא מה שאתה אוכל."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your burn is how many calories your body uses in a day: moving, training, even sitting still and digesting. It isn’t what you eat."
+          }
+        }
+      }
+    },
+    "How we find it": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "איך אנחנו מוצאים אותה"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "How we find it"
+          }
+        }
+      }
+    },
+    "From two things you already give us: what you eat (your logs) and what the scale does (your weigh-ins).": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "משני דברים שאתה כבר נותן לנו: מה שאתה אוכל (הרישומים) ומה שהמשקל עושה (השקילות)."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "From two things you already give us: what you eat (your logs) and what the scale does (your weigh-ins)."
+          }
+        }
+      }
+    },
+    "Eat 3,000 a day and stay the same weight? You burn about 3,000. Eat 3,000 and gain? You burn less than that.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אוכל 3,000 ביום ונשאר באותו משקל? אתה שורף בערך 3,000. אוכל 3,000 ועולה? אתה שורף פחות מזה."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eat 3,000 a day and stay the same weight? You burn about 3,000. Eat 3,000 and gain? You burn less than that."
+          }
+        }
+      }
+    },
+    "An example": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "דוגמה"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "An example"
+          }
+        }
+      }
+    },
+    "Your numbers": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "המספרים שלך"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your numbers"
+          }
+        }
+      }
+    },
+    "ate a day": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אכלת ביום"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ate a day"
+          }
+        }
+      }
+    },
+    "went into weight": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "הלכו למשקל"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "went into weight"
+          }
+        }
+      }
+    },
+    "came off your weight": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ירדו מהמשקל"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "came off your weight"
+          }
+        }
+      }
+    },
+    "you burn": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אתה שורף"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "you burn"
+          }
+        }
+      }
+    },
+    "Why it takes weeks": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "למה זה לוקח שבועות"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Why it takes weeks"
+          }
+        }
+      }
+    },
+    "One week of weight is mostly water and salt. After about 4 weeks of meals and 6 weigh-ins, the real trend shows through.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "משקל של שבוע אחד הוא בעיקר מים ומלח. אחרי כ־4 שבועות של ארוחות ו־6 שקילות, המגמה האמיתית מתגלה."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "One week of weight is mostly water and salt. After about 4 weeks of meals and 6 weigh-ins, the real trend shows through."
+          }
+        }
+      }
+    },
+    "The range": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "הטווח"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The range"
+          }
+        }
+      }
+    },
+    "“Likely 2,790–2,950” is how sure we are. The more days you log, the narrower it gets.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„סביר 2,790–2,950” הוא עד כמה אנחנו בטוחים. ככל שתרשום יותר ימים, הטווח יצטמצם."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“Likely 2,790–2,950” is how sure we are. The more days you log, the narrower it gets."
+          }
+        }
+      }
+    },
+    "What it does for you": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מה זה עושה בשבילך"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What it does for you"
+          }
+        }
+      }
+    },
+    "Your daily target is your burn, plus what your goal adds, or minus what it takes off to lose weight. When your burn changes, your plan can follow.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "היעד היומי שלך הוא השריפה שלך, ועוד מה שהמטרה מוסיפה, או פחות מה שהיא מורידה כדי לרדת במשקל. כשהשריפה משתנה, התוכנית יכולה ללכת אחריה."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your daily target is your burn, plus what your goal adds, or minus what it takes off to lose weight. When your burn changes, your plan can follow."
+          }
+        }
+      }
+    },
+    "To make it sharper": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "כדי שזה יהיה מדויק יותר"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "To make it sharper"
+          }
+        }
+      }
+    },
+    "Log every meal, even a rough one.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "רשום כל ארוחה, גם בערך."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Log every meal, even a rough one."
+          }
+        }
+      }
+    },
+    "Weigh in once a week, at the same time of day.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "היישקל פעם בשבוע, באותה שעה ביום."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weigh in once a week, at the same time of day."
+          }
+        }
+      }
+    },
+    "It updates every Sunday.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "זה מתעדכן כל יום ראשון."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "It updates every Sunday."
+          }
+        }
+      }
+    },
+    "Your burn, explained.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "השריפה שלך, בפשטות."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your burn, explained."
+          }
+        }
+      }
+    },
+    "The calories your body uses in a day. Even sitting still.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "הקלוריות שהגוף משתמש בהן ביום. גם כשאתה יושב."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The calories your body uses in a day. Even sitting still."
+          }
+        }
+      }
+    },
+    "You eat": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אתה אוכל"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You eat"
+          }
+        }
+      }
+    },
+    "From your meal logs": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מהרישומים של הארוחות"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "From your meal logs"
+          }
+        }
+      }
+    },
+    "Goes into your weight": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "הולך למשקל שלך"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Goes into your weight"
+          }
+        }
+      }
+    },
+    "Comes off your weight": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "יורד מהמשקל שלך"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comes off your weight"
+          }
+        }
+      }
+    },
+    "From your weigh-ins": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מהשקילות שלך"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "From your weigh-ins"
+          }
+        }
+      }
+    },
+    "You burn": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אתה שורף"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You burn"
+          }
+        }
+      }
+    },
+    "What’s left over": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מה שנשאר"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What’s left over"
+          }
+        }
+      }
+    },
+    "Eat 3,000 and stay the same weight? You burn about 3,000. Eat 3,000 and gain? You burn less.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אוכל 3,000 ונשאר באותו משקל? אתה שורף בערך 3,000. אוכל 3,000 ועולה? אתה שורף פחות."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eat 3,000 and stay the same weight? You burn about 3,000. Eat 3,000 and gain? You burn less."
+          }
+        }
+      }
+    },
+    "It needs a few weeks": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "זה צריך כמה שבועות"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "It needs a few weeks"
+          }
+        }
+      }
+    },
+    "One week of weight is mostly water and salt. A few weeks shows the real trend.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "משקל של שבוע הוא בעיקר מים ומלח. כמה שבועות מראים את המגמה האמיתית."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "One week of weight is mostly water and salt. A few weeks shows the real trend."
+          }
+        }
+      }
+    },
+    "How sure we are": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "עד כמה אנחנו בטוחים"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "How sure we are"
+          }
+        }
+      }
+    },
+    "likely %@–%@": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "סביר %1$@–%2$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "likely %@–%@"
+          }
+        }
+      }
+    },
+    "The more days you log, the narrower it gets.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ככל שתרשום יותר ימים, הטווח יצטמצם."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The more days you log, the narrower it gets."
+          }
+        }
+      }
+    },
+    "Weigh in once a week, same time of day.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "היישקל פעם בשבוע, באותה שעה ביום."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weigh in once a week, same time of day."
+          }
+        }
+      }
+    },
+    "The calories your body uses in a day, even sitting still.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "הקלוריות שהגוף משתמש בהן ביום, גם כשאתה יושב."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The calories your body uses in a day, even sitting still."
+          }
+        }
+      }
+    },
+    "One week of weight is mostly water and salt.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "משקל של שבוע הוא בעיקר מים ומלח."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "One week of weight is mostly water and salt."
+          }
+        }
+      }
+    },
+    "More logged days, narrower range.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ככל שיש יותר ימים, הטווח צר יותר."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "More logged days, narrower range."
+          }
+        }
+      }
+    },
+    "Weigh in weekly, same time of day.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "היישקל כל שבוע, באותה שעה."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weigh in weekly, same time of day."
+          }
+        }
+      }
     }
   },
   "version": "1.0"
