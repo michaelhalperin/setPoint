@@ -75,7 +75,7 @@ struct WelcomeView: View {
             .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 18) {
-                Headline("Eat enough to grow,", tail: "without forcing it.", size: 46)
+                Headline(".", tail: "without forcing it.", size: 46)
                     .appearIn(2, rise: 16)
                 VStack(spacing: 6) {
                     ActionButton(title: "See how it works", action: start)

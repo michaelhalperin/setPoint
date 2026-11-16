@@ -7,13 +7,6 @@ struct SettingsView: View {
     @AppStorage(MassUnit.storageKey) private var massUnit = MassUnit.localeDefault
     @AppStorage("you.seen.calendar") private var seenCalendar = false
     @AppStorage("you.seen.appetite") private var seenAppetite = false
-    #if DEBUG
-    @State private var showingDevOnboarding = false
-    @State private var showingDevMealConfirm = false
-    @State private var showingDevCheckInToday = false
-    @State private var showingDevCheckIn = false
-    @State private var showingDevConversation = false
-    #endif
 
     init(previewModel: SettingsViewModel? = nil) {
         _model = State(initialValue: previewModel)
@@ -131,10 +124,6 @@ struct SettingsView: View {
                         .glass(radius: Radius.sm, fill: Palette.danger.opacity(0.08))
                 }
 
-                #if DEBUG
-                // Debug builds only; the admin's tour preview is shot without it, as people see the app.
-                if !CommandLine.arguments.contains("-hideDevTools") { developerTools }
-                #endif
             }
             .padding(Space.gutter)
             .padding(.bottom, 90)
@@ -144,77 +133,9 @@ struct SettingsView: View {
         .background(alignment: .top) { AmbientGlow(tone: .mixed, strength: 0.6).offset(y: -140).ignoresSafeArea() }
         .background(Palette.background.ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
-        #if DEBUG
-        .fullScreenCover(isPresented: $showingDevOnboarding) {
-            DevOnboardingPreview()
-        }
-        .fullScreenCover(isPresented: $showingDevMealConfirm) {
-            DevMealConfirmPreview()
-        }
-        .fullScreenCover(isPresented: $showingDevCheckInToday) {
-            DevCheckInTodayPreview()
-        }
-        .fullScreenCover(isPresented: $showingDevCheckIn) {
-            DevCheckInPreview()
-        }
-        .fullScreenCover(isPresented: $showingDevConversation) {
-            DevConversationPreview()
-        }
-        #endif
     }
 
-    #if DEBUG
-    private var developerTools: some View {
-        VStack(alignment: .leading, spacing: Space.sm) {
-            Text("Developer")
-                .sectionLabelStyle()
-                .padding(.top, Space.sm)
-                .appearIn(5)
 
-            Button {
-                showingDevOnboarding = true
-            } label: {
-                DestinationRow(title: "Onboarding")
-            }
-            .buttonStyle(PressableCard())
-            .appearIn(6)
-
-            Button {
-                showingDevMealConfirm = true
-            } label: {
-                DestinationRow(title: "Meal confirm", subtitle: "Demo data")
-            }
-            .buttonStyle(PressableCard())
-            .appearIn(7)
-
-            Button {
-                showingDevCheckInToday = true
-            } label: {
-                DestinationRow(title: "Check-in · Today", subtitle: "Real check-in on Today")
-            }
-            .buttonStyle(PressableCard())
-            .appearIn(8)
-
-            Button {
-                showingDevCheckIn = true
-            } label: {
-                DestinationRow(title: "Check-in · Sheet", subtitle: "Starts a real check-in")
-            }
-            .buttonStyle(PressableCard())
-            .appearIn(9)
-
-            Button {
-                showingDevConversation = true
-            } label: {
-                DestinationRow(title: "Let’s talk", subtitle: "Starts a real conversation")
-            }
-            .buttonStyle(PressableCard())
-            .appearIn(10)
-        }
-    }
-    #endif
-
-    /// Admin only: run the intro again exactly as a new user gets it.
     private var healthRowValue: String {
         switch env.health.state {
         case .connected:
@@ -763,7 +684,7 @@ private struct SettingsSkeletonView: View {
 }
 
 #if DEBUG
-private struct DevOnboardingPreview: View {
+struct DevOnboardingPreview: View {
     @Environment(\.dismiss) private var dismiss
     @State private var model: OnboardingViewModel?
     @State private var showingSetup = false
@@ -793,7 +714,7 @@ private struct DevOnboardingPreview: View {
     }
 }
 
-private struct DevMealConfirmPreview: View {
+struct DevMealConfirmPreview: View {
     @Environment(\.dismiss) private var dismiss
     @State private var model = LogMealViewModel.samplePhotoConfirm
     @Namespace private var ns
@@ -811,7 +732,7 @@ private struct DevMealConfirmPreview: View {
 }
 
 /// Today with a real check-in takeover — creates one if none is open.
-private struct DevCheckInTodayPreview: View {
+struct DevCheckInTodayPreview: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(AppEnvironment.self) private var env
     @State private var model: HomeViewModel?
@@ -877,7 +798,7 @@ private struct DevCheckInTodayPreview: View {
 
 /// Full-screen check-in sheet against the signed-in account — creates a real
 /// meal check-in if none is open.
-private struct DevCheckInPreview: View {
+struct DevCheckInPreview: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(AppEnvironment.self) private var env
     @State private var home: HomeResponse?
@@ -957,7 +878,7 @@ private struct DevCheckInPreview: View {
 
 /// Opens a real tier-3 conversation against the signed-in account — reachable
 /// from Settings so it doesn't need three consecutive misses.
-private struct DevConversationPreview: View {
+struct DevConversationPreview: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(AppEnvironment.self) private var env
     @State private var checkInID: String?
