@@ -1,5 +1,9 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import { getAnthropic } from '../ai/client.js';
+import { consumeAiQuota } from '../ai/quota.js';
+import { createTrainingParser, TrainingParseError } from '../ai/parseTraining.js';
+import { userLang } from '../i18n/user.js';
 import { track } from '../analytics/events.js';
 import { requireAuth, type AuthedRequest } from '../auth/index.js';
 import { getPrisma } from '../db/client.js';
@@ -88,6 +92,23 @@ export async function workoutRoutes(app: FastifyInstance): Promise<void> {
       })),
     });
     return { stored };
+  });
+
+  // Free text about a training week → proposed sessions. Nothing is saved; the app shows them
+  // and plans the ones the person keeps through /planned. Behind the training_ai flag in the app.
+  app.post('/describe', async (req) => {
+    const { text } = z.object({ text: z.string().trim().min(3).max(600) }).parse(req.body);
+    const userId = (req as AuthedRequest).userId;
+    const client = getAnthropic();
+    if (!client) throw app.httpErrors.serviceUnavailable('this is unavailable right now');
+    const prisma = getPrisma();
+    await consumeAiQuota(prisma, userId, 'training_parse');
+    try {
+      return await createTrainingParser(client)({ text, lang: await userLang(prisma, userId) });
+    } catch (err) {
+      if (err instanceof TrainingParseError) throw app.httpErrors.unprocessableEntity('could not read a training plan from that');
+      throw err;
+    }
   });
 
   // Plan sessions: one, or a weekly repeat sent as its dates. Safe to retry —

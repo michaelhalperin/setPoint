@@ -5,7 +5,7 @@ import type { PrismaClient } from '@prisma/client';
  * (the AiUsage table) rather than in memory: on serverless every warm instance
  * would keep its own counter, so an in-memory limiter doesn't actually limit.
  */
-export type AiUsageKind = 'meal_parse' | 'tier3_message' | 'nutrition_message' | 'label_read';
+export type AiUsageKind = 'meal_parse' | 'tier3_message' | 'nutrition_message' | 'label_read' | 'training_parse';
 
 export type QuotaLimit = { windowMs: number; max: number };
 
@@ -27,6 +27,11 @@ export const AI_QUOTAS: Record<AiUsageKind, QuotaLimit[]> = {
   label_read: [
     { windowMs: HOUR_MS, max: 10 },
     { windowMs: DAY_MS, max: 30 },
+  ],
+  // Describing a training week: once or twice, then edited by hand.
+  training_parse: [
+    { windowMs: HOUR_MS, max: 10 },
+    { windowMs: DAY_MS, max: 20 },
   ],
   // Nutrition assistant pilot — tighter than meal parse.
   nutrition_message: [

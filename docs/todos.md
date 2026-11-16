@@ -75,3 +75,7 @@ new medium:
 8. custom empty meals on the "my meal" screen when there is nothing yet.
 
 9. a new design for the top card in the You screen
+
+10. the top it up card does have a switch option button, but its only with 3 options to change, supposed tob have much larger options.
+
+11.

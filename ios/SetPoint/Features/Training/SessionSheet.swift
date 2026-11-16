@@ -6,6 +6,8 @@ enum TrainSheet: Identifiable {
     case plan(Date)
     /// Change a session that hasn't started.
     case edit(TrainSession)
+    /// Describe the training week in words (training_ai flag).
+    case describe
     case settings
     case snack(TrainingWeekResponse.SnackBefore)
 
@@ -13,6 +15,7 @@ enum TrainSheet: Identifiable {
         switch self {
         case let .plan(date): return "plan-\(date.timeIntervalSince1970)"
         case let .edit(s): return "edit-\(s.id)"
+        case .describe: return "describe"
         case .settings: return "settings"
         case let .snack(s): return "snack-\(s.id)"
         }
@@ -50,6 +53,8 @@ struct PlanSessionSheet: View {
     /// Days that already have a session, as day keys.
     let busyDays: Set<String>
     let onSave: (SessionDraft) -> Void
+    /// Set when the training_ai flag is on: opens the describe-in-words sheet instead.
+    var onDescribe: (() -> Void)? = nil
 
     @Environment(\.dismiss) private var dismiss
     @State private var draft: SessionDraft
@@ -58,7 +63,8 @@ struct PlanSessionSheet: View {
 
     private static let quickTimes = [7 * 60, 8 * 60, 12 * 60, 17 * 60, 18 * 60, 19 * 60]
 
-    init(start: Date, earliest: Date, horizonEnd: Date, weightKg: Double, addCalories: Bool, busyDays: Set<String>, onSave: @escaping (SessionDraft) -> Void) {
+    init(start: Date, earliest: Date, horizonEnd: Date, weightKg: Double, addCalories: Bool, busyDays: Set<String>, onSave: @escaping (SessionDraft) -> Void, onDescribe: (() -> Void)? = nil) {
+        self.onDescribe = onDescribe
         self.earliest = earliest
         self.horizonEnd = horizonEnd
         self.weightKg = weightKg
@@ -79,6 +85,27 @@ struct PlanSessionSheet: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 Headline("Plan a session.", tail: "I’ll plan food around it.", size: 30)
+                if let onDescribe {
+                    Button {
+                        Haptics.select()
+                        dismiss()
+                        onDescribe()
+                    } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: "sparkles").font(.system(size: 15, weight: .medium)).foregroundStyle(Palette.amber)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Describe it in words").font(Typography.data(15, weight: .semibold)).foregroundStyle(Palette.ink)
+                                Text("Write your week and I’ll plan it").font(Typography.data(12)).foregroundStyle(Palette.inkSoft)
+                            }
+                            Spacer(minLength: 0)
+                            Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(Palette.inkFaint)
+                        }
+                        .padding(14)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .glass(radius: 20, fill: Color.white.opacity(0.04))
+                    }
+                    .buttonStyle(PressableCard())
+                }
                 kindTiles
                 dayPicker
                 timePicker

@@ -150,6 +150,7 @@
 		CD97BE2E6AED6E4C564D3C9E /* SignOutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFCE2AAFE928FE8981D26647 /* SignOutTests.swift */; };
 		CE801C7A791C3513C5DC44E0 /* AppetiteTodayLine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0502A37CD529AFC3FD7679CE /* AppetiteTodayLine.swift */; };
 		CEEE82880732D8BC516472AF /* SettingsScreensTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 810A93EE79A7E473253E6BF2 /* SettingsScreensTests.swift */; };
+		D14264C7C9CCD748DD2AA514 /* DescribeTrainingSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85DF6FDDA4E18B5D1EF98F0D /* DescribeTrainingSheet.swift */; };
 		D4936AF39D9B12A642403907 /* OfflineMealQueueTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E386E3A32DE63D1A145C81BA /* OfflineMealQueueTests.swift */; };
 		D7C5D0F4C3435F333230962C /* GapTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2D6CAB0C84B4E604DD85E65 /* GapTests.swift */; };
 		D96CBB38A59F458B632BF989 /* SettlementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41940FEB3FCE32BEAD7DFF75 /* SettlementView.swift */; };
@@ -304,6 +305,7 @@
 		810A93EE79A7E473253E6BF2 /* SettingsScreensTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsScreensTests.swift; sourceTree = "<group>"; };
 		84B5787B516857871D6B64BF /* LiveActivityController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityController.swift; sourceTree = "<group>"; };
 		852420F8B6C80943AACEF489 /* AdminNotificationTools.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminNotificationTools.swift; sourceTree = "<group>"; };
+		85DF6FDDA4E18B5D1EF98F0D /* DescribeTrainingSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DescribeTrainingSheet.swift; sourceTree = "<group>"; };
 		86D8304C476B77D8C38E8772 /* UserFacingError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserFacingError.swift; sourceTree = "<group>"; };
 		8769B24EB4ED270A0E607AFC /* AppetiteScreens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppetiteScreens.swift; sourceTree = "<group>"; };
 		8771AE8F454555C1A7CC6B99 /* checkin.caf */ = {isa = PBXFileReference; path = checkin.caf; sourceTree = "<group>"; };
@@ -448,6 +450,7 @@
 		0D9FD19936A68DB856D68A13 /* Training */ = {
 			isa = PBXGroup;
 			children = (
+				85DF6FDDA4E18B5D1EF98F0D /* DescribeTrainingSheet.swift */,
 				8D2EAD6478466ABC9C7DAA94 /* SessionSheet.swift */,
 				69E046348B4D52C2800A3FDD /* TrainingScreens.swift */,
 				1001315A23F31E814CFD895C /* TrainingStore.swift */,
@@ -1035,6 +1038,7 @@
 				7561CB75F82F5F0BACE5B54B /* DTOs.swift in Sources */,
 				F966AA38E828C45845FE35F9 /* DayDial.swift in Sources */,
 				1515C5462FAF3F0B4ECDB200 /* DeepLink.swift in Sources */,
+				D14264C7C9CCD748DD2AA514 /* DescribeTrainingSheet.swift in Sources */,
 				06C546487C6FA154FBABC414 /* Elevation.swift in Sources */,
 				78137AF801B43571F239B133 /* FeatureFlags.swift in Sources */,
 				587B26B264DCE029F896E864 /* FoodText.swift in Sources */,

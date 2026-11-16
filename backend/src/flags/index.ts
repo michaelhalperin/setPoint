@@ -22,6 +22,10 @@ export const FLAGS = {
     default: false,
     description: 'Add a photo to any meal: take one or choose from the library.',
   },
+  training_ai: {
+    default: false,
+    description: 'Describe your training in your own words and let the AI plan the sessions.',
+  },
 } as const satisfies Record<string, { default: boolean; description: string }>;
 
 export type FlagKey = keyof typeof FLAGS;

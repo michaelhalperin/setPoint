@@ -13,6 +13,7 @@ final class FeatureFlags {
         case nutritionChat = "nutrition_chat"
         case paywall = "paywall"
         case mealPhotos = "meal_photos"
+        case trainingAI = "training_ai"
 
         var defaultValue: Bool {
             switch self {
@@ -21,6 +22,7 @@ final class FeatureFlags {
             case .nutritionChat: return false
             case .paywall: return false
             case .mealPhotos: return false
+            case .trainingAI: return false
             }
         }
     }

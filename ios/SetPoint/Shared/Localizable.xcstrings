@@ -17460,6 +17460,166 @@
           }
         }
       }
+    },
+    "Tell me about your week.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ספר לי על השבוע שלך."
+          }
+        }
+      }
+    },
+    "I’ll plan it.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אני אתכנן אותו."
+          }
+        }
+      }
+    },
+    "What do you do, which days, and how long?": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מה אתה עושה, באילו ימים ולכמה זמן?"
+          }
+        }
+      }
+    },
+    "Work it out": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "חשב לי"
+          }
+        }
+      }
+    },
+    "Add %lld to my plan": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "הוסף %lld לתוכנית"
+          }
+        }
+      }
+    },
+    "Change what I wrote": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "שנה את מה שכתבתי"
+          }
+        }
+      }
+    },
+    "Describe it in words": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "תאר במילים"
+          }
+        }
+      }
+    },
+    "Write your week and I’ll plan it": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "כתוב את השבוע שלך ואני אתכנן"
+          }
+        }
+      }
+    },
+    "I couldn’t find any training in that. Try adding the days and how long.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "לא מצאתי בזה אימון. נסה להוסיף ימים ואורך."
+          }
+        }
+      }
+    },
+    "Couldn’t work that out. Try again.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "לא הצלחתי להבין. נסה שוב."
+          }
+        }
+      }
+    },
+    "+%lld kcal food on those days": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "+%lld קק״ל אוכל בימים האלה"
+          }
+        }
+      }
+    },
+    "Lifting Monday, Wednesday and Friday evenings, an hour": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "הרמת משקולות ב׳, ד׳ ו־ו׳ בערב, שעה"
+          }
+        }
+      }
+    },
+    "Easy 5k run Saturday morning": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ריצה קלה של 5 ק״מ בשבת בבוקר"
+          }
+        }
+      }
+    },
+    "Football Tuesday at 8pm": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "כדורגל ביום שלישי ב־20:00"
+          }
+        }
+      }
+    },
+    "Yoga Sunday, 45 minutes": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "יוגה ביום ראשון, 45 דקות"
+          }
+        }
+      }
+    },
+    "Swimming three times a week": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "שחייה שלוש פעמים בשבוע"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

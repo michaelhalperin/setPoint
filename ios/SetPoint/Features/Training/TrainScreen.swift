@@ -360,7 +360,14 @@ struct TrainingScreen: View {
                 weightKg: store.weightKg,
                 addCalories: store.addCalories,
                 busyDays: Set(store.sessions.map { TrainMath.dayKey($0.start) }),
-                onSave: { draft in store.schedule(draft, env: env) }
+                onSave: { draft in store.schedule(draft, env: env) },
+                onDescribe: env.flags.isOn(.trainingAI) ? { self.sheet = nil; DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { self.sheet = .describe } } : nil
+            )
+        case .describe:
+            DescribeTrainingSheet(
+                earliest: store.earliestStart(),
+                weightKg: store.weightKg,
+                onAdd: { drafts in drafts.forEach { store.schedule($0, env: env) } }
             )
         case let .edit(session):
             EditSessionSheet(
