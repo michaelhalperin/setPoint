@@ -9091,16 +9091,6 @@
         }
       }
     },
-    "Foods I avoid": {
-      "localizations": {
-        "he": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "מאכלים שאני נמנע מהם"
-          }
-        }
-      }
-    },
     "Foods": {
       "localizations": {
         "he": {
@@ -17237,6 +17227,166 @@
           "stringUnit": {
             "state": "translated",
             "value": "הערכה גסה"
+          }
+        }
+      }
+    },
+    "Salmon": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "סלמון"
+          }
+        }
+      }
+    },
+    "Tuna": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "טונה"
+          }
+        }
+      }
+    },
+    "Potatoes": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "תפוחי אדמה"
+          }
+        }
+      }
+    },
+    "Tofu": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "טופו"
+          }
+        }
+      }
+    },
+    "Cottage cheese": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "קוטג׳"
+          }
+        }
+      }
+    },
+    "Honey": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "דבש"
+          }
+        }
+      }
+    },
+    "Tortillas": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "טורטיות"
+          }
+        }
+      }
+    },
+    "Cereal": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "דגנים"
+          }
+        }
+      }
+    },
+    "Apples": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "תפוחים"
+          }
+        }
+      }
+    },
+    "Dates": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "תמרים"
+          }
+        }
+      }
+    },
+    "Turkey": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "הודו"
+          }
+        }
+      }
+    },
+    "Tomatoes": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "עגבניות"
+          }
+        }
+      }
+    },
+    "Cucumbers": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מלפפונים"
+          }
+        }
+      }
+    },
+    "Protein powder": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אבקת חלבון"
+          }
+        }
+      }
+    },
+    "Pita": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "פיתה"
+          }
+        }
+      }
+    },
+    "My kitchen": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "המטבח שלי"
           }
         }
       }

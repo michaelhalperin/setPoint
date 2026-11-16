@@ -919,6 +919,8 @@ struct FoodsSettingsView: View {
     @State private var ruleDraft = ""
     @State private var dislikeDraft = ""
     @State private var pantryDraft = ""
+    /// A fresh order every time the screen opens, so the dashed suggestions around the plate change.
+    @State private var suggestionOrder = FoodsSettingsView.pantrySuggestions.shuffled()
 
     private static let allergies = ["Peanuts", "Tree nuts", "Shellfish", "Fish", "Sesame", "Eggs", "Soy"]
     private static let intolerances = ["Dairy", "Gluten"]
@@ -927,8 +929,12 @@ struct FoodsSettingsView: View {
 
     private static let pantrySuggestions = [
         "Oats", "Milk", "Eggs", "Rice", "Chicken", "Bread",
-        "Peanut butter", "Bananas", "Greek yogurt", "Pasta",
-        "Olive oil", "Cheese",
+        "Peanut butter", "Bananas", "Greek yogurt", "Pasta", "Olive oil", "Cheese",
+        "Salmon", "Tuna", "Avocado", "Hummus", "Tahini", "Lentils",
+        "Chickpeas", "Potatoes", "Sweet potato", "Tofu", "Cottage cheese", "Almonds",
+        "Walnuts", "Honey", "Granola", "Tortillas", "Couscous", "Cereal",
+        "Apples", "Dates", "Turkey", "Tomatoes", "Cucumbers", "Butter",
+        "Protein powder", "Pita",
     ]
 
     /// Where pantry foods sit around the plate (centre x, y in a 350 × 290 box).
@@ -939,7 +945,7 @@ struct FoodsSettingsView: View {
 
     var body: some View {
         InnerScreen(spacing: 14) {
-            ScreenHeader(label: "Foods") {
+            ScreenHeader(label: "My kitchen") {
                 Text(L10n("\(neverCount) never"))
                     .font(Typography.mono(11))
                     .foregroundStyle(Color(hex: 0xFCA5A5))
@@ -985,7 +991,7 @@ struct FoodsSettingsView: View {
     /// Starter foods in the app's language, minus what's already in the pantry or avoided.
     private var plateSuggestions: [String] {
         let taken = Set((model.pantryTokens + model.restrictions + model.restrictions.map(L10nKey)).map { $0.lowercased() })
-        return Self.pantrySuggestions.map(L10nKey).filter { !taken.contains($0.lowercased()) }
+        return suggestionOrder.map(L10nKey).filter { !taken.contains($0.lowercased()) }
     }
 
     /// What's in the kitchen, floating around a plate that glows brighter the more there is.

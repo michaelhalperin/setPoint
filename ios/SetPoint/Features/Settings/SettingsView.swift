@@ -286,7 +286,7 @@ struct SettingsView: View {
                     }
                 }
                 NavigationLink { FoodsSettingsView(model: model) } label: {
-                    SetupTile(title: "Foods I avoid") {
+                    SetupTile(title: "My kitchen") {
                         HStack(spacing: 5) {
                             FuelOrb(size: 18, breathing: false, glow: 0.3)
                             Image(systemName: "nosign")
