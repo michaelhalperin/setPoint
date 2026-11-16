@@ -54,3 +54,24 @@ ADMIN:
     notification, emails, onboarding, etc
 
     everything in the app i could test from there, it will be shown only for a list of poeple i will choose.
+
+
+new medium:
+
+1. on the Wolt screen , when there is no result, show a custum nice thing for it - not just the card ewith the "try again" button.
+
+2. skelaton loader in the wolt screen.
+
+3. the "top up" screen, need a complete new redesign of this screen, it feel too "crowded" - before changing the code on it, make it in the same artifact in a new page there.
+
+4. the legal buttons in the profile screen should have an arrow indication (it naviagte into the browser)
+
+5. the "log meal" button in the Today screen should be at the bottom, not on that position its now.
+
+6. in the snooze cardm the button that says "check it now" is getting cut and shows just: "check i..." , this needs a fix.
+
+7. in the new meal, when claculating the portions there should be an animation, and not just to be static
+
+8. custom empty meals on the "my meal" screen when there is nothing yet.
+
+9. a new design for the top card in the You screen

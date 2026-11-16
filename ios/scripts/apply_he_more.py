@@ -312,7 +312,7 @@ You trained. ⇒ התאמנת.
 Eat something now. ⇒ תאכל משהו עכשיו.
 SetPoint is invite-only for now. ⇒ SetPoint בהזמנה בלבד לעת עתה.
 Enter your code to get in. ⇒ הזן את הקוד שלך כדי להיכנס.
-Eat enough to grow. ⇒ תאכל מספיק כדי לגדול,
+Eat enough to grow. ⇒ תאכל מספיק כדי לגדול.
 without forcing it. ⇒ בלי להכריח את עצמך.
 Logged · %@ · %lld kcal ⇒ תועד · %1$@ · %2$lld קלוריות
 Saved meal ⇒ ארוחה שמורה

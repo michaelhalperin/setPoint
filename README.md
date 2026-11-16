@@ -11,16 +11,21 @@ diagnoses under-fueling.
 Meal check-ins, top-ups and the evening close are free. A subscription
 (`SUBSCRIPTION_GATE=true`) adds training check-ins and calendar-aware timing.
 
-See [`BETA.md`](./BETA.md) for release gates and [`backend/COMPLIANCE.md`](./backend/COMPLIANCE.md)
-for privacy and App Store notes.
+Onboarding is intro → setup → account last; answers survive Sign in with Apple.
+See [`backend/COMPLIANCE.md`](./backend/COMPLIANCE.md) for privacy and App Store
+notes, and [`docs/todos.md`](./docs/todos.md) for open product work.
 
 ## Repo layout
 
 ```
 setPoint/
-├── BETA.md                 Closed-beta gates and stop conditions
+├── DESIGN.md               Admin UI design tokens
 ├── backend/                Node + Fastify + Prisma API and scoring engine
-└── ios/                    Swift/SwiftUI app (XcodeGen project)
+├── docs/                   Working notes (todos, feature ideas)
+├── ideas/                  Longer-form product ideas
+├── ios/                    Swift/SwiftUI app (XcodeGen project, build 35)
+├── legal/                  Legal / commercial drafts
+└── sound-previews/         Notification sound candidates
 ```
 
 This is a pnpm workspace. Node 22+, pnpm 11+.
@@ -39,4 +44,5 @@ Details: [`backend/README.md`](./backend/README.md).
 
 ## iOS
 
-XcodeGen project. See [`ios/README.md`](./ios/README.md).
+XcodeGen project (iOS 17+). Regenerate with `./ios/scripts/gen.sh` after adding
+files. See [`ios/README.md`](./ios/README.md).
