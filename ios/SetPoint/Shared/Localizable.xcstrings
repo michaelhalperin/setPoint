@@ -17390,6 +17390,56 @@
           }
         }
       }
+    },
+    "Pace": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "קצב"
+          }
+        }
+      }
+    },
+    "Numbers": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מספרים"
+          }
+        }
+      }
+    },
+    "Next: your numbers": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "הבא: המספרים שלך"
+          }
+        }
+      }
+    },
+    "Next: pace": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "הבא: קצב"
+          }
+        }
+      }
+    },
+    "From %@ %@ now": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "כרגע %@ %@"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

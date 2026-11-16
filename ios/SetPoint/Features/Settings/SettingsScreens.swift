@@ -6,19 +6,37 @@ import UIKit
 struct GoalSettingsView: View {
     @AppStorage(MassUnit.storageKey) private var massUnit = MassUnit.localeDefault
     @Bindable var model: SettingsViewModel
-    @State private var editingTarget: DailyTargetField?
+    @State private var step: PlanStep = .goal
+
+    /// One decision at a time under a live picture of the plan.
+    private enum PlanStep: String, CaseIterable, Identifiable {
+        case goal = "Goal", pace = "Pace", day = "Numbers"
+        var id: String { rawValue }
+    }
+
+    private var steps: [PlanStep] { model.goal.hasWeightTarget ? PlanStep.allCases : [.goal, .day] }
 
     var body: some View {
         InnerScreen(spacing: 14) {
             ScreenHeader(label: "Edit plan")
 
-            goalTiles.appearIn(1, rise: 14)
+            heroCard.appearIn(1, rise: 14)
 
-            pathCard.appearIn(2, rise: 14)
+            stepBar.appearIn(2, rise: 14)
 
-            if model.goal.hasWeightTarget, model.targetWeightMessage == nil {
-                paceTiles.appearIn(3, rise: 14)
+            Group {
+                switch step {
+                case .goal:
+                    goalTiles
+                    if model.goal.hasWeightTarget { targetCard }
+                case .pace:
+                    if model.targetWeightMessage == nil { paceTiles }
+                case .day:
+                    yourDay
+                }
             }
+            .transition(.opacity.combined(with: .offset(y: 10)))
+            .id(step)
 
             if let message = model.targetWeightMessage ?? model.durationMessage {
                 Text(LocalizedStringKey(message))
@@ -28,12 +46,16 @@ struct GoalSettingsView: View {
                     .multilineTextAlignment(.center)
             }
 
-            yourDay.appearIn(4, rise: 14)
+            if let next = nextStep {
+                ActionButton(title: next == .day ? "Next: your numbers" : "Next: pace", kind: .secondary) { go(next) }
+            }
 
             if let error = model.error {
                 SettingsErrorBanner(message: error)
             }
         }
+        .animation(Motion.settle, value: step)
+        .onChange(of: model.goal) { _, _ in if !steps.contains(step) { step = .goal } }
         .animation(Motion.settle, value: model.goal)
         .animation(Motion.settle, value: model.pace)
         .animation(Motion.settle, value: model.durationMessage)
@@ -49,7 +71,6 @@ struct GoalSettingsView: View {
                 if model.error == nil { Haptics.landed() }
             }
         }
-        .sheet(item: $editingTarget, content: dailyTargetSheet)
         .onDisappear { model.revertToOriginal() }
         .onAppear {
             proposeTargetIfNeeded()
@@ -91,7 +112,44 @@ struct GoalSettingsView: View {
 
     private var currentKg: Double { model.currentWeightKg ?? targetKg }
 
-    private var pathCard: some View {
+    private var nextStep: PlanStep? {
+        guard let i = steps.firstIndex(of: step), i + 1 < steps.count else { return nil }
+        return steps[i + 1]
+    }
+
+    private func go(_ next: PlanStep) {
+        UISelectionFeedbackGenerator().selectionChanged()
+        step = next
+    }
+
+    private var stepBar: some View {
+        HStack(spacing: 6) {
+            ForEach(Array(steps.enumerated()), id: \.element) { index, item in
+                let on = step == item
+                Button { go(item) } label: {
+                    HStack(spacing: 6) {
+                        Text("\(index + 1)")
+                            .font(Typography.mono(10))
+                            .frame(width: 18, height: 18)
+                            .background(on ? Palette.amber.opacity(0.9) : Color.white.opacity(0.08), in: Circle())
+                            .foregroundStyle(on ? Color.black : Palette.inkSoft)
+                        Text(LocalizedStringKey(item.rawValue))
+                            .font(Typography.data(14, weight: .medium))
+                            .foregroundStyle(on ? Palette.ink : Palette.inkSoft)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 42)
+                    .background(Color.white.opacity(on ? 0.08 : 0.025), in: Capsule())
+                    .overlay(Capsule().strokeBorder(on ? Palette.amber.opacity(0.55) : Color.white.opacity(0.08)))
+                }
+                .buttonStyle(PressableCard())
+                .accessibilityAddTraits(on ? .isSelected : [])
+            }
+        }
+    }
+
+    /// Where the weight is going, with the day it works out to — always in view while you change things.
+    private var heroCard: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 2) {
@@ -108,11 +166,18 @@ struct GoalSettingsView: View {
                     .foregroundStyle(Palette.ink)
                 }
                 Spacer(minLength: 0)
-                if model.goal.hasWeightTarget {
-                    HStack(spacing: 8) {
-                        StepCircle(symbol: "minus", label: "Lower target") { nudge(-1) }
-                        StepCircle(symbol: "plus", label: "Raise target") { nudge(1) }
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("Your day").sectionLabelStyle(Palette.amber)
+                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                        Text(model.displayedKcalTarget.formatted())
+                            .font(Typography.data(26, weight: .light))
+                            .tracking(-1)
+                            .contentTransition(.numericText(value: Double(model.displayedKcalTarget)))
+                        Text("kcal")
+                            .font(Typography.data(12, weight: .regular))
+                            .foregroundStyle(Palette.inkSoft)
                     }
+                    .foregroundStyle(Palette.ink)
                 }
             }
 
@@ -151,6 +216,31 @@ struct GoalSettingsView: View {
     private static func monthYear(weeksFromNow weeks: Int) -> String {
         let date = Calendar.current.date(byAdding: .day, value: weeks * 7, to: .now) ?? .now
         return date.formatted(.dateTime.month(.abbreviated).year().locale(AppLanguage.current.locale))
+    }
+
+    /// Target weight, set with the buttons — the big number sits in the card above too.
+    private var targetCard: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Target weight")
+                    .font(Typography.data(16, weight: .medium))
+                    .foregroundStyle(Palette.ink)
+                Text(L10n("From \(massUnit.number(currentKg, digits: 1 ... 1)) \(massUnit.abbreviation) now"))
+                    .font(Typography.data(12, weight: .regular))
+                    .foregroundStyle(Palette.inkSoft)
+            }
+            Spacer(minLength: 8)
+            Text(massUnit.number(targetKg, digits: 1 ... 1))
+                .font(Typography.data(24, weight: .light))
+                .foregroundStyle(Palette.ink)
+                .contentTransition(.numericText(value: targetKg))
+            HStack(spacing: 8) {
+                StepCircle(symbol: "minus", label: "Lower target") { nudge(-1) }
+                StepCircle(symbol: "plus", label: "Raise target") { nudge(1) }
+            }
+        }
+        .padding(16)
+        .glass(radius: 22)
     }
 
     // MARK: Pace
@@ -229,44 +319,26 @@ struct GoalSettingsView: View {
 
     // MARK: Your day
 
-    /// The day the plan works out to — tap a number to set it yourself.
+    /// The day the plan works out to — slide either number to set it yourself.
     private var yourDay: some View {
-        CalloutCard(spacing: 10) {
-            HStack(alignment: .bottom) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Your day").sectionLabelStyle(Palette.amber)
-                    Button { editingTarget = .kcal } label: {
-                        HStack(alignment: .firstTextBaseline, spacing: 6) {
-                            Text(model.displayedKcalTarget.formatted())
-                                .font(Typography.data(38, weight: .light))
-                                .tracking(-1.5)
-                                .foregroundStyle(Palette.ink)
-                                .contentTransition(.numericText(value: Double(model.displayedKcalTarget)))
-                            Text("kcal")
-                                .font(Typography.data(14, weight: .regular))
-                                .foregroundStyle(Palette.inkSoft)
-                            if model.displayedKcalTarget != model.savedKcalTarget {
-                                Text(model.savedKcalTarget.formatted())
-                                    .font(Typography.mono(12))
-                                    .strikethrough()
-                                    .foregroundStyle(Palette.inkFaint)
-                            }
-                        }
-                    }
-                    .buttonStyle(PressableCard())
-                    .accessibilityLabel(L10n("\(model.displayedKcalTarget) calories a day. Set it yourself."))
-                }
-                Spacer(minLength: 8)
-                if let protein = model.proteinTarget {
-                    Button { editingTarget = .protein } label: {
-                        Text(L10n("\(protein) g protein"))
-                            .font(Typography.mono(12))
-                            .foregroundStyle(Palette.amber)
-                            .padding(.bottom, 6)
-                    }
-                    .buttonStyle(PressableCard())
-                    .accessibilityLabel(L10n("\(protein) grams of protein. Set it yourself."))
-                }
+        VStack(spacing: 12) {
+            targetRuler(
+                title: "Daily calories",
+                value: Binding(
+                    get: { Double(model.displayedKcalTarget) },
+                    set: { model.kcalTarget = Int($0.rounded()) }
+                ),
+                range: 1200 ... 6000, step: 50, unit: "kcal", majorStep: 500
+            )
+            if model.proteinTarget != nil {
+                targetRuler(
+                    title: "Daily protein",
+                    value: Binding(
+                        get: { Double(model.proteinTarget ?? 40) },
+                        set: { model.proteinTarget = Int($0.rounded()) }
+                    ),
+                    range: 40 ... 300, step: 5, unit: "g", majorStep: 50
+                )
             }
             HStack(spacing: 6) {
                 dayChip(model.dailyTargetsEdited ? "Set by you" : "From your goal", tint: nil)
@@ -274,11 +346,17 @@ struct GoalSettingsView: View {
                     dayChip(L10n("~\(eta) weeks to target"), tint: Palette.amber)
                 }
             }
-            Text("Tap a number to set it yourself.")
-                .font(Typography.data(12, weight: .regular))
-                .foregroundStyle(Palette.inkFaint)
-                .hintCopy()
         }
+    }
+
+    private func targetRuler(title: String, value: Binding<Double>, range: ClosedRange<Double>, step: Double, unit: String, majorStep: Double) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(LocalizedStringKey(title)).sectionLabelStyle()
+            RulerPicker(value: value, range: range, step: step, unit: unit, majorStep: majorStep)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glass(radius: 22)
     }
 
     private func dayChip(_ text: String, tint: Color?) -> some View {
@@ -289,15 +367,6 @@ struct GoalSettingsView: View {
             .padding(.vertical, 5)
             .background((tint ?? .white).opacity(tint == nil ? 0.05 : 0.14), in: Capsule())
             .overlay(Capsule().strokeBorder((tint ?? .white).opacity(tint == nil ? 0.10 : 0.45)))
-    }
-
-    @ViewBuilder
-    private func dailyTargetSheet(_ field: DailyTargetField) -> some View {
-        DailyTargetSheet(field: field, model: model)
-            .presentationDetents([.height(320)])
-            .presentationDragIndicator(.visible)
-            .presentationBackground(Palette.sheet)
-            .presentationCornerRadius(32)
     }
 
     private var targetKg: Double {
@@ -396,42 +465,6 @@ private struct WeightPathChart: View {
             p.move(to: a)
             p.addCurve(to: b, control1: CGPoint(x: a.x + (b.x - a.x) * 0.45, y: a.y), control2: CGPoint(x: a.x + (b.x - a.x) * 0.55, y: b.y))
             if wk < maxW { p.addLine(to: CGPoint(x: x(maxW), y: b.y)) }
-        }
-    }
-}
-
-private enum DailyTargetField: String, Identifiable {
-    case kcal, protein
-    var id: String { rawValue }
-}
-
-private struct DailyTargetSheet: View {
-    let field: DailyTargetField
-    @Bindable var model: SettingsViewModel
-    @Environment(\.dismiss) private var dismiss
-    @State private var value: Double = 0
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: Space.md) {
-            Text(LocalizedStringKey(field == .kcal ? "Daily calories" : "Daily protein"))
-                .sectionLabelStyle()
-            if field == .kcal {
-                RulerPicker(value: $value, range: 1200 ... 6000, step: 50, unit: "kcal", majorStep: 500)
-            } else {
-                RulerPicker(value: $value, range: 40 ... 300, step: 5, unit: "g", majorStep: 50)
-            }
-            ActionButton(title: "Done") {
-                if field == .kcal {
-                    model.kcalTarget = Int(value.rounded())
-                } else {
-                    model.proteinTarget = Int(value.rounded())
-                }
-                dismiss()
-            }
-        }
-        .padding(Space.gutter)
-        .onAppear {
-            value = field == .kcal ? Double(model.displayedKcalTarget) : Double(model.proteinTarget ?? 40)
         }
     }
 }
