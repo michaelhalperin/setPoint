@@ -27593,6 +27593,118 @@
           }
         }
       }
+    },
+    "Log something at home": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "תעד משהו מהבית"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Log something at home"
+          }
+        }
+      }
+    },
+    "Check again": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "בדוק שוב"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check again"
+          }
+        }
+      }
+    },
+    "Show all": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "הצג הכול"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show all"
+          }
+        }
+      }
+    },
+    "No meals saved yet.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "עוד לא שמרת ארוחות."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No meals saved yet."
+          }
+        }
+      }
+    },
+    "Save a plate you eat often and log it again with one tap.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "שמור צלחת שאתה אוכל הרבה ותעד אותה שוב בלחיצה אחת."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save a plate you eat often and log it again with one tap."
+          }
+        }
+      }
+    },
+    "Add your first plate": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "הוסף את הצלחת הראשונה"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add your first plate"
+          }
+        }
+      }
+    },
+    "Or tap Save as my meal after you log one.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "או לחץ על שמור כארוחה שלי אחרי שתעד אחת."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Or tap Save as my meal after you log one."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

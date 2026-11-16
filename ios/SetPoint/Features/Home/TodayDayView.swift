@@ -37,10 +37,17 @@ struct TodayDayView: View {
                 onLogMissed: onLogMissed
             )
             .appearIn(3)
-
+        }
+        // Stays at the bottom however long the day's list is.
+        .safeAreaInset(edge: .bottom, spacing: 0) {
             ActionButton(title: "Log a meal", symbol: "plus", action: onLog)
-                .padding(.top, Space.xs)
-                .appearIn(4)
+                .padding(.horizontal, Space.gutter)
+                .padding(.top, 10)
+                .padding(.bottom, 8)
+                .background {
+                    LinearGradient(colors: [Palette.background.opacity(0), Palette.background, Palette.background], startPoint: .top, endPoint: .bottom)
+                        .ignoresSafeArea()
+                }
         }
     }
 

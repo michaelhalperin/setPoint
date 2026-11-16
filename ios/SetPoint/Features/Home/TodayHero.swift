@@ -364,11 +364,20 @@ struct TodayHero: View {
             orLinks("Log it")
         case .snoozed:
             Headline(TodayCopy.headline(moment), tail: "Eat sooner and I’ll stay quiet.", size: 26)
-            HStack(spacing: 10) {
-                if home.activeCheckIn != nil {
-                    ActionButton(title: "Check in now", action: onOpenCheckIn)
+            // Side by side when both fit; stacked when a longer language wouldn't.
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 10) {
+                    if home.activeCheckIn != nil {
+                        ActionButton(title: "Check in now", action: onOpenCheckIn).fixedSize(horizontal: true, vertical: false)
+                    }
+                    ActionButton(title: "I ate", kind: .secondary, action: onLog)
                 }
-                ActionButton(title: "I ate", kind: .secondary, action: onLog)
+                VStack(spacing: 10) {
+                    if home.activeCheckIn != nil {
+                        ActionButton(title: "Check in now", action: onOpenCheckIn)
+                    }
+                    ActionButton(title: "I ate", kind: .secondary, action: onLog)
+                }
             }
         default:
             Headline(TodayCopy.headline(moment), tail: tail, size: 26, persistTail: true)

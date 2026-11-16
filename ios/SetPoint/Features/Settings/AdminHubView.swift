@@ -239,11 +239,30 @@ struct AdminPeopleView: View {
 // MARK: - Flags
 
 private struct AdminFlag: Decodable, Identifiable {
-    struct Override: Decodable { let enabled: Bool }
+    struct Override: Decodable {
+        let enabled: Bool
+        var groups: [String]? = nil
+        var roles: [String]? = nil
+        var userIds: [String]? = nil
+
+        /// Only some groups, roles or people have it.
+        var limited: Bool { !enabled && !((groups ?? []).isEmpty && (roles ?? []).isEmpty && (userIds ?? []).isEmpty) }
+    }
     let key: String
     let note: String?
-    let override: Override?
+    /// What it is without an override.
+    var `default`: Bool? = nil
+    var override: Override?
     var id: String { key }
+
+    /// On for everyone right now.
+    var isOn: Bool { override?.enabled ?? `default` ?? false }
+
+    var status: String {
+        guard let override else { return `default` == true ? "on by default" : "off by default" }
+        if override.limited { return "overridden · only some people" }
+        return override.enabled ? "overridden · on for everyone" : "overridden · off for everyone"
+    }
 }
 
 private struct AdminFlags: Decodable { let flags: [AdminFlag] }
@@ -262,12 +281,12 @@ struct AdminFlagsView: View {
                 HStack(spacing: 12) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(verbatim: flag.key).font(Typography.data(16, weight: .semibold)).foregroundStyle(Palette.ink)
-                        Text(verbatim: flag.override == nil ? "default" : "overridden")
+                        Text(verbatim: flag.status)
                             .font(Typography.mono(10)).foregroundStyle(Palette.inkFaint)
                     }
                     Spacer(minLength: 0)
                     Toggle("", isOn: Binding(
-                        get: { flag.override?.enabled ?? false },
+                        get: { flag.isOn },
                         set: { value in Task { await set(flag.key, value) } }
                     ))
                     .labelsHidden()
@@ -286,14 +305,21 @@ struct AdminFlagsView: View {
         if let res: AdminFlags = try? await env.api.get("/api/admin/flags") { flags = res.flags }
     }
 
+    /// The switch moves at once; the save happens behind it and undoes the move only if it fails.
     private func set(_ key: String, _ on: Bool) async {
+        guard let index = flags.firstIndex(where: { $0.key == key }) else { return }
+        let before = flags[index].override
+        withAnimation(Motion.snappy) { flags[index].override = .init(enabled: on) }
+        UISelectionFeedbackGenerator().selectionChanged()
         do {
             try await env.api.put("/api/admin/flags/\(key)", FlagPatch(enabled: on))
             note = "\(key) is now \(on ? "on" : "off") for everyone."
-            await load()
-            await env.flags.refresh(using: env.api)
+            Task { await env.flags.refresh(using: env.api) }
         } catch {
-            note = "Couldn’t save (\(error.localizedDescription))."
+            if let i = flags.firstIndex(where: { $0.key == key }) {
+                withAnimation(Motion.snappy) { flags[i].override = before }
+            }
+            note = "Couldn’t save \(key) (\(error.localizedDescription)). It was put back."
         }
     }
 }

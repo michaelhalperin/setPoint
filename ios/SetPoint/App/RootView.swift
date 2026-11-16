@@ -214,7 +214,7 @@ enum DebugPreviewStub {
         case .settingsFoods:
             NavigationStack { FoodsSettingsView(model: .previewed()) }
         case .settingsSavedMeals:
-            NavigationStack { SavedMealsSettingsView(previewMeals: SavedMeal.samples) }
+            NavigationStack { SavedMealsSettingsView(previewMeals: CommandLine.arguments.contains("-emptyMeals") ? [] : SavedMeal.samples) }
         case .settingsHealth, .settingsHealthWrite:
             NavigationStack { HealthSettingsView() }
         case .calendarSettings:

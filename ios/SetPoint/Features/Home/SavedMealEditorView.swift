@@ -261,6 +261,10 @@ struct SavedMealEditorView: View {
                 ForEach(Array($draft.items.enumerated()), id: \.element.id) { index, $item in
                     itemRow($item, color: Self.colors[index % Self.colors.count])
                 }
+                if estimating {
+                    estimatingRow
+                        .transition(.opacity.combined(with: .scale(scale: 0.96)))
+                }
                 if addingFood {
                     addFoodCard
                         .transition(.opacity)
@@ -291,6 +295,7 @@ struct SavedMealEditorView: View {
             }
         }
         .animation(Motion.settle, value: editingItem)
+        .animation(Motion.settle, value: estimating)
         .animation(Motion.settle, value: draft.suggestSlot)
         .overlay {
             if confirmingDelete {
@@ -337,7 +342,10 @@ struct SavedMealEditorView: View {
                 Button {
                     Task { await estimateFood() }
                 } label: {
-                    Text(estimating ? "Working out the portion…" : "Add")
+                    HStack(spacing: 8) {
+                        if estimating { BusyDots(tint: Palette.onEmber) }
+                        Text(estimating ? "Working out the portion…" : "Add")
+                    }
                         .font(Typography.data(15, weight: .semibold))
                         .foregroundStyle(Palette.onEmber)
                         .frame(maxWidth: .infinity, minHeight: 46)
@@ -372,6 +380,23 @@ struct SavedMealEditorView: View {
         }
         .padding(14)
         .glass(radius: 22)
+    }
+
+    /// A plate row taking shape while the portion is worked out: the same shape as a real row, shimmering.
+    private var estimatingRow: some View {
+        HStack(spacing: 12) {
+            Circle().fill(Palette.surfaceSunk).frame(width: 12, height: 12)
+            VStack(alignment: .leading, spacing: 8) {
+                SkeletonBlock(width: 140, height: 15)
+                SkeletonBlock(width: 90, height: 11)
+            }
+            Spacer(minLength: 0)
+            SkeletonBlock(width: 46, height: 18)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glass(radius: 18, fill: Color.white.opacity(0.035))
+        .skeletonLoading()
     }
 
     private func closeAdd() {

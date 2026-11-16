@@ -74,20 +74,39 @@ struct SavedMealsSettingsView: View {
         .task { if !usesPreview { await load() } }
     }
 
+    /// Nothing saved yet: a plate with a plus, what saving does, and the way to the first one.
     private var empty: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("None yet.")
-                .font(Typography.data(17, weight: .medium))
-                .foregroundStyle(Palette.ink)
-            Text("After you log, tap Save as my meal — or add a plate here.")
-                .font(Typography.data(14, weight: .regular))
-                .foregroundStyle(Palette.inkSoft)
-                .fixedSize(horizontal: false, vertical: true)
-                .hintCopy()
+        VStack(spacing: 18) {
+            ZStack {
+                FuelOrb(size: 110, dimmed: true, breathing: false, glow: 0.3)
+                Image(systemName: "fork.knife")
+                    .font(.system(size: 30, weight: .light))
+                    .foregroundStyle(Palette.ink)
+                    .shadow(color: .black.opacity(0.5), radius: 6, y: 2)
+            }
+            .padding(.top, 8)
+            VStack(spacing: 8) {
+                Text("No meals saved yet.")
+                    .font(Typography.data(20, weight: .medium))
+                    .foregroundStyle(Palette.ink)
+                Text("Save a plate you eat often and log it again with one tap.")
+                    .font(Typography.data(14, weight: .regular))
+                    .foregroundStyle(Palette.inkSoft)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .hintCopy()
+            }
+            VStack(spacing: 8) {
+                ActionButton(title: "Add your first plate", kind: .primary, symbol: "plus") { editor = SavedMealDraft() }
+                Text("Or tap Save as my meal after you log one.")
+                    .font(Typography.data(12, weight: .regular))
+                    .foregroundStyle(Palette.inkFaint)
+                    .hintCopy()
+            }
         }
-        .padding(18)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .glass(radius: 22)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 20)
+        .frame(maxWidth: .infinity)
         .appearIn(1, rise: 14)
     }
 

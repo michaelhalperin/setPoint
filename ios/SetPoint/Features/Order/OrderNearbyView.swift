@@ -15,6 +15,7 @@ struct OrderNearbyView: View {
 
     @Environment(AppEnvironment.self) private var env
     @Environment(\.openURL) private var openURL
+    @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private enum Phase {
@@ -83,21 +84,25 @@ struct OrderNearbyView: View {
 
             switch phase {
             case .loading:
-                BusyDots(tint: Palette.haze)
-                    .frame(maxWidth: .infinity, minHeight: 200)
+                NearbySkeleton()
             case .locationDenied:
-                notice(
-                    "Location is off for SetPoint.",
-                    "Turn it on in Settings to see places near you. It’s only used for this search."
-                ) {
-                    ActionButton(title: "Open Settings", kind: .secondary) {
+                NearbyEmpty(
+                    symbol: "location.slash",
+                    title: "Location is off for SetPoint.",
+                    detail: "Turn it on in Settings to see places near you. It’s only used for this search.",
+                    primary: ("Open Settings", {
                         if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
-                    }
-                }
+                    }),
+                    secondary: ("Log something at home", { dismiss() })
+                )
             case let .failed(message):
-                notice("Couldn’t find places.", message) {
-                    ActionButton(title: "Try again", kind: .secondary) { Task { await load() } }
-                }
+                NearbyEmpty(
+                    symbol: "wifi.exclamationmark",
+                    title: "Couldn’t find places.",
+                    detail: message,
+                    primary: ("Try again", { Task { await load() } }),
+                    secondary: ("Log something at home", { dismiss() })
+                )
             case let .loaded(response):
                 loaded(response)
             }
@@ -209,10 +214,12 @@ struct OrderNearbyView: View {
         if response.venues.isEmpty, let ideas = response.suggestions, !ideas.isEmpty {
             fallback(ideas)
         } else if response.venues.isEmpty {
-            notice(
-                "No places near you yet.",
-                "We’re adding places area by area. Until then, log something you have at home."
-            ) { EmptyView() }
+            NearbyEmpty(
+                title: "No places near you yet.",
+                detail: "We’re adding places area by area. Until then, log something you have at home.",
+                primary: ("Log something at home", { dismiss() }),
+                secondary: ("Check again", { Task { await load() } })
+            )
         } else if let hero = hero(in: pool) {
             heroCard(hero, canShuffle: pool.count > 1) {
                 guard let index = pool.firstIndex(of: hero) else { return }
@@ -227,7 +234,12 @@ struct OrderNearbyView: View {
                 .appearIn(3, rise: 12)
         } else {
             filters
-            notice("Nothing of that kind fits nearby.", "Try All, or log something you have at home.") { EmptyView() }
+            NearbyEmpty(
+                title: "Nothing of that kind fits nearby.",
+                detail: "Try All, or log something you have at home.",
+                primary: ("Show all", { filter = .all }),
+                secondary: nil
+            )
         }
 
         if !response.venues.isEmpty {
@@ -755,6 +767,12 @@ struct OrderNearbyView: View {
     }
 
     private func load() async {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-nearbyFailed") {
+            phase = .failed("Try again in a moment.")
+            return
+        }
+        #endif
         if let preview {
             phase = .loaded(preview)
             return
@@ -854,5 +872,90 @@ enum OrderNearbyContext {
         if let next = home.nextCheckIn?.slot { return TodayCopy.slotTitle(next) }
         let minute = home.day?.nowMin ?? TodayLayout.minuteOfDay(from: .now)
         return TodayLayout.slot(forMinute: minute, times: home.resolvedMealTimes).title
+    }
+}
+
+/// Mirrors the screen while places load: the best-fit card, the filter row, then a few dishes.
+private struct NearbySkeleton: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 16) {
+                SkeletonBlock(width: 90, height: 10).frame(maxWidth: .infinity, alignment: .trailing)
+                HStack(spacing: 18) {
+                    Circle().fill(Palette.surfaceSunk).frame(width: 86, height: 86)
+                    VStack(alignment: .leading, spacing: 10) {
+                        SkeletonBlock(width: 160, height: 20)
+                        SkeletonBlock(width: 110, height: 13)
+                        SkeletonBlock(width: 80, height: 13)
+                    }
+                }
+                SkeletonBlock(height: 48, radius: 24)
+            }
+            .padding(18)
+            .glass(radius: 26, fill: Color.white.opacity(0.035))
+
+            HStack(spacing: 8) {
+                ForEach([52, 64, 60, 70], id: \.self) { w in SkeletonBlock(width: CGFloat(w), height: 34, radius: 17) }
+            }
+
+            VStack(spacing: 10) {
+                ForEach(0 ..< 3, id: \.self) { i in
+                    HStack(spacing: 14) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            SkeletonBlock(width: i == 1 ? 120 : 150, height: 16)
+                            SkeletonBlock(width: 96, height: 12)
+                        }
+                        Spacer(minLength: 0)
+                        SkeletonBlock(width: 44, height: 22, radius: 11)
+                    }
+                    .padding(16)
+                    .glass(radius: 22, fill: Color.white.opacity(0.035))
+                }
+            }
+        }
+        .skeletonLoading()
+    }
+}
+
+/// When there is nothing to show: a quiet orb with a crossed-out pin, what it means, and a way on.
+private struct NearbyEmpty: View {
+    var symbol = "mappin.slash"
+    let title: String
+    let detail: String
+    let primary: (title: String, run: () -> Void)
+    let secondary: (title: String, run: () -> Void)?
+
+    var body: some View {
+        VStack(spacing: 18) {
+            ZStack {
+                FuelOrb(size: 120, dimmed: true, breathing: false, glow: 0.25, haze: true)
+                Image(systemName: symbol)
+                    .font(.system(size: 34, weight: .light))
+                    .foregroundStyle(Palette.ink)
+                    .shadow(color: .black.opacity(0.5), radius: 6, y: 2)
+            }
+            .padding(.top, 8)
+            VStack(spacing: 8) {
+                Text(LocalizedStringKey(title))
+                    .font(Typography.data(20, weight: .medium))
+                    .foregroundStyle(Palette.ink)
+                    .multilineTextAlignment(.center)
+                Text(LocalizedStringKey(detail))
+                    .font(Typography.data(14, weight: .regular))
+                    .foregroundStyle(Palette.inkSoft)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            VStack(spacing: 8) {
+                ActionButton(title: primary.title, kind: .primary, action: primary.run)
+                if let secondary {
+                    ActionButton(title: secondary.title, kind: .secondary, action: secondary.run)
+                }
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 20)
+        .frame(maxWidth: .infinity)
+        .appearIn(1, rise: 14)
     }
 }

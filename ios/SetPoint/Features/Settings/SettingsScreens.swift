@@ -1625,7 +1625,7 @@ struct AccountSettingsView: View {
         }
     }
 
-    private func accountRow(_ title: String, value: String?, chevron: Bool = false) -> some View {
+    private func accountRow(_ title: String, value: String?, chevron: Bool = false, external: Bool = false) -> some View {
         HStack(spacing: 12) {
             Text(LocalizedStringKey(title))
                 .font(Typography.data(15, weight: .regular))
@@ -1637,7 +1637,12 @@ struct AccountSettingsView: View {
                     .foregroundStyle(Palette.inkSoft)
                     .lineLimit(1)
             }
-            if chevron {
+            if external {
+                // Opens outside the app (the browser or Mail).
+                Image(systemName: "arrow.up.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Palette.inkFaint)
+            } else if chevron {
                 Image(systemName: "chevron.forward")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(Color(hex: 0x52525B))
@@ -1669,7 +1674,7 @@ struct AccountSettingsView: View {
 
     private func legalRow(_ title: String, url: URL) -> some View {
         Link(destination: url) {
-            accountRow(title, value: nil, chevron: true)
+            accountRow(title, value: nil, external: true)
         }
         .buttonStyle(.plain)
     }

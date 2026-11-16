@@ -119,6 +119,30 @@ struct HomeContent: View {
                 .zIndex(2)
             }
 
+            // The log sheet lives out here, beside Today rather than inside it, so it rises
+            // above the keyboard on its own and closing it never relayouts Today.
+            if let logger, logOpen, let home = loadedHome {
+                VStack(spacing: 0) {
+                    Spacer(minLength: 0)
+                    LogDock(
+                        logger: logger,
+                        focused: $composerFocused,
+                        estimateKcal: estimateKcal(for: home),
+                        currentSlot: TodayLayout.slot(forMinute: home.day?.nowMin ?? TodayLayout.minuteOfDay(from: now), times: home.resolvedMealTimes),
+                        photoNamespace: photoLogNamespace,
+                        photoGeometryID: Self.photoImageID,
+                        onClose: closeLog,
+                        onSubmit: { Task { await logger.submit() } },
+                        onOrder: env.flags.isOn(.orderNearby) ? {
+                            closeLog()
+                            openOrder()
+                        } : nil
+                    )
+                }
+                .transition(.move(edge: .bottom))
+                .zIndex(1.5)
+            }
+
             if let logger, logger.confirmingPhoto {
                 PhotoParseConfirm(
                     model: logger,
@@ -419,6 +443,8 @@ struct HomeContent: View {
             .animation(Motion.adaptive(Motion.morph, reduceMotion: reduceMotion), value: moment.takesOver)
         }
         .scrollDismissesKeyboard(.interactively)
+        // The keyboard never relayouts Today: only the log sheet, which sits above it, moves with the keyboard.
+        .ignoresSafeArea(.keyboard, edges: .bottom)
         // Fixed while the day fits the screen; it scrolls only once something is added.
         // Set here, inside the pull-to-reload below, so this one wins.
         .scrollBounceBehavior(.basedOnSize, axes: .vertical)
@@ -435,34 +461,16 @@ struct HomeContent: View {
             }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if let logger {
-                if logOpen {
-                    LogDock(
-                        logger: logger,
-                        focused: $composerFocused,
-                        estimateKcal: estimateKcal(for: home),
-                        currentSlot: TodayLayout.slot(forMinute: home.day?.nowMin ?? TodayLayout.minuteOfDay(from: now), times: home.resolvedMealTimes),
-                        photoNamespace: photoLogNamespace,
-                        photoGeometryID: Self.photoImageID,
-                        onClose: closeLog,
-                        onSubmit: { Task { await logger.submit() } },
-                        onOrder: env.flags.isOn(.orderNearby) ? {
-                            closeLog()
-                            openOrder()
-                        } : nil
-                    )
-                    .transition(.move(edge: .bottom))
-                } else {
-                    LogStatusToast(
-                        logger: logger,
-                        onRetry: { openLog() },
-                        onDelete: {
-                            logger.clearAfterSuccess()
-                        }
-                    )
-                        .padding(.bottom, 8)
-                        .frame(maxWidth: .infinity)
-                }
+            if let logger, !logOpen {
+                LogStatusToast(
+                    logger: logger,
+                    onRetry: { openLog() },
+                    onDelete: {
+                        logger.clearAfterSuccess()
+                    }
+                )
+                .padding(.bottom, 8)
+                .frame(maxWidth: .infinity)
             }
         }
     }
