@@ -72,7 +72,7 @@ struct TourOverlay: View {
                 gaveUp = true
             }
             .accessibilityAddTraits(.isModal)
-            #if DEBUG
+            #if DEBUG || ADMIN_PREVIEWS
             .task(id: "\(step.id)-\(cardSize.height)-\(layout.origin.x)-\(layout.origin.y)") {
                 guard CommandLine.arguments.contains("-dumpTourCard"), cardSize != .zero else { return }
                 try? await Task.sleep(for: .seconds(1.5))

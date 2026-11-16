@@ -1,4 +1,4 @@
-#if DEBUG
+#if DEBUG || ADMIN_PREVIEWS
 import SwiftUI
 
 /// A tab as the tour sees it, with sample data and the real floating nav, for screenshots and

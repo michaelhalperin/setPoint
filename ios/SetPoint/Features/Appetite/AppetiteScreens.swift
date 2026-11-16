@@ -436,7 +436,7 @@ struct AppetiteSettingsView: View {
     }
 }
 
-#if DEBUG
+#if DEBUG || ADMIN_PREVIEWS
 extension AppetiteHistoryResponse {
     static var sample: AppetiteHistoryResponse {
         let start = "2026-08-24"

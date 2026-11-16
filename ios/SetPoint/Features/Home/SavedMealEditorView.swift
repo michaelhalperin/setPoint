@@ -746,7 +746,7 @@ struct SavedMealEditorView: View {
     }
 }
 
-#if DEBUG
+#if DEBUG || ADMIN_PREVIEWS
 extension SavedMeal {
     static let samples: [SavedMeal] = [
         .init(

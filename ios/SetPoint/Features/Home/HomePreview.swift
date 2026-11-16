@@ -1,6 +1,6 @@
 import SwiftUI
 
-#if DEBUG
+#if DEBUG || ADMIN_PREVIEWS
 
 /// An ISO timestamp for today at a local minute of day, so sample meals land in
 /// the right place on the dial wherever the preview runs.

@@ -75,7 +75,7 @@ struct SettingsScreen<Content: View>: View {
         .scrollDismissesKeyboard(.interactively)
         .onTapGesture { UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil) }
         .pullToReload(onRefresh, covering: $reloading)
-        #if DEBUG
+        #if DEBUG || ADMIN_PREVIEWS
         // Screenshots of the lower half of a stub: `-uiStub calendar-week -stubScrollBottom`.
         .defaultScrollAnchor(CommandLine.arguments.contains("-stubScrollBottom") ? .bottom : .top)
         #endif

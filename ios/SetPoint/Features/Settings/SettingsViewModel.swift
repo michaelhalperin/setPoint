@@ -506,7 +506,7 @@ final class SettingsViewModel {
             : kg.formatted(.number.precision(.fractionLength(1)))
     }
 
-    #if DEBUG
+    #if DEBUG || ADMIN_PREVIEWS
     static func previewed(admin: Bool = true) -> SettingsViewModel {
         let vm = SettingsViewModel(api: AppEnvironment.preview().api, onUnauthorized: {}, onDeleted: {})
         vm.apply(SettingsResponse(

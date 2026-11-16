@@ -121,7 +121,7 @@ final class HomeViewModel {
         UserFacingError.message(for: error, fallback: L10n( "Couldn’t load today."))
     }
 
-    #if DEBUG
+    #if DEBUG || ADMIN_PREVIEWS
     static func previewedStale(_ home: HomeResponse) -> HomeViewModel {
         let vm = previewed(.loaded(home))
         vm.staleSince = Calendar.current.date(byAdding: .minute, value: -48, to: .now)

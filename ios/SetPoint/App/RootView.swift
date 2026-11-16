@@ -77,7 +77,7 @@ struct RootView: View {
     }
 }
 
-#if DEBUG
+#if DEBUG || ADMIN_PREVIEWS
 /// The floating nav for stubbed screens, hidden when Today asks.
 private struct StubNav: View {
     @Environment(AppEnvironment.self) private var env
@@ -134,6 +134,7 @@ enum DebugPreviewStub {
     case paywall
     case settingsAccount
     case settingsDelete
+    case adminPreviews
 
     enum LogMealStubState { case compose, parsing, result, quick, scan, typing, working, offline, failed }
     case settlement(SettlementResponse)
@@ -205,6 +206,8 @@ enum DebugPreviewStub {
             TourShellStub(tab: tab)
         case .settings:
             NavigationStack { SettingsView(previewModel: .previewed()) }
+        case .adminPreviews:
+            NavigationStack { AdminScreenPreviewsView() }
         case .settingsGoal:
             NavigationStack { GoalSettingsView(model: Self.goalStubModel) }
         case .settingsMealTimes:
@@ -310,7 +313,13 @@ enum DebugPreviewStub {
         guard let index = CommandLine.arguments.firstIndex(of: "-uiStub"),
               CommandLine.arguments.indices.contains(index + 1)
         else { return nil }
-        switch CommandLine.arguments[index + 1] {
+        return named(CommandLine.arguments[index + 1])
+    }
+
+    /// A sample-data screen by name: from `-uiStub <name>` or Admin → Screen previews.
+    static func named(_ name: String) -> DebugPreviewStub? {
+        switch name {
+        case "admin-previews": return .adminPreviews
         case "home": return .home(.sampleUnder)
         case "home-over": return .home(.sampleOver)
         case "home-loading": return .homeModel(.previewed(.loading))

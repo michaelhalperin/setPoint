@@ -56,9 +56,10 @@ describe('pickTopUp', () => {
     expect(plate.some((o) => o.items.some((i) => i.use === 'plate'))).toBe(true);
   });
 
-  it('offers up to three alternatives that share nothing', () => {
+  it('offers many alternatives (up to eight) that share nothing', () => {
     const options = pickTopUps(foods, { targetKcal: 400, excludedTokens: [], shape: 'bowl', seed: 'u1:2026-10-28:breakfast' });
-    expect(options.length).toBe(3);
+    expect(options.length).toBeGreaterThan(3);
+    expect(options.length).toBeLessThanOrEqual(8);
     const slugs = options.flatMap((o) => o.items.map((i) => i.slug));
     expect(new Set(slugs).size).toBe(slugs.length);
     for (const o of options) expect(o.totalKcal).toBeGreaterThanOrEqual(200);

@@ -691,7 +691,7 @@ private struct SettingsSkeletonView: View {
     }
 }
 
-#if DEBUG
+#if DEBUG || ADMIN_PREVIEWS
 struct DevOnboardingPreview: View {
     @Environment(\.dismiss) private var dismiss
     @State private var model: OnboardingViewModel?

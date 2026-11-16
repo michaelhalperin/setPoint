@@ -435,7 +435,7 @@ final class CalendarManager {
 
     // MARK: Preview
 
-    #if DEBUG
+    #if DEBUG || ADMIN_PREVIEWS
     /// Sample state for `-uiStub calendar-*` screenshots: no EventKit, no network.
     func loadPreview(connected: Bool, keptTomorrow: Bool = false, reconnect: Bool = false) {
         // Stub views are built inside a body; only seed once so observation doesn't loop.

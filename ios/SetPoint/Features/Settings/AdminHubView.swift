@@ -40,11 +40,7 @@ struct AdminHubView: View {
                     }
                 }
             }
-            #if DEBUG
-            if !CommandLine.arguments.contains("-hideDevTools") {
-                link("Developer previews", "Onboarding, meal confirm, check-ins, conversation (debug builds)") { AdminDeveloperView() }
-            }
-            #endif
+            link("Screen previews", "Open any screen with sample data, or start real flows, to test the whole app") { AdminScreenPreviewsView() }
             Text(verbatim: "Invites, emails and the full numbers are on the web admin page.")
                 .font(Typography.data(12))
                 .foregroundStyle(Palette.inkFaint)
@@ -323,40 +319,6 @@ struct AdminFlagsView: View {
         }
     }
 }
-
-#if DEBUG
-/// Debug builds only: the full-screen previews that used to sit at the bottom of You.
-struct AdminDeveloperView: View {
-    @State private var onboarding = false
-    @State private var mealConfirm = false
-    @State private var checkInToday = false
-    @State private var checkIn = false
-    @State private var conversation = false
-
-    var body: some View {
-        InnerScreen(spacing: 12) {
-            ScreenHeader(label: "Developer previews")
-            tool("Onboarding", nil) { onboarding = true }
-            tool("Meal confirm", "Demo data") { mealConfirm = true }
-            tool("Check-in · Today", "Real check-in on Today") { checkInToday = true }
-            tool("Check-in · Sheet", "Starts a real check-in") { checkIn = true }
-            tool("Let’s talk", "Starts a real conversation") { conversation = true }
-        }
-        .fullScreenCover(isPresented: $onboarding) { DevOnboardingPreview() }
-        .fullScreenCover(isPresented: $mealConfirm) { DevMealConfirmPreview() }
-        .fullScreenCover(isPresented: $checkInToday) { DevCheckInTodayPreview() }
-        .fullScreenCover(isPresented: $checkIn) { DevCheckInPreview() }
-        .fullScreenCover(isPresented: $conversation) { DevConversationPreview() }
-    }
-
-    private func tool(_ title: String, _ subtitle: String?, _ action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            DestinationRow(title: title, subtitle: subtitle)
-        }
-        .buttonStyle(PressableCard())
-    }
-}
-#endif
 
 /// Starts a sample Live Activity so the card can be checked without waiting for a late meal.
 struct AdminLiveActivityView: View {

@@ -155,6 +155,7 @@
 		D7C5D0F4C3435F333230962C /* GapTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2D6CAB0C84B4E604DD85E65 /* GapTests.swift */; };
 		D96CBB38A59F458B632BF989 /* SettlementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41940FEB3FCE32BEAD7DFF75 /* SettlementView.swift */; };
 		D9C82480B2C673001EC17A31 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 570256363E1AA015D455565D /* PrivacyInfo.xcprivacy */; };
+		DA6BD682D2FA2D5052C439CD /* AdminScreenPreviews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EA1F19CE4051F5257EC522C /* AdminScreenPreviews.swift */; };
 		DB11CC4A8C9EF0D31F71E6B5 /* FastLogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F28C50796E5A8C192ECE1AD /* FastLogTests.swift */; };
 		DB15457EFAA8BB5DC1F7943C /* WeekViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = B013F542C7E7F3E861186A47 /* WeekViews.swift */; };
 		DC064661D6308B6DBA4B1E58 /* SharedLanguage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2809121035CC8AB95933E33B /* SharedLanguage.swift */; };
@@ -317,6 +318,7 @@
 		8BD46563ABD6B77750F98A42 /* TrainPlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainPlan.swift; sourceTree = "<group>"; };
 		8C8F075855C3FB6506F00810 /* SetPoint.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SetPoint.entitlements; sourceTree = "<group>"; };
 		8D2EAD6478466ABC9C7DAA94 /* SessionSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionSheet.swift; sourceTree = "<group>"; };
+		8EA1F19CE4051F5257EC522C /* AdminScreenPreviews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminScreenPreviews.swift; sourceTree = "<group>"; };
 		9086CF76120B951F38382F7E /* OnboardingModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingModel.swift; sourceTree = "<group>"; };
 		99EDC533BAB8E6329BDB5A96 /* TodayWidgetViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayWidgetViews.swift; sourceTree = "<group>"; };
 		9BB6EDFED14C73482BD780ED /* HealthWrite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthWrite.swift; sourceTree = "<group>"; };
@@ -423,6 +425,7 @@
 			children = (
 				62D9718415659844E80EDFFF /* AdminHubView.swift */,
 				852420F8B6C80943AACEF489 /* AdminNotificationTools.swift */,
+				8EA1F19CE4051F5257EC522C /* AdminScreenPreviews.swift */,
 				12383B21C3EE575115988709 /* SavedMealsSettingsView.swift */,
 				A04FB85DEFCCCAE9E2F79DB1 /* SettingsChrome.swift */,
 				B0BB19DB69ED8A47AA90FCA8 /* SettingsScreens.swift */,
@@ -1010,6 +1013,7 @@
 				52B629F4C2A4C9FA8C00B54E /* AccountLocalState.swift in Sources */,
 				64F1BC342660AAB1488864CE /* AdminHubView.swift in Sources */,
 				5A084CE04BE50AC646043D67 /* AdminNotificationTools.swift in Sources */,
+				DA6BD682D2FA2D5052C439CD /* AdminScreenPreviews.swift in Sources */,
 				0D26C725D05378638A6A862D /* Analytics.swift in Sources */,
 				E9BE1261A4D3B02ADCA6C6C4 /* AppDelegate.swift in Sources */,
 				21B611B9BD8199A8E7D5BBE5 /* AppEnvironment.swift in Sources */,
@@ -1210,6 +1214,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.michaelhalperin.setpointapp;
 				SDKROOT = iphoneos;
 				SENTRY_DSN = "";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) ADMIN_PREVIEWS";
 				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
@@ -1250,7 +1255,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 35;
+				CURRENT_PROJECT_VERSION = 36;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = "$(SETPOINT_TEAM_ID)";
 				ENABLE_NS_ASSERTIONS = NO;
@@ -1332,7 +1337,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 35;
+				CURRENT_PROJECT_VERSION = 36;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = "$(SETPOINT_TEAM_ID)";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -1401,6 +1406,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.michaelhalperin.setpointapp;
 				SDKROOT = iphoneos;
 				SENTRY_DSN = "";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) ADMIN_PREVIEWS";
 				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;

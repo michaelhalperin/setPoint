@@ -148,7 +148,7 @@ final class SettlementViewModel {
         }
     }
 
-    #if DEBUG
+    #if DEBUG || ADMIN_PREVIEWS
     static func previewedLoading() -> SettlementViewModel {
         let vm = SettlementViewModel(api: AppEnvironment.preview().api, onUnauthorized: {})
         vm.phase = .loading
@@ -196,7 +196,7 @@ enum PatternMemory {
     }
 }
 
-#if DEBUG
+#if DEBUG || ADMIN_PREVIEWS
 extension SettlementResponse {
     static let sample = SettlementResponse(
         days: [

@@ -172,7 +172,7 @@ final class NutritionAssistantViewModel {
     }
 }
 
-#if DEBUG
+#if DEBUG || ADMIN_PREVIEWS
 extension NutritionAssistantViewModel {
     /// Previews: "chat" (a plate on the table), "empty" (first open), "consent".
     static func previewed(_ state: String) -> NutritionAssistantViewModel {

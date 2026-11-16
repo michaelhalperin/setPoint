@@ -767,7 +767,7 @@ struct OrderNearbyView: View {
     }
 
     private func load() async {
-        #if DEBUG
+        #if DEBUG || ADMIN_PREVIEWS
         if ProcessInfo.processInfo.arguments.contains("-nearbyFailed") {
             phase = .failed("Try again in a moment.")
             return
@@ -799,7 +799,7 @@ struct OrderNearbyView: View {
     }
 }
 
-#if DEBUG
+#if DEBUG || ADMIN_PREVIEWS
 extension NearbyResponse {
     /// The live-list preview, or, with `-nothingNearby`, what someone far from every listed place sees.
     static var sample: NearbyResponse {

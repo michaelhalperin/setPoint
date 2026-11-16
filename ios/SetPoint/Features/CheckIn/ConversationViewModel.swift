@@ -25,7 +25,7 @@ final class ConversationViewModel {
 
     let checkInID: String
     private let api: APIClient
-    #if DEBUG
+    #if DEBUG || ADMIN_PREVIEWS
     private var usesLocalPreview = false
     #endif
 
@@ -55,7 +55,7 @@ final class ConversationViewModel {
         draft = ""
         messages.append(ConversationMessage(role: "user", content: text, at: nil))
 
-        #if DEBUG
+        #if DEBUG || ADMIN_PREVIEWS
         if usesLocalPreview {
             messages.append(ConversationMessage(
                 role: "assistant",
@@ -89,7 +89,7 @@ final class ConversationViewModel {
         confirming = true
         sendError = nil
         defer { confirming = false }
-        #if DEBUG
+        #if DEBUG || ADMIN_PREVIEWS
         if usesLocalPreview {
             outcome = kind
             resolved = true
@@ -149,7 +149,7 @@ final class ConversationViewModel {
         pendingProposal = res.pendingProposal
     }
 
-    #if DEBUG
+    #if DEBUG || ADMIN_PREVIEWS
     static func previewed(resolved: Bool) -> ConversationViewModel {
         let vm = ConversationViewModel(checkInID: "ci_preview", api: AppEnvironment.preview().api)
         vm.usesLocalPreview = true

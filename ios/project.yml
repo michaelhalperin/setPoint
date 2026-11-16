@@ -68,6 +68,8 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.michaelhalperin.setpointapp
         TARGETED_DEVICE_FAMILY: "1"
         ENABLE_PREVIEWS: YES
+        # Sample-data screens the admin opens from Admin → Screen previews, in every build.
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) ADMIN_PREVIEWS"
         # Sentry DSN for crash reporting (a public client key, not a secret).
         # Empty = reporting off.
         SENTRY_DSN: ""

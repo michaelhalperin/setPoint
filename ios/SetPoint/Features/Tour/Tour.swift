@@ -176,7 +176,7 @@ final class TourController {
         requestTab(origin)
     }
 
-    #if DEBUG
+    #if DEBUG || ADMIN_PREVIEWS
     func showForDebug(at newIndex: Int) { index = newIndex }
 
     func debugAdjust(stepID: String, side: String?, dx: Double?, dy: Double?) {

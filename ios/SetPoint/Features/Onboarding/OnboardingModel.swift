@@ -551,7 +551,7 @@ final class OnboardingViewModel {
         submitting = true
         error = nil
         defer { submitting = false }
-        #if DEBUG
+        #if DEBUG || ADMIN_PREVIEWS
         if previewOnly {
             let response = OnboardingResponse.preview
             result = response
@@ -636,7 +636,7 @@ final class OnboardingViewModel {
         store.removeObject(forKey: "com.setpoint.app.onboarding.snapshot") // v1 format
     }
 
-    #if DEBUG
+    #if DEBUG || ADMIN_PREVIEWS
     /// When true, Safety → next skips the API so a preview can walk the whole flow.
     var previewOnly = false
 
@@ -669,7 +669,7 @@ final class OnboardingViewModel {
     #endif
 }
 
-#if DEBUG
+#if DEBUG || ADMIN_PREVIEWS
 extension OnboardingResponse {
     static let preview = OnboardingResponse(
         dailyKcalTarget: 3120, dailyProteinTargetG: 142,

@@ -31,7 +31,7 @@ struct MealPhoto: Equatable {
         return MealPhoto(base64: jpeg.base64EncodedString(), mediaType: "image/jpeg", preview: resized)
     }
 
-    #if DEBUG
+    #if DEBUG || ADMIN_PREVIEWS
     /// A stand-in plate for confirmation previews — not a real meal photo.
     static var demoPlate: MealPhoto {
         let size = CGSize(width: 800, height: 600)

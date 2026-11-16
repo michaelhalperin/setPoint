@@ -903,7 +903,7 @@ final class LogMealViewModel {
         pendingKnownMeal = nil
     }
 
-    #if DEBUG
+    #if DEBUG || ADMIN_PREVIEWS
     static func previewed(
         _ phase: Phase,
         text: String = "",

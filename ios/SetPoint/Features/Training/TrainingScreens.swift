@@ -107,7 +107,7 @@ struct RefuelSheet: View {
     }
 }
 
-#if DEBUG
+#if DEBUG || ADMIN_PREVIEWS
 extension TrainingWeekResponse {
     /// A week for previews: lifts and runs behind, a planned lift yesterday
     /// morning still waiting for Done / Skipped, a run today at 17:00, and

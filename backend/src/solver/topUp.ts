@@ -135,7 +135,7 @@ export const TOP_UP_CONFIG = {
   /** Most of the day-to-day shuffle (kcal-equivalent) so it doesn't repeat. */
   jitter: 60,
   /** Alternatives the card can swap to. */
-  maxOptions: 3,
+  maxOptions: 8,
 } as const;
 
 export type TopUpItem = PrescriptionLineItem & { use: AddOnUse };

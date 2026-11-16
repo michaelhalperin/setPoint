@@ -1,4 +1,4 @@
-#if DEBUG
+#if DEBUG || ADMIN_PREVIEWS
 import Foundation
 
 extension CalendarChoice {

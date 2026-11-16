@@ -78,4 +78,4 @@ new medium:
 
 10. ~~the top it up card does have a switch option button, but its only with 3 options to change, supposed tob have much larger options.~~ ✅ (swap a food from a long list)
 
-11.
+11. a "helper" for what is the "Your burn" screen, for better understanding.
