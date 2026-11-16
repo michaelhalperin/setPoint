@@ -22,6 +22,7 @@ struct AdminHubView: View {
 
             link("People", "Who is in, their role and group, let someone in") { AdminPeopleView() }
             link("Feature flags", "Turn features on or off, or for a group") { AdminFlagsView() }
+            link("Live Activity", "Show the lock screen card and Dynamic Island now") { AdminLiveActivityView() }
             link("Notifications", "Send every kind of notification to your phone") {
                 InnerScreen(spacing: 12) {
                     ScreenHeader(label: "Notifications")
@@ -330,3 +331,47 @@ struct AdminDeveloperView: View {
     }
 }
 #endif
+
+/// Starts a sample Live Activity so the card can be checked without waiting for a late meal.
+struct AdminLiveActivityView: View {
+    @State private var result: String?
+
+    var body: some View {
+        InnerScreen(spacing: 12) {
+            ScreenHeader(label: "Live Activity")
+            Text(verbatim: "Starts a sample card. Lock the phone to see it on the lock screen, or press Home to see the Dynamic Island. Live Activities must be allowed in iPhone Settings → SetPoint.")
+                .font(Typography.data(13))
+                .foregroundStyle(Palette.inkSoft)
+                .fixedSize(horizontal: false, vertical: true)
+            if let result {
+                Text(verbatim: result).font(Typography.data(13)).foregroundStyle(Palette.amber)
+            }
+            action("Meal is late", "Ember card: Lunch, 700 kcal") { start(refuel: false) }
+            action("Refuel after training", "Indigo card: 450 kcal") { start(refuel: true) }
+            action("End it", "Removes the sample card") {
+                LiveActivityController.shared.end()
+                result = "Ended."
+            }
+        }
+    }
+
+    private func start(refuel: Bool) {
+        result = LiveActivityController.shared.startTest(refuel: refuel) ?? "Started."
+    }
+
+    private func action(_ title: String, _ subtitle: String, _ run: @escaping () -> Void) -> some View {
+        Button(action: run) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(verbatim: title).font(Typography.data(17, weight: .semibold)).foregroundStyle(Palette.ink)
+                    Text(verbatim: subtitle).font(Typography.data(13)).foregroundStyle(Palette.inkSoft)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .glass(radius: 22, fill: Color.white.opacity(0.035))
+        }
+        .buttonStyle(PressableCard())
+    }
+}

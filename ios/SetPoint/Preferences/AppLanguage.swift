@@ -54,13 +54,7 @@ enum AppLanguage: String, CaseIterable, Identifiable {
 
     /// The compiled `he.lproj` / `en.lproj`. `String(localized:locale:)` alone
     /// still reads the phone language; this bundle is what the settings control picks.
-    var stringsBundle: Bundle {
-        if let path = Bundle.main.path(forResource: rawValue, ofType: "lproj"),
-           let bundle = Bundle(path: path) {
-            return bundle
-        }
-        return .main
-    }
+    var stringsBundle: Bundle { SourceLanguage.bundle(for: rawValue) }
 
     /// What the settings control last wrote. `String(localized:)` ignores the
     /// SwiftUI locale environment — use `L10n` so copy follows this, not the phone.

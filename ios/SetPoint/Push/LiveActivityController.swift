@@ -66,8 +66,8 @@ final class LiveActivityController {
         }
         end()
         let state = CheckInActivityAttributes.ContentState(
-            title: refuel ? "You trained. Eat something now." : "Lunch is 2 hours late.",
-            detail: refuel ? "Chocolate milk + a sandwich" : "Rice, chicken and a banana",
+            title: refuel ? L10n("You trained. Eat something now.") : L10n("Lunch is 2 hours late."),
+            detail: refuel ? L10n("Chocolate milk + a sandwich") : L10n("Rice, chicken and a banana"),
             deepLink: "setpoint://home",
             label: refuel ? L10n("Refuel") : L10n("Lunch"),
             kcal: refuel ? 450 : 700,
