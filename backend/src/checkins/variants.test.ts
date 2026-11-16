@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { STAPLE_FOODS } from '../data/stapleFoods.js';
+import { DRINKABLE_SLUGS } from '../engine/appetite.js';
 import {
   publicPrescription,
   solveCheckInVariant,
@@ -20,6 +21,27 @@ const base = {
   prepTimeMaxMin: null as number | null,
   drinkableOk: true,
 };
+
+describe('the drink plate', () => {
+  it('is only drinks, never food that merely travels well', () => {
+    const smaller = solveCheckInVariant({ ...base, variant: 'smaller' });
+    expect(smaller).not.toBeNull();
+    const slugs = new Map(STAPLE_FOODS.map((f) => [`id-${f.slug}`, f.slug]));
+    for (const item of smaller?.items ?? []) {
+      expect(DRINKABLE_SLUGS.has(slugs.get(item.foodItemId ?? '') ?? '')).toBe(true);
+    }
+  });
+
+  it('still returns a plate when nothing drinkable is allowed', () => {
+    const drinks = STAPLE_FOODS.filter((f) => DRINKABLE_SLUGS.has(f.slug)).map((f) => f.slug);
+    const smaller = solveCheckInVariant({
+      ...base,
+      foods: STAPLE_FOODS.filter((f) => !drinks.includes(f.slug)),
+      variant: 'smaller',
+    });
+    expect(smaller).not.toBeNull();
+  });
+});
 
 describe('check-in variants', () => {
   it('turns on dense/drinkable prefs only for the smaller plate', () => {

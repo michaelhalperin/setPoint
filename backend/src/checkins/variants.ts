@@ -1,4 +1,4 @@
-import { prescribe, type SolverFood } from '../solver/index.js';
+import { prescribe, SOLVER_CONFIG, type SolverFood } from '../solver/index.js';
 
 export type CheckInVariant = 'full' | 'smaller';
 
@@ -23,6 +23,16 @@ export type SolvedVariant = {
   items: VariantItem[];
   totals: VariantTotals;
 };
+
+/**
+ * Drinks are judged differently from a plate: protein density alone would hand out three scoops of
+ * whey in water, so protein counts for less, a second drink costs nothing extra, and no drink is
+ * repeated more than twice. What's left is a smoothie, or milk and a shake.
+ */
+const DRINK_CONFIG = { ...SOLVER_CONFIG, maxQtyPerItem: 2, perItemPenalty: 60, proteinWeight: 1 } as unknown as typeof SOLVER_CONFIG;
+
+/** Powder stirred into water: a way to add protein, not a drink to be handed to someone. Used only when nothing else fits. */
+const POWDER_SLUGS = new Set(['whey-protein-shake', 'plant-protein-shake']);
 
 export function variantSolverPrefs(variant: CheckInVariant, drinkableOk: boolean) {
   const smaller = variant === 'smaller';
@@ -61,14 +71,23 @@ export function solveCheckInVariant(input: {
   variant: CheckInVariant;
 }): SolvedVariant | null {
   const prefs = variantSolverPrefs(input.variant, input.drinkableOk);
-  const rx = prescribe(input.foods, {
+  const constraints = {
     targetKcal: variantMealTarget(input.targetKcal, input.variant),
     targetProteinG: variantProteinTarget(input.targetProteinG, input.variant),
     excludedTokens: input.excludedTokens,
     pantryTokens: input.pantryTokens,
     prepTimeMaxMin: input.prepTimeMaxMin,
     ...prefs,
-  });
+  };
+  // The Drink plate is things you drink — milk, shakes, smoothies — not food that merely travels
+  // well. Only when nothing drinkable fits what the person avoids does it fall back to the softer
+  // preference rather than leave them without a plate.
+  const drinks = { ...constraints, requireDrinkable: true };
+  const rx =
+    (prefs.preferDrinkable
+      ? (prescribe(input.foods.filter((f) => !POWDER_SLUGS.has(f.slug)), drinks, DRINK_CONFIG) ??
+        prescribe(input.foods, drinks, DRINK_CONFIG))
+      : null) ?? prescribe(input.foods, constraints);
   if (!rx) return null;
   return {
     items: rx.items.map((i) => ({

@@ -23,6 +23,8 @@ struct HomeContent: View {
     @State private var choosingSnooze = false
     @State private var showingPaywall = false
     @State private var topUpBusy = false
+    /// The takeover's "Drink it instead": the sheet opens on the drink plate.
+    @State private var checkInStartsOnDrink = false
     @State private var logOpen = false
     @State private var showingDay = false
     @State private var showingOrder = false
@@ -111,7 +113,8 @@ struct HomeContent: View {
                                 offerQuickLog(for: checkIn)
                             },
                             suggestSmallerDefault: home.appetite?.suggestSmallerDefault == true,
-                            appetiteLevel: home.appetite?.level
+                            appetiteLevel: home.appetite?.level,
+                            startOnDrink: checkInStartsOnDrink
                         )
                         .transition(.move(edge: .bottom))
                     }
@@ -376,7 +379,8 @@ struct HomeContent: View {
                         onAlreadyAte: alreadyAte,
                         onSnooze: { choosingSnooze = true },
                         onLater: laterTalk,
-                        onOrder: orderAction
+                        onOrder: orderAction,
+                        onDrink: { checkInStartsOnDrink = true; openCheckIn() }
                     )
                     .transition(.opacity)
                 } else {
@@ -559,6 +563,7 @@ struct HomeContent: View {
     }
 
     private func closeCheckIn() {
+        checkInStartsOnDrink = false
         withAnimation(springForCheckIn) { showingCheckIn = false }
     }
 

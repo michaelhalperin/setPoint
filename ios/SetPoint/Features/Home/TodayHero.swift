@@ -858,8 +858,8 @@ struct PingRing: View {
 
 // MARK: - Check-in takeover
 
-/// A check-in (or the tier-3 talk) taking over the top of Today: an ember glow,
-/// the manager's line, the plate, and one bone button.
+/// A check-in (or the tier-3 talk) taking over the top of Today: where you are in the day,
+/// what's late, the plate, one bone button and three quiet ways out.
 struct CheckInTakeover: View {
     let home: HomeResponse
     let checkIn: HomeResponse.ActiveCheckIn
@@ -874,34 +874,39 @@ struct CheckInTakeover: View {
     var onLater: (() -> Void)? = nil
     /// Order nearby, for when there's nothing to eat where you are. Nil hides it.
     var onOrder: (() -> Void)? = nil
+    /// Open the check-in sheet on the drink plate. Nil hides "Drink it instead".
+    var onDrink: (() -> Void)? = nil
 
     var body: some View {
         screenBody.trackScreen("check_in")
     }
 
+    private var flavor: CheckInFlavor { CheckInFlavor(kind: checkIn.kind ?? "MEAL") }
+
     @ViewBuilder
     private var screenBody: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            HStack(spacing: 8) {
-                ZStack {
-                    PingRing(color: Palette.ember)
-                    Circle().fill(Palette.ember).frame(width: 7, height: 7)
-                }
-                .frame(width: 10, height: 10)
-                Text(LocalizedStringKey(label)).sectionLabelStyle(Palette.amber)
-            }
-            .appearIn(0)
+        VStack(alignment: .leading, spacing: 20) {
+            DayStrip(slots: home.day?.slots ?? [], nowMin: home.day?.nowMin ?? TodayLayout.minuteOfDay(from: .now), activeSlot: checkIn.slot)
+                .appearIn(0)
 
-            Headline(TodayCopy.headline(moment), tail: TodayCopy.detail(moment, home: home), size: 42)
-                .appearIn(1, rise: 16)
+            VStack(alignment: .leading, spacing: 8) {
+                Text(headline)
+                    .font(Typography.display(36))
+                    .tracking(-1.3)
+                    .foregroundStyle(Palette.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let detail = TodayCopy.detail(moment, home: home) {
+                    Text(detail)
+                        .font(Typography.data(14, weight: .regular))
+                        .foregroundStyle(Palette.inkSoft)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .appearIn(1, rise: 16)
 
             if let rx = checkIn.prescription {
-                Button(action: onOpen) {
-                    PrescriptionCard(prescription: rx)
-                }
-                .buttonStyle(PressableCard())
-                .accessibilityHint("Opens the full check-in")
-                .appearIn(2, rise: 16)
+                PlateCard(prescription: rx, title: flavor == .light ? "Add this" : "Eat this", onOpen: onOpen, onDrink: onDrink)
+                    .appearIn(2, rise: 16)
             }
 
             actions
@@ -922,21 +927,22 @@ struct CheckInTakeover: View {
         }
     }
 
-    private var label: String {
-        let time = Date().appClock
-        switch CheckInFlavor(kind: checkIn.kind ?? "MEAL") {
-        case .close: return L10n( "Closing the day · \(time)")
-        case .light: return L10n( "Top-up · \(time)")
-        case .meal: return checkIn.tier >= 3 ? L10n( "Let’s talk") : L10n( "Check-in · \(time)")
+    /// "Lunch is 2 hours late." when a meal is that late; otherwise the usual line.
+    private var headline: String {
+        if flavor == .meal, checkIn.tier < 3, let slot = checkIn.slot,
+           let day = home.day, let at = day.slots.first(where: { $0.slot == slot })?.atMin {
+            let late = day.nowMin - at
+            if late >= 15 {
+                return L10n("\(TodayCopy.slotTitle(slot)) is \(Self.duration(late)) late.")
+            }
         }
+        return TodayCopy.headline(moment)
     }
 
-    private var orderDetail: String {
-        let kcal = checkIn.prescription?.totalKcal ?? max(0, home.ledger.remainingKcal)
-        switch CheckInFlavor(kind: checkIn.kind ?? "MEAL") {
-        case .close: return L10n( "A dinner near you that fits \(kcal.formatted()) kcal")
-        default: return L10n( "Places near you that fit \(kcal.formatted()) kcal")
-        }
+    private static func duration(_ minutes: Int) -> String {
+        if minutes < 60 { return L10n("\(minutes) minutes") }
+        let hours = Int((Double(minutes) / 60).rounded())
+        return hours == 1 ? L10n("1 hour") : L10n("\(hours) hours")
     }
 
     @ViewBuilder
@@ -960,45 +966,172 @@ struct CheckInTakeover: View {
                     )
                 }
                 HStack(spacing: 10) {
-                    ActionButton(title: "I already ate", kind: .secondary, action: onAlreadyAte)
-                    ActionButton(title: "Snooze", kind: .secondary, action: onSnooze)
+                    tile("Ate already", "checkmark.circle", action: onAlreadyAte)
+                    tile("Snooze", "clock", action: onSnooze)
+                    if let onOrder {
+                        tile("Order nearby", "mappin.and.ellipse", haze: true, action: onOrder)
+                    }
                 }
                 .disabled(busy)
-                if let onOrder {
-                    Button(action: onOrder) {
-                        HStack(spacing: 12) {
-                            Image(systemName: "mappin.and.ellipse")
-                                .font(.system(size: 15, weight: .medium))
-                                .foregroundStyle(Palette.hazeSoft)
-                            VStack(alignment: .leading, spacing: 1) {
-                                Text("No food here? Order something")
-                                    .font(Typography.data(15, weight: .regular))
-                                    .foregroundStyle(Palette.ink)
-                                Text(orderDetail)
-                                    .font(Typography.data(12, weight: .regular))
-                                    .foregroundStyle(Palette.inkSoft)
-                            }
-                            Spacer(minLength: 8)
-                            Image(systemName: "chevron.forward")
-                                .font(.system(size: 11, weight: .semibold))
-                                .foregroundStyle(Palette.inkFaint)
-                        }
-                        .padding(.horizontal, 16)
-                        .frame(height: 54)
-                        .background {
-                            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                .fill(LinearGradient(colors: [Palette.haze.opacity(0.12), Palette.haze.opacity(0.04)], startPoint: .top, endPoint: .bottom))
-                        }
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                .strokeBorder(Palette.haze.opacity(0.5))
-                        }
-                    }
-                    .buttonStyle(PressableCard())
-                    .disabled(busy)
-                }
             }
         }
+    }
+
+    private func tile(_ title: String, _ symbol: String, haze: Bool = false, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(spacing: 6) {
+                Image(systemName: symbol)
+                    .font(.system(size: 18, weight: .regular))
+                Text(LocalizedStringKey(title))
+                    .font(Typography.data(13, weight: .regular))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+            .foregroundStyle(haze ? Palette.hazeSoft : Palette.inkSoft)
+            .frame(maxWidth: .infinity)
+            .frame(height: 64)
+            .background {
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(haze ? Palette.haze.opacity(0.10) : Color.white.opacity(0.05))
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .strokeBorder(haze ? Palette.haze.opacity(0.5) : Color.white.opacity(0.10))
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PressableCard())
+    }
+}
+
+/// Where you are in the day: the meals as dots on a line, the late one glowing, and "now".
+struct DayStrip: View {
+    let slots: [HomeResponse.Day.Slot]
+    let nowMin: Int
+    let activeSlot: String?
+
+    var body: some View {
+        GeometryReader { geo in
+            let lo = Double((slots.map(\.atMin).min() ?? nowMin).clamped(to: 0 ... nowMin)) - 45
+            let hi = Double(max(slots.map(\.atMin).max() ?? nowMin, nowMin)) + 45
+            let width = geo.size.width - 28
+            let x = { (minute: Int) -> CGFloat in 14 + CGFloat((Double(minute) - lo) / max(1, hi - lo)) * width }
+            let lineY: CGFloat = 36
+
+            ZStack(alignment: .topLeading) {
+                Capsule().fill(Color.white.opacity(0.10)).frame(width: width, height: 2).offset(x: 14, y: lineY - 1)
+                Capsule().fill(Palette.amber).frame(width: max(0, x(nowMin) - 14), height: 2).offset(x: 14, y: lineY - 1)
+
+                ForEach(slots) { slot in
+                    dot(slot)
+                        .position(x: x(slot.atMin), y: lineY)
+                    Text(formatMinutes(slot.atMin))
+                        .font(Typography.mono(10))
+                        .foregroundStyle(slot.slot == activeSlot && slot.slotState != .logged ? Palette.amber : Palette.inkFaint)
+                        .fixedSize()
+                        .position(x: x(slot.atMin), y: lineY + 28)
+                }
+
+                VStack(spacing: 2) {
+                    Text("Now")
+                        .font(Typography.mono(10))
+                        .foregroundStyle(Palette.ink)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 2)
+                        .background(Color.white.opacity(0.12), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                    Rectangle().fill(Color.white.opacity(0.4)).frame(width: 1, height: 8)
+                }
+                .position(x: x(nowMin), y: 12)
+            }
+        }
+        .frame(height: 78)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(L10n("Your day so far"))
+    }
+
+    @ViewBuilder
+    private func dot(_ slot: HomeResponse.Day.Slot) -> some View {
+        let isActive = slot.slot == activeSlot && slot.slotState != .logged
+        if isActive {
+            Circle()
+                .fill(RadialGradient(colors: [Color(hex: 0xFFD9A8), Palette.ember], center: UnitPoint(x: 0.35, y: 0.3), startRadius: 0, endRadius: 22))
+                .frame(width: 30, height: 30)
+                .shadow(color: Palette.ember.opacity(0.7), radius: 14)
+                .overlay(Circle().stroke(Palette.ember.opacity(0.2), lineWidth: 6).padding(-3))
+        } else if slot.slotState == .logged {
+            Circle().fill(Palette.amber).frame(width: 14, height: 14)
+        } else {
+            Circle().strokeBorder(Color.white.opacity(0.3), lineWidth: 2).background(Circle().fill(Palette.background)).frame(width: 14, height: 14)
+        }
+    }
+}
+
+private extension Comparable {
+    func clamped(to range: ClosedRange<Self>) -> Self { min(max(self, range.lowerBound), range.upperBound) }
+}
+
+/// The suggested plate in the takeover: its total on top, a row per food, and a shortcut to drinking it.
+struct PlateCard: View {
+    let prescription: HomeResponse.ActiveCheckIn.Prescription
+    let title: String
+    let onOpen: () -> Void
+    var onDrink: (() -> Void)? = nil
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Button(action: onOpen) {
+                VStack(spacing: 0) {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(LocalizedStringKey(title)).sectionLabelStyle()
+                        Spacer()
+                        (Text(L10n("\(prescription.totalKcal.formatted()) kcal")).foregroundColor(Palette.ink)
+                            + Text("  ·  ").foregroundColor(Palette.inkFaint)
+                            + Text(L10n("\(Int(prescription.totalProteinG.rounded())) g protein")).foregroundColor(Palette.amber))
+                            .font(Typography.mono(12))
+                    }
+                    .padding(.bottom, 10)
+                    ForEach(prescription.items) { item in
+                        HStack(spacing: 12) {
+                            Text(item.quantity != 1 ? "\(item.quantity.formatted(.number.precision(.fractionLength(0 ... 1))))× \(FoodText.name(item.name))" : FoodText.name(item.name))
+                                .font(Typography.data(16, weight: .regular))
+                                .foregroundStyle(Palette.ink)
+                                .multilineTextAlignment(.leading)
+                            Spacer(minLength: 8)
+                            Text("\(item.kcal)")
+                                .font(Typography.mono(13))
+                                .foregroundStyle(Palette.inkSoft)
+                        }
+                        .padding(.vertical, 11)
+                        .overlay(alignment: .top) { Rectangle().fill(Color.white.opacity(0.07)).frame(height: 1) }
+                    }
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("Opens the full check-in")
+
+            if let onDrink {
+                Button(action: onDrink) {
+                    HStack {
+                        Text("Easier to get down? Drink it instead")
+                            .font(Typography.data(14, weight: .regular))
+                            .foregroundStyle(Palette.amber)
+                        Spacer(minLength: 8)
+                        Image(systemName: "chevron.forward")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(Palette.amber)
+                    }
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .overlay(alignment: .top) { Rectangle().fill(Color.white.opacity(0.07)).frame(height: 1) }
+            }
+        }
+        .padding(.horizontal, 18)
+        .padding(.top, 16)
+        .padding(.bottom, onDrink == nil ? 12 : 2)
+        .glass(radius: 28)
     }
 }
 

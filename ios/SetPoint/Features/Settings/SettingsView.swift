@@ -146,89 +146,97 @@ struct SettingsView: View {
     }
 
     /// The goal as a picture: weight now inside a ring that fills toward the target.
+    /// The plan as one sentence under an orb glow: where you're headed, how far along, and three facts.
+    /// The whole card opens Edit plan; the pencil says so.
     private func goalCard(_ model: SettingsViewModel) -> some View {
-        let progress = model.goal.hasWeightTarget ? (planProgress(model) ?? 0.04) : 1
+        let hasTarget = model.goal.hasWeightTarget
+        let progress = hasTarget ? (planProgress(model) ?? 0.04) : 1
         return NavigationLink {
             GoalSettingsView(model: model)
         } label: {
-            HStack(spacing: 18) {
-                ZStack {
-                    OrbRing(progress: max(0.04, progress))
-                    FuelOrb(size: 80, glow: 0.4)
-                    VStack(spacing: 0) {
-                        Text(model.currentWeightKg.map { massUnit.number($0, digits: 1 ... 1) } ?? "—")
-                            .font(Typography.data(22, weight: .light))
-                            .tracking(-0.6)
-                        Text(L10n("\(massUnit.abbreviation) NOW"))
-                            .font(Typography.mono(9))
-                            .foregroundStyle(Color(hex: 0xFDE6CF))
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Your plan").sectionLabelStyle(Palette.amber)
+                        Text(planTitle(model) + ".")
+                            .font(Typography.display(32))
+                            .tracking(-1)
+                            .foregroundStyle(Palette.ink)
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.8)
+                        Text(planSubline(model, progress: progress))
+                            .font(Typography.data(14, weight: .regular))
+                            .foregroundStyle(Palette.ink.opacity(0.85))
+                            .fixedSize(horizontal: false, vertical: true)
                     }
-                    .foregroundStyle(Palette.ink)
-                    .shadow(color: .black.opacity(0.6), radius: 6, y: 2)
-                }
-                .frame(width: 112, height: 112)
-
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(goalLabel(model, progress: progress)).sectionLabelStyle(Palette.amber)
-                    Text(goalTitle(model))
-                        .font(Typography.display(26))
-                        .tracking(-0.8)
+                    Spacer(minLength: 8)
+                    Image(systemName: "pencil")
+                        .font(.system(size: 15, weight: .medium))
                         .foregroundStyle(Palette.ink)
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.8)
-                    Text(goalLines(model))
-                        .font(Typography.mono(11))
-                        .foregroundStyle(Palette.inkSoft)
-                        .lineSpacing(3)
-                        .textCase(.uppercase)
-                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(width: 40, height: 40)
+                        .background(Palette.background.opacity(0.5), in: Circle())
+                        .overlay(Circle().strokeBorder(Color.white.opacity(0.14)))
+                        .accessibilityHidden(true)
                 }
-                Spacer(minLength: 0)
-                // The card is the way into the plan: say so.
-                Image(systemName: "pencil")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(Palette.ink)
-                    .frame(width: 32, height: 32)
-                    .background(Color.white.opacity(0.10), in: Circle())
+
+                Capsule()
+                    .fill(Color.white.opacity(0.12))
+                    .frame(height: 6)
+                    .overlay(alignment: .leading) {
+                        GeometryReader { geo in
+                            Capsule().fill(Palette.ink).frame(width: geo.size.width * max(0.03, progress))
+                        }
+                    }
                     .accessibilityHidden(true)
+
+                HStack(spacing: 8) {
+                    planFact("Now", model.currentWeightKg.map { massUnit.number($0, digits: 1 ... 1) } ?? "—", unit: massUnit.abbreviation)
+                    planFact("Each day", model.kcalTarget.formatted(), unit: "kcal")
+                    planFact("Pace", hasTarget ? model.pace.title : L10n("Hold"), unit: nil)
+                }
             }
             .padding(18)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background {
-                RoundedRectangle(cornerRadius: 28, style: .continuous)
-                    .fill(LinearGradient(colors: [Palette.ember.opacity(0.12), Color.white.opacity(0.02)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                ZStack(alignment: .topTrailing) {
+                    RoundedRectangle(cornerRadius: 30, style: .continuous).fill(Color.white.opacity(0.045))
+                    FuelOrb(size: 200, breathing: false, glow: 0.3)
+                        .opacity(0.55)
+                        .offset(x: 50, y: -60)
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
             }
-            .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous).strokeBorder(Color(hex: 0xFF8A50, opacity: 0.30)))
+            .overlay(RoundedRectangle(cornerRadius: 30, style: .continuous).strokeBorder(Color.white.opacity(0.10)))
         }
         .buttonStyle(PressableCard())
-        .accessibilityLabel(L10n("\(goalTitle(model)). \(goalLines(model)). Edit plan"))
+        .accessibilityLabel(L10n("\(planTitle(model)). \(planSubline(model, progress: progress)). Edit plan"))
     }
 
-    private func goalLabel(_ model: SettingsViewModel, progress: Double) -> String {
-        guard model.goal.hasWeightTarget else { return L10n( "Maintaining") }
+    private func planFact(_ title: String, _ value: String, unit: String?) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(LocalizedStringKey(title)).font(Typography.mono(10)).tracking(1).textCase(.uppercase).foregroundStyle(Palette.inkFaint)
+            HStack(alignment: .firstTextBaseline, spacing: 3) {
+                Text(value)
+                    .font(Typography.data(20, weight: .light))
+                    .foregroundStyle(Palette.ink)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                if let unit {
+                    Text(unit).font(Typography.data(12, weight: .regular)).foregroundStyle(Palette.inkFaint)
+                }
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Palette.background.opacity(0.55), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Color.white.opacity(0.08)))
+    }
+
+    private func planSubline(_ model: SettingsViewModel, progress: Double) -> String {
+        guard model.goal.hasWeightTarget else { return L10n("No end date") }
         let percent = Int((progress * 100).rounded())
-        return model.goal == .bulk
-            ? L10n( "Gaining · \(percent)% there")
-            : L10n( "Cutting · \(percent)% there")
-    }
-
-    private func goalTitle(_ model: SettingsViewModel) -> String {
-        guard model.goal.hasWeightTarget, let target = model.targetWeightKg else {
-            if let current = model.currentWeightKg { return L10n( "Holding at \(massUnit.formatKg(current))") }
-            return L10n( "Hold steady")
-        }
-        return L10n( "To \(massUnit.formatKg(target, digits: 0))")
-    }
-
-    private func goalLines(_ model: SettingsViewModel) -> String {
-        let first = L10n( "\(model.kcalTarget.formatted()) kcal a day")
-        let second: String
-        if model.goal.hasWeightTarget {
-            second = model.honestDurationWeeks.map { L10n( "\(model.pace.title) · ~\($0) weeks left") } ?? model.pace.title
-        } else {
-            second = L10n( "No end date")
-        }
-        return first + "\n" + second
+        if let weeks = model.honestDurationWeeks { return L10n("\(percent)% there · about \(weeks) weeks left") }
+        return L10n("\(percent)% there")
     }
 
     /// Check-ins are on unless someone paused them earlier; the switch for that is

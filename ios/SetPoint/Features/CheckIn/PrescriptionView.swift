@@ -21,6 +21,8 @@ struct PrescriptionView: View {
     var appetiteLevel: String? = nil
     /// Preview both plates without hitting the network (uiStub).
     var previewVariants: VariantsPayload? = nil
+    /// Open on the drink plate (the takeover's "Drink it instead").
+    var startOnDrink = false
 
     @Environment(AppEnvironment.self) private var env
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -34,6 +36,7 @@ struct PrescriptionView: View {
     @State private var fullPlate: HomeResponse.ActiveCheckIn.Prescription?
     @State private var smallerPlate: HomeResponse.ActiveCheckIn.Prescription?
     @State private var loaded = false
+    @State private var swapping: HomeResponse.ActiveCheckIn.Prescription.Item?
 
     init(
         checkIn: HomeResponse.ActiveCheckIn,
@@ -45,7 +48,8 @@ struct PrescriptionView: View {
         onAlreadyAte: @escaping () -> Void,
         suggestSmallerDefault: Bool = false,
         appetiteLevel: String? = nil,
-        previewVariants: VariantsPayload? = nil
+        previewVariants: VariantsPayload? = nil,
+        startOnDrink: Bool = false
     ) {
         self.checkIn = checkIn
         self.headline = headline
@@ -57,7 +61,8 @@ struct PrescriptionView: View {
         self.suggestSmallerDefault = suggestSmallerDefault
         self.appetiteLevel = appetiteLevel
         self.previewVariants = previewVariants
-        let preferSmaller = suggestSmallerDefault || appetiteLevel == "LOW" || checkIn.variant == "smaller"
+        self.startOnDrink = startOnDrink
+        let preferSmaller = startOnDrink || suggestSmallerDefault || appetiteLevel == "LOW" || checkIn.variant == "smaller"
         _notHungry = State(initialValue: preferSmaller)
         if let preview = previewVariants {
             _fullPlate = State(initialValue: preview.full)
@@ -75,62 +80,71 @@ struct PrescriptionView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Space.md) {
+        VStack(alignment: .leading, spacing: 0) {
             Capsule()
                 .fill(Palette.inkFaint.opacity(0.4))
                 .frame(width: 40, height: 5)
                 .frame(maxWidth: .infinity)
 
             HStack {
-                Text("Check-in")
+                Text(sheetLabel)
                     .sectionLabelStyle(Palette.ember)
                 Spacer()
                 Button(action: onDismiss) {
                     Image(systemName: "xmark")
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(Palette.inkSoft)
                         .frame(width: 34, height: 34)
                         .background(Color.white.opacity(0.06), in: Circle())
+                        .frame(width: 44, height: 44)
                 }
+                .padding(.trailing, -10)
                 .accessibilityLabel("Close")
             }
+            .padding(.top, 8)
 
-            Headline(headline, tail: notHungry ? "Two ways to get it in." : nil, size: 40)
-
-            if let whyNow {
-                Label(whyNow, systemImage: "clock")
-                    .font(Typography.data(13, weight: .semibold))
-                    .foregroundStyle(Palette.inkSoft)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(Color.white.opacity(0.06), in: Capsule())
+            VStack(alignment: .leading, spacing: 6) {
+                Headline(headline, tail: nil, size: 38)
+                if let whyNow {
+                    Text(whyNow)
+                        .font(Typography.data(13, weight: .regular))
+                        .foregroundStyle(Palette.inkSoft)
+                }
             }
+            .padding(.top, 4)
 
             if checkIn.prescription != nil {
-                plateTiles
-                Spacer(minLength: 0)
+                modeCards.padding(.top, 22)
+                foodList.padding(.top, 14)
+                Spacer(minLength: 12)
                 primaryActions
             } else if let message = checkIn.message {
                 Text(LocalizedStringKey(message))
                     .font(Typography.voice(20))
                     .foregroundStyle(Palette.ink)
+                    .padding(.top, 18)
                 ActionButton(title: "I already ate", kind: .secondary) { run(alreadyAte, then: onAlreadyAte) }
+                    .padding(.top, 12)
+                Spacer(minLength: 0)
             }
 
             if let error {
                 Text(LocalizedStringKey(error))
                     .font(Typography.data(13, weight: .semibold))
                     .foregroundStyle(Palette.amber)
+                    .padding(.top, 8)
             }
 
-            HStack(spacing: Space.sm) {
-                Text("Right time?")
-                    .font(Typography.data(13, weight: .semibold))
-                    .foregroundStyle(Palette.inkFaint)
+            HStack(spacing: 2) {
                 Spacer()
+                Text("Right time?")
+                    .font(Typography.data(12, weight: .regular))
+                    .foregroundStyle(Palette.inkFaint)
                 feedbackButton(systemName: "hand.thumbsup", positive: true)
                 feedbackButton(systemName: "hand.thumbsdown", positive: false)
+                Spacer()
             }
+            .padding(.top, 2)
         }
         .padding(.horizontal, Space.gutter)
         .padding(.top, Space.sm)
@@ -151,6 +165,15 @@ struct PrescriptionView: View {
         .offset(y: drag)
         .gesture(dismissDrag)
         .task { await loadVariants() }
+        .sheet(item: $swapping) { item in
+            SwapFoodSheet(checkInID: checkIn.id, item: item, preview: previewVariants != nil) { rx in
+                if notHungry { smallerPlate = rx } else { fullPlate = rx }
+            }
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+            .presentationBackground(Palette.sheet)
+            .presentationCornerRadius(32)
+        }
         .sheet(isPresented: $choosingSnooze) {
             let choices = CheckInActions.snoozeChoices(nextMealMinutes: nextMealMinutes)
             SnoozeSheet(choices: choices) { minutes in
@@ -163,118 +186,134 @@ struct PrescriptionView: View {
         }
     }
 
-    /// The two plates side by side as pictures: a full plate to chew, or a glass and
-    /// a banana to drink. The chosen one lights; its foods sit underneath.
-    private var plateTiles: some View {
-        VStack(spacing: 12) {
-            HStack(spacing: 10) {
-                plateTile(smaller: false, plate: fullPlate)
-                plateTile(smaller: true, plate: smallerPlate)
-            }
-            .fixedSize(horizontal: false, vertical: true)
-            if let plate = activePrescription {
-                FlexWrap(spacing: 8, lineSpacing: 8) {
-                    ForEach(plate.items) { item in
-                        HStack(spacing: 8) {
-                            Text(item.quantity > 1 ? "\(Int(item.quantity))× \(FoodText.name(item.name))" : FoodText.name(item.name))
-                                .font(Typography.data(13, weight: .regular))
-                                .foregroundStyle(Palette.ink)
-                            Text("\(item.kcal)")
-                                .font(Typography.mono(11))
-                                .foregroundStyle(Palette.amber)
-                        }
-                        .padding(.horizontal, 14)
-                        .frame(height: 34)
-                        .glassCapsule()
-                    }
-                }
-                .frame(maxWidth: .infinity)
-                .id(notHungry)
-                .transition(.opacity)
-            } else if !loaded {
-                ProgressView().frame(maxWidth: .infinity, minHeight: 40)
-            }
+    private var sheetLabel: String {
+        if let slot = checkIn.slot { return L10n("Check-in · \(TodayCopy.slotTitle(slot))") }
+        return L10n("Check-in")
+    }
+
+    /// Eat it or drink it: two compact cards, the chosen one lit.
+    private var modeCards: some View {
+        HStack(spacing: 10) {
+            modeCard(smaller: false, plate: fullPlate)
+            modeCard(smaller: true, plate: smallerPlate)
         }
+        .fixedSize(horizontal: false, vertical: true)
         .animation(Motion.adaptive(Motion.settle, reduceMotion: reduceMotion), value: notHungry)
     }
 
-    private func plateTile(smaller: Bool, plate: HomeResponse.ActiveCheckIn.Prescription?) -> some View {
+    private func modeCard(smaller: Bool, plate: HomeResponse.ActiveCheckIn.Prescription?) -> some View {
         let on = notHungry == smaller
         return Button { select(notHungry: smaller) } label: {
-            VStack(spacing: 4) {
-                Group {
-                    if smaller { DrinkPicture() } else { PlatePicture() }
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Image(systemName: smaller ? "cup.and.saucer" : "fork.knife")
+                        .font(.system(size: 22, weight: .light))
+                        .foregroundStyle(on ? Palette.amber : Palette.inkSoft)
+                    Spacer(minLength: 4)
+                    Text(L10n("\(smaller ? 2 : 15) min"))
+                        .font(Typography.mono(10))
+                        .tracking(1)
+                        .textCase(.uppercase)
+                        .foregroundStyle(on ? Palette.amber : Palette.inkFaint)
                 }
-                .frame(height: 150)
-                Text(smaller ? "Drink · 2 min" : "Chew · 15 min")
-                    .sectionLabelStyle(on ? Palette.amber : Palette.inkFaint)
-                Text(smaller ? "Easier to get down" : "Full plate")
-                    .font(Typography.data(16, weight: .medium))
-                    .foregroundStyle(Palette.ink)
-                    .multilineTextAlignment(.center)
-                if let plate {
-                    Text("\(plate.totalKcal.formatted()) kcal")
-                        .font(Typography.mono(12))
-                        .foregroundStyle(Palette.inkSoft)
-                    Text("\(Int(plate.totalProteinG.rounded())) g protein")
-                        .font(Typography.data(11, weight: .regular))
-                        .foregroundStyle(Palette.inkFaint)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(LocalizedStringKey(smaller ? "Drink" : "Eat"))
+                        .font(Typography.data(16, weight: .medium))
+                        .foregroundStyle(Palette.ink)
+                    if let plate {
+                        Text(L10n("\(plate.totalKcal.formatted()) kcal · \(Int(plate.totalProteinG.rounded())) g"))
+                            .font(Typography.data(12, weight: .regular))
+                            .foregroundStyle(on ? Palette.ink.opacity(0.8) : Palette.inkFaint)
+                    } else {
+                        Text(" ").font(Typography.data(12))
+                    }
                 }
             }
-            .padding(.horizontal, 8)
-            .padding(.top, 8)
-            .padding(.bottom, 16)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .background {
-                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
                     .fill(on
-                          ? AnyShapeStyle(LinearGradient(colors: [Palette.ember.opacity(0.13), Palette.ember.opacity(0.03)], startPoint: .top, endPoint: .bottom))
-                          : AnyShapeStyle(Color.white.opacity(0.02)))
+                          ? AnyShapeStyle(LinearGradient(colors: [Palette.ember.opacity(0.14), Palette.ember.opacity(0.04)], startPoint: .top, endPoint: .bottom))
+                          : AnyShapeStyle(Color.white.opacity(0.03)))
             }
-            .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous).strokeBorder(on ? Color(hex: 0xFF8A50, opacity: 0.55) : Color.white.opacity(0.07)))
-            .shadow(color: Palette.ember.opacity(on ? 0.16 : 0), radius: 20)
-            .scaleEffect(on ? 1 : 0.94)
-            .opacity(on ? 1 : 0.5)
+            .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(on ? Color(hex: 0xFF8A50, opacity: 0.6) : Color.white.opacity(0.08)))
+            .shadow(color: Palette.ember.opacity(on ? 0.16 : 0), radius: 18)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .disabled(busy)
-        .accessibilityLabel((smaller ? L10n("Easier to get down") : L10n("Full plate")) + (plate.map { L10n(", \($0.totalKcal) calories") } ?? ""))
+        .accessibilityLabel((smaller ? L10n("Drink") : L10n("Eat")) + (plate.map { L10n(", \($0.totalKcal) calories") } ?? ""))
         .accessibilityAddTraits(on ? .isSelected : [])
     }
 
+    /// What's in the chosen plate; each food can be swapped for another of the same kind.
+    private var foodList: some View {
+        VStack(spacing: 0) {
+            if let plate = activePrescription {
+                ForEach(plate.items) { item in
+                    HStack(spacing: 12) {
+                        Text(foodLine(item))
+                            .font(Typography.data(16, weight: .regular))
+                            .foregroundStyle(Palette.ink)
+                        Spacer(minLength: 8)
+                        Text("\(item.kcal)")
+                            .font(Typography.mono(13))
+                            .foregroundStyle(Palette.inkSoft)
+                        Button {
+                            Haptics.select()
+                            swapping = item
+                        } label: {
+                            Image(systemName: "arrow.left.arrow.right")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundStyle(Palette.inkSoft)
+                                .frame(width: 36, height: 36)
+                                .background(Color.white.opacity(0.06), in: Circle())
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(busy)
+                        .accessibilityLabel(L10n("Swap \(FoodText.name(item.name))"))
+                    }
+                    .frame(minHeight: 56)
+                    .overlay(alignment: .top) { Rectangle().fill(Color.white.opacity(0.07)).frame(height: 1) }
+                }
+            } else if !loaded {
+                ProgressView().frame(maxWidth: .infinity, minHeight: 60)
+            }
+        }
+        .id(notHungry)
+        .transition(.opacity)
+        .animation(Motion.adaptive(Motion.settle, reduceMotion: reduceMotion), value: notHungry)
+    }
+
+    private func foodLine(_ item: HomeResponse.ActiveCheckIn.Prescription.Item) -> String {
+        let name = FoodText.name(item.name)
+        guard item.quantity != 1 else { return name }
+        return "\(item.quantity.formatted(.number.precision(.fractionLength(0 ... 1))))× \(name)"
+    }
+
     private var primaryActions: some View {
-        VStack(spacing: Space.sm) {
+        VStack(spacing: 4) {
             ActionButton(title: primaryTitle, busy: busy, busyTitle: "Logging") {
                 run(eatThis)
             }
-            HStack(spacing: 10) {
-                secondaryAction(title: "Snooze", symbol: "zzz") {
-                    choosingSnooze = true
-                }
-                secondaryAction(title: "I already ate") {
-                    run(alreadyAte, then: onAlreadyAte)
-                }
+            HStack(spacing: 0) {
+                textAction("Snooze") { choosingSnooze = true }
+                textAction("I already ate") { run(alreadyAte, then: onAlreadyAte) }
             }
             .disabled(busy)
         }
     }
 
-    private func secondaryAction(title: String, symbol: String? = nil, action: @escaping () -> Void) -> some View {
+    private func textAction(_ title: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            HStack(spacing: 8) {
-                if let symbol {
-                    Image(systemName: symbol)
-                        .font(.system(size: 14, weight: .semibold))
-                }
-                Text(LocalizedStringKey(title))
-                    .font(Typography.data(15, weight: .bold))
-            }
-            .foregroundStyle(Palette.ink)
-            .frame(maxWidth: .infinity, minHeight: 48)
-            .background(Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: Radius.md, style: .continuous))
+            Text(LocalizedStringKey(title))
+                .font(Typography.data(15, weight: .regular))
+                .foregroundStyle(Palette.inkSoft)
+                .frame(maxWidth: .infinity, minHeight: 48)
+                .contentShape(Rectangle())
         }
-        .buttonStyle(PressableCard())
+        .buttonStyle(.plain)
     }
 
     /// Logs the whole plate, so the button names the plate, not its first item.
@@ -404,6 +443,163 @@ struct PrescriptionView: View {
 
 private struct FeedbackBody: Encodable {
     let positive: Bool
+}
+
+/// Swap one food on the plate for another of the same kind (a drink for a drink), each sized to
+/// roughly the same calories, with what the swap does to the total.
+struct SwapFoodSheet: View {
+    let checkInID: String
+    let item: HomeResponse.ActiveCheckIn.Prescription.Item
+    var preview = false
+    let onSwapped: (HomeResponse.ActiveCheckIn.Prescription) -> Void
+
+    @Environment(AppEnvironment.self) private var env
+    @Environment(\.dismiss) private var dismiss
+    @State private var alternatives: [Alternative] = []
+    @State private var loading = true
+    @State private var error: String?
+    @State private var swappingSlug: String?
+
+    struct Alternative: Decodable, Identifiable {
+        let slug: String
+        let name: String
+        let servingDesc: String
+        let quantity: Double
+        let kcal: Int
+        let proteinG: Double
+        let deltaKcal: Int
+        var id: String { slug }
+    }
+
+    private struct ListReply: Decodable { let alternatives: [Alternative] }
+    private struct SwapBody: Encodable { let item: String; let slug: String }
+    private struct SwapReply: Decodable { let prescription: HomeResponse.ActiveCheckIn.Prescription }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(L10n("Swap · \(FoodText.name(item.name))")).sectionLabelStyle(Palette.amber)
+                Text("Something else.")
+                    .font(Typography.display(28))
+                    .tracking(-0.9)
+                    .foregroundStyle(Palette.ink)
+            }
+            .padding(.horizontal, Space.gutter)
+            .padding(.top, 22)
+            .padding(.bottom, 12)
+
+            ScrollView {
+                VStack(spacing: 0) {
+                    currentRow
+                    if loading {
+                        ProgressView().frame(maxWidth: .infinity, minHeight: 80)
+                    }
+                    ForEach(alternatives) { alt in
+                        Button { Task { await swap(to: alt) } } label: { row(alt) }
+                            .buttonStyle(.plain)
+                            .disabled(swappingSlug != nil)
+                    }
+                    if let error {
+                        Text(LocalizedStringKey(error))
+                            .font(Typography.data(13)).foregroundStyle(Palette.amber)
+                            .padding(.top, 12)
+                    } else if !loading, alternatives.isEmpty {
+                        Text("Nothing else fits here.")
+                            .font(Typography.data(14)).foregroundStyle(Palette.inkSoft)
+                            .padding(.top, 12)
+                    }
+                }
+                .padding(.horizontal, Space.gutter)
+                .padding(.bottom, Space.lg)
+            }
+            .scrollBounceBehavior(.basedOnSize)
+        }
+        .task { await load() }
+    }
+
+    private var currentRow: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "checkmark")
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(Palette.onBone)
+                .frame(width: 30, height: 30)
+                .background(Palette.ink, in: Circle())
+            VStack(alignment: .leading, spacing: 2) {
+                Text(FoodText.name(item.name)).font(Typography.data(15, weight: .regular)).foregroundStyle(Palette.ink)
+                Text("On your plate now").font(Typography.data(12)).foregroundStyle(Palette.inkFaint)
+            }
+            Spacer(minLength: 8)
+            Text("\(item.kcal)").font(Typography.mono(12)).foregroundStyle(Palette.ink)
+            Color.clear.frame(width: 40)
+        }
+        .padding(.horizontal, 10)
+        .frame(minHeight: 60)
+        .background(Color.white.opacity(0.04), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private func row(_ alt: Alternative) -> some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle().strokeBorder(Color.white.opacity(0.14))
+                if swappingSlug == alt.slug { ProgressView().controlSize(.small) }
+            }
+            .frame(width: 30, height: 30)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(FoodText.name(alt.name)).font(Typography.data(15, weight: .regular)).foregroundStyle(Palette.ink)
+                Text(L10n("\(FoodText.serving(alt.servingDesc)) · \(Int(alt.proteinG.rounded())) g protein"))
+                    .font(Typography.data(12)).foregroundStyle(Palette.inkFaint).lineLimit(1)
+            }
+            Spacer(minLength: 8)
+            Text("\(alt.kcal)").font(Typography.mono(12)).foregroundStyle(Palette.inkSoft)
+            Text(delta(alt.deltaKcal))
+                .font(Typography.mono(11))
+                .foregroundStyle(alt.deltaKcal > 0 ? Color(hex: 0x86EFAC) : Palette.inkFaint)
+                .frame(minWidth: 40, alignment: .trailing)
+        }
+        .padding(.horizontal, 10)
+        .frame(minHeight: 60)
+        .overlay(alignment: .top) { Rectangle().fill(Color.white.opacity(0.07)).frame(height: 1) }
+        .contentShape(Rectangle())
+    }
+
+    private func delta(_ d: Int) -> String {
+        d == 0 ? "=" : d > 0 ? "+\(d)" : "−\(abs(d))"
+    }
+
+    private func load() async {
+        if preview {
+            alternatives = [
+                Alternative(slug: "whole-milk", name: "Whole milk", servingDesc: "1 glass", quantity: 1, kcal: 150, proteinG: 8, deltaKcal: -60),
+                Alternative(slug: "kefir", name: "Kefir", servingDesc: "1 glass", quantity: 1, kcal: 110, proteinG: 9, deltaKcal: -100),
+                Alternative(slug: "fruit-smoothie", name: "Fruit smoothie", servingDesc: "1 glass", quantity: 1, kcal: 240, proteinG: 4, deltaKcal: 30),
+            ]
+            loading = false
+            return
+        }
+        do {
+            let reply: ListReply = try await env.api.get("/api/checkins/\(checkInID)/alternatives", query: ["item": item.name])
+            alternatives = reply.alternatives
+        } catch {
+            self.error = UserFacingError.message(for: error, fallback: L10n("Couldn’t load other foods. Try again."))
+        }
+        loading = false
+    }
+
+    private func swap(to alt: Alternative) async {
+        guard swappingSlug == nil else { return }
+        swappingSlug = alt.slug
+        error = nil
+        defer { swappingSlug = nil }
+        if preview { dismiss(); return }
+        do {
+            let reply: SwapReply = try await env.api.post("/api/checkins/\(checkInID)/swap", SwapBody(item: item.name, slug: alt.slug))
+            Haptics.landed()
+            onSwapped(reply.prescription)
+            dismiss()
+        } catch {
+            self.error = UserFacingError.message(for: error, fallback: L10n("Couldn’t swap that. Try again."))
+        }
+    }
 }
 
 /// A full plate, drawn: rice, chicken and greens on a dark plate.

@@ -16,6 +16,7 @@ import { userLang } from '../i18n/user.js';
 import { startCheckIn } from '../checkins/startCheckIn.js';
 import { startTalk } from '../checkins/startTalk.js';
 import { excludedTokensFor, loadStapleFoods } from '../solver/index.js';
+import { alternativesFor, swapQuantity } from '../checkins/swap.js';
 import { publicPrescription, solveCheckInVariant } from '../checkins/variants.js';
 import { ENGINE_CONFIG, type Goal } from '../engine/index.js';
 import { env, isProd } from '../env.js';
@@ -280,6 +281,93 @@ export async function checkInRoutes(app: FastifyInstance): Promise<void> {
     return {
       variant,
       prescription: publicPrescription(solved, checkIn.prescription.id),
+    };
+  });
+
+  // Foods that can stand in for one item of the plate (a drink for a drink), sized to match it.
+  app.get('/:id/alternatives', async (req) => {
+    const { id } = params.parse(req.params);
+    const { item } = z.object({ item: z.string().min(1).max(120) }).parse(req.query);
+    const userId = (req as AuthedRequest).userId;
+    const prisma = getPrisma();
+    const checkIn = await prisma.checkIn.findFirst({
+      where: { id, userId, status: { in: ['PENDING', 'DEFERRED'] } },
+      include: { prescription: { include: { items: { include: { foodItem: { select: { slug: true } } } } } } },
+    });
+    if (!checkIn?.prescription) throw app.httpErrors.notFound('no active check-in with that id');
+    const current = checkIn.prescription.items.find((i) => i.name === item);
+    if (!current) throw app.httpErrors.notFound('that food is not on this plate');
+    const profile = await prisma.onboardingProfile.findUnique({ where: { userId }, select: { dislikedFoods: true } });
+    const [{ solverFoods }, excludedTokens] = await Promise.all([
+      loadStapleFoods(prisma),
+      excludedTokensFor(prisma, userId, profile?.dislikedFoods),
+    ]);
+    return {
+      alternatives: alternativesFor({
+        foods: solverFoods,
+        excludedTokens,
+        current: { slug: current.foodItem?.slug ?? null, kcal: current.kcal },
+        onPlate: checkIn.prescription.items.flatMap((i) => (i.foodItem?.slug ? [i.foodItem.slug] : [])),
+      }),
+    };
+  });
+
+  // Replace one food on the plate with another; the plate's totals follow.
+  app.post('/:id/swap', async (req) => {
+    const { id } = params.parse(req.params);
+    const { item, slug } = z.object({ item: z.string().min(1).max(120), slug: z.string().min(1).max(80) }).parse(req.body);
+    const userId = (req as AuthedRequest).userId;
+    const prisma = getPrisma();
+    const checkIn = await prisma.checkIn.findFirst({
+      where: { id, userId, status: { in: ['PENDING', 'DEFERRED'] } },
+      include: { prescription: { include: { items: true } } },
+    });
+    if (!checkIn?.prescription) throw app.httpErrors.notFound('no active check-in with that id');
+    const current = checkIn.prescription.items.find((i) => i.name === item);
+    if (!current) throw app.httpErrors.notFound('that food is not on this plate');
+    const food = await prisma.foodItem.findFirst({ where: { slug, isStaple: true } });
+    if (!food) throw app.httpErrors.notFound('no such food');
+
+    const quantity = swapQuantity(current.kcal, food);
+    const replacement = {
+      foodItemId: food.id,
+      name: food.name,
+      quantity,
+      unit: 'serving',
+      kcal: Math.round(food.kcal * quantity),
+      proteinG: Math.round(food.proteinG * quantity * 10) / 10,
+      carbsG: Math.round(food.carbsG * quantity * 10) / 10,
+      fatG: Math.round(food.fatG * quantity * 10) / 10,
+    };
+    const others = checkIn.prescription.items.filter((i) => i.id !== current.id);
+    const sum = (pick: (i: { kcal: number; proteinG: number; carbsG: number; fatG: number }) => number) =>
+      others.reduce((t, i) => t + pick(i), 0) + pick(replacement);
+    const totals = {
+      kcal: Math.round(sum((i) => i.kcal)),
+      proteinG: Math.round(sum((i) => i.proteinG) * 10) / 10,
+      carbsG: Math.round(sum((i) => i.carbsG) * 10) / 10,
+      fatG: Math.round(sum((i) => i.fatG) * 10) / 10,
+    };
+    await prisma.$transaction([
+      prisma.prescriptionItem.delete({ where: { id: current.id } }),
+      prisma.prescription.update({
+        where: { id: checkIn.prescription.id },
+        data: {
+          totalKcal: totals.kcal,
+          totalProteinG: totals.proteinG,
+          totalCarbsG: totals.carbsG,
+          totalFatG: totals.fatG,
+          items: { create: [replacement] },
+        },
+      }),
+    ]);
+    return {
+      prescription: {
+        id: checkIn.prescription.id,
+        totalKcal: totals.kcal,
+        totalProteinG: totals.proteinG,
+        items: [...others, replacement].map((i) => ({ name: i.name, quantity: i.quantity, kcal: i.kcal, proteinG: i.proteinG })),
+      },
     };
   });
 

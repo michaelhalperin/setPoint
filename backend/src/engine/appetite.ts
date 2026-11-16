@@ -29,6 +29,8 @@ export const DRINKABLE_SLUGS = new Set([
   'chocolate-milk',
   'fruit-smoothie',
   'protein-smoothie',
+  'nutrition-shake',
+  'two-percent-milk',
 ]);
 
 export function appetiteShape(mode: AppetiteMode, dayLevel: AppetiteLevel | null): AppetiteShape {
