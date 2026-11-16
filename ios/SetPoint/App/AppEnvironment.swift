@@ -86,6 +86,14 @@ final class AppChrome {
         tabRequest = tab
     }
 
+    /// Open Progress with the weigh-in sheet up (Today's weigh-in card, the reminder notification).
+    private(set) var weighInRequest = 0
+
+    func requestWeighIn() {
+        weighInRequest &+= 1
+        tabRequest = .week
+    }
+
     func clearTabRequest() {
         tabRequest = nil
     }

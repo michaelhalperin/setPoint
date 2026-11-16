@@ -8981,6 +8981,36 @@
         }
       }
     },
+    "Weigh-in due": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "הגיע הזמן להישקל"
+          }
+        }
+      }
+    },
+    "Ten seconds keeps your plan accurate.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "עשר שניות שומרות על התוכנית מדויקת."
+          }
+        }
+      }
+    },
+    "Opens the weigh-in": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "פותח את השקילה"
+          }
+        }
+      }
+    },
     "Check in now": {
       "localizations": {
         "he": {

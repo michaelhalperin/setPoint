@@ -9,6 +9,8 @@ struct SettlementView: View {
     @State private var patternHandled = false
     @State private var patternApplied = false
     @State private var reloading = false
+    /// The weigh-in request already answered, so a tab switch doesn't reopen the sheet.
+    @State private var weighInHandled = 0
 
     init(previewModel: SettlementViewModel? = nil) {
         _model = State(initialValue: previewModel)
@@ -23,6 +25,8 @@ struct SettlementView: View {
             }
         }
         .toolbar(.hidden, for: .navigationBar)
+        .onAppear { openRequestedWeighIn() }
+        .onChange(of: env.chrome.weighInRequest) { _, _ in openRequestedWeighIn() }
         .task {
             if model == nil {
                 let vm = SettlementViewModel(api: env.api, onUnauthorized: { env.auth.handleUnauthorized() })
@@ -164,6 +168,14 @@ struct SettlementView: View {
         } message: {
             Text(L10n("\(MassUnit.current.formatKg(model.reachedGoalTarget ?? 0)) reached. Maintenance is now active."))
         }
+    }
+
+    /// Today's weigh-in card or the reminder notification asked for the sheet.
+    private func openRequestedWeighIn() {
+        let request = env.chrome.weighInRequest
+        guard request != weighInHandled else { return }
+        weighInHandled = request
+        showingWeighIn = true
     }
 
     /// The late-meal pattern while it's open, and after it's applied (to show "Moved").

@@ -87,6 +87,11 @@ struct MainTabView: View {
             deepLinkCheckInID = id
             env.push.pendingCheckInID = nil
         }
+        .onChange(of: env.push.pendingWeighIn) { _, pending in
+            guard pending else { return }
+            env.push.pendingWeighIn = false
+            env.chrome.requestWeighIn()
+        }
         .onChange(of: env.changes.pendingLogPhoto) { _, pending in
             guard pending else { return }
             select(.today)

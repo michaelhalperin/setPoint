@@ -124,6 +124,13 @@ final class PushManager {
         pendingCheckInID = id
     }
 
+    /// The weekly weigh-in reminder was tapped.
+    var pendingWeighIn = false
+
+    func openWeighIn() {
+        pendingWeighIn = true
+    }
+
     /// Detaches this device from the account being signed out of, so its
     /// check-ins stop arriving here. Authenticates with that account's token
     /// explicitly — the stored session is already gone — and never reports a

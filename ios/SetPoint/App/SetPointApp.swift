@@ -25,6 +25,8 @@ struct SetPointApp: App {
                         env.push.openCheckIn(id)
                     case .logPhoto:
                         env.changes.openLogPhoto()
+                    case .weighIn:
+                        env.chrome.requestWeighIn()
                     case nil:
                         break
                     }

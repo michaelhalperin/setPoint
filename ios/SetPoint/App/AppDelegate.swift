@@ -68,6 +68,12 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         didReceive response: UNNotificationResponse
     ) async {
         let info = response.notification.request.content.userInfo
+        if info["deepLink"] as? String == "setpoint://weigh-in" {
+            if response.actionIdentifier == UNNotificationDefaultActionIdentifier {
+                await MainActor.run { PushManager.shared.openWeighIn() }
+            }
+            return
+        }
         guard let id = info["checkInId"] as? String else { return }
         let prescriptionID = info["prescriptionId"] as? String
         let action = response.actionIdentifier

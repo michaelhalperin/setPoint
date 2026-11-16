@@ -375,7 +375,8 @@ struct HomeContent: View {
                             onLog: { openLog() },
                             onOpenCheckIn: openCheckIn,
                             onOrder: orderAction,
-                            onAskNutrition: env.flags.isOn(.nutritionChat) ? { showingNutrition = true } : nil
+                            onAskNutrition: env.flags.isOn(.nutritionChat) ? { showingNutrition = true } : nil,
+                            onWeighIn: { env.chrome.requestWeighIn() }
                         )
                     }
                     .padding(.horizontal, Space.gutter)

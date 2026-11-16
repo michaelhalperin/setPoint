@@ -25,6 +25,8 @@ struct TodayHero: View {
     var onOrder: (() -> Void)? = nil
     /// Nutrition assistant. Nil hides the row.
     var onAskNutrition: (() -> Void)? = nil
+    /// Opens the weigh-in. The card shows only while one is due.
+    var onWeighIn: () -> Void = {}
 
     @Environment(AppEnvironment.self) private var env
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -77,6 +79,11 @@ struct TodayHero: View {
                     }
                 }
                 .appearIn(1, rise: 16)
+
+            if home.needsWeighIn == true {
+                weighInCard
+                    .appearIn(2, rise: 16)
+            }
 
             PlateStrip(home: home, loading: appetiteBusy)
                 .padding(.top, Space.sm)
@@ -263,6 +270,39 @@ struct TodayHero: View {
         }
     }
 
+    // MARK: Weigh-in
+
+    /// Its own card, apart from the meal moment above it.
+    private var weighInCard: some View {
+        Button(action: onWeighIn) {
+            HStack(spacing: 12) {
+                Image(systemName: "scalemass")
+                    .font(.system(size: 16, weight: .regular))
+                    .foregroundStyle(Palette.hazeSoft)
+                    .frame(width: 40, height: 40)
+                    .background(Palette.haze.opacity(0.16), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Weigh-in due")
+                        .font(Typography.data(15, weight: .regular))
+                        .foregroundStyle(Palette.ink)
+                    Text("Ten seconds keeps your plan accurate.")
+                        .font(Typography.data(12, weight: .regular))
+                        .foregroundStyle(Palette.inkSoft)
+                }
+                Spacer(minLength: 8)
+                Image(systemName: "chevron.forward")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Palette.inkFaint)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .glass(radius: 22, fill: Palette.haze.opacity(0.08), stroke: Palette.haze.opacity(0.35))
+        }
+        .buttonStyle(PressableCard())
+        .accessibilityHint("Opens the weigh-in")
+    }
+
     // MARK: Moment card
 
     private var momentCard: some View {
@@ -277,16 +317,6 @@ struct TodayHero: View {
                 }
             }
             momentBody
-            if home.needsWeighIn == true {
-                HStack(spacing: 6) {
-                    Image(systemName: "scalemass")
-                        .font(.system(size: 12, weight: .medium))
-                    Text("A weigh-in is due — it’s on Progress.")
-                        .font(Typography.data(13, weight: .regular))
-                }
-                .foregroundStyle(Palette.amber)
-                .padding(.top, 2)
-            }
         }
     }
 

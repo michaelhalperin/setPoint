@@ -3,6 +3,7 @@ import Foundation
 enum DeepLink: Equatable {
     case checkIn(id: String)
     case logPhoto
+    case weighIn
 
     /// Parses `setpoint://check-in/<id>` and `setpoint://log/photo`.
     init?(url: URL) {
@@ -14,6 +15,8 @@ enum DeepLink: Equatable {
         case "log":
             guard url.pathComponents.contains("photo") else { return nil }
             self = .logPhoto
+        case "weigh-in":
+            self = .weighIn
         default:
             return nil
         }
