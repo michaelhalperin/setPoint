@@ -62,7 +62,7 @@ new medium:
 
 2. ~~skelaton loader in the wolt screen.~~ ✅
 
-3. the "top up" screen, need a complete new redesign of this screen, it feel too "crowded" - before changing the code on it, make it in the same artifact in a new page there.
+3. ~~the "top up" screen, need a complete new redesign of this screen, it feel too "crowded" - before changing the code on it, make it in the same artifact in a new page there.~~ ✅ (it was the check-in: the Today takeover and the check-in sheet, designed in the artifact "Check-in" page and built)
 
 4. ~~the legal buttons in the profile screen should have an arrow indication (it naviagte into the browser)~~ ✅
 
@@ -74,8 +74,8 @@ new medium:
 
 8. ~~custom empty meals on the "my meal" screen when there is nothing yet.~~ ✅
 
-9. a new design for the top card in the You screen
+9. ~~a new design for the top card in the You screen~~ ✅ (design B, the plan card)
 
-10. the top it up card does have a switch option button, but its only with 3 options to change, supposed tob have much larger options.
+10. ~~the top it up card does have a switch option button, but its only with 3 options to change, supposed tob have much larger options.~~ ✅ (swap a food from a long list)
 
 11.
