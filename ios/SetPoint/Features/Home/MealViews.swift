@@ -228,6 +228,12 @@ struct MealDetailSheet: View {
     @State private var confirmingDelete = false
     @State private var draft: SavedMealDraft?
     @State private var saved: Bool
+    @Environment(AppEnvironment.self) private var env
+    @State private var photoBusy = false
+    @State private var photoError: String?
+    @State private var showCamera = false
+    @State private var showLibrary = false
+    @State private var libraryItem: PhotosPickerItem?
 
     init(
         meal: MealSummary,
@@ -264,7 +270,8 @@ struct MealDetailSheet: View {
         ScrollView {
             VStack(alignment: .leading, spacing: Space.md) {
                 topBar
-                if let photo { hero(photo) }
+                if env.flags.isOn(.mealPhotos) { photoSection }
+                else if let photo { hero(photo) }
                 header.appearIn(0, rise: 14)
                 composition.appearIn(1, rise: 14)
                 breakdown.appearIn(2, rise: 14)
@@ -316,6 +323,24 @@ struct MealDetailSheet: View {
                 }
             )
         }
+        .fullScreenCover(isPresented: $showCamera) {
+            CameraCapture(
+                onPhoto: { data in
+                    showCamera = false
+                    Task { await attach(data) }
+                },
+                onCancel: { showCamera = false }
+            )
+            .ignoresSafeArea()
+        }
+        .photosPicker(isPresented: $showLibrary, selection: $libraryItem, matching: .images)
+        .onChange(of: libraryItem) { _, item in
+            guard let item else { return }
+            libraryItem = nil
+            Task {
+                if let data = try? await item.loadTransferable(type: Data.self) { await attach(data) }
+            }
+        }
         .fullScreenCover(isPresented: $fixing) {
             MealFixView(
                 meal: meal,
@@ -357,6 +382,91 @@ struct MealDetailSheet: View {
             .accessibilityLabel("Close")
         }
         .padding(.top, Space.sm)
+    }
+
+    /// The meal's picture: tap to take one, choose one, or take it off.
+    @ViewBuilder
+    private var photoSection: some View {
+        Menu {
+            if CameraCapture.isAvailable {
+                Button { showCamera = true } label: { Label("Take photo", systemImage: "camera") }
+            }
+            Button { showLibrary = true } label: { Label("Choose from library", systemImage: "photo.on.rectangle") }
+            if photo != nil {
+                Button(role: .destructive) { Task { await removePhoto() } } label: { Label("Remove photo", systemImage: "trash") }
+            }
+        } label: {
+            Group {
+                if let photo {
+                    hero(photo)
+                        .overlay(alignment: .bottomTrailing) { photoBadge("pencil", "Change") }
+                } else {
+                    HStack(spacing: 10) {
+                        Image(systemName: "camera").font(.system(size: 16, weight: .medium))
+                        Text("Add a photo").font(Typography.data(15, weight: .medium))
+                    }
+                    .foregroundStyle(Palette.inkSoft)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 64)
+                    .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Color.white.opacity(0.16), style: StrokeStyle(lineWidth: 1, dash: [5, 4])))
+                }
+            }
+            .opacity(photoBusy ? 0.5 : 1)
+            .overlay { if photoBusy { ProgressView() } }
+        }
+        .disabled(photoBusy)
+        if let photoError {
+            Text(photoError).font(Typography.data(12)).foregroundStyle(Palette.danger)
+        }
+    }
+
+    private func photoBadge(_ symbol: String, _ title: LocalizedStringKey) -> some View {
+        HStack(spacing: 5) {
+            Image(systemName: symbol).font(.system(size: 11, weight: .semibold))
+            Text(title).font(Typography.data(12, weight: .medium))
+        }
+        .foregroundStyle(Palette.ink)
+        .padding(.horizontal, 10)
+        .frame(height: 28)
+        .background(.ultraThinMaterial, in: Capsule())
+        .padding(10)
+    }
+
+    private struct PhotoBody: Encodable {
+        struct Image: Encodable { let data: String; let mediaType: String }
+        let image: Image
+    }
+
+    private func attach(_ data: Data) async {
+        guard let prepared = MealPhoto.make(from: data) else { return }
+        photoBusy = true
+        photoError = nil
+        defer { photoBusy = false }
+        do {
+            let res: MealCorrectionResponse = try await env.api.put("/api/meals/\(meal.id)/photo", PhotoBody(image: .init(data: prepared.base64, mediaType: prepared.mediaType)))
+            await MealPhotoCache.shared.forget(meal.id)
+            meal = res.meal
+            photo = prepared.preview
+            Haptics.landed()
+            env.changes.mealsChanged()
+        } catch {
+            photoError = UserFacingError.message(for: error, fallback: L10n("Couldn’t save the photo. Try again."))
+        }
+    }
+
+    private func removePhoto() async {
+        photoBusy = true
+        photoError = nil
+        defer { photoBusy = false }
+        do {
+            let res: MealCorrectionResponse = try await env.api.deleteReturning("/api/meals/\(meal.id)/photo")
+            await MealPhotoCache.shared.forget(meal.id)
+            meal = res.meal
+            photo = nil
+            env.changes.mealsChanged()
+        } catch {
+            photoError = UserFacingError.message(for: error, fallback: L10n("Couldn’t remove the photo. Try again."))
+        }
     }
 
     private func hero(_ photo: UIImage) -> some View {

@@ -98,6 +98,15 @@ actor APIClient {
         let _: EmptyResponse = try await perform(path, method: "PATCH", body: try Self.encoder.encode(body))
     }
 
+    func put<T: Decodable>(_ path: String, _ body: some Encodable) async throws -> T {
+        try await perform(path, method: "PUT", body: try Self.encoder.encode(body))
+    }
+
+    /// A DELETE that answers with a body (the changed record).
+    func deleteReturning<T: Decodable>(_ path: String) async throws -> T {
+        try await perform(path, method: "DELETE", body: nil)
+    }
+
     func put(_ path: String, _ body: some Encodable) async throws {
         let _: EmptyResponse = try await perform(path, method: "PUT", body: try Self.encoder.encode(body))
     }

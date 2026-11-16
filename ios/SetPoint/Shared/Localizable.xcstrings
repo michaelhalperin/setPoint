@@ -17440,6 +17440,26 @@
           }
         }
       }
+    },
+    "Couldn’t save the photo. Try again.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "לא הצלחנו לשמור את התמונה. נסה שוב."
+          }
+        }
+      }
+    },
+    "Couldn’t remove the photo. Try again.": {
+      "localizations": {
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "לא הצלחנו להסיר את התמונה. נסה שוב."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

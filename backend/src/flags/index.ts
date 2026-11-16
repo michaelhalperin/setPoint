@@ -18,6 +18,10 @@ export const FLAGS = {
     default: false,
     description: 'SetPoint Pro: paywall, subscription upsells, and locking training behind a plan.',
   },
+  meal_photos: {
+    default: false,
+    description: 'Add a photo to any meal: take one or choose from the library.',
+  },
 } as const satisfies Record<string, { default: boolean; description: string }>;
 
 export type FlagKey = keyof typeof FLAGS;

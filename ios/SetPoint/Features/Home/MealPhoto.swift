@@ -69,6 +69,11 @@ actor MealPhotoCache {
         cache.countLimit = 60
     }
 
+    /// Forget a meal's picture after its photo was added, changed or removed.
+    func forget(_ mealID: String) {
+        cache.removeObject(forKey: mealID as NSString)
+    }
+
     func image(for meal: MealSummary) async -> UIImage? {
         if let inline = meal.photoImage { return inline }
         guard let url = meal.remotePhotoURL else { return nil }

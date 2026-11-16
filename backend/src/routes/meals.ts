@@ -14,6 +14,7 @@ import { MealNotFoundError, updateMeal } from '../meals/updateMeal.js';
 import { captureError } from '../observability/sentry.js';
 import { queuePhotoDeletion } from '../photos/cleanup.js';
 import { getPhotoStore } from '../photos/store.js';
+import { clearMealPhoto, PhotoStorageUnavailableError, setMealPhoto } from '../meals/mealPhoto.js';
 import { track } from '../analytics/events.js';
 
 const body = z
@@ -156,6 +157,33 @@ export async function mealRoutes(app: FastifyInstance): Promise<void> {
         input,
       );
       await track(getPrisma(), (req as AuthedRequest).userId, 'meal_fixed', { source: meal.source, mealId: meal.id });
+      return { meal };
+    } catch (err) {
+      if (err instanceof MealNotFoundError) throw app.httpErrors.notFound(err.message);
+      throw err;
+    }
+  });
+
+  // Add (or replace) a photo on a meal that's already logged. Behind the meal_photos flag in the app.
+  app.put('/:id/photo', { bodyLimit: PHOTO_BODY_LIMIT }, async (req) => {
+    const { id } = z.object({ id: z.string().min(1) }).parse(req.params);
+    const { image } = z
+      .object({ image: z.object({ data: z.string().min(1), mediaType: z.enum(['image/jpeg', 'image/png', 'image/webp', 'image/gif']) }) })
+      .parse(req.body);
+    try {
+      const meal = await setMealPhoto({ prisma: getPrisma(), photos: getPhotoStore() }, (req as AuthedRequest).userId, id, image);
+      return { meal };
+    } catch (err) {
+      if (err instanceof MealNotFoundError) throw app.httpErrors.notFound(err.message);
+      if (err instanceof PhotoStorageUnavailableError) throw app.httpErrors.serviceUnavailable(err.message);
+      throw err;
+    }
+  });
+
+  app.delete('/:id/photo', async (req) => {
+    const { id } = z.object({ id: z.string().min(1) }).parse(req.params);
+    try {
+      const meal = await clearMealPhoto({ prisma: getPrisma(), photos: getPhotoStore() }, (req as AuthedRequest).userId, id);
       return { meal };
     } catch (err) {
       if (err instanceof MealNotFoundError) throw app.httpErrors.notFound(err.message);
