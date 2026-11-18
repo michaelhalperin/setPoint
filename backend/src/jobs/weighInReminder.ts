@@ -10,9 +10,9 @@ const DUE_AFTER_MS = 7 * 24 * 3_600_000;
 const REMIND_EVERY_MS = 3 * 24 * 3_600_000;
 /** A new account isn't asked to weigh in before it has had a couple of days. */
 const MIN_ACCOUNT_AGE_MS = 2 * 24 * 3_600_000;
-/** Local 10:00–12:00: after the morning, before the day fills up. */
+/** Local 10:00–19:00: a wide window, because the scoring timer can run unevenly; one reminder per 3 days still holds. */
 const WINDOW_START_MIN = 10 * 60;
-const WINDOW_END_MIN = 12 * 60;
+const WINDOW_END_MIN = 19 * 60;
 
 export type WeighInReminderSummary = { considered: number; sent: number; failed: number };
 

@@ -1,0 +1,13 @@
+# The timer that makes SetPoint's check-ins, snoozes and reminders arrive on time: every 5 minutes it
+# asks the backend to score everyone. (GitHub's scheduled workflows run only every few hours here.)
+name = "setpoint-score-timer"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+
+[triggers]
+crons = ["*/5 * * * *"]
+
+[vars]
+API_URL = "https://set-point-backend.vercel.app"
+
+# CRON_SECRET is not stored here. Set it once with:  npx wrangler secret put CRON_SECRET

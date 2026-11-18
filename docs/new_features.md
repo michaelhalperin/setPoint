@@ -5,3 +5,7 @@ under FF:
 2. dieatan in the app - AI chat bot specificly for this.
 
 3. training expert - AI chat bot specificly for this.
+
+                        ---------------------------------------------------------------
+
+4. a public message for all the user  / maintance message.

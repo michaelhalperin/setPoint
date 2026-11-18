@@ -2,10 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { inReminderWindow, weighInCopy } from './weighInReminder.js';
 
 describe('weigh-in reminder', () => {
-  it('sends only between 10:00 and 12:00 local time', () => {
+  it('sends only between 10:00 and 19:00 local time', () => {
     expect(inReminderWindow(new Date('2026-11-16T08:30:00Z'), 'UTC')).toBe(false);
     expect(inReminderWindow(new Date('2026-11-16T10:30:00Z'), 'UTC')).toBe(true);
-    expect(inReminderWindow(new Date('2026-11-16T12:00:00Z'), 'UTC')).toBe(false);
+    expect(inReminderWindow(new Date('2026-11-16T18:59:00Z'), 'UTC')).toBe(true);
+    expect(inReminderWindow(new Date('2026-11-16T19:00:00Z'), 'UTC')).toBe(false);
     // 08:30 UTC is 10:30 in Jerusalem (UTC+2 in November).
     expect(inReminderWindow(new Date('2026-11-16T08:30:00Z'), 'Asia/Jerusalem')).toBe(true);
   });
