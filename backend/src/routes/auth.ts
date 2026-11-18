@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { InviteRejectedError, redeemInvite } from '../access/invites.js';
+import { getSwitches } from '../admin2/store.js';
 import {
   AppleAuthError,
   inviteOnly,
@@ -40,6 +41,11 @@ function sessionFor(user: { id: string; accessGrantedAt: Date | null }) {
 }
 
 export async function authRoutes(app: FastifyInstance): Promise<void> {
+  // Loads the admin's invite-only switch before any sign-in decides who gets in.
+  app.addHook('onRequest', async () => {
+    await getSwitches(getPrisma()).catch(() => undefined);
+  });
+
   // Sign in with Apple → SetPoint session token.
   app.post('/apple', async (req) => {
     const { identityToken, authorizationCode, displayName } = appleBody.parse(req.body);

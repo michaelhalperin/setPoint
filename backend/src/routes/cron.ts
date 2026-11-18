@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { buildDigest, storeDigest } from '../admin/digest.js';
 import { pruneAiUsage } from '../ai/quota.js';
+import { switchOn } from '../admin2/store.js';
 import { getPrisma } from '../db/client.js';
 import { pruneRateLimitBuckets } from '../http/rateLimit.js';
 import { ranTooRecently, recordHeartbeat } from '../jobs/heartbeat.js';
@@ -45,6 +46,7 @@ export async function cronRoutes(app: FastifyInstance): Promise<void> {
     url: '/score',
     handler: async (req) => {
       const started = new Date();
+      if (!(await switchOn(getPrisma(), 'scheduler'))) return { skipped: 'paused_by_admin' };
       const last = await getPrisma().schedulerHeartbeat.findUnique({ where: { job: 'score' }, select: { lastRunAt: true } });
       if (ranTooRecently(last?.lastRunAt)) return { skipped: 'ran_recently', lastRunAt: last!.lastRunAt };
       try {
@@ -79,6 +81,7 @@ export async function cronRoutes(app: FastifyInstance): Promise<void> {
     method: ['GET', 'POST'],
     url: '/settle',
     handler: async (req) => {
+      if (!(await switchOn(getPrisma(), 'scheduler'))) return { skipped: 'paused_by_admin' };
       const summary = await runSettleDayJob({ prisma: getPrisma(), voice: createManagerVoice() });
 
       let aiUsagePruned = 0;

@@ -1,5 +1,6 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { getPrisma } from '../db/client.js';
+import { getSwitches, inviteOnlyMirrored } from '../admin2/store.js';
 import { env } from '../env.js';
 import {
   SESSION_RENEWAL_HEADER,
@@ -17,7 +18,8 @@ export type AuthedRequest = FastifyRequest & { userId: string };
 /** The 403 message the app reads to show the invite-code screen. */
 export const INVITE_REQUIRED = 'invite_required';
 
-export const inviteOnly = (): boolean => env.INVITE_ONLY === 'true';
+/** The admin's invite-only switch wins; the env var is the starting point. */
+export const inviteOnly = (): boolean => inviteOnlyMirrored() ?? env.INVITE_ONLY === 'true';
 
 /**
  * Route-level guard: reads `Authorization: Bearer <session jwt>`, verifies it,
@@ -48,6 +50,7 @@ export function requireAuth(app: FastifyInstance, opts: { allowPendingInvite?: b
 
     (req as AuthedRequest).userId = session.userId;
 
+    if (session.pendingInvite) await getSwitches(getPrisma()).catch(() => undefined);
     if (session.pendingInvite && inviteOnly()) {
       const user = await getPrisma().user.findUnique({
         where: { id: session.userId },

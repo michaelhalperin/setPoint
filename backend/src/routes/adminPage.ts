@@ -1,8 +1,9 @@
 import type { FastifyInstance } from 'fastify';
+import { CONSOLE_PAGE_HTML } from '../admin/consolePage.js';
 import { OPS_PAGE_HTML } from '../admin/opsPage.js';
 
 /**
- * The owner's ops dashboard. The page itself is public and holds no data — every
+ * The owner's admin console (/admin) and the classic ops dashboard (/admin/classic). The page itself is public and holds no data — every
  * number comes from /api/admin after signing in with the admin secret.
  */
 export async function adminPageRoutes(app: FastifyInstance): Promise<void> {
@@ -29,7 +30,9 @@ export async function adminPageRoutes(app: FastifyInstance): Promise<void> {
       );
     return html;
   };
-  app.get('/admin', send(OPS_PAGE_HTML));
+  app.get('/admin', send(CONSOLE_PAGE_HTML));
+  // The previous dashboard, still the home of Usage and the guided-tour editor.
+  app.get('/admin/classic', send(OPS_PAGE_HTML));
   // The dashboard's first address.
   app.get('/ops', async (_req, reply) => reply.redirect('/admin', 302));
 }

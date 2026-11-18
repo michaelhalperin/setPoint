@@ -38,11 +38,13 @@ export async function runWeighInReminderJob(deps: {
   prisma: PrismaClient;
   push: PushSender;
   now?: Date;
+  userIds?: string[];
 }): Promise<WeighInReminderSummary> {
   const now = deps.now ?? new Date();
   const summary: WeighInReminderSummary = { considered: 0, sent: 0, failed: 0 };
   const users = await deps.prisma.user.findMany({
     where: {
+      ...(deps.userIds ? { id: { in: deps.userIds } } : {}),
       onboarding: { is: { completedAt: { not: null, lt: new Date(now.getTime() - MIN_ACCOUNT_AGE_MS) }, goal: { not: 'MAINTAIN' } } },
       safetyScreening: { is: { enforcementEnabled: true } },
       pushTokens: { some: { kind: 'alert' } },

@@ -12,6 +12,9 @@ import { UnderageError } from './onboarding/age.js';
 import { UnhealthyTargetError } from './onboarding/targets.js';
 import { accountRoutes } from './routes/account.js';
 import { adminRoutes } from './routes/admin.js';
+import { adminControlRoutes } from './routes/adminControl.js';
+import { appConfigRoutes } from './routes/appConfig.js';
+import { recordAudit, recordError } from './admin2/store.js';
 import { adminAccessRoutes } from './routes/adminAccess.js';
 import { adminInsightRoutes } from './routes/adminInsights.js';
 import { adminOpsRoutes } from './routes/adminOps.js';
@@ -95,6 +98,21 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     });
   }
 
+  // The admin's trail and the server's error feed, both kept in AppConfig (no migration).
+  app.addHook('onResponse', async (req, reply) => {
+    try {
+      const route = req.routeOptions?.url ?? req.url.split('?')[0] ?? '';
+      if (req.method !== 'GET' && route.startsWith('/api/admin') && reply.statusCode < 400) {
+        await recordAudit(getPrisma(), { at: new Date().toISOString(), actor: 'admin', method: req.method, route, status: reply.statusCode });
+      }
+      if (reply.statusCode >= 500) {
+        await recordError(getPrisma(), { at: new Date().toISOString(), method: req.method, route, status: reply.statusCode, message: reply.statusCode === 503 ? 'unavailable' : 'server error' });
+      }
+    } catch {
+      /* the trail must never break a response */
+    }
+  });
+
   app.setErrorHandler(async (err: unknown, req, reply) => {
     if (err instanceof ZodError) {
       return reply.status(400).send({ error: 'Bad Request', message: 'validation failed', issues: err.issues });
@@ -160,6 +178,8 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   await app.register(adminOpsRoutes, { prefix: '/api/admin' });
   await app.register(adminTourRoutes, { prefix: '/api/admin' });
   await app.register(adminUsageRoutes, { prefix: '/api/admin' });
+  await app.register(adminControlRoutes, { prefix: '/api/admin' });
+  await app.register(appConfigRoutes, { prefix: '/api/app-config' });
   await app.register(cronRoutes, { prefix: '/api/cron' });
 
   return app;

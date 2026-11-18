@@ -1,3 +1,4 @@
+import { switchOn } from '../admin2/store.js';
 import type { PrismaClient } from '@prisma/client';
 
 /**
@@ -80,6 +81,8 @@ export async function consumeAiQuota(
   kind: AiUsageKind,
   now: Date = new Date(),
 ): Promise<void> {
+  // The admin's AI switch: every AI feature already handles this error with its fallback.
+  if (!(await switchOn(prisma, 'ai'))) throw new AiQuotaExceededError(kind, 600);
   const limits = AI_QUOTAS[kind];
   const longest = Math.max(...limits.map((l) => l.windowMs));
   const rows = await prisma.aiUsage.findMany({

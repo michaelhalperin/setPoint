@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { requireAuth, type AuthedRequest } from '../auth/index.js';
+import { switchOn } from '../admin2/store.js';
 import { getPrisma } from '../db/client.js';
 import {
   clearNutritionThread,
@@ -15,6 +16,11 @@ const langSchema = z.enum(['en', 'he']).default('en');
 
 export async function expertRoutes(app: FastifyInstance): Promise<void> {
   app.addHook('preHandler', requireAuth(app));
+  app.addHook('preHandler', async (_req, reply) => {
+    if (!(await switchOn(getPrisma(), 'experts'))) {
+      return reply.status(503).send({ error: 'Service Unavailable', message: 'experts_paused' });
+    }
+  });
 
   app.get('/nutrition', async (req) => {
     const q = z.object({ lang: langSchema }).parse(req.query);

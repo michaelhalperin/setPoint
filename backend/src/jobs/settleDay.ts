@@ -11,6 +11,8 @@ export type SettleDayDeps = {
   prisma: PrismaClient;
   voice: ManagerVoice;
   now?: Date;
+  /** Admin tests: only these people. */
+  userIds?: string[];
 };
 
 export type SettleDaySummary = {
@@ -36,7 +38,7 @@ export async function runSettleDayJob(deps: SettleDayDeps): Promise<SettleDaySum
   };
 
   const users = await deps.prisma.user.findMany({
-    where: { onboarding: { is: { completedAt: { not: null } } } },
+    where: { onboarding: { is: { completedAt: { not: null } } }, ...(deps.userIds ? { id: { in: deps.userIds } } : {}) },
     include: { onboarding: true },
   });
   summary.usersEvaluated = users.length;

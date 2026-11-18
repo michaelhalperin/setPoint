@@ -75,6 +75,8 @@ export type ScoreConfidenceDeps = {
   push: PushSender;
   voice: ManagerVoice;
   now?: Date;
+  /** Admin tests: only these people. */
+  userIds?: string[];
 };
 
 export type ScoreConfidenceSummary = {
@@ -148,7 +150,12 @@ export async function runScoreConfidenceJob(
   let cursor: string | undefined;
   for (;;) {
     const users = await deps.prisma.user.findMany({
-      where: { onboarding: { isNot: null }, ...(cursor ? { id: { gt: cursor } } : {}) },
+      where: {
+        onboarding: { isNot: null },
+        ...(deps.userIds || cursor
+          ? { id: { ...(deps.userIds ? { in: deps.userIds } : {}), ...(cursor ? { gt: cursor } : {}) } }
+          : {}),
+      },
       orderBy: { id: 'asc' },
       take: batchSize,
       include: USER_INCLUDE,
